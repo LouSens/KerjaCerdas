@@ -6,7 +6,7 @@ create extension if not exists "pgcrypto";
 
 -- Embeddings are 768-dim (Gemini text-embedding-004).
 do $$ begin
-  create type user_role as enum ('seeker', 'employer', 'admin');
+  create type user_role as enum ('seeker', 'employer');
   create type education_level as enum ('SMA', 'D3', 'D4', 'S1', 'S2', 'S3');
   create type application_status as enum
     ('applied', 'reviewed', 'interview', 'offered', 'rejected', 'withdrawn');

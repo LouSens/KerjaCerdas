@@ -24,7 +24,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.database import init_db, reconfigure
-from backend.app.api.routers.admin import router as admin_router
 from backend.app.api.routers.agent import router as agent_router
 from backend.app.api.routers.auth import router as auth_router
 from backend.app.api.routers.employer import router as employer_router  # prefix=/employer
@@ -61,17 +60,29 @@ async def lifespan(app: FastAPI):
 
 
 async def _maybe_seed() -> None:
-    """Seed demo jobs/seekers/employers if the store is empty."""
-    from backend.app.db.json_store import get_repositories
+    """Seed demo jobs/seekers/employers if the store is empty.
+
+    Uses scripts/seed_demo.py — 20 real Indonesian companies, 20 diverse
+    seekers, 15 courses, 1 admin user.  Running this on a populated store
+    is safe (upsert-by-id semantics) but skipped for performance.
+    """
     try:
-        repos = get_repositories()
-        jobs = await repos.jobs.list()
-        if jobs:
-            logger.info("JSON store has %d job(s) — skipping auto-seed.", len(jobs))
+        from backend.app.api.database import async_session_factory
+        from backend.app.api.models import User
+        from sqlalchemy.future import select
+        from sqlalchemy import func
+
+        async with async_session_factory() as session:
+            result = await session.execute(select(func.count(User.id)))
+            user_count = result.scalar() or 0
+
+        if user_count >= 5:
+            logger.info("SQLite auth store has %d user(s) — skipping auto-seed.", user_count)
             return
-        logger.info("Empty store detected — running demo seed…")
-        from scripts.seed_json import main as seed_main
-        await seed_main()
+
+        logger.info("Empty store detected (%d users) — running demo seed…", user_count)
+        from scripts.seed_demo import seed as seed_main
+        await seed_main(clear=False)
         logger.info("Demo seed complete.")
     except Exception as exc:
         logger.warning("Auto-seed failed (non-fatal): %s", exc)
@@ -93,7 +104,7 @@ app.add_middleware(
 )
 
 for r in (auth_router, seeker_router, employer_router, jobs_router,
-          uploads_router, verify_router, agent_router, admin_router):
+          uploads_router, verify_router, agent_router):
     app.include_router(r, prefix="/api/v1")
 
 

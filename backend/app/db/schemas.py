@@ -40,7 +40,6 @@ class TimestampedModel(BaseModel):
 class UserRole(str, Enum):
     SEEKER = "seeker"
     EMPLOYER = "employer"
-    ADMIN = "admin"
 
 
 class EducationLevel(str, Enum):

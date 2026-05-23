@@ -17,6 +17,10 @@ import asyncio
 import shutil
 from pathlib import Path
 
+from backend.app.api.database import async_session_factory
+from backend.app.api.models import User as SqlUser
+from sqlalchemy.future import select
+
 from backend.app.db.json_store import DATA_ROOT, get_repositories
 from backend.app.db.schemas import (
     Course,
@@ -539,14 +543,31 @@ DEFAULT_PWD = "$2b$12$demoDemoDemoDemoDemoDe.uM5RyP4OkmdRY3hCmF5wxJ2sLb7gqXa"  #
 
 
 async def seed(clear: bool) -> None:
-    if clear and DATA_ROOT.exists():
-        for sub in ["users", "seekers", "employers", "jobs", "applications",
-                    "matches", "skill_gaps", "conversations", "ai_logs",
-                    "gamification", "courses"]:
-            d = DATA_ROOT / sub
-            if d.exists():
-                shutil.rmtree(d)
-        print(f"[clear] wiped {DATA_ROOT}")
+    from backend.app.api.database import init_db
+    await init_db()
+
+    if clear:
+        for p in DATA_ROOT.rglob("*.json"):
+            if p.is_file():
+                p.unlink()
+        print("[OK] JSON store cleared")
+
+    # Helper to seed users into SQLAlchemy (the auth DB)
+    async def _seed_auth_user(email: str, name: str, role: str) -> SqlUser:
+        async with async_session_factory() as session:
+            stmt = select(SqlUser).where(SqlUser.email == email)
+            result = await session.execute(stmt)
+            u = result.scalar_one_or_none()
+            if not u:
+                u = SqlUser(email=email, name=name, password_hash=DEFAULT_PWD, role=role)
+                session.add(u)
+            else:
+                u.name = name
+                u.role = role
+                u.password_hash = DEFAULT_PWD
+            await session.commit()
+            await session.refresh(u)
+            return u
 
     repos = get_repositories()
     matcher = SemanticMatcher()
@@ -554,11 +575,9 @@ async def seed(clear: bool) -> None:
     # ── Employers ──────────────────────────────────────────────────────────
     emp_by_key: dict[str, Employer] = {}
     for key, name, ind, size, region, desc in EMPLOYERS:
-        u = await repos.users.upsert(User(
-            email=f"hr@{key}.id", password_hash=DEFAULT_PWD, role=UserRole.EMPLOYER,
-        ))
+        u = await _seed_auth_user(email=f"hr@{key}.id", name=name, role=UserRole.EMPLOYER.value)
         emp = await repos.employers.upsert(Employer(
-            user_id=u.id, company_name=name, industry=ind, size=size,
+            id=u.id, user_id=u.id, company_name=name, industry=ind, size=size,
             region_code=region, description=desc,
         ))
         emp_by_key[key] = emp
@@ -590,9 +609,8 @@ async def seed(clear: bool) -> None:
     # ── Seekers ────────────────────────────────────────────────────────────
     seeker_count = 0
     for s in SEEKERS:
-        u = await repos.users.upsert(User(
-            email=s["email"], password_hash=DEFAULT_PWD, role=UserRole.SEEKER,
-        ))
+        u = await _seed_auth_user(email=s["email"], name=s["full_name"], role=UserRole.SEEKER.value)
+        
         edu_objs = [Education(
             institution=inst,
             degree=EducationLevel(deg) if deg in EducationLevel.__members__ else EducationLevel.S1,
@@ -626,11 +644,6 @@ async def seed(clear: bool) -> None:
         await repos.courses.upsert(Course(**c))
     print(f"[courses] {len(COURSES)} created")
 
-    # ── Admin user ─────────────────────────────────────────────────────────
-    await repos.users.upsert(User(
-        email="admin@kerjacerdas.id", password_hash=DEFAULT_PWD, role=UserRole.ADMIN,
-    ))
-    print("[admin] admin@kerjacerdas.id seeded")
 
     print("\n[OK] Seed selesai.")
     print(f"  Employers : {len(emp_by_key)}")
@@ -638,7 +651,6 @@ async def seed(clear: bool) -> None:
     print(f"  Seekers   : {seeker_count}")
     print(f"  Courses   : {len(COURSES)}")
     print("\nLogin demo (UI menerima password apa saja):")
-    print("  admin@kerjacerdas.id     -> admin dashboard")
     print("  hr@goto.id               -> employer dashboard (GoTo)")
     print("  hr@bibit.id              -> employer dashboard (Bibit)")
     print("  andi.pratama@example.com -> seeker dashboard (fresh-grad data)")

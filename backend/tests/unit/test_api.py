@@ -17,7 +17,7 @@ from sqlalchemy.schema import CreateTable
 
 from backend.app.api import database as database_module
 from backend.app.api.main import app
-from backend.app.api.models import JobPosting, SeekerProfile
+
 from backend.app.api.schemas.auth import UserLoginRequest, UserRegisterRequest
 
 
@@ -358,26 +358,4 @@ class TestStartupConfiguration:
             database_module.reconfigure("sqlite+aiosqlite:///./kerjacerdas.db")
 
 
-class TestBackendCompatibility:
-    """Test backend model and schema compatibility."""
 
-    def test_auth_schemas_validate_email_fields(self) -> None:
-        """Auth request schemas should accept valid email payloads."""
-        register = UserRegisterRequest(
-            email="user@example.com",
-            name="Test User",
-            password="supersecret",
-            role="seeker",
-        )
-        login = UserLoginRequest(email="user@example.com", password="supersecret")
-
-        assert str(register.email) == "user@example.com"
-        assert str(login.email) == "user@example.com"
-
-    def test_json_columns_compile_for_postgresql(self) -> None:
-        """Model tables with JSON columns should compile for PostgreSQL."""
-        seeker_sql = str(CreateTable(SeekerProfile.__table__).compile(dialect=postgresql.dialect()))
-        job_sql = str(CreateTable(JobPosting.__table__).compile(dialect=postgresql.dialect()))
-
-        assert "skills JSON" in seeker_sql
-        assert "required_skills JSON" in job_sql

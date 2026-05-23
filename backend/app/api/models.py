@@ -36,8 +36,7 @@ def _uuid() -> str:
 
 class User(Base):
     """
-    Core user table - supports seeker, employer, and admin roles.
-
+    Core user table - supports seeker and employer roles.
     Password is stored as a bcrypt hash (never plaintext).
     All extended profile data (skills, jobs, applications) lives in the
     JSON store (`db/json_store.py`) keyed on `User.id`.
@@ -49,7 +48,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[str] = mapped_column(String(20), nullable=False)  # 'seeker' | 'employer' | 'admin'
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # 'seeker' | 'employer'
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(

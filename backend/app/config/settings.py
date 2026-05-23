@@ -60,8 +60,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
-    # ── Admin bootstrap ──────────────────────────────────────────────────
-    admin_emails: list[str] = ["admin@kerjacerdas.id"]
+
 
     # ── Matching tuning ──────────────────────────────────────────────────
     matching_top_k: int = 10

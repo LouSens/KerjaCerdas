@@ -81,17 +81,3 @@ async def require_seeker(current_user: User = Depends(get_current_user)) -> User
         )
     return current_user
 
-
-async def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Dependency that ensures the user has the admin role."""
-    from backend.app.config.settings import settings
-    is_admin = (
-        current_user.role == "admin"
-        or current_user.email in settings.admin_emails
-    )
-    if not is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    return current_user
