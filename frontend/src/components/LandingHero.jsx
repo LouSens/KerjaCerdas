@@ -179,10 +179,10 @@ function BrutalButton({ children, variant = 'primary', size = 'md', icon, full, 
         lg: { padding: '16px 28px', fontSize: 17 },
     }[size]
     const variants = {
-        primary:   { bg: KC.ink,    fg: '#fff',  border: KC.ink, shadow: KC.orange },
-        secondary: { bg: KC.paper,  fg: KC.ink,  border: KC.ink, shadow: KC.ink },
-        accent:    { bg: KC.orange, fg: '#fff',  border: KC.ink, shadow: KC.ink },
-        ghost:     { bg: 'transparent', fg: KC.ink, border: 'transparent', shadow: 'transparent' },
+        primary: { bg: KC.ink, fg: '#fff', border: KC.ink, shadow: KC.orange },
+        secondary: { bg: KC.paper, fg: KC.ink, border: KC.ink, shadow: KC.ink },
+        accent: { bg: KC.orange, fg: '#fff', border: KC.ink, shadow: KC.ink },
+        ghost: { bg: 'transparent', fg: KC.ink, border: 'transparent', shadow: 'transparent' },
     }[variant]
     return (
         <button onClick={onClick} className={variant === 'ghost' ? '' : 'kc-btn'} style={{
@@ -370,12 +370,12 @@ export default function LandingHero() {
     const onContactSales = () => { window.location.href = 'mailto:sales@kerjacerdas.id?subject=Hubungi%20Sales%20-%20KerjaCerdas%20Scale' }
     const PRICING_ACTIONS = {
         Starter: onEmployer,        // free employer register
-        Growth:  onEmployer,        // 14-day trial signup
-        Scale:   onContactSales,    // enterprise sales contact
+        Growth: onEmployer,        // 14-day trial signup
+        Scale: onContactSales,    // enterprise sales contact
     }
 
     const HOW_SEEKER = [
-        { n: '01', t: 'Upload CV atau isi profil', d: 'Drop PDF, kami parse pakai Gemini. Atau isi webform pendek — 3 menit selesai.', c: KC.cyan, ic: <I.User s={22} /> },
+        { n: '01', t: 'Upload CV atau isi profil', d: 'Drop PDF, CV diparse otomatis oleh AI. Atau isi webform pendek — 3 menit selesai.', c: KC.cyan, ic: <I.User s={22} /> },
         { n: '02', t: 'AI cari yang cocok', d: 'Embedding semantik bandingin profilmu dengan ribuan lowongan. Output: top-5 paling pas.', c: KC.yellow, ic: <I.Sparkle s={22} /> },
         { n: '03', t: 'Tutup gap, lamar, kerja', d: 'Skill gap advisor kasih kursus Prakerja/Dicoding/Coursera. Apply 1-klik.', c: KC.lime, ic: <I.Bolt s={22} /> },
     ]
@@ -389,7 +389,7 @@ export default function LandingHero() {
     const FAQS = [
         { q: 'Beneran gratis buat job seeker?', a: 'Iya. Semua fitur — matching, skill gap, advisor, verifikasi — gratis selamanya. Kami profit dari sisi employer.' },
         { q: 'Data KTP dan ijazah saya aman?', a: 'Disimpan terenkripsi AES-256, server di Indonesia, hanya dipakai sekali untuk verifikasi. Setelahnya cuma kelihatan badge ✓ Verified.' },
-        { q: 'Bagaimana AI menentukan match?', a: 'Gemini text-embedding-004 bandingin semantik profil & job description, lalu LLM rerank pakai skill, lokasi, gaji, dan industri.' },
+        { q: 'Bagaimana AI menentukan match?', a: 'AI semantic search membandingkan semantik profil & job description, lalu rerank otomatis pakai skill, lokasi, gaji, dan industri.' },
         { q: 'Bisa cancel langganan kapan aja?', a: 'Bisa. Tier Growth & Scale: monthly, cancel anytime, no pertanyaan. Sisa hari aktif sampai akhir periode.' },
     ]
 
@@ -402,7 +402,7 @@ export default function LandingHero() {
             <section className="kc-stage-pad" style={{ position: 'relative', overflow: 'hidden' }}>
                 <div className="kc-hero-grid">
                     <div>
-                        <span className="kc-fade-up"><Tag color={KC.yellow} icon={<I.Sparkle s={12} />}>Powered by Gemini · Bahasa Indonesia</Tag></span>
+                        <span className="kc-fade-up"><Tag color={KC.yellow} icon={<I.Sparkle s={12} />}>Smart Job Matching · Bahasa Indonesia</Tag></span>
                         <h1 className="kc-h1 kc-fade-up d1" style={{ fontWeight: 900, margin: '20px 0 12px' }}>
                             Kerja yang<br />
                             <span className="kc-headline-sticker" style={{ background: KC.orange, color: '#fff', padding: '0 14px', boxShadow: `6px 6px 0 ${KC.ink}`, border: `3px solid ${KC.ink}`, marginTop: 6, cursor: 'pointer' }}>cocok beneran.</span><br />
@@ -548,14 +548,14 @@ export default function LandingHero() {
                     <div style={{ marginBottom: 36 }}>
                         <Tag color={KC.cyan}>fitur inti</Tag>
                         <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.4, margin: '12px 0 4px' }}>Empat senjata utama.</h2>
-                        <p style={{ fontSize: 16, color: KC.mute, maxWidth: 540 }}>Semua jalan di atas Gemini embeddings + LLM. Logging audit-friendly buat compliance.</p>
+                        <p style={{ fontSize: 16, color: KC.mute, maxWidth: 540 }}>Semua berjalan di atas teknologi AI mutakhir. Logging audit-friendly buat compliance.</p>
                     </div>
                     <div className="kc-features-grid">
                         <BrutalCard color={KC.orange} padding={28} style={{ gridRow: 'span 2', color: '#fff', display: 'flex', flexDirection: 'column' }}>
                             <Tag color="#fff" ink={KC.ink}>★ matching engine</Tag>
                             <h3 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -1, lineHeight: 1.05, marginTop: 14 }}>Top-5 job match.<br />Bukan top-500 sampah.</h3>
                             <p style={{ fontSize: 14, lineHeight: 1.55, opacity: 0.92, marginTop: 12, marginBottom: 18 }}>
-                                Gemini text-embedding-004 + reranker LLM. Skor dihitung dari skill overlap, level, lokasi, gaji, dan industri.
+                                AI Semantic Search + LLM Reranker. Skor dihitung dari skill overlap, level, lokasi, gaji, dan industri.
                                 Setiap match dijelasin: <i>kenapa cocok, apa yang kurang</i>.
                             </p>
                             <div style={{ background: 'rgba(0,0,0,0.5)', border: '2px solid #fff', borderRadius: 10, padding: 14, marginTop: 'auto' }}>
@@ -644,8 +644,8 @@ export default function LandingHero() {
                     <div className="kc-pricing-grid">
                         {[
                             { name: 'Starter', price: '0', sub: 'forever', cta: 'Mulai Gratis', highlight: false, color: '#fff', perks: ['1 lowongan aktif', 'Top-3 kandidat per posting', 'Email applicants', 'Verifikasi NPWP'] },
-                            { name: 'Growth', price: '1.5jt', sub: '/bulan', cta: 'Coba 14 Hari', highlight: true, color: KC.orange, perks: ['10 lowongan aktif', 'Top-10 kandidat per posting', 'Analytics dashboard', 'Skill heatmap kandidat', 'Priority support'] },
-                            { name: 'Scale', price: '5jt', sub: '/bulan', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Unlimited lowongan', 'Top-50 kandidat + bulk export', 'ATS integration (Greenhouse, Lever)', 'API access', 'Custom branding', 'Dedicated CSM'] },
+                            { name: 'Growth', price: '399rb', sub: '/bulan', cta: 'Coba 14 Hari', highlight: true, color: KC.orange, perks: ['10 lowongan aktif', 'Top-10 kandidat per posting', 'Analytics dashboard', 'Skill heatmap kandidat', 'Priority support'] },
+                            { name: 'Scale', price: '3jt', sub: '/bulan', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Unlimited lowongan', 'Top-50 kandidat + bulk export', 'ATS integration (Greenhouse, Lever)', 'API access', 'Custom branding', 'Dedicated CSM'] },
                         ].map((p, i) => {
                             const dark = p.color === KC.ink
                             const accent = p.highlight
@@ -754,7 +754,7 @@ export default function LandingHero() {
                         <div>
                             <Logo size={28} color="#fff" mark={KC.orange} />
                             <p style={{ fontSize: 13, opacity: 0.6, lineHeight: 1.6, marginTop: 14, maxWidth: 280 }}>
-                                Platform AI matching kerja untuk pasar Indonesia. Dibangun dengan Gemini, dijalankan oleh tim Jakarta.
+                                Platform AI matching kerja untuk pasar Indonesia. Menghubungkan talenta lokal dengan peluang karir terbaik secara cerdas.
                             </p>
                         </div>
                         {[
@@ -768,24 +768,24 @@ export default function LandingHero() {
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     {col.items.map(it => {
                                         const handlers = {
-                                            'Cara Kerja':     () => scrollToSection('how'),
-                                            'Fitur':          () => scrollToSection('fitur'),
-                                            'Verifikasi':     () => scrollToSection('fitur'),
-                                            'Harga':          () => navigate('pricing'),
-                                            'Job Seeker':     onDaftar,
-                                            'Employer / HR':  onEmployer,
+                                            'Cara Kerja': () => scrollToSection('how'),
+                                            'Fitur': () => scrollToSection('fitur'),
+                                            'Verifikasi': () => scrollToSection('fitur'),
+                                            'Harga': () => navigate('pricing'),
+                                            'Job Seeker': onDaftar,
+                                            'Employer / HR': onEmployer,
                                             'Kampus & Lembaga': onContactSales,
                                             'Partner Kursus': onContactSales,
-                                            'Tentang Kami':   () => navigate('about'),
-                                            'Karier':         onContactSales,
-                                            'Blog':           () => navigate('about'),
-                                            'Kontak':         onContactSales,
-                                            'Privasi':        () => navigate('privacy'),
-                                            'Syarat':         () => navigate('privacy'),
-                                            'UU PDP':         () => navigate('privacy'),
-                                            'Status':         () => window.open('https://status.kerjacerdas.id', '_blank'),
+                                            'Tentang Kami': () => navigate('about'),
+                                            'Karier': onContactSales,
+                                            'Blog': () => navigate('about'),
+                                            'Kontak': onContactSales,
+                                            'Privasi': () => navigate('privacy'),
+                                            'Syarat': () => navigate('privacy'),
+                                            'UU PDP': () => navigate('privacy'),
+                                            'Status': () => window.open('https://status.kerjacerdas.id', '_blank'),
                                         }
-                                        const handler = handlers[it] || (() => {})
+                                        const handler = handlers[it] || (() => { })
                                         return (
                                             <li key={it} style={{ fontSize: 13, fontWeight: 600 }}>
                                                 <a onClick={handler} className="kc-foot-link" style={{ color: '#fff', opacity: 0.7, textDecoration: 'none', cursor: 'pointer', transition: 'opacity .15s, color .15s' }}
@@ -799,8 +799,7 @@ export default function LandingHero() {
                         ))}
                     </div>
                     <div className="kc-foot-row" style={{ borderTop: '1px solid rgba(255,255,255,0.13)', paddingTop: 22, display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: 0.6, flexWrap: 'wrap', gap: 12 }}>
-                        <span>© 2026 KerjaCerdas Indonesia · Jl. Sudirman, Jakarta</span>
-                        <span>Made with 🍜 in Jakarta · v1.0.0</span>
+                        <span>© 2026 KerjaCerdas Indonesia</span>
                     </div>
                 </div>
             </footer>
