@@ -24,16 +24,12 @@ import {
     fetchBookmarks,
     addBookmark,
     removeBookmark,
-    fetchAdminMetrics,
-    fetchAdminAIPerformance,
-    fetchAdminUsers,
     loginUser,
     registerUser,
 } from '../services/api'
 
 const PUBLIC_VIEWS = new Set(['home', 'pricing', 'about', 'privacy'])
-const ADMIN_EMAILS = ['admin@kerjacerdas.id']
-const settings_isAdminEmail = (email = '') => ADMIN_EMAILS.includes(email.toLowerCase())
+
 
 const ALLOWED_VIEWS = {
     seeker: new Set([
@@ -43,9 +39,6 @@ const ALLOWED_VIEWS = {
     employer: new Set([
         'employer-dashboard', 'employer-jobs', 'employer-candidates',
         'employer-post-job', 'employer-verification', 'employer-upload', 'employer-profile',
-    ]),
-    admin: new Set([
-        'admin-overview', 'admin-users', 'admin-jobs', 'admin-ai',
     ]),
 }
 
@@ -71,11 +64,8 @@ const useStore = create(
             login: async (email, password) => {
                 const res = await loginUser({ email, password })
                 const { access_token, user } = res
-                const isAdminEmail = settings_isAdminEmail(user.email)
-                const resolvedRole = isAdminEmail ? 'admin' : user.role
-                const homeView = resolvedRole === 'admin'
-                    ? 'admin-overview'
-                    : resolvedRole === 'employer'
+                const resolvedRole = user.role
+                const homeView = resolvedRole === 'employer'
                     ? 'employer-dashboard'
                     : 'seeker-dashboard'
                 set({
@@ -97,8 +87,6 @@ const useStore = create(
                     store.loadSeekerProfile()
                 } else if (resolvedRole === 'employer') {
                     store.refreshEmployerJobs()
-                } else if (resolvedRole === 'admin') {
-                    store.refreshAdmin()
                 }
                 return res
             },
@@ -351,20 +339,6 @@ const useStore = create(
                 }
             },
 
-            // ─── Admin ───────────────────────────────────────────────────
-            adminMetrics: null,
-            adminAI: null,
-            adminUsers: [],
-            refreshAdmin: async () => {
-                try {
-                    const [m, a, u] = await Promise.all([
-                        fetchAdminMetrics(), fetchAdminAIPerformance(), fetchAdminUsers(),
-                    ])
-                    set({ adminMetrics: m, adminAI: a, adminUsers: u.items || [] })
-                } catch {
-                    toast.error('Admin metrics gagal dimuat')
-                }
-            },
 
             // ─── API health ──────────────────────────────────────────────
             apiStatus: 'unknown',

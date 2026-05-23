@@ -21,23 +21,14 @@ const EMPLOYER_NAV = [
     { id: 'employer-verification', label: 'Verifikasi NPWP', icon: ShieldCheck },
 ]
 
-const ADMIN_NAV = [
-    { id: 'admin-overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'admin-users', label: 'Users', icon: Users },
-    { id: 'admin-jobs', label: 'Jobs', icon: Briefcase },
-    { id: 'admin-ai', label: 'AI Performance', icon: Bot },
-]
+
 
 export default function Sidebar() {
     const { userRole, user, activeView, navigate, logout } = useStore()
 
-    const nav = userRole === 'employer' ? EMPLOYER_NAV
-        : userRole === 'admin' ? ADMIN_NAV
-        : SEEKER_NAV
+    const nav = userRole === 'employer' ? EMPLOYER_NAV : SEEKER_NAV
 
-    const roleLabel = userRole === 'employer' ? 'Employer / HR'
-        : userRole === 'admin' ? 'Admin'
-        : 'Pencari Kerja'
+    const roleLabel = userRole === 'employer' ? 'Employer / HR' : 'Pencari Kerja'
 
     return (
         <aside className="fixed left-0 top-0 bottom-0 w-60 bg-kc-dark text-white flex flex-col z-40 border-r-2 border-kc-dark">
@@ -76,24 +67,22 @@ export default function Sidebar() {
             </nav>
 
             {/* Upgrade CTA */}
-            {userRole !== 'admin' && (
-                <div className="px-4 py-3 border-t border-white/10">
-                    <div className="bg-white/5 border border-white/10 p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                            <Crown size={12} className="text-kc-yellow" />
-                            <span className="text-xs font-semibold">Upgrade ke Pro</span>
-                        </div>
-                        <p className="text-[10px] text-white/50 leading-relaxed">
-                            {userRole === 'employer'
-                                ? 'Unlock top-50 kandidat per lowongan.'
-                                : 'Buka top-20 match, prioritas AI advisor.'}
-                        </p>
-                        <button className="mt-2 text-[10px] text-kc-yellow font-semibold hover:underline">
-                            Lihat Paket
-                        </button>
+            <div className="px-4 py-3 border-t border-white/10">
+                <div className="bg-white/5 border border-white/10 p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Crown size={12} className="text-kc-yellow" />
+                        <span className="text-xs font-semibold">Upgrade ke Pro</span>
                     </div>
+                    <p className="text-[10px] text-white/50 leading-relaxed">
+                        {userRole === 'employer'
+                            ? 'Unlock top-50 kandidat per lowongan.'
+                            : 'Buka top-20 match, prioritas AI advisor.'}
+                    </p>
+                    <button className="mt-2 text-[10px] text-kc-yellow font-semibold hover:underline">
+                        Lihat Paket
+                    </button>
                 </div>
-            )}
+            </div>
 
             {/* User + Logout */}
             <div className="px-4 py-4 border-t border-white/10">

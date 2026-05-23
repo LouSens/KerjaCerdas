@@ -29,8 +29,6 @@ import EmployerCandidates from './components/EmployerCandidates'
 import EmployerVerification from './components/EmployerVerification'
 import JobPackUploader from './components/JobPackUploader'
 
-// Admin views
-import AdminDashboard from './components/AdminDashboard'
 
 /**
  * App — role-aware shell.
@@ -99,9 +97,6 @@ function AuthedView({ view, userRole, matches }) {
         if (view === 'employer-profile')      return <EmployerProfilePlaceholder />
     }
 
-    if (userRole === 'admin') {
-        return <AdminDashboard />
-    }
 
     return <p className="text-sm text-kc-gray">Halaman tidak ditemukan untuk peran Anda.</p>
 }

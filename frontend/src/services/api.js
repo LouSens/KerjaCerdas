@@ -168,11 +168,7 @@ export const estimateJobPool = (payload) => request(`${API_BASE}/employer/jobs/e
 // ── Verification documents (encrypted file_ids visible only to owner) ───────
 export const listVerificationDocs = () => request(`${API_BASE}/verify/documents`)
 
-// ── Admin ───────────────────────────────────────────────────────────────────
-export const fetchAdminMetrics = () => request(`${API_BASE}/admin/metrics`)
-export const fetchAdminAIPerformance = () => request(`${API_BASE}/admin/ai/performance`)
-export const fetchAdminUsers = () => request(`${API_BASE}/admin/users`)
-export const adminDeleteJob = (id) => request(`${API_BASE}/admin/jobs/${id}`, { method: 'DELETE' })
+
 
 // ── Health ──────────────────────────────────────────────────────────────────
 export const healthCheck = () => request('/health')
