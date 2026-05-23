@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-Indonesia adalah negara dengan populasi kerja terbesar ke-4 di dunia, namun menderita **triple mismatch** yang akut: pengangguran 7,86 juta orang (BPS, Feb 2025), 62% lulusan bekerja di luar bidang studi, dan tingkat kepercayaan CV yang rendah akibat ijazah palsu dan klaim pengalaman tidak terverifikasi.
+Indonesia adalah negara dengan populasi kerja terbesar ke-4 di dunia, namun menderita **triple mismatch** yang akut: pengangguran 7,86 juta orang [ESTIMATE] (BPS, Feb 2025), 62% [ESTIMATE] lulusan bekerja di luar bidang studi, dan tingkat kepercayaan CV yang rendah akibat ijazah palsu dan klaim pengalaman tidak terverifikasi.
 
 **KerjaCerdas** (*"Kerja Cerdas" = Smart Work*) adalah platform AI job-matching generasi baru yang menggantikan pencarian berbasis kata kunci dengan **semantic matching berbahasa Indonesia**. Menggunakan Google Gemini API dan arsitektur agentic LangGraph, platform ini:
 
@@ -16,7 +16,7 @@ Indonesia adalah negara dengan populasi kerja terbesar ke-4 di dunia, namun mend
 - Memverifikasi identitas, ijazah, dan NPWP perusahaan via mock e-KYC (Dukcapil/SIVIL/DJP)
 - Menyediakan *career advisor* AI berbahasa Indonesia 24/7 via chat
 
-**Target impact:** 50.000 pencari kerja termatching secara lebih tepat dalam 12 bulan pertama, 500 employer SME menghemat waktu screening rata-rata 73%, dan peningkatan *match relevance* 4× lipat dibanding portal konvensional.
+**Target impact:** 50.000 [ESTIMATE] pencari kerja termatching secara lebih tepat dalam 12 bulan pertama, 500 [ESTIMATE] employer SME menghemat waktu screening rata-rata 73% [ESTIMATE], dan peningkatan *match relevance* 4× [ESTIMATE] lipat dibanding portal konvensional.
 
 **Status saat ini:** MVP live dan berjalan, backend + frontend terintegrasi penuh, demo dapat diakses di localhost dengan data live.
 
@@ -30,12 +30,12 @@ Indonesia adalah negara dengan populasi kerja terbesar ke-4 di dunia, namun mend
 ### Data Pendukung
 | Indikator | Angka | Sumber |
 |---|---|---|
-| Pengangguran terbuka | 7,86 juta | BPS Feb 2025 |
-| Lulusan yang bekerja di luar bidang | 62% | BPS Sakernas 2024 |
-| Rata-rata waktu isi 1 posisi | 45 hari | LinkedIn Indonesia Talent Report |
-| HR yang menolak CV tanpa review | 78% | Survey internal Glints 2024 |
-| SME yang tidak bisa bayar Jobstreet | 65% | estimasi APINDO |
-| Pencari kerja dari luar Jawa | 40% | BPS |
+| Pengangguran terbuka | 7,86 juta [ESTIMATE] | BPS Feb 2025 |
+| Lulusan yang bekerja di luar bidang | 62% [ESTIMATE] | BPS Sakernas 2024 |
+| Rata-rata waktu isi 1 posisi | 45 hari [ESTIMATE] | LinkedIn Indonesia Talent Report |
+| HR yang menolak CV tanpa review | 78% [ESTIMATE] | Survey internal Glints 2024 |
+| SME yang tidak bisa bayar Jobstreet | 65% [ESTIMATE] | estimasi APINDO |
+| Pencari kerja dari luar Jawa | 40% [ESTIMATE] | BPS |
 
 ### Root Cause Analysis
 ```
@@ -59,10 +59,10 @@ Information Asymmetry
 
 | # | Sub-Problem | Bukti | Siapa yang Terdampak |
 |---|---|---|---|
-| P1 | **Relevance gap**: pencarian keyword gagal memahami kompetensi semantik | 3 dari 5 perekrut menerima aplikasi "completely wrong fit" | Employer, Seeker |
-| P2 | **Skill blindspot**: pencari tidak tahu *exactly* skill apa yang kurang untuk posisi target | 72% fresh grad tidak tahu mengapa lamaran ditolak | Seeker |
-| P3 | **Trust deficit**: klaim pengalaman/ijazah tidak terverifikasi → HR over-rely pada brand kampus | 1 dari 4 karyawan baru mengalami "skill mismatch" di 3 bulan pertama | Employer |
-| P4 | **Access barrier**: portal berbayar mahal untuk SME dan pencari | 65% SME tidak aktif posting di Jobstreet; pencari premium terpaksa bayar Rp 49rb/bulan | SME, Seeker Regional |
+| P1 | **Relevance gap**: pencarian keyword gagal memahami kompetensi semantik | 3 dari 5 perekrut [ESTIMATE] menerima aplikasi "completely wrong fit" | Employer, Seeker |
+| P2 | **Skill blindspot**: pencari tidak tahu *exactly* skill apa yang kurang untuk posisi target | 72% fresh grad [ESTIMATE] tidak tahu mengapa lamaran ditolak | Seeker |
+| P3 | **Trust deficit**: klaim pengalaman/ijazah tidak terverifikasi → HR over-rely pada brand kampus | 1 dari 4 karyawan baru [ESTIMATE] mengalami "skill mismatch" di 3 bulan pertama | Employer |
+| P4 | **Access barrier**: portal berbayar mahal untuk SME dan pencari | 65% SME [ESTIMATE] tidak aktif posting di Jobstreet; pencari premium terpaksa bayar Rp 49rb/bulan [ESTIMATE] | SME, Seeker Regional |
 | P5 | **Regional gap**: bias platform terhadap talenta Jawa & kota besar | Talenta Makassar, Medan, Surabaya non-UI/ITB/ITS di-underestimate secara sistemis | Seeker Regional |
 
 ---
@@ -212,11 +212,11 @@ final_score = (
 ### Metrik Kualitas Matching
 | Metrik | Baseline (keyword search) | KerjaCerdas Target |
 |---|---|---|
-| Precision@5 (HR-rated relevance) | ~35% | ≥ 80% |
-| nDCG@10 | ~0.40 | ≥ 0.82 |
-| Time-to-hire (employer) | 45 hari | ≤ 15 hari |
-| CV-to-interview conversion | 3% | ≥ 12% |
-| Regional match fairness gap | >30% | <15% (Java vs outer) |
+| Precision@5 (HR-rated relevance) | ~35% [ESTIMATE] | ≥ 80% [ESTIMATE] |
+| nDCG@10 | ~0.40 [ESTIMATE] | ≥ 0.82 [ESTIMATE] |
+| Time-to-hire (employer) | 45 hari [ESTIMATE] | ≤ 15 hari [ESTIMATE] |
+| CV-to-interview conversion | 3% [ESTIMATE] | ≥ 12% [ESTIMATE] |
+| Regional match fairness gap | >30% [ESTIMATE] | <15% (Java vs outer) [ESTIMATE] |
 
 ### Metrik Sosial
 - **Skill gap closure rate**: % seeker yang menyelesaikan rekomendasi kursus dalam 30 hari
@@ -478,29 +478,29 @@ Verifikasi identitas, ijazah, dan NPWP menjadi **bagian dari scoring**, bukan ad
 ### Phase 1: Bootstrapped (0–6 bulan)
 | Stream | Mekanisme | Target MRR M6 |
 |---|---|---|
-| **Employer Pay-Per-Post** | Rp 499.000 / lowongan / 30 hari | Rp 10 juta (20 employer) |
-| **Seeker Pro** | Rp 49.000 / bulan (unlimited parsing, mock interview) | Rp 2,5 juta (50 user) |
-| **Affiliate Kursus** | 8-15% komisi per enrollment | Rp 5 juta (est.) |
-| | **Total MRR M6** | **Rp 17,5 juta** |
+| **Employer Pay-Per-Post** | Rp 499.000 / lowongan / 30 hari [ESTIMATE] | Rp 10 juta (20 employer) [ESTIMATE] |
+| **Seeker Pro** | Rp 49.000 / bulan (unlimited parsing, mock interview) [ESTIMATE] | Rp 2,5 juta (50 user) [ESTIMATE] |
+| **Affiliate Kursus** | 8-15% komisi per enrollment [ESTIMATE] | Rp 5 juta [ESTIMATE] |
+| | **Total MRR M6** | **Rp 17,5 juta** [ESTIMATE] |
 
 ### Phase 2: Scale (6–18 bulan)
 | Stream | Harga | Volume M18 | MRR |
 |---|---|---|---|
-| Employer Standard | Rp 499rb/posting | 1.000 posting/bulan | Rp 499 juta |
-| Employer Growth | Rp 1,5 juta/bulan flat (10 postings) | 100 employer | Rp 150 juta |
-| Employer Enterprise | Rp 25 juta/bulan | 5 enterprise | Rp 125 juta |
-| Verified Talent Pool | Rp 1 juta/kandidat | 200/bulan | Rp 200 juta |
-| Government License | Rp 50 juta/provinsi/tahun | 5 provinsi | Rp 21 juta |
-| **Affiliate Kursus** | 10% avg komisi | 10.000 enrollment | Rp 50 juta |
-| | | **Total MRR M18** | **~Rp 1 miliar** |
+| Employer Standard | Rp 499rb/posting [ESTIMATE] | 1.000 posting/bulan [ESTIMATE] | Rp 499 juta [ESTIMATE] |
+| Employer Growth | Rp 1,5 juta/bulan flat (10 postings) [ESTIMATE] | 100 employer [ESTIMATE] | Rp 150 juta [ESTIMATE] |
+| Employer Enterprise | Rp 25 juta/bulan [ESTIMATE] | 5 enterprise [ESTIMATE] | Rp 125 juta [ESTIMATE] |
+| Verified Talent Pool | Rp 1 juta/kandidat [ESTIMATE] | 200/bulan [ESTIMATE] | Rp 200 juta [ESTIMATE] |
+| Government License | Rp 50 juta/provinsi/tahun [ESTIMATE] | 5 provinsi [ESTIMATE] | Rp 21 juta [ESTIMATE] |
+| **Affiliate Kursus** | 10% avg komisi [ESTIMATE] | 10.000 enrollment [ESTIMATE] | Rp 50 juta [ESTIMATE] |
+| | | **Total MRR M18** | **~Rp 1 miliar** [ESTIMATE] |
 
 ### Unit Economics
 | Metrik | Angka |
 |---|---|
-| CAC Employer SME | Rp 300.000 (content + sales) |
-| LTV Employer SME (12 bulan, 1.4 posting/bulan) | Rp 8,4 juta |
-| LTV/CAC | **28×** |
-| Gross Margin | **78%** (biaya utama: Gemini API ~Rp 30/seeker/bulan) |
+| CAC Employer SME | Rp 300.000 (content + sales) [ESTIMATE] |
+| LTV Employer SME (12 bulan, 1.4 posting/bulan) | Rp 8,4 juta [ESTIMATE] |
+| LTV/CAC | **28×** [ESTIMATE] |
+| Gross Margin | **78%** (biaya utama: Gemini API ~Rp 30/seeker/bulan) [ESTIMATE] |
 | Break-even | Month 18 (500 employer aktif) |
 
 ### Funding Needs (Pre-Seed)
@@ -671,5 +671,31 @@ Verifikasi identitas, ijazah, dan NPWP menjadi **bagian dari scoring**, bukan ad
 
 ---
 
+## 28. F. Technical Validation
+
+### System Architecture
+**Frontend**: Menggunakan React 18 dan Vite dengan Zustand untuk manajemen state dan Tailwind CSS untuk antarmuka yang responsif dan modern.
+**Backend**: Menggunakan Python + FastAPI (asynchronous) dengan arsitektur modular (routers, services, data layer).
+**Database**: SQLite untuk sistem autentikasi dan JSON-based vector store di environment lokal, dirancang untuk migrasi mulus ke PostgreSQL + pgvector (production).
+**AI & Agentic Flow**: Menggunakan Google Gemini API untuk parsing profil/pekerjaan multimodality dan embedding 3072-dimensi. Orkestrasi agentic dikelola menggunakan LangGraph dengan node terpisah untuk matching, analisis *skill gap*, dan *career advising*.
+
+### Data & Feasibility
+**Data Ontologi**: Menggunakan klasifikasi KBJI 2024 dari Badan Pusat Statistik dipadukan dengan taksonomi industri riil.
+**Data Sistem**: Auto-seed data sintetis namun realistis dari perusahaan terkemuka Indonesia (Tokopedia, Bank Mandiri, Akulaku) beserta resume dan profil pengguna nyata. 
+**Akuisisi**: Pipeline CV/PDF resume diproses menggunakan kapabilitas multimodality dari Gemini API untuk mengubah dokumen tidak terstruktur menjadi taksonomi skill terstruktur (JSON). Fallback mekanisme tersedia untuk memastikan demo berjalan tanpa error meskipun tanpa koneksi API (menggunakan HashEmbedder offline).
+
+### Security & Compliance
+**Keamanan Data**: Autentikasi JWT (JSON Web Tokens) dengan algoritma hashing bcrypt (cost factor 12) untuk mengamankan kata sandi pengguna di database. Endpoint backend dilindungi menggunakan *role-based access control*.
+**Verifikasi Identitas (e-KYC)**: Implementasi lapisan *mock-verification* NIK KTP (format checking Dukcapil), nomor Ijazah SIVIL Dikti, dan NPWP DJP. Data verifikasi di-hash SHA-256 untuk memastikan *privacy-by-design*.
+**Kepatuhan Hukum**: Sistem didesain selaras dengan UU Pelindungan Data Pribadi (UU No. 27/2022) di mana *Personally Identifiable Information* (PII) seperti NIK, email, dan telepon melalui proses redaksi sebelum dikirimkan ke model AI (Gemini).
+
+### Implementation Readiness (MVP)
+KerjaCerdas bukan sekadar *mockup* UI, namun purwarupa MVP *end-to-end* yang sepenuhnya operasional dan siap uji.
+**Fase 1 (Selesai)**: Konstruksi backend FastAPI, frontend React, integrasi Gemini Embedding & LangGraph agent, arsitektur RAG, auth JWT, algoritma semantic matching multivariat, dan pipeline upload CV PDF. 
+**Fase 2 (Bulan 1-3)**: Pengujian *beta* dengan 10 employer (SME) riil dan penyempurnaan UI/UX, migrasi database penuh ke PostgreSQL, dan penguatan *fallback offline*.
+**Fase 3 (Bulan 4-6)**: Peluncuran MVP publik awal (fokus pencari kerja di Pulau Jawa) dan pengumpulan umpan balik validasi akurasi metrik (Precision@5).
+**Fase 4 (Bulan 7-12)**: Integrasi dengan API partner resmi (e.g. Dukcapil, Prakerja), adopsi nasional penuh, integrasi ATS, dan peningkatan akurasi lokalisasi untuk pencari kerja regional.
+
+---
+
 *KerjaCerdas v0.3.0 — Built with Google Gemini API + FastAPI + React + LangGraph*
-*"Matching kompetensi, bukan kata kunci. Indonesia kerja lebih cerdas."*
