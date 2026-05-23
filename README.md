@@ -110,18 +110,18 @@ Follow these steps when you want to iterate locally without Docker.
   ```
 - Run the FastAPI unit tests each time you touch API code:
   ```powershell
-  python -m pytest tests/unit/test_api.py
+  python -m pytest backend/tests/unit/test_api.py
   ```
 - To boot the API for manual testing:
   ```powershell
-  uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir src/api --reload-dir config
+  uvicorn backend.app.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir backend/app
   ```
   (The `--reload-dir` flags keep WatchFiles focused on your source, avoiding noise from `.venv`.)
 
 ### 2. Frontend
 - Install dependencies and start Vite from the `src/frontend` folder:
   ```powershell
-  cd src/frontend
+  cd frontend
   npm install
   npm run dev -- --host 0.0.0.0 --port 5173
   ```
@@ -133,11 +133,38 @@ Follow these steps when you want to iterate locally without Docker.
 ---
 
 ## 📂 Repository Guide
-- `src/agents/`: Multi-agent system logic.
-- `src/ml/`: Training pipelines and IndoBERT model definitions.
-- `src/api/`: RESTful API endpoints.
-- `src/frontend/`: React components and UI.
-- `docs/`: Technical deep-dives (PRD, ML Pipeline, API Spec).
+
+Enterprise-style top-level layout:
+
+```
+KerjaCerdas/
+├── backend/                  # Python service (FastAPI + LangGraph)
+│   ├── app/
+│   │   ├── api/              # FastAPI routers, schemas, services
+│   │   ├── agents/           # LangGraph stateful agent nodes
+│   │   ├── ml/               # Embeddings, matchers, k-rank pipeline
+│   │   ├── config/           # Pydantic settings
+│   │   ├── db/               # Pydantic schemas + JSON store (Supabase-ready)
+│   │   └── main.py           # ASGI entrypoint (re-exports app)
+│   └── tests/
+├── frontend/                 # React 18 + Vite + Tailwind
+│   ├── src/
+│   └── package.json
+├── data/                     # JSON file store (dev), seed datasets
+├── scripts/                  # Seed, migration, dev utilities
+└── docs/                     # PRD, API spec, ML pipeline, ADRs
+```
+
+Run locally:
+```powershell
+conda activate jobmatching
+pip install -e .[dev]
+uvicorn backend.app.api.main:app --reload
+# in another shell
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 

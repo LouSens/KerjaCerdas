@@ -14,9 +14,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from src.api.database import get_session
-from src.api.models import User
-from src.api.services.auth_service import decode_access_token
+from backend.app.api.database import get_session
+from backend.app.api.models import User
+from backend.app.api.services.auth_service import decode_access_token
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,22 @@ async def require_seeker(current_user: User = Depends(get_current_user)) -> User
     """Dependency that ensures the user is a job seeker."""
     if current_user.role != "seeker":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Seeker access required"
+        )
+    return current_user
+
+
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Dependency that ensures the user has the admin role."""
+    from backend.app.config.settings import settings
+    is_admin = (
+        current_user.role == "admin"
+        or current_user.email in settings.admin_emails
+    )
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
         )
     return current_user

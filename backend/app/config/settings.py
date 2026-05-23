@@ -1,10 +1,8 @@
 """
-KerjaCerdas - Application Settings
-====================================
-Pydantic-based settings loaded from environment variables.
-Centralized configuration for all services, agents, and ML pipeline.
+KerjaCerdas — application settings.
 
-ANTIGRAVITY PROTOCOL: RULE-01 — No hardcoded secrets. All config via .env.
+Every tunable value lives here and is readable from .env.
+No model name, weight, or timeout should be hard-coded anywhere else.
 """
 from __future__ import annotations
 
@@ -12,56 +10,83 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",       # ignore unknown keys in .env
     )
 
     # ── Application ──────────────────────────────────────────────────────
     app_env: str = "development"
-    demo_mode: bool = True
     log_level: str = "INFO"
-    api_host: str = "0.0.0.0"
+    api_host: str = "127.0.0.1"
     api_port: int = 8000
-    jwt_secret_key: str = ""
-    jwt_access_token_expire_minutes: int = 60 * 24
 
-    # ── Google Gemini API ────────────────────────────────────────────────
+    # ── Auth ─────────────────────────────────────────────────────────────
+    jwt_secret_key: str = ""
+    jwt_access_token_expire_minutes: int = 1440
+
+    # ── Gemini / Vertex AI — models ──────────────────────────────────────
+    # Auth: either set GEMINI_API_KEY (AI Studio) OR set
+    # VERTEX_AI_PROJECT + VERTEX_AI_LOCATION (Vertex AI; uses ADC creds).
     gemini_api_key: str = ""
+    vertex_ai_project: str = ""
+    vertex_ai_location: str = "us-central1"
+    # Gemini Embedding 2 — Vertex model id is `gemini-embedding-001`
+    # (was experimental as `gemini-embedding-exp-03-07`). 3072-dim, MRL-truncatable.
+    gemini_embed_model: str = "gemini-embedding-001"
+    gemini_embed_dim: int = 3072  # truncate to 768/1536 if you index w/ pgvector
+    # Chat / generation — Gemini 3.1 Flash Lite (cheap, fast, JSON-mode).
+    gemini_chat_model: str = "gemini-3.1-flash-lite"
 
     # ── Database ─────────────────────────────────────────────────────────
-    database_url: str = "postgresql://kerja:password@localhost:5432/kerjacerdas"
+    # Empty string → dev falls back to SQLite under data/
+    database_url: str = ""
+
+    # ── JSON store root ──────────────────────────────────────────────────
+    kerja_data_root: str = "data"
 
     # ── Redis ────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
 
-    # ── MLflow ───────────────────────────────────────────────────────────
-    mlflow_tracking_uri: str = "http://localhost:5001"
-    vite_api_url: str = "http://localhost:8000"
+    # ── CORS ─────────────────────────────────────────────────────────────
+    cors_allow_origins: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
-    # ── Agent Configuration ──────────────────────────────────────────────
-    orchestrator_temperature: float = 0.2
-    orchestrator_timeout_sec: int = 30
-    matching_confidence_threshold: float = 0.75
+    # ── Admin bootstrap ──────────────────────────────────────────────────
+    admin_emails: list[str] = ["admin@kerjacerdas.id"]
+
+    # ── Matching tuning ──────────────────────────────────────────────────
     matching_top_k: int = 10
-    matching_region_weight: float = 0.3
-    skill_gap_temperature: float = 0.4
+    matching_cosine_weight: float = 0.50
+    matching_skill_weight: float = 0.30
+    matching_region_weight: float = 0.10
+    matching_salary_weight: float = 0.05
+    matching_experience_weight: float = 0.05
+
+    # ── Agent temperatures ───────────────────────────────────────────────
     advisor_temperature: float = 0.7
-    advisor_language: str = "id"
+    skill_gap_temperature: float = 0.2
+    parser_temperature: float = 0.1
 
-    @property
-    def is_demo(self) -> bool:
-        """Check if running in demo mode."""
-        return self.demo_mode
-
+    # ── Derived ──────────────────────────────────────────────────────────
     @property
     def is_production(self) -> bool:
-        """Check if running in production."""
         return self.app_env == "production"
 
+    @property
+    def effective_database_url(self) -> str:
+        """Return the DB URL to actually use (auto-SQLite in dev)."""
+        if self.database_url:
+            return self.database_url
+        return f"sqlite+aiosqlite:///{self.kerja_data_root}/kerjacerdas.db"
 
-# Singleton instance
+
 settings = Settings()

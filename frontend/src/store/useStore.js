@@ -1,397 +1,393 @@
 /**
- * KerjaCerdas — Global State Store (Zustand)
+ * KerjaCerdas — Zustand store.
  *
- * Per Protocol §7: State management via Zustand.
- * Handles: auth, user roles (seeker/employer), profile, matches,
- * chat, saved jobs, employer job postings, UI state.
+ * Single source of truth for: auth (seeker / employer / admin), profile,
+ * matches, chat, saved jobs, uploads, sidebar + floating advisor UI state.
+ *
+ * The router is *role-based*. Pre-login, only `home`, `pricing`, `about`,
+ * `privacy` are reachable. Post-login, allowed views depend on `userRole`.
+ *
+ * Saved jobs are persisted both locally (localStorage via Zustand persist)
+ * and synced to the backend /seeker/bookmarks endpoint for cross-device access.
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { matchJobs, analyzeSkillGap, getCareerAdvice } from '../services/api'
 import toast from 'react-hot-toast'
+import {
+    invokeAgent,
+    healthCheck,
+    uploadCV,
+    uploadJobPack,
+    fetchJobs,
+    fetchEmployerJobs,
+    fetchSeekerProfile,
+    fetchBookmarks,
+    addBookmark,
+    removeBookmark,
+    fetchAdminMetrics,
+    fetchAdminAIPerformance,
+    fetchAdminUsers,
+    loginUser,
+    registerUser,
+} from '../services/api'
+
+const PUBLIC_VIEWS = new Set(['home', 'pricing', 'about', 'privacy'])
+const ADMIN_EMAILS = ['admin@kerjacerdas.id']
+const settings_isAdminEmail = (email = '') => ADMIN_EMAILS.includes(email.toLowerCase())
+
+const ALLOWED_VIEWS = {
+    seeker: new Set([
+        'seeker-dashboard', 'seeker-match', 'seeker-skill-gap',
+        'seeker-verification', 'seeker-saved', 'seeker-profile',
+    ]),
+    employer: new Set([
+        'employer-dashboard', 'employer-jobs', 'employer-candidates',
+        'employer-post-job', 'employer-verification', 'employer-upload', 'employer-profile',
+    ]),
+    admin: new Set([
+        'admin-overview', 'admin-users', 'admin-jobs', 'admin-ai',
+    ]),
+}
 
 const useStore = create(
     persist(
         (set, get) => ({
-            // ══════════════════════════════════════════════════════════════════
-            //  AUTH & USER
-            // ══════════════════════════════════════════════════════════════════
-
-            /** @type {'seeker'|'employer'|null} */
-            userRole: null,
+            // ─── Auth ────────────────────────────────────────────────────
             isAuthenticated: false,
+            userRole: null, // 'seeker' | 'employer' | 'admin' | null
+            user: { id: null, name: '', email: '', role: null, createdAt: null },
+            authToken: null,  // JWT token — set by real login (real auth flow)
+
             showAuthModal: false,
-            authTab: 'login', // 'login' | 'register'
-            preferredAuthRole: null, // 'seeker' | 'employer' | null
+            authTab: 'login',
+            preferredAuthRole: null,
 
-            user: {
-                id: null,
-                name: '',
-                email: '',
-                avatar: null,
-                role: null,
-                createdAt: null,
-            },
-
-            /**
-             * Opens the authentication modal.
-             */
-            openAuthModal: (tab = 'login', preferredRole = null) => set({
-                showAuthModal: true,
-                authTab: tab,
-                preferredAuthRole: preferredRole,
-            }),
-
-            /**
-             * Closes the authentication modal.
-             */
+            openAuthModal: (tab = 'login', preferredRole = null) =>
+                set({ showAuthModal: true, authTab: tab, preferredAuthRole: preferredRole }),
             closeAuthModal: () => set({ showAuthModal: false, preferredAuthRole: null }),
-
-            /**
-             * Switches between login and register tabs.
-             */
             setAuthTab: (tab) => set({ authTab: tab }),
 
-            /**
-             * Simulates user login. In production, this calls the auth API.
-             */
-            login: (email, password, role) => {
-                // Demo: simulate successful login
-                const name = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+            // Hits backend /auth/login → JWT + user.
+            login: async (email, password) => {
+                const res = await loginUser({ email, password })
+                const { access_token, user } = res
+                const isAdminEmail = settings_isAdminEmail(user.email)
+                const resolvedRole = isAdminEmail ? 'admin' : user.role
+                const homeView = resolvedRole === 'admin'
+                    ? 'admin-overview'
+                    : resolvedRole === 'employer'
+                    ? 'employer-dashboard'
+                    : 'seeker-dashboard'
                 set({
                     isAuthenticated: true,
-                    userRole: role,
+                    userRole: resolvedRole,
+                    user: { id: user.id, name: user.name, email: user.email, role: resolvedRole, createdAt: new Date().toISOString() },
+                    authToken: access_token,
                     showAuthModal: false,
-                    user: {
-                        id: crypto.randomUUID(),
-                        name,
-                        email,
-                        avatar: null,
-                        role,
-                        createdAt: new Date().toISOString(),
-                    },
+                    activeView: homeView,
+                    seekerId: null,
+                    matches: [],
                 })
-                toast.success(`Selamat datang, ${name}! 🎉`)
+                toast.success(`Selamat datang, ${user.name}!`)
+
+                // Post-login side effects: hydrate data from backend
+                const store = get()
+                if (resolvedRole === 'seeker') {
+                    store.syncSavedJobs()
+                    store.loadSeekerProfile()
+                } else if (resolvedRole === 'employer') {
+                    store.refreshEmployerJobs()
+                } else if (resolvedRole === 'admin') {
+                    store.refreshAdmin()
+                }
+                return res
             },
 
-            /**
-             * Simulates user registration. In production, this calls the auth API.
-             */
-            register: (name, email, password, role) => {
+            // Hits backend /auth/register → JWT + user.
+            register: async (name, email, password, role) => {
+                const res = await registerUser({ name, email, password, role })
+                const { access_token, user } = res
                 set({
                     isAuthenticated: true,
-                    userRole: role,
+                    userRole: user.role,
+                    user: { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: new Date().toISOString() },
+                    authToken: access_token,
                     showAuthModal: false,
-                    user: {
-                        id: crypto.randomUUID(),
-                        name,
-                        email,
-                        avatar: null,
-                        role,
-                        createdAt: new Date().toISOString(),
-                    },
+                    activeView: user.role === 'employer' ? 'employer-dashboard' : 'seeker-dashboard',
+                    seekerId: null,
+                    matches: [],
                 })
-                toast.success(`Akun berhasil dibuat! Selamat datang, ${name}! 🎉`)
+                toast.success(`Akun ${user.role} dibuat — selamat datang ${user.name}!`)
+                if (user.role === 'employer') get().refreshEmployerJobs()
+                return res
             },
 
-            /**
-             * Logs the user out and resets auth state.
-             */
             logout: () => {
                 set({
                     isAuthenticated: false,
                     userRole: null,
-                    user: { id: null, name: '', email: '', avatar: null, role: null, createdAt: null },
-                    activeTab: 'home',
+                    user: { id: null, name: '', email: '', role: null, createdAt: null },
+                    activeView: 'home',
+                    floatingAdvisorOpen: false,
+                    seekerId: null,
+                    matches: [],
+                    authToken: null,
+                    savedJobs: [],
+                    advisorLog: [
+                        { role: 'assistant', content: 'Halo! Saya advisor karier KerjaCerdas. Tanya apa saja seputar pekerjaan, skill, atau CV kamu.' },
+                    ],
                 })
-                toast('Kamu telah logout', { icon: '👋' })
+                toast('Sampai jumpa lagi', { icon: '👋' })
             },
 
-            // ══════════════════════════════════════════════════════════════════
-            //  NAVIGATION
-            // ══════════════════════════════════════════════════════════════════
+            // ─── Navigation (role-aware) ─────────────────────────────────
+            activeView: 'home',
+            sidebarCollapsed: false,
+            toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
 
-            activeTab: 'home',
-            setActiveTab: (tab) => {
-                const state = get()
-                const { isAuthenticated, userRole, openAuthModal } = state
-
-                const protectedTabs = ['match', 'gap', 'dashboard', 'saved', 'verification', 'advisor']
-                const employerTabs = ['employer']
-
-                // Protect seeker features
-                if (protectedTabs.includes(tab)) {
-                    if (!isAuthenticated) {
-                        toast('Silakan Masuk untuk mengakses fitur ini', { icon: '🔒', id: 'auth-toast' })
-                        openAuthModal('login', 'seeker')
-                        return
-                    }
-                    if (userRole !== 'seeker') {
-                        toast.error('Akses Ditolak: Fitur ini khusus untuk Pencari Kerja')
-                        return
-                    }
+            navigate: (view) => {
+                const { isAuthenticated, userRole, openAuthModal } = get()
+                if (PUBLIC_VIEWS.has(view)) return set({ activeView: view })
+                if (!isAuthenticated) {
+                    toast('Silakan masuk dulu', { icon: '🔒' })
+                    openAuthModal('login', view.startsWith('employer') ? 'employer' : 'seeker')
+                    return
                 }
-
-                // Protect employer features
-                if (employerTabs.includes(tab)) {
-                    if (!isAuthenticated) {
-                        toast('Silakan Masuk sebagai Pemberi Kerja', { icon: '🔒', id: 'auth-toast' })
-                        openAuthModal('login', 'employer')
-                        return
-                    }
-                    if (userRole !== 'employer') {
-                        toast.error('Akses Ditolak: Fitur ini khusus untuk Pemberi Kerja')
-                        return
-                    }
+                const allowed = ALLOWED_VIEWS[userRole]
+                if (!allowed || !allowed.has(view)) {
+                    toast.error('Fitur ini tidak tersedia untuk peran Anda')
+                    return
                 }
-
-                set({ activeTab: tab })
+                set({ activeView: view })
             },
 
-            // ══════════════════════════════════════════════════════════════════
-            //  SEEKER PROFILE
-            // ══════════════════════════════════════════════════════════════════
+            // ─── Floating advisor (bottom-right bubble) ──────────────────
+            floatingAdvisorOpen: false,
+            toggleFloatingAdvisor: () => set((s) => ({ floatingAdvisorOpen: !s.floatingAdvisorOpen })),
 
+            // ─── Seeker profile + matching ───────────────────────────────
             profile: {
-                name: '',
-                skills: '',
-                experience_years: 0,
-                education_level: 'S1',
-                region_code: '3171',
-                salary_expectation: 10000000,
+                full_name: '', headline: '', region_code: '3171',
+                skills: [], experience: [], education: [],
+                salary_expectation_min: 0, salary_expectation_max: 0,
             },
-            updateProfile: (field, value) =>
-                set((s) => ({ profile: { ...s.profile, [field]: value } })),
+            updateProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
 
-            // ══════════════════════════════════════════════════════════════════
-            //  JOB MATCHING (SEEKER)
-            // ══════════════════════════════════════════════════════════════════
-
-            matches: [],
-            matchLoading: false,
-            matchError: null,
-            lastSearchTime: null,
-
-            /**
-             * Searches for matching jobs via the AI matching API.
-             */
-            searchJobs: async () => {
-                const { profile } = get()
-                set({ matchLoading: true, matchError: null })
+            // Load seeker profile from backend and hydrate store
+            loadSeekerProfile: async () => {
                 try {
-                    const seekerProfile = {
-                        ...profile,
-                        skills: profile.skills.split(',').map((s) => s.trim()).filter(Boolean),
-                    }
-                    const data = await matchJobs(seekerProfile, 10)
+                    const data = await fetchSeekerProfile()
                     set({
-                        matches: data.matches || [],
-                        matchLoading: false,
-                        lastSearchTime: new Date().toISOString(),
-                        activeTab: 'match',
+                        profile: {
+                            full_name: data.full_name || '',
+                            headline: data.headline || '',
+                            region_code: data.region_code || '3171',
+                            skills: data.skills || [],
+                            experience: data.experience || [],
+                            education: data.education || [],
+                            salary_expectation_min: data.salary_expectation_min || 0,
+                            salary_expectation_max: data.salary_expectation_max || 0,
+                        },
+                        seekerId: data.id,
                     })
-                    toast.success(`${(data.matches || []).length} lowongan ditemukan!`)
-                } catch (err) {
-                    set({ matchError: err.message, matchLoading: false })
-                    toast.error('Gagal mencari pekerjaan. Cek koneksi API.')
-                }
-            },
-
-            // ══════════════════════════════════════════════════════════════════
-            //  SKILL GAP
-            // ══════════════════════════════════════════════════════════════════
-
-            selectedJob: null,
-            skillGap: null,
-            skillGapLoading: false,
-
-            selectJob: (job) => set({ selectedJob: job }),
-
-            /**
-             * Analyzes the skill gap between the seeker's skills and required skills.
-             */
-            analyzeGap: async (requiredSkills) => {
-                const { profile } = get()
-                set({ skillGapLoading: true })
-                try {
-                    const seekerSkills = profile.skills.split(',').map((s) => s.trim()).filter(Boolean)
-                    const data = await analyzeSkillGap(seekerSkills, requiredSkills)
-                    set({ skillGap: data, skillGapLoading: false })
-                    toast.success('Analisis skill gap selesai!')
                 } catch {
-                    set({ skillGapLoading: false })
-                    toast.error('Gagal menganalisis skill gap')
+                    // Profile doesn't exist yet — normal for new users
                 }
             },
 
-            // ══════════════════════════════════════════════════════════════════
-            //  SAVED JOBS (SEEKER)
-            // ══════════════════════════════════════════════════════════════════
+            seekerId: null,
+            matches: [],
+            missingSkills: [],
+            matchingSkills: [],
+            recommendedCourses: [],
+            agentLoading: false,
+            agentError: null,
+            advisorLog: [
+                { role: 'assistant', content: 'Halo! Saya advisor karier KerjaCerdas. Tanya apa saja seputar pekerjaan, skill, atau CV kamu.' },
+            ],
+            advisorInput: '',
+            setAdvisorInput: (v) => set({ advisorInput: v }),
 
+            runAgent: async ({ message, targetJobId } = {}) => {
+                const { seekerId, profile, advisorLog } = get()
+                const userMsg = message ? { role: 'user', content: message } : null
+                if (userMsg) set({ advisorLog: [...advisorLog, userMsg], advisorInput: '' })
+                set({ agentLoading: true, agentError: null })
+                try {
+                    const payload = seekerId
+                        ? { seekerId, message, targetJobId, sessionId: seekerId }
+                        : { seeker: { ...profile, user_id: 'demo' }, message, targetJobId, sessionId: 'demo' }
+                    const res = await invokeAgent(payload)
+                    set({
+                        agentLoading: false,
+                        matches: res.matches || [],
+                        missingSkills: res.missing_skills || [],
+                        matchingSkills: res.matching_skills || [],
+                        recommendedCourses: res.recommended_courses || [],
+                        ...(res.seeker_id ? { seekerId: res.seeker_id } : {}),
+                    })
+                    if (res.final_response) {
+                        set((s) => ({ advisorLog: [...s.advisorLog, { role: 'assistant', content: res.final_response }] }))
+                    }
+                    return res
+                } catch (e) {
+                    set({ agentLoading: false, agentError: e.message })
+                    toast.error('Agent gagal — cek backend')
+                }
+            },
+
+            // ─── CV upload ───────────────────────────────────────────────
+            cvUploading: false,
+            uploadResume: async (file) => {
+                if (!file) return
+                const { user } = get()
+                set({ cvUploading: true })
+                try {
+                    const res = await uploadCV({ userId: user.id || 'demo', file })
+                    set({ seekerId: res.seeker_id, cvUploading: false })
+                    toast.success(res.parsed_offline
+                        ? 'CV diparse (mode offline) — tambah GEMINI_API_KEY untuk hasil lebih akurat.'
+                        : `CV diparse: ${res.summary.skills_count} skill terdeteksi`)
+                    // Reload full profile from backend after CV upload
+                    get().loadSeekerProfile()
+                } catch (e) {
+                    set({ cvUploading: false })
+                    toast.error('Upload CV gagal: ' + e.message)
+                }
+            },
+
+            // ─── Employer job-pack upload ────────────────────────────────
+            jobPackUploading: false,
+            uploadJobPack: async (file) => {
+                if (!file) return
+                const { user } = get()
+                set({ jobPackUploading: true })
+                try {
+                    const res = await uploadJobPack({ userId: user.id || 'demo', file })
+                    set({ jobPackUploading: false })
+                    toast.success(`${res.created_job_ids.length} lowongan dibuat`)
+                    get().refreshEmployerJobs()  // refresh employer-scoped list
+                } catch (e) {
+                    set({ jobPackUploading: false })
+                    toast.error('Upload job-pack gagal')
+                }
+            },
+
+            // ─── Saved jobs — synced to backend ──────────────────────────
             savedJobs: [],
 
-            /**
-             * Toggles a job's saved/bookmark status.
-             */
-            toggleSaveJob: (job) => {
-                const { savedJobs } = get()
-                const exists = savedJobs.find((j) => j.job_id === job.job_id)
-                if (exists) {
-                    set({ savedJobs: savedJobs.filter((j) => j.job_id !== job.job_id) })
-                    toast('Bookmark dihapus', { icon: '🗑️' })
-                } else {
-                    set({ savedJobs: [...savedJobs, { ...job, savedAt: new Date().toISOString() }] })
-                    toast.success('Lowongan disimpan!')
-                }
-            },
-
-            /**
-             * Checks if a job is saved/bookmarked.
-             */
-            isJobSaved: (jobId) => {
-                return get().savedJobs.some((j) => j.job_id === jobId)
-            },
-
-            // ══════════════════════════════════════════════════════════════════
-            //  AI ADVISOR CHAT
-            // ══════════════════════════════════════════════════════════════════
-
-            chatMessages: [
-                {
-                    role: 'assistant',
-                    content:
-                        'Halo! 👋 Saya asisten karier AI KerjaCerdas. Saya bisa membantu kamu dengan:\n\n' +
-                        '• **Saran karier** yang sesuai dengan skill kamu\n' +
-                        '• **Tips CV** untuk pasar kerja Indonesia\n' +
-                        '• **Negosiasi gaji** dan benchmark salary\n' +
-                        '• **Roadmap belajar** untuk skill yang dibutuhkan\n\n' +
-                        'Silakan ceritakan tentang diri kamu atau tanyakan apa saja! 😊',
-                },
-            ],
-            chatInput: '',
-            chatLoading: false,
-
-            setChatInput: (val) => set({ chatInput: val }),
-
-            /**
-             * Sends a message to the AI advisor.
-             */
-            sendMessage: async (overrideMessage) => {
-                const { chatInput, chatMessages, profile } = get()
-                const message = overrideMessage || chatInput
-                if (!message.trim()) return
-
-                const userMsg = { role: 'user', content: message }
-                set({
-                    chatMessages: [...chatMessages, userMsg],
-                    chatInput: '',
-                    chatLoading: true,
-                })
-
+            // Load saved jobs from backend (called on login)
+            syncSavedJobs: async () => {
                 try {
-                    const seekerProfile = {
-                        ...profile,
-                        skills: profile.skills.split(',').map((s) => s.trim()).filter(Boolean),
-                    }
-                    const data = await getCareerAdvice(message, seekerProfile, chatMessages)
-                    const assistantMsg = { role: 'assistant', content: data.response || data.response_text || 'Terima kasih atas pertanyaannya.' }
-                    set((s) => ({
-                        chatMessages: [...s.chatMessages, assistantMsg],
-                        chatLoading: false,
-                    }))
+                    const data = await fetchBookmarks()
+                    const items = Array.isArray(data) ? data : (data.items || [])
+                    set({
+                        savedJobs: items.map(b => ({
+                            job_id: b.job_id,
+                            title: b.title || '—',
+                            company: b.company || '—',
+                            savedAt: b.saved_at,
+                        }))
+                    })
                 } catch {
-                    const errorMsg = {
-                        role: 'assistant',
-                        content: 'Maaf, terjadi kesalahan koneksi. Silakan coba lagi. 🙏',
+                    // Silently ignore — user may not have a seeker profile yet
+                }
+            },
+
+            toggleSaveJob: async (job) => {
+                const { savedJobs, isAuthenticated, userRole } = get()
+                const id = job.job_id || job.id
+                const exists = savedJobs.find(j => (j.job_id || j.id) === id)
+
+                // Optimistic update
+                if (exists) {
+                    set({ savedJobs: savedJobs.filter(j => (j.job_id || j.id) !== id) })
+                } else {
+                    set({ savedJobs: [...savedJobs, { ...job, job_id: id, savedAt: new Date().toISOString() }] })
+                }
+
+                // Sync to backend if authenticated as seeker
+                if (isAuthenticated && userRole === 'seeker') {
+                    try {
+                        if (exists) {
+                            await removeBookmark(id)
+                        } else {
+                            await addBookmark(id)
+                        }
+                    } catch (e) {
+                        // Revert optimistic update on failure
+                        set({ savedJobs })
+                        toast.error('Gagal simpan: ' + e.message)
                     }
-                    set((s) => ({
-                        chatMessages: [...s.chatMessages, errorMsg],
-                        chatLoading: false,
-                    }))
                 }
             },
 
-            /**
-             * Resets the chat conversation.
-             */
-            clearChat: () => set({
-                chatMessages: [
-                    {
-                        role: 'assistant',
-                        content: 'Chat direset! 🔄 Silakan tanyakan apa saja tentang karier kamu.',
-                    },
-                ],
-            }),
+            isJobSaved: (id) => get().savedJobs.some(j => (j.job_id || j.id) === id),
 
-            // ══════════════════════════════════════════════════════════════════
-            //  EMPLOYER — JOB POSTINGS
-            // ══════════════════════════════════════════════════════════════════
-
-            postedJobs: [],
-
-            /**
-             * Adds a new job posting (employer).
-             */
-            postJob: (jobData) => {
-                const newJob = {
-                    ...jobData,
-                    job_id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-                    posted_at: new Date().toISOString(),
-                    status: 'active',
-                    applicants: 0,
-                    views: Math.floor(Math.random() * 50) + 5,
+            // ─── Public jobs feed ────────────────────────────────────────
+            jobs: [],
+            jobsLoading: false,
+            refreshJobs: async () => {
+                set({ jobsLoading: true })
+                try {
+                    const data = await fetchJobs()
+                    set({ jobs: data.items || [], jobsLoading: false })
+                } catch {
+                    set({ jobsLoading: false })
                 }
-                set((s) => ({ postedJobs: [newJob, ...s.postedJobs] }))
-                toast.success('Lowongan berhasil dipublikasikan! 🎉')
             },
 
-            /**
-             * Removes a posted job (employer).
-             */
-            removePostedJob: (jobId) => {
-                set((s) => ({
-                    postedJobs: s.postedJobs.filter((j) => j.job_id !== jobId),
-                }))
-                toast('Lowongan dihapus', { icon: '🗑️' })
+            // ─── Employer-scoped jobs feed ───────────────────────────────
+            // Separate from public jobs — auth-gated, returns only this employer's postings
+            employerJobs: [],
+            employerJobsLoading: false,
+            refreshEmployerJobs: async () => {
+                set({ employerJobsLoading: true })
+                try {
+                    const data = await fetchEmployerJobs()
+                    set({ employerJobs: data.items || [], employerJobsLoading: false })
+                } catch {
+                    set({ employerJobsLoading: false })
+                }
             },
 
-            /**
-             * Toggles job posting status between active and paused.
-             */
-            toggleJobStatus: (jobId) => {
-                set((s) => ({
-                    postedJobs: s.postedJobs.map((j) =>
-                        j.job_id === jobId
-                            ? { ...j, status: j.status === 'active' ? 'paused' : 'active' }
-                            : j
-                    ),
-                }))
-                toast.success('Status lowongan diperbarui')
+            // ─── Admin ───────────────────────────────────────────────────
+            adminMetrics: null,
+            adminAI: null,
+            adminUsers: [],
+            refreshAdmin: async () => {
+                try {
+                    const [m, a, u] = await Promise.all([
+                        fetchAdminMetrics(), fetchAdminAIPerformance(), fetchAdminUsers(),
+                    ])
+                    set({ adminMetrics: m, adminAI: a, adminUsers: u.items || [] })
+                } catch {
+                    toast.error('Admin metrics gagal dimuat')
+                }
             },
 
-            // ══════════════════════════════════════════════════════════════════
-            //  API STATUS
-            // ══════════════════════════════════════════════════════════════════
-
+            // ─── API health ──────────────────────────────────────────────
             apiStatus: 'unknown',
-            setApiStatus: (status) => set({ apiStatus: status }),
+            checkApi: async () => {
+                try { await healthCheck(); set({ apiStatus: 'connected' }) }
+                catch { set({ apiStatus: 'offline' }) }
+            },
 
-            // ══════════════════════════════════════════════════════════════════
-            //  UI STATE
-            // ══════════════════════════════════════════════════════════════════
-
+            // ─── UI ──────────────────────────────────────────────────────
             isMobileMenuOpen: false,
-            setMobileMenuOpen: (val) => set({ isMobileMenuOpen: val }),
+            setMobileMenuOpen: (v) => set({ isMobileMenuOpen: v }),
         }),
         {
-            name: 'kerjacerdas-storage',
-            partialize: (state) => ({
-                profile: state.profile,
-                savedJobs: state.savedJobs,
-                isAuthenticated: state.isAuthenticated,
-                userRole: state.userRole,
-                user: state.user,
-                postedJobs: state.postedJobs,
+            name: 'kerjacerdas-v3',
+            partialize: (s) => ({
+                isAuthenticated: s.isAuthenticated,
+                userRole: s.userRole,
+                user: s.user,
+                profile: s.profile,
+                seekerId: s.seekerId,
+                savedJobs: s.savedJobs,
+                sidebarCollapsed: s.sidebarCollapsed,
+                authToken: s.authToken,
             }),
         }
     )

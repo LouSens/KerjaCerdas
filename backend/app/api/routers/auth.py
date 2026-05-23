@@ -4,6 +4,8 @@ KerjaCerdas — Auth Router
 FastAPI router for user authentication (Login/Register).
 
 ANTIGRAVITY PROTOCOL: Password must be hashed before DB insert.
+On employer registration, an Employer profile is auto-created in the JSON
+store so the user can post jobs immediately without a separate onboarding step.
 """
 import logging
 
@@ -12,10 +14,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from src.api.database import get_session
-from src.api.models import User
-from src.api.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
-from src.api.services.auth_service import create_access_token, hash_password, verify_password
+from backend.app.api.database import get_session
+from backend.app.api.models import User
+from backend.app.api.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
+from backend.app.api.services.auth_service import create_access_token, hash_password, verify_password
+from backend.app.db.json_store import get_repositories
+from backend.app.db.schemas import Employer, User as JsonUser, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +59,32 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
         )
     
     logger.info(f"New user registered: {new_user.email} as {new_user.role}")
+
+    # Auto-create domain profile in JSON store ---------------------------------
+    repos = get_repositories()
+    # Mirror user into JSON store so agents/matchers can resolve user lookups.
+    # Note: db/schemas.py User does NOT have a `name` field (name lives in the
+    # ORM User for auth; the JSON store only needs id/email/role for lookups).
+    json_user = JsonUser(
+        id=new_user.id,
+        email=new_user.email,
+        password_hash=new_user.password_hash,
+        role=UserRole(new_user.role),
+    )
+    await repos.users.upsert(json_user)
+
+    if new_user.role == "employer":
+        # Auto-create employer profile so the user can post jobs immediately
+        employer = Employer(
+            user_id=new_user.id,
+            company_name=new_user.name,   # editable later via /employer/profile
+            region_code="3171",           # default Jakarta — editable
+            industry="",
+        )
+        existing_emp = await repos.employers.find(lambda e: e.user_id == new_user.id)
+        if not existing_emp:
+            await repos.employers.upsert(employer)
+            logger.info("Auto-created employer profile for %s", new_user.email)
 
     # Generate token immediately after registration
     token = create_access_token(

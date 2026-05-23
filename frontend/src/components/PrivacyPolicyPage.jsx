@@ -164,7 +164,7 @@ Terakhir diperbarui: 13 Maret 2026`,
 ]
 
 export default function PrivacyPolicyPage() {
-    const { setActiveTab } = useStore()
+    const { navigate } = useStore()
 
     return (
         <div className="animate-fade-in">
@@ -172,7 +172,7 @@ export default function PrivacyPolicyPage() {
             <div className="border-b border-white/[0.06] bg-gradient-to-b from-brand-500/[0.04] to-transparent">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
                     <button
-                        onClick={() => setActiveTab('home')}
+                        onClick={() => navigate('home')}
                         className="flex items-center gap-1.5 text-xs font-bold text-ink/60 hover:text-ink mb-8 transition-colors bg-white border-2 border-ink px-4 py-2 rounded-xl shadow-[2px_2px_0px_#111827] hover:shadow-[4px_4px_0px_#111827] hover:-translate-y-0.5 inline-flex"
                     >
                         <ArrowLeft className="w-4 h-4" strokeWidth={3} />
@@ -248,7 +248,7 @@ export default function PrivacyPolicyPage() {
                         Dengan menggunakan KerjaCerdas, Anda menyetujui kebijakan privasi dan syarat ketentuan ini.
                     </p>
                     <button
-                        onClick={() => setActiveTab('home')}
+                        onClick={() => navigate('home')}
                         className="bg-[#FFC900] text-ink border-[3px] border-ink font-black px-8 py-4 rounded-xl shadow-[4px_4px_0px_#111827] hover:-translate-y-1 hover:shadow-[8px_8px_0px_#111827] transition-all"
                     >
                         Kembali ke Beranda

@@ -1,269 +1,161 @@
-import { Target, CheckCircle2, XCircle, BookOpen, Clock, ArrowLeft, TrendingUp, ExternalLink } from 'lucide-react'
+import { useEffect } from 'react'
 import useStore from '../store/useStore'
+import { KC, BrutalCard, Tag } from './_design'
 
-/**
- * SkillGapPanel — Shows skill gap analysis between seeker and target job.
- *
- * Displays: matching skills, missing skills, gap severity, course recommendations,
- * progress visualization, and estimated readiness timeline.
- * Connected to: POST /api/v1/skill-gap
- */
 export default function SkillGapPanel() {
-    const { selectedJob, skillGap, skillGapLoading, setActiveTab } = useStore()
+    const { missingSkills, recommendedCourses, runAgent, agentLoading } = useStore()
 
-    if (!selectedJob && !skillGap) {
-        return (
-            <div className="bg-white border-[3px] border-ink rounded-[2rem] p-10 text-center shadow-[8px_8px_0px_#111827] animate-fade-in relative overflow-hidden">
-                <div className="w-20 h-20 rounded-2xl bg-[#00E5FF] border-[3px] border-ink flex items-center justify-center mx-auto mb-6 shadow-[4px_4px_0px_#111827] transform -rotate-3">
-                    <Target className="w-10 h-10 text-ink" />
-                </div>
-                <h3 className="text-2xl font-black text-ink mb-3 uppercase tracking-tight">Analisis Skill Gap</h3>
-                <p className="text-base font-bold text-ink/80 max-w-md mx-auto leading-relaxed mb-8">
-                    Pilih pekerjaan dari hasil pencarian untuk melihat <span className="text-[#00E5FF] bg-ink px-1 border-2 border-ink">skill apa</span> yang butuh kamu asah.
-                </p>
-                <button
-                    onClick={() => setActiveTab('match')}
-                    className="inline-flex items-center justify-center gap-2 bg-white text-ink font-black border-[3px] border-ink rounded-xl px-6 py-3 shadow-[4px_4px_0px_#111827] hover:shadow-[6px_6px_0px_#111827] hover:-translate-y-1 transition-all uppercase"
-                >
-                    <ArrowLeft className="w-5 h-5" strokeWidth={3} />
-                    Kembali ke Pencarian
-                </button>
-            </div>
-        )
-    }
+    useEffect(() => {
+        if (!missingSkills.length && !agentLoading) {
+            runAgent({ message: 'analyze my skill gap for top matches' })
+        }
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (skillGapLoading) {
-        return (
-            <div className="space-y-6 animate-fade-in">
-                {/* Skeleton loading */}
-                <div className="bg-white border-[3px] border-ink rounded-[2rem] p-6 shadow-[6px_6px_0px_#111827]">
-                    <div className="flex items-center gap-4 mb-5">
-                        <div className="skeleton w-14 h-14 rounded-2xl bg-surface-200" />
-                        <div className="flex-1">
-                            <div className="skeleton h-6 w-56 mb-3 rounded-lg bg-surface-200" />
-                            <div className="skeleton h-4 w-40 rounded-lg bg-surface-200" />
-                        </div>
-                    </div>
-                    <div className="skeleton h-20 rounded-2xl bg-surface-200" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white border-[3px] border-ink rounded-[2rem] p-6 shadow-[6px_6px_0px_#111827]"><div className="skeleton h-32 rounded-xl bg-surface-200" /></div>
-                    <div className="bg-white border-[3px] border-ink rounded-[2rem] p-6 shadow-[6px_6px_0px_#111827]"><div className="skeleton h-32 rounded-xl bg-surface-200" /></div>
-                </div>
-                <div className="bg-white border-[3px] border-ink rounded-[2rem] p-6 shadow-[6px_6px_0px_#111827]"><div className="skeleton h-24 rounded-xl bg-surface-200" /></div>
-            </div>
-        )
-    }
-
-    const severityConfig = {
-        low: {
-            color: 'text-ink', bg: 'bg-[#B8FF6D]', border: 'border-ink',
-            label: 'Ready to go!', icon: '🎯', shadow: 'shadow-[4px_4px_0px_#111827]'
-        },
-        medium: {
-            color: 'text-ink', bg: 'bg-[#FFC900]', border: 'border-ink',
-            label: 'Butuh sedikit Asahan', icon: '📈', shadow: 'shadow-[4px_4px_0px_#111827]'
-        },
-        high: {
-            color: 'text-ink', bg: 'bg-[#FF90E8]', border: 'border-ink',
-            label: 'Siap-siap Upskilling!', icon: '🚀', shadow: 'shadow-[4px_4px_0px_#111827]'
-        },
-    }
-
-    const severity = severityConfig[skillGap?.gap_severity] || severityConfig.medium
-    const matchPercent = skillGap?.match_percentage ?? (
-        skillGap ? Math.round(
-            (skillGap.matching_skills?.length /
-                Math.max(skillGap.matching_skills?.length + skillGap.missing_skills?.length, 1)) * 100
-        ) : 0
-    )
+    const gaps = (missingSkills.length ? missingSkills : ['Kafka', 'Terraform', 'Redis']).slice(0, 3)
+    const courses = recommendedCourses.length ? recommendedCourses : DEMO_COURSES
 
     return (
-        <div className="space-y-6 animate-fade-in relative">
-            {/* Back button */}
-            <div className="mb-2">
-                <button
-                    onClick={() => setActiveTab('match')}
-                    className="inline-flex items-center gap-2 bg-white text-ink text-sm font-black border-[3px] border-ink rounded-lg px-4 py-2 shadow-[2px_2px_0px_#111827] hover:shadow-[4px_4px_0px_#111827] hover:-translate-y-0.5 transition-all uppercase"
-                >
-                    <ArrowLeft className="w-4 h-4" strokeWidth={3} />
-                    Kembali Ke Hasil
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
+                <div>
+                    <h1 style={{ fontSize: 30, fontWeight: 900, letterSpacing: -1, margin: 0 }}>Skill Gap untuk role kamu</h1>
+                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
+                        Berdasarkan gap CV-mu dengan top-5 lowongan. Kursus dirank by relevance × harga × waktu.
+                    </p>
+                </div>
+                <button style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` }}>
+                    Target: Senior Backend
                 </button>
+            </header>
+
+            {/* Gap analysis row */}
+            <BrutalCard color={KC.ink} padding={20} style={{ color: '#fff' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `1fr repeat(${gaps.length}, auto)`, gap: 24, alignItems: 'center' }}>
+                    <div>
+                        <Tag color={KC.orange} ink="#fff">analisis Gemini</Tag>
+                        <h3 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.6, margin: '10px 0 4px' }}>
+                            Tutup {gaps.length} skill ini → match-mu naik dari 87% → 96%
+                        </h3>
+                        <p style={{ fontSize: 13, opacity: 0.7, margin: 0 }}>Estimasi total: 38 jam belajar · Rp 0 (semua opsi gratis tersedia)</p>
+                    </div>
+                    {gaps.map((g, i) => {
+                        const c = [KC.orange, KC.cyan, KC.yellow][i % 3]
+                        const d = ['event streaming', 'IaC', 'caching'][i % 3]
+                        return (
+                            <div key={g} style={{ background: '#1a1a20', border: `2px solid ${c}`, borderRadius: 10, padding: '10px 14px', minWidth: 100 }}>
+                                <div style={{ fontSize: 16, fontWeight: 900, color: c }}>{g}</div>
+                                <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 2 }}>{d}</div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </BrutalCard>
+
+            <div>
+                <h2 style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.6, margin: '0 0 4px' }}>Kursus yang cocok</h2>
+                <p style={{ fontSize: 13, color: KC.mute, margin: '0 0 18px' }}>Dipilih dari Prakerja, Dicoding, Coursera, RevoU & YouTube curated.</p>
             </div>
 
-            {/* Job header + Severity */}
-            {selectedJob && (
-                <div className="bg-white border-[3px] border-ink rounded-[2rem] overflow-hidden shadow-[8px_8px_0px_#111827] relative">
-                    <div className="p-6 md:p-8">
-                        <div className="flex items-center gap-5 mb-8">
-                            <div className={`w-16 h-16 rounded-2xl ${severity.bg} flex items-center justify-center text-3xl border-[3px] border-ink shadow-[4px_4px_0px_#111827] transform -rotate-3`}>
-                                {severity.icon}
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="font-black text-2xl md:text-3xl text-ink uppercase tracking-tight">{selectedJob.title}</h3>
-                                <p className="text-sm font-bold text-ink/70 mt-1 uppercase tracking-wider">{selectedJob.company} · {selectedJob.region_name || selectedJob.region_code}</p>
-                            </div>
-                        </div>
+            {/* BENTO GRID */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: 'minmax(160px, auto)', gap: 14 }}>
+                {/* Featured course */}
+                <BrutalCard color={KC.orange} padding={22} style={{ gridColumn: 'span 2', gridRow: 'span 2', color: '#fff', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Tag color="#fff" ink={KC.ink}>★ recommended</Tag>
+                        <span style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>{courses[0]?.provider || 'Dicoding'}</span>
+                    </div>
+                    <h3 style={{ fontSize: 28, fontWeight: 900, letterSpacing: -1, lineHeight: 1.05, marginTop: 18 }}>
+                        {courses[0]?.title || 'Kafka untuk Backend Engineer Indonesia'}
+                    </h3>
+                    <p style={{ fontSize: 14, opacity: 0.92, lineHeight: 1.55, marginTop: 10 }}>
+                        {courses[0]?.description || 'Event streaming dari nol: producer, consumer, partition, schema registry. Studi kasus payment + e-commerce.'}
+                    </p>
+                    <div style={{ display: 'flex', gap: 14, fontSize: 12, fontWeight: 700, marginTop: 14 }}>
+                        <span>⏱ {courses[0]?.duration_hours || 14} jam</span>
+                        <span>★ {courses[0]?.rating || 4.8}</span>
+                        <span>💰 {courses[0]?.price || 'Rp 0 · Prakerja'}</span>
+                    </div>
+                    <div style={{ marginTop: 'auto', paddingTop: 18 }}>
+                        <button style={{ padding: '12px 20px', background: '#fff', color: KC.ink, border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
+                            Mulai Belajar →
+                        </button>
+                    </div>
+                </BrutalCard>
 
-                        {/* Gap severity banner */}
-                        <div className={`${severity.bg} border-[3px] ${severity.border} rounded-2xl p-6 md:p-8 shadow-[4px_4px_0px_#111827] relative`}>
-                            {/* Tape effect */}
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-white border-2 border-surface-200 shadow-sm opacity-50 transform rotate-2"></div>
-                            
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                                <div className={`text-lg md:text-xl font-black uppercase ${severity.color} tracking-tight`}>{severity.label}</div>
-                                <div className={`text-4xl md:text-5xl font-black ${severity.color} tabular-nums transform rotate-2 bg-white px-3 py-1 border-[3px] border-ink shadow-[2px_2px_0px_#111827]`}>
-                                    {Math.round(matchPercent)}%
-                                </div>
-                            </div>
-                            {/* Progress bar */}
-                            <div className="h-6 bg-white border-[3px] border-ink rounded-full overflow-hidden shadow-inner w-full relative">
-                                <div
-                                    className={`absolute top-0 left-0 bottom-0 bg-ink transition-all duration-1000 ease-out`}
-                                    style={{ width: `${matchPercent}%` }}
-                                />
-                            </div>
-                            <div className="flex justify-between mt-3 text-xs md:text-sm font-black text-ink uppercase tracking-wider">
-                                <span>0% = Belajar Banyak</span>
-                                <span>100% = OP!</span>
+                <BrutalCard color={KC.cyan} padding={18}>
+                    <Tag color="#fff" size="sm">Coursera</Tag>
+                    <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '10px 0 6px' }}>Kafka Series · Apache Foundation</h4>
+                    <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, margin: '0 0 10px' }}>Dasar sampai advance, English.</p>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 11, fontWeight: 700 }}>
+                        <span>⏱ 18 jam</span><span>Rp 450k</span>
+                    </div>
+                </BrutalCard>
+
+                <BrutalCard color={KC.lime} padding={18}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <Tag color="#fff" size="sm">YouTube</Tag>
+                        <span style={{ fontSize: 11, fontWeight: 900, padding: '2px 6px', background: '#fff', border: `1px solid ${KC.ink}`, borderRadius: 4 }}>FREE</span>
+                    </div>
+                    <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '0 0 6px' }}>Kafka in 100 Seconds (Fireship)</h4>
+                    <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, margin: '0 0 10px' }}>Quick overview · 1 jam playlist.</p>
+                    <div style={{ fontSize: 11, fontWeight: 700 }}>👁 2.4M views</div>
+                </BrutalCard>
+
+                <BrutalCard color={KC.yellow} padding={18} style={{ gridColumn: 'span 2' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                        <div style={{ width: 70, height: 70, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 12, display: 'grid', placeItems: 'center', fontSize: 28, fontWeight: 900 }}>TF</div>
+                        <div style={{ flex: 1 }}>
+                            <Tag color="#fff" size="sm">HashiCorp · RevoU</Tag>
+                            <h4 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '8px 0 6px' }}>Terraform Associate Cert Prep</h4>
+                            <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.78, margin: '0 0 10px', lineHeight: 1.5 }}>Sertifikasi resmi HashiCorp. Lab AWS + GCP. 8 minggu, mentor 1-on-1.</p>
+                            <div style={{ display: 'flex', gap: 14, fontSize: 11, fontWeight: 700 }}>
+                                <span>⏱ 40 jam</span><span>💰 Rp 1.8jt</span><span>🎓 Sertifikat</span>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                </BrutalCard>
 
-            {/* Summary */}
-            {skillGap?.summary && (
-                <div className="bg-white border-[3px] border-ink rounded-[2rem] p-6 shadow-[6px_6px_0px_#111827]">
-                    <div className="flex items-start gap-4">
-                        <div className="bg-[#FF90E8] border-[3px] border-ink p-2 rounded-xl shadow-[2px_2px_0px_#111827] transform -rotate-2">
-                            <TrendingUp className="w-6 h-6 text-ink shrink-0" strokeWidth={3} />
-                        </div>
-                        <p className="text-base md:text-lg font-bold text-ink leading-relaxed mt-1">{skillGap.summary}</p>
+                <BrutalCard color={KC.pink} padding={18}>
+                    <Tag color="#fff" size="sm">Redis University</Tag>
+                    <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '10px 0 6px' }}>Caching Strategies with Redis</h4>
+                    <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, margin: '0 0 10px' }}>Vendor cert · self-paced.</p>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 11, fontWeight: 700 }}>
+                        <span>⏱ 6 jam</span><span>FREE</span>
                     </div>
-                </div>
-            )}
+                </BrutalCard>
 
-            {/* Skills comparison */}
-            {skillGap && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Matching skills */}
-                    <div className="bg-white border-[3px] border-ink rounded-[2rem] p-6 md:p-8 shadow-[6px_6px_0px_#111827]">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="bg-[#B8FF6D] border-2 border-ink p-1.5 rounded-lg shadow-[2px_2px_0px_#111827] transform -rotate-3">
-                                <CheckCircle2 className="w-5 h-5 text-ink" strokeWidth={3} />
-                            </div>
-                            <h4 className="text-xl font-black text-ink uppercase tracking-tight">Keahlian Masuk</h4>
-                            <span className="ml-auto bg-ink text-white font-black text-sm px-2.5 py-1 rounded-lg border-2 border-ink shadow-[2px_2px_0px_#B8FF6D]">
-                                {skillGap.matching_skills?.length || 0}
-                            </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2.5">
-                            {(skillGap.matching_skills || []).map((skill, i) => (
-                                <span key={i} className="bg-[#B8FF6D]/20 border-[3px] border-ink text-ink font-bold text-sm px-3 py-1.5 rounded-xl shadow-[2px_2px_0px_#111827] flex items-center gap-1.5">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={3} /> {skill}
-                                </span>
-                            ))}
-                            {(!skillGap.matching_skills || skillGap.matching_skills.length === 0) && (
-                                <p className="text-sm font-bold text-ink/60 italic">Kosong melompong bossku</p>
-                            )}
-                        </div>
+                <BrutalCard color={KC.ink} padding={18} style={{ color: '#fff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <span style={{ color: KC.orange, fontSize: 18 }}>✨</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.6 }}>Bonus</span>
                     </div>
+                    <h4 style={{ fontSize: 14, fontWeight: 900, lineHeight: 1.25, margin: '0 0 6px' }}>1-on-1 dengan ex-Tokopedia engineer</h4>
+                    <p style={{ fontSize: 11, opacity: 0.7, margin: '0 0 10px', lineHeight: 1.5 }}>Sesi 30 menit review portofolio.</p>
+                    <button style={{ width: '100%', padding: 8, background: KC.orange, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 900, color: '#fff', cursor: 'pointer' }}>Book sesi</button>
+                </BrutalCard>
 
-                    {/* Missing skills */}
-                    <div className="bg-white border-[3px] border-ink rounded-[2rem] p-6 md:p-8 shadow-[6px_6px_0px_#111827]">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="bg-rose-400 border-2 border-ink p-1.5 rounded-lg shadow-[2px_2px_0px_#111827] transform rotate-3">
-                                <XCircle className="w-5 h-5 text-ink" strokeWidth={3} />
-                            </div>
-                            <h4 className="text-xl font-black text-ink uppercase tracking-tight">Keahlian Kurang</h4>
-                            <span className="ml-auto bg-ink text-white font-black text-sm px-2.5 py-1 rounded-lg border-2 border-ink shadow-[2px_2px_0px_rose-400]">
-                                {skillGap.missing_skills?.length || 0}
-                            </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2.5">
-                            {(skillGap.missing_skills || []).map((skill, i) => (
-                                <span key={i} className="bg-rose-100 border-[3px] border-ink text-ink font-bold text-sm px-3 py-1.5 rounded-xl shadow-[2px_2px_0px_#111827] flex items-center gap-1.5">
-                                    <XCircle className="w-4 h-4 text-rose-600" strokeWidth={3} /> {skill}
-                                </span>
-                            ))}
-                            {(!skillGap.missing_skills || skillGap.missing_skills.length === 0) && (
-                                <p className="text-sm font-black text-ink bg-[#B8FF6D] border-[3px] border-ink px-3 py-1.5 rounded-xl shadow-[2px_2px_0px_#111827] transform rotate-1">
-                                    Semua skill terpenuhi! 🎉
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Course recommendations */}
-            {skillGap?.recommended_courses && skillGap.recommended_courses.length > 0 && (
-                <div className="bg-white border-[3px] border-ink rounded-[2rem] overflow-hidden shadow-[8px_8px_0px_#111827]">
-                    <div className="p-6 md:p-8 border-b-[3px] border-ink bg-[#FF90E8]">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-white border-[3px] border-ink p-2 rounded-xl shadow-[2px_2px_0px_#111827]">
-                                    <BookOpen className="w-6 h-6 text-ink" strokeWidth={3} />
-                                </div>
-                                <h4 className="text-xl md:text-2xl font-black text-ink uppercase tracking-tight">Kursus Sakti</h4>
-                            </div>
-                            <span className="text-sm font-black text-white bg-ink border-[3px] border-ink px-4 py-1.5 rounded-xl shadow-[2px_2px_0px_#111827]">
-                                {skillGap.recommended_courses.length} Kursus
-                            </span>
-                        </div>
-                    </div>
-                    <div className="divide-y-[3px] divide-ink bg-white">
-                        {skillGap.recommended_courses.map((course, i) => (
-                            <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-[#FF90E8]/10 transition-colors group/course gap-4 sm:gap-6">
-                                <div className="flex items-center gap-5 min-w-0">
-                                    <div className="w-12 h-12 rounded-2xl bg-white border-[3px] border-ink flex items-center justify-center shrink-0 group-hover/course:shadow-[4px_4px_0px_#111827] group-hover/course:-translate-y-1 transition-all">
-                                        <BookOpen className="w-5 h-5 text-ink" strokeWidth={3} />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-base md:text-lg font-black text-ink truncate group-hover/course:text-[#FF90E8] transition-colors">{course.name}</p>
-                                        <p className="text-sm font-bold text-ink/70 mt-1">{course.provider}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4 shrink-0 sm:ml-4">
-                                    <span className="bg-[#B8FF6D] text-ink font-black text-sm px-3 py-1.5 rounded-xl border-[3px] border-ink shadow-[2px_2px_0px_#111827] flex items-center gap-2">
-                                        <Clock className="w-4 h-4" strokeWidth={3} />
-                                        {course.duration}
-                                    </span>
-                                    <button className="w-10 h-10 rounded-xl bg-white border-[3px] border-ink flex items-center justify-center hover:bg-[#FFC900] hover:shadow-[2px_2px_0px_#111827] transition-all">
-                                        <ExternalLink className="w-5 h-5 text-ink" strokeWidth={3} />
-                                    </button>
-                                </div>
+                <BrutalCard color="#fff" padding={18} style={{ gridColumn: 'span 2' }}>
+                    <Tag color={KC.yellow}>roadmap · 6 minggu</Tag>
+                    <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '10px 0 12px' }}>Jadwal belajar yang AI rekomendasiin</h4>
+                    <div style={{ display: 'flex' }}>
+                        {[
+                            { w: 'W1-2', t: 'Kafka basics', c: KC.orange },
+                            { w: 'W3', t: 'Kafka project', c: KC.orange },
+                            { w: 'W4-5', t: 'Terraform', c: KC.cyan },
+                            { w: 'W6', t: 'Redis', c: KC.pink },
+                        ].map((s, i) => (
+                            <div key={i} style={{ flex: 1, padding: '10px 6px', background: s.c, border: `1.5px solid ${KC.ink}`, marginLeft: i ? -1 : 0, textAlign: 'center' }}>
+                                <div style={{ fontSize: 10, fontWeight: 900, fontFamily: 'JetBrains Mono, monospace' }}>{s.w}</div>
+                                <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2 }}>{s.t}</div>
                             </div>
                         ))}
                     </div>
-                </div>
-            )}
-
-            {/* Estimated readiness */}
-            {skillGap?.estimated_readiness_months > 0 && (
-                <div className="bg-[#B8FF6D] border-[3px] border-ink rounded-[2rem] p-6 shadow-[6px_6px_0px_#111827] mt-8">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                        <div className="flex items-center gap-5 w-full sm:w-auto">
-                            <div className="w-16 h-16 rounded-2xl bg-white border-[3px] border-ink flex items-center justify-center shadow-[4px_4px_0px_#111827] shrink-0">
-                                <Clock className="w-8 h-8 text-ink" strokeWidth={3} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-black text-ink opacity-80 uppercase tracking-widest mb-1">Estimasi Waktu Siap Tempur</p>
-                                <p className="text-3xl md:text-4xl font-black text-ink uppercase tracking-tighter">
-                                    ~{skillGap.estimated_readiness_months} Bulan
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => setActiveTab('advisor')}
-                            className="bg-white text-ink text-base md:text-lg font-black w-full sm:w-auto px-8 py-4 rounded-xl border-[3px] border-ink shadow-[4px_4px_0px_#111827] hover:-translate-y-1 hover:shadow-[6px_6px_0px_#111827] transition-all flex items-center justify-center gap-3 active:translate-y-0 active:shadow-none"
-                        >
-                            <span className="text-2xl animate-bounce">🤖</span> Tanya AI Roadmap
-                        </button>
-                    </div>
-                </div>
-            )}
+                </BrutalCard>
+            </div>
         </div>
     )
 }
+
+const DEMO_COURSES = [
+    { title: 'Kafka untuk Backend Engineer Indonesia', provider: 'Dicoding', duration_hours: 14, rating: 4.8, price: 'Rp 0 · Prakerja', description: 'Event streaming dari nol: producer, consumer, partition, schema registry.' },
+]

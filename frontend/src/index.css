@@ -17,7 +17,7 @@
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    @apply bg-surface-50 text-ink;
+    @apply bg-kc-cream text-kc-dark;
   }
 
   /* Custom scrollbar */
@@ -28,16 +28,16 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: theme('colors.surface.300');
+    background: #e5e0d6;
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: theme('colors.surface.400');
+    background: #ccc7bd;
   }
 
   /* Selection color */
   ::selection {
-    @apply bg-brand-500 text-white;
+    @apply bg-kc-orange text-white;
   }
 }
 

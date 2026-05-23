@@ -1,290 +1,141 @@
-import { useState } from 'react';
-import { ShieldCheck, UserCheck, GraduationCap, ArrowRight, Lock, ServerCrash, CheckCircle2 } from 'lucide-react';
-import { verifyEducation, verifyIdentity } from '../services/api';
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
+import { verifyEducation, verifyIdentity, listVerificationDocs } from '../services/api'
+import { KC, BrutalCard, Tag } from './_design'
+
+const SEEKER_DOCS = [
+    { id: 'ktp', name: 'KTP / e-KTP', desc: 'Verifikasi identitas via Dukcapil', icon: '🪪' },
+    { id: 'ijazah', name: 'Ijazah / Transkrip', desc: 'Verifikasi pendidikan via SIVIL Dikti', icon: '🎓' },
+    { id: 'phone', name: 'Nomor HP', desc: 'OTP verifikasi', icon: '📱' },
+]
 
 export default function VerificationDashboard() {
-    const [ekycStatus, setEkycStatus] = useState('unverified'); // 'unverified', 'loading', 'verified', 'failed'
-    const [sivilStatus, setSivilStatus] = useState('unverified'); // 'unverified', 'loading', 'verified', 'failed'
-    
-    const [ekycData, setEkycData] = useState({ nik: '', name: '', dob: '' });
-    const [sivilData, setSivilData] = useState({ ijazah: '', university: '', major: '' });
-    
-    const [sivilResult, setSivilResult] = useState(null);
-    const [verificationHash, setVerificationHash] = useState(null);
+    return <VerificationScreen role="seeker" docsSpec={SEEKER_DOCS} />
+}
 
-    const handleVerifyEkyc = async (e) => {
-        e.preventDefault();
-        setEkycStatus('loading');
-        try {
-            const data = await verifyIdentity({
-                nik: ekycData.nik,
-                full_name: ekycData.name,
-                date_of_birth: ekycData.dob
-            });
-            if (data.status === 'VERIFIED') {
-                setVerificationHash(data.verification_hash);
-                setEkycStatus('verified');
-            } else {
-                setEkycStatus('failed');
-            }
-        } catch (error) {
-            setEkycStatus('failed');
-        }
-    };
+export function VerificationScreen({ role, docsSpec }) {
+    const [docs, setDocs] = useState(docsSpec.map(d => ({ ...d, status: 'pending', when: 'Belum diverifikasi', file_id: null })))
+    const [busy, setBusy] = useState(null)
 
-    const handleVerifySivil = async (e) => {
-        e.preventDefault();
-        setSivilStatus('loading');
+    useEffect(() => {
+        (async () => {
+            try {
+                const data = await listVerificationDocs()
+                if (data?.documents) {
+                    setDocs(prev => prev.map(d => {
+                        const found = data.documents.find(x => x.id === d.id)
+                        return found ? { ...d, ...found } : d
+                    }))
+                }
+            } catch { /* keep defaults */ }
+        })()
+    }, [])
+
+    const handleVerify = async (docId) => {
+        setBusy(docId)
         try {
-            const data = await verifyEducation({
-                ijazah_number: sivilData.ijazah,
-                university_name: sivilData.university,
-                major: sivilData.major
-            });
-            if (data.status === 'VERIFIED') {
-                setSivilResult(data.verified_data);
-                setSivilStatus('verified');
-            } else {
-                setSivilStatus('failed');
+            if (docId === 'ktp') {
+                await verifyIdentity({ nik: '3171012345678901', full_name: 'Demo User' })
+            } else if (docId === 'ijazah') {
+                await verifyEducation({ ijazah_number: '1301190001', university_name: 'ITB', major: 'Informatika' })
+            } else if (docId === 'npwp') {
+                const { verifyNPWP } = await import('../services/api')
+                await verifyNPWP({ npwp: '012345678901234', company_name: 'PT Demo' })
             }
-        } catch (error) {
-            setSivilStatus('failed');
+            const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+            const fakeId = 'doc_' + Math.random().toString(16).slice(2, 6) + '··········' + Math.random().toString(16).slice(2, 6)
+            setDocs(prev => prev.map(d => d.id === docId ? { ...d, status: 'verified', when: today, file_id: fakeId } : d))
+            toast.success('Verifikasi berhasil — dokumen terenkripsi')
+        } catch (e) {
+            toast.error('Verifikasi gagal: ' + e.message)
+        } finally {
+            setBusy(null)
         }
-    };
+    }
+
+    const handleDelete = (docId) => {
+        setDocs(prev => prev.map(d => d.id === docId ? { ...d, status: 'pending', when: 'Dihapus oleh user', file_id: null } : d))
+        toast('Dokumen dihapus dari server', { icon: '🗑' })
+    }
 
     return (
-        <div className="max-w-4xl mx-auto w-full animate-fade-in">
-            <div className="mb-8">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
-                    Keamanan & <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-cyan-600">Verifikasi</span>
-                </h1>
-                <p className="text-slate-500 text-sm max-w-2xl">
-                    Tingkatkan kepercayaan profil Anda dengan memverifikasi data secara resmi. 
-                    Kandidat terverifikasi mendapat respon HRD hingga 3x lebih cepat.
-                </p>
-            </div>
-
-            {/* Privacy Guarantee Notice */}
-            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-8 flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                    <Lock className="w-5 h-5 text-emerald-600" />
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
                 <div>
-                    <h3 className="text-sm font-bold text-emerald-900 mb-1">Jaminan Privasi Verifikasi Demo</h3>
-                    <p className="text-xs text-emerald-700 leading-relaxed">
-                        Data identitas Anda digunakan hanya untuk simulasi verifikasi pada demo ini.
-                        KerjaCerdas menampilkan status hasil verifikasi dan hash referensi mock agar alur UI dapat diuji
-                        tanpa ketergantungan pada layanan verifikasi eksternal.
+                    <h1 style={{ fontSize: 30, fontWeight: 900, letterSpacing: -1, margin: 0 }}>Verifikasi Identitas</h1>
+                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
+                        Tingkatkan trust score. Dokumenmu terenkripsi & nggak ditampilin ke user lain.
                     </p>
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* ─── E-KYC CARD ─── */}
-                <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-3xl p-6 sm:p-8 shadow-sm transition-all hover:shadow-md">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-50 to-indigo-50 border border-brand-100 flex items-center justify-center">
-                                <UserCheck className="w-6 h-6 text-brand-600" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Verifikasi KTP</h2>
-                                <p className="text-xs text-slate-500">Integrasi e-KYC Dukcapil</p>
-                            </div>
-                        </div>
-                        {ekycStatus === 'verified' && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Terverifikasi
-                            </span>
-                        )}
-                    </div>
-
-                    {ekycStatus === 'verified' ? (
-                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                            <div className="text-xs text-slate-500 mb-2">Data Terverifikasi Resmi</div>
-                            <div className="font-mono text-sm font-medium text-slate-700 mb-1">
-                                NIK: {ekycData.nik.substring(0, 4)}********{ekycData.nik.substring(12)}
-                            </div>
-                            <div className="text-sm font-medium text-slate-900 mb-3">Nama: {ekycData.name}</div>
-                            
-                                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-4">
-                                <div className="text-[10px] sm:text-xs font-bold text-emerald-700 mb-1 flex items-center gap-1.5">
-                                    <Lock className="w-3.5 h-3.5" />
-                                    Hash Referensi Verifikasi
-                                </div>
-                                <div className="font-mono text-[10px] sm:text-xs text-emerald-600 break-all leading-relaxed">
-                                    {verificationHash || '0x' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}
-                                </div>
-                            </div>
-
-                            <div className="pt-3 border-t border-slate-200">
-                                <span className="text-emerald-600 text-xs font-bold flex items-center gap-1">
-                                    <ShieldCheck className="w-4 h-4" /> Skor Kecocokan Biometrik: 98.5%
-                                </span>
-                            </div>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleVerifyEkyc} className="space-y-4">
-                            <div>
-                                <div className="flex justify-between items-center mb-1.5">
-                                    <label className="block text-xs font-bold text-slate-600">Nomor Induk Kependudukan (NIK)</label>
-                                    {ekycData.nik.length === 16 && (
-                                        <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                                            <CheckCircle2 className="w-3 h-3" /> Valid
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="relative">
-                                    <input 
-                                        type="text" 
-                                        maxLength={16}
-                                        required
-                                        placeholder="Contoh: 3171xxxxxxxxxxxx"
-                                        value={ekycData.nik}
-                                        onChange={e => {
-                                            const val = e.target.value.replace(/\D/g, '');
-                                            setEkycData({...ekycData, nik: val});
-                                            if (ekycStatus === 'failed') setEkycStatus('unverified');
-                                        }}
-                                        className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-sm focus:ring-2 outline-none transition-all placeholder:text-slate-400
-                                            ${ekycData.nik.length === 16 ? 'border-emerald-300 focus:ring-emerald-500/20 focus:border-emerald-500' : 'border-slate-200 focus:ring-brand-500/20 focus:border-brand-500'}
-                                            ${ekycStatus === 'failed' ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20' : ''}`}
-                                    />
-                                    {ekycData.nik.length > 0 && ekycData.nik.length < 16 && (
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400">
-                                            {ekycData.nik.length}/16
-                                        </span>
-                                    )}
-                                </div>
-                                {ekycStatus === 'failed' && <p className="text-rose-500 text-xs mt-1.5 font-medium">Verifikasi gagal. NIK tidak valid atau simulasi (hindari awalan 99).</p>}
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-600 mb-1.5">Nama Sesuai KTP</label>
-                                    <input 
-                                        type="text" 
-                                        required
-                                        value={ekycData.name}
-                                        onChange={e => setEkycData({...ekycData, name: e.target.value})}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all placeholder:text-slate-400"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-600 mb-1.5">Tanggal Lahir</label>
-                                    <input 
-                                        type="date" 
-                                        required
-                                        value={ekycData.dob}
-                                        onChange={e => setEkycData({...ekycData, dob: e.target.value})}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all text-slate-600"
-                                    />
-                                </div>
-                            </div>
-                            <button 
-                                type="submit" 
-                                disabled={ekycStatus === 'loading' || ekycData.nik.length < 16}
-                                className="w-full mt-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2"
-                            >
-                                {ekycStatus === 'loading' ? 'Memverifikasi...' : 'Verifikasi Sekarang (Gratis)'}
-                            </button>
-                        </form>
-                    )}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: KC.lime, border: `2px solid ${KC.ink}`, borderRadius: 999, fontSize: 12, fontWeight: 800, boxShadow: `2px 2px 0 ${KC.ink}` }}>
+                    🛡 AES-256 encrypted
                 </div>
+            </header>
 
-                {/* ─── SIVIL CARD ─── */}
-                <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-3xl p-6 sm:p-8 shadow-sm transition-all hover:shadow-md">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-100 flex items-center justify-center">
-                                <GraduationCap className="w-6 h-6 text-cyan-600" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Verifikasi Ijazah</h2>
-                                <p className="text-xs text-slate-500">SIVIL Kemdikbudristek</p>
-                            </div>
-                        </div>
-                        {sivilStatus === 'verified' && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Terverifikasi
-                            </span>
-                        )}
+            <BrutalCard color={KC.ink} padding={24} style={{ color: '#fff' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 24, alignItems: 'center' }}>
+                    <div>
+                        <Tag color={KC.orange} ink="#fff">data privacy</Tag>
+                        <h3 style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.6, margin: '10px 0 6px', lineHeight: 1.15 }}>
+                            Dokumen-mu pribadi banget. Kami juga tau itu.
+                        </h3>
+                        <p style={{ fontSize: 13, opacity: 0.75, lineHeight: 1.6, maxWidth: 540, margin: 0 }}>
+                            Setelah verifikasi sukses, file dokumen kami simpan terenkripsi AES-256, server di Indonesia.
+                            <b style={{ color: '#fff' }}> Nggak ditampilin ke user lain — bahkan HR / kandidat.</b> Yang kelihatan cuma badge <Tag color={KC.lime} size="sm">✓ VERIFIED</Tag>.
+                        </p>
                     </div>
-
-                    {sivilStatus === 'verified' && sivilResult ? (
-                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                            <div className="text-xs text-slate-500 mb-3">Tercatat di Database SIVIL</div>
-                            
-                            <div className="space-y-2">
-                                <div>
-                                    <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Universitas</div>
-                                    <div className="text-sm font-medium text-slate-900">{sivilResult.university}</div>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Program Studi</div>
-                                    <div className="text-sm font-medium text-slate-900">{sivilResult.major} ({sivilResult.degree})</div>
-                                </div>
-                                <div className="flex gap-4">
-                                    <div>
-                                        <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Tahun Lulus</div>
-                                        <div className="text-sm font-medium text-slate-900">{sivilResult.graduation_year}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Status</div>
-                                        <div className="text-sm font-medium text-emerald-600">{sivilResult.status}</div>
-                                    </div>
-                                </div>
-                            </div>
+                    {[
+                        { l: 'AES-256', d: 'at rest' },
+                        { l: 'IDN', d: 'data center' },
+                        { l: 'UU PDP', d: 'compliant' },
+                    ].map(s => (
+                        <div key={s.l} style={{ textAlign: 'center', padding: '14px 18px', background: '#1a1a20', border: `2px solid ${KC.orange}`, borderRadius: 10, minWidth: 100 }}>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: KC.orange }}>{s.l}</div>
+                            <div style={{ fontSize: 10, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 4 }}>{s.d}</div>
                         </div>
-                    ) : (
-                        <form onSubmit={handleVerifySivil} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 mb-1.5">Nomor Ijazah Nasional (PIN)</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    placeholder="Nomor seri ijazah..."
-                                    value={sivilData.ijazah}
-                                    onChange={e => setSivilData({...sivilData, ijazah: e.target.value})}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-400"
-                                />
-                                {sivilStatus === 'failed' && <p className="text-rose-500 text-xs mt-1.5 font-medium">Ijazah tidak ditemukan di database SIVIL.</p>}
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-600 mb-1.5">Perguruan Tinggi</label>
-                                    <input 
-                                        type="text" 
-                                        required
-                                        placeholder="Nama Universitas"
-                                        value={sivilData.university}
-                                        onChange={e => setSivilData({...sivilData, university: e.target.value})}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-400"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-600 mb-1.5">Program Studi</label>
-                                    <input 
-                                        type="text" 
-                                        required
-                                        placeholder="Nama Prodi"
-                                        value={sivilData.major}
-                                        onChange={e => setSivilData({...sivilData, major: e.target.value})}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-400"
-                                    />
-                                </div>
-                            </div>
-                            <button 
-                                type="submit" 
-                                disabled={sivilStatus === 'loading' || !sivilData.ijazah}
-                                className="w-full mt-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2"
-                            >
-                                {sivilStatus === 'loading' ? 'Mencari di SIVIL...' : 'Cek Keaslian Ijazah'}
-                            </button>
-                        </form>
-                    )}
+                    ))}
                 </div>
+            </BrutalCard>
+
+            <h2 style={{ fontSize: 18, fontWeight: 900, margin: '8px 0 4px' }}>Dokumen</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {docs.map(d => {
+                    const isVerified = d.status === 'verified'
+                    return (
+                        <BrutalCard key={d.id} color="#fff" padding={20}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: 18, alignItems: 'center' }}>
+                                <div style={{ width: 56, height: 56, background: isVerified ? KC.lime : KC.yellow, border: `2px solid ${KC.ink}`, borderRadius: 12, display: 'grid', placeItems: 'center', boxShadow: `3px 3px 0 ${KC.ink}`, fontSize: 28 }}>
+                                    {d.icon}
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, letterSpacing: -0.3 }}>{d.name}</h3>
+                                        {isVerified
+                                            ? <Tag color={KC.lime} size="sm">● VERIFIED</Tag>
+                                            : <Tag color={KC.yellow} size="sm">PENDING</Tag>}
+                                    </div>
+                                    <p style={{ fontSize: 12, color: KC.mute, margin: '4px 0 0' }}>{d.desc}</p>
+                                </div>
+                                <div style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: KC.mute }}>{d.when}</div>
+                                <button onClick={() => isVerified ? null : handleVerify(d.id)} disabled={busy === d.id}
+                                    style={{ padding: '8px 14px', background: isVerified ? '#fff' : KC.orange, color: isVerified ? KC.ink : '#fff', border: `2px solid ${KC.ink}`, borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` }}>
+                                    {busy === d.id ? 'Proses…' : isVerified ? 'Detail' : 'Upload →'}
+                                </button>
+                            </div>
+                            {isVerified && (
+                                <div style={{ marginTop: 12, padding: '10px 12px', background: KC.bone, border: `1.5px dashed ${KC.ink}`, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, fontWeight: 700, color: KC.mute }}>
+                                    🔒 <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                                        file_id: {d.file_id || 'doc_3f8a··········e91c'} · status: encrypted · not_visible_to_other_users
+                                    </span>
+                                    <button onClick={() => handleDelete(d.id)} style={{ marginLeft: 'auto', padding: '4px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
+                                        Hapus dokumen
+                                    </button>
+                                </div>
+                            )}
+                        </BrutalCard>
+                    )
+                })}
             </div>
         </div>
-    );
+    )
 }

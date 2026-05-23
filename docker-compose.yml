@@ -20,12 +20,12 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./src:/app/src
+      - ./backend:/app/backend
       - ./models:/app/models
 
   frontend:
     build:
-      context: ./src/frontend
+      context: ./frontend
     ports:
       - "3000:3000"
     depends_on:

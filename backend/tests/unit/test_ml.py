@@ -60,7 +60,7 @@ class TestSkillFeatures:
 
     def test_skill_overlap_calculation(self) -> None:
         """Skill overlap should be correct as intersection/required."""
-        from src.agents.matching_agent import MatchingAgent
+        from backend.app.agents.matching_agent import MatchingAgent
 
         agent = MatchingAgent(demo_mode=True)
         assert agent._compute_skill_overlap(

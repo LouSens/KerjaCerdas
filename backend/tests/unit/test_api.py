@@ -15,10 +15,10 @@ from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 
-from src.api import database as database_module
-from src.api.main import app
-from src.api.models import JobPosting, SeekerProfile
-from src.api.schemas.auth import UserLoginRequest, UserRegisterRequest
+from backend.app.api import database as database_module
+from backend.app.api.main import app
+from backend.app.api.models import JobPosting, SeekerProfile
+from backend.app.api.schemas.auth import UserLoginRequest, UserRegisterRequest
 
 
 @pytest.fixture
