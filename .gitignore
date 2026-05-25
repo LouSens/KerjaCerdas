@@ -64,3 +64,6 @@ Thumbs.db
 .agents/
 .claude/
 frontend/node_modules
+
+# UI Design Cache
+.design-cache/
