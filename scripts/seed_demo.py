@@ -34,7 +34,7 @@ from backend.app.db.schemas import (
     UserRole,
     WorkExperience,
 )
-from backend.app.ml.matcher import SemanticMatcher
+from backend.app.services.matching.matcher import SemanticMatcher
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ JOB_POSTINGS = [
     ("traveloka", "Data Scientist (Pricing)", "2511",
      "Bangun model pricing & ranking dinamis untuk pencarian tiket pesawat.",
      ["Feature engineering", "Eksperimen A/B", "Deploy model production"],
-     ["Python", "Machine Learning", "SQL", "Spark"], ["TensorFlow", "MLflow", "Airflow"],
+     ["Python", "Machine Learning", "SQL", "Spark"], ["TensorFlow", "Airflow"],
      "S1", 3, "3174", True, 22_000_000, 38_000_000),
 
     ("sayurbox", "Operations Lead (Warehouse)", "3331",

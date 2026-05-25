@@ -15,7 +15,7 @@ import math
 from typing import Iterable
 
 from backend.app.db.schemas import JobPosting, MatchResult, SeekerProfile
-from backend.app.ml.embeddings.gemini import get_embedder
+from backend.app.services.matching.embeddings.gemini import get_embedder
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

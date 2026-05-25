@@ -58,7 +58,7 @@ async def run_matcher(state: AgentState) -> dict:
     advisor nodes have something to work with even if they're not the primary
     intent path.
     """
-    from backend.app.ml.matcher import SemanticMatcher
+    from backend.app.services.matching.matcher import SemanticMatcher
     matcher = SemanticMatcher()
     seeker  = state["seeker"]
     jobs    = state.get("candidate_jobs", [])
@@ -246,7 +246,6 @@ _COURSE_CATALOG: dict[str, tuple[str, str, str]] = {
     "android":            ("Android Development with Kotlin",    "Dicoding",                     "2 bulan"),
     "ios":                ("iOS Development with Swift",         "Apple Developer Academy ID",   "9 bulan"),
     "terraform":          ("Infrastructure as Code — Terraform", "Coursera ID",                  "1 bulan"),
-    "mlflow":             ("MLOps with MLflow",                  "Udemy",                        "2 minggu"),
     "linux":              ("Linux Fundamentals",                 "Dicoding",                     "3 minggu"),
     "design system":      ("Design System Mastery",              "Binar Academy",                "1 bulan"),
     "user research":      ("User Research & UX Methods",         "Coursera ID",                  "6 minggu"),

@@ -21,7 +21,7 @@ from backend.app.db.schemas import (
     SeekerProfile,
     Skill,
 )
-from backend.app.ml.matcher import SemanticMatcher
+from backend.app.services.matching.matcher import SemanticMatcher
 
 logger = logging.getLogger(__name__)
 

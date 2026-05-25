@@ -15,7 +15,7 @@ from backend.app.db.schemas import (
     Skill,
     WorkExperience,
 )
-from backend.app.ml.matcher import SemanticMatcher
+from backend.app.services.matching.matcher import SemanticMatcher
 from backend.app.services.pdf_parser import parse_cv, parse_job_pack
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])

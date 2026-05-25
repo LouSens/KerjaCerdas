@@ -47,8 +47,6 @@ data/courses/*.json
 # Reports (generated output)
 reports/
 
-# MLflow
-mlruns/
 
 # Node (frontend)
 node_modules/

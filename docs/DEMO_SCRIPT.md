@@ -38,7 +38,7 @@ Show: Landing page with the hero section. Click through to demonstrate the UI.
 2. Click **"⚡ Temukan Pekerjaan dengan AI"**
 3. Show results: "The AI analyzed 50,000+ postings and found 6 matches"
 4. Highlight top match: **Data Analyst @ Bank Mandiri — 91% match**
-5. "Notice the match score and skill overlap — this isn't keyword matching, it's BERT-powered semantic similarity"
+5. "Notice the match score and skill overlap — this isn't keyword matching, it's AI-powered semantic similarity"
 
 ### Scene 4: Skill Gap Analysis (60s)
 
@@ -60,7 +60,7 @@ Show: Landing page with the hero section. Click through to demonstrate the UI.
 ### Scene 6: Architecture (30s)
 
 > "Under the hood: 4 AI agents coordinated by an orchestrator.
-> IndoBERT for matching, Gemini for advice, all served via FastAPI.
+> Gemini Embeddings for matching, Gemini for advice, all served via FastAPI.
 > Built on our Antigravity Protocol for reproducibility."
 
 ### Closing (30s)
