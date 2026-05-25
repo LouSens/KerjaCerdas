@@ -543,13 +543,13 @@ Verifikasi identitas, ijazah, dan NPWP menjadi **bagian dari scoring**, bukan ad
 | Phase | Addition |
 |---|---|
 | Phase 1 | pgvector similarity search (10K+ jobs) |
-| Phase 2 | IndoBERT fine-tuned matching layer (offline inference) |
+| Phase 2 | Advanced Gemini Embeddings matching layer (pgvector) |
 | Phase 3 | Multi-region support (34 provinsi labor demand index) |
 | Phase 4 | ATS integration (Taleo, Workday, BambooHR) |
 | Phase 5 | Mobile app (React Native) |
 
 ### AI Model Scaling
-- HashEmbedder → GeminiEmbedder → IndoBERT (fine-tuned, ONNX) → Custom bi-encoder
+- HashEmbedder → GeminiEmbedder → Advanced RAG with Gemini LLM
 - Each swap is a single import change (embedder interface abstracted)
 
 ---

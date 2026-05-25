@@ -384,7 +384,7 @@ Navigasikan ke **"Verifikasi Perusahaan"** via sidebar.
 
 ---
 
-## 🏗️ Arsitektur Sistem
+## 🏗️ System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -540,7 +540,7 @@ KerjaCerdas/
 │   ├── PRD.md                       # Product Requirements Document
 │   ├── BUSINESS_MODEL.md            # Model bisnis dan metrik unit
 │   ├── FEASIBILITY_REPORT.md        # Laporan kelayakan teknis & anti-halusinasi
-│   ├── ML_PIPELINE.md               # Dokumentasi ML pipeline
+
 │   ├── API_SPEC.md                  # Spesifikasi naratif OpenAPI
 │   └── DEMO_SCRIPT.md               # Panduan skenario demo Hackathon
 │
@@ -552,7 +552,7 @@ KerjaCerdas/
 
 ---
 
-## 📊 Data & Kelayakan
+## 📊 Data & Feasibility
 
 ### 1. Sumber Data & Grounding
 Model AI dan algoritma matching kami didasarkan pada data pasar tenaga kerja Indonesia yang sesungguhnya:
@@ -620,7 +620,7 @@ Jika `GEMINI_API_KEY` tidak diatur di lingkungan sistem:
 
 ---
 
-## 🔐 Keamanan & Kepatuhan
+## 🔐 Security & Compliance
 
 KerjaCerdas dikembangkan dengan kepatuhan standar dan siap terhadap prinsip-prinsip **UU PDP (Undang-Undang Pelindungan Data Pribadi)** sejak hari pertama.
 
@@ -637,7 +637,7 @@ KerjaCerdas dikembangkan dengan kepatuhan standar dan siap terhadap prinsip-prin
 
 ---
 
-## 🚀 Kesiapan Implementasi (MVP)
+## 🚀 Implementation Readiness (MVP)
 
 KerjaCerdas bukanlah sekadar antarmuka (wireframe). Kami telah mendirikan **MVP yang berfungsi penuh** dan siap melayani skenario pengujian user yang sebenarnya.
 
@@ -701,7 +701,7 @@ docker-compose up --build
 | Fase | Timeline | Milestone |
 |---|---|---|
 | **v0.3 (sekarang)** | Mei 2026 | Full-stack MVP, Gemini matching, agen LangGraph, mock integrasi verifikasi e-KYC |
-| **v0.4** | Juni 2026 | Migrasi ke pgvector, penyesuaian (fine-tuning) model baseline IndoBERT |
+| **v0.4** | Juni 2026 | Migrasi ke pgvector, optimasi prompt untuk Gemini LLM |
 | **v0.5** | Juli 2026 | Pengembangan integrasi afiliasi platform Prakerja & Dicoding |
 | **v1.0** | Ags 2026 | Produksi menggunakan database PostgreSQL, integrasi sesungguhnya pada layanan API Dukcapil pemerintah, pengujian bersama 10 mitra UKM (SMEs) |
 | **v1.5** | Q4 2026 | Ekspansi menampung 100 jaringan employer, pencapaian skala volume sistem hingga 5000 job seeker, dengan 2 program dinas percobaan di skala Disnaker level Provinsi |
@@ -716,7 +716,7 @@ docker-compose up --build
 | [PRD.md](docs/PRD.md) | File Dokumen Spesifikasi Produk (Product Requirements Document) |
 | [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) | Susunan Model Arus Pendapatan (Revenue Model), struktur hitung ekonomi dan analisis kompetitor target komersialisasi platform pasaran persaingan bisnis platform ketenagakerjaan |
 | [FEASIBILITY_REPORT.md](docs/FEASIBILITY_REPORT.md) | Studi penilaian sistem pendukung model (Anti-hallucination design), dan rumusan formula metrik uji tingkat kehandalan AI terhadap kendali parameter output. |
-| [ML_PIPELINE.md](docs/ML_PIPELINE.md) | Skema utuh struktur Machine Learning pipeline untuk penelusuran proses: metode kompilasi asimilasi input (ingestion) → tahapan fase pengembangan pola algoritma machine learning (training) → sesi pengukuran analisis mutu penilaian kecocokan (evaluation) → fase deployment aplikasi |
+
 | [API_SPEC.md](docs/API_SPEC.md) | Rincian panduan komunikasi naratif spesifik OpenAPI standardisasi endpoints API |
 | [VERIFICATION_DEMO.md](docs/VERIFICATION_DEMO.md) | Pedoman demonstrasi alur pengujian verifikasi perilaku prosedur (e-KYC) dengan simulasi (test cases) |
 

@@ -7,11 +7,11 @@
 
 Hallucination is typically a failure of *Generative* models. For a high-stakes domain like job matching, we use a **Hybrid Architecture** that prioritizes *Retrieval* over *Generation*.
 
-### A. Semantic Retrieval (IndoBERT) — No Generative Risk
+### A. Semantic Retrieval (Gemini Embeddings) — No Generative Risk
 The matching engine is **non-generative**. It doesn't "invent" job matches.
-- **Bi-Encoder Architecture**: Converts seeker profiles and job descriptions into fixed 768-dimensional vectors.
+- **Embedding Architecture**: Converts seeker profiles and job descriptions into fixed 3072-dimensional vectors using Gemini Embeddings.
 - **Cosine Similarity**: Mathematically identifies the closest matches in the database.
-- **Why this works**: The model can only return jobs that *actually exist* in our PostgreSQL database. It literally cannot hallucinate a fake job because it is restricted to a fixed retrieval set.
+- **Why this works**: The model can only return jobs that *actually exist* in our PostgreSQL database. It literally cannot hallucinate a fake job because it is restricted to a fixed retrieval set. By leveraging state-of-the-art LLM embeddings rather than a traditional ML pipeline, we eliminate the heavy maintenance burden of retraining models.
 
 ### B. Retrieval-Augmented Generation (RAG) for Advice
 When the **Advisor Agent** or **Skill Gap Agent** provides career guidance, it is "clamped" to real data:
@@ -31,10 +31,10 @@ To implement this rationally, the model must be trained on high-fidelity, locali
 | **JobStreet/LinkedIn ID Scrapes** | Skill-job mapping | Provides the ground-truth "Skill Adjacency" (which skills are actually required for local roles). |
 | **KBJI (BPS) Codes** | Occupation Taxonomy | Standardizes 10,000+ job titles into a consistent hierarchy, preventing "title inflation" matching. |
 
-### B. The Training Pipeline (IndoBERT Fine-Tuning)
-We don't just use BERT; we **Fine-Tune** it:
-- **Contrastive Learning**: We train the model on thousands of "Positive Pairs" (successful hires) vs "Negative Pairs" (rejected candidates).
-- **Domain Adaptation**: The model learns specific Indonesian labor terms (e.g., *magang*, *kontrak*, *harian lepas*) and local skill acronyms.
+### B. The Matching Engine (Gemini LLM & Embeddings)
+We do not use a traditional ML pipeline (which is hard to maintain and requires constant fine-tuning). Instead:
+- **Zero-Shot Semantic Matching**: We rely on Gemini's vast pre-trained understanding of global and Indonesian labor terms (e.g., *magang*, *kontrak*, *harian lepas*) and local skill acronyms.
+- **LLM-Powered Scoring**: Agents intelligently weigh factors like regional relevance and skill gaps dynamically without needing constant dataset retraining.
 
 ---
 
@@ -61,9 +61,9 @@ How do we *know* it works before we go live?
 ## 5. Implementation Roadmap (PoC to MVP)
 
 1. **Phase 1 (Current)**: Demo with high-quality mock data + RAG-ready prompt engineering.
-2. **Phase 2 (Training)**: Mass ingestion of 2025 BPS and JobStreet data into `ml/pipeline/`.
+2. **Phase 2 (Integration)**: Mass ingestion of 2025 BPS and JobStreet data into our vector database using Gemini Embeddings.
 3. **Phase 3 (Validation)**: Blind A/B test with real users.
-4. **Phase 4 (Deployment)**: ONNX-optimized inference at < 200ms latency.
+4. **Phase 4 (Deployment)**: Production rollout with caching and optimized API routing.
 
 ---
 <div align="center">
