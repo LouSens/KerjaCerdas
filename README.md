@@ -2,160 +2,160 @@
 
 # KerjaCerdas
 
-**Semantic-Based Job Matching Platform for the Indonesian Labor Market**
+**Platform Job Matching Berbasis Semantik untuk Pasar Tenaga Kerja Indonesia**
 
 [![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com) [![Database: PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1?style=flat-square&logo=postgresql)](https://postgresql.org) [![Frontend: React](https://img.shields.io/badge/Frontend-React_18-61DAFB?style=flat-square&logo=react)](https://react.dev) [![Tooling: Vite](https://img.shields.io/badge/Tooling-Vite-646CFF?style=flat-square&logo=vite)](https://vitejs.dev) [![Styling: Tailwind](https://img.shields.io/badge/Styling-Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com) [![AI: Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-4285F4?style=flat-square&logo=google)](https://ai.google.dev) [![Agents: LangGraph](https://img.shields.io/badge/Agents-LangGraph-FF6F00?style=flat-square)](https://langchain-ai.github.io/langgraph/)
 
 
-| Seeker Dashboard | AI Job Matches | Employer Dashboard |
+| Dashboard Seeker | AI Job Matches | Dashboard Employer |
 | :---: | :---: | :---: |
 | <img src="docs/assets/seeker_dashboard.png" width="400"/> | <img src="docs/assets/job_matches.png" width="400"/> | <img src="docs/assets/employer_dashboard.png" width="400"/> |
 
-[Demo Walkthrough](#-demo-walkthrough) · [Quick Start](#-quick-start-5-minutes) · [Architecture](#-system-architecture) · [Business Proposal](docs/PROPOSAL_2ND.md)
+[Panduan Demo](#-panduan-demo) · [Quick Start](#-quick-start-5-menit) · [Arsitektur](#-arsitektur-sistem) · [Proposal Bisnis](docs/PROPOSAL_2ND.md)
 
 </div>
 
 ---
 
-## 📌 The Problem We Solve
+## 📌 Masalah yang Kami Pecahkan
 
-Indonesia has **7.86 million unemployed** [ESTIMATE] (BPS, Feb 2025) — yet employers say they *"can't find the right people."* The root cause is a **triple mismatch**:
+Indonesia memiliki **7.86 juta pengangguran** [ESTIMASI] (BPS, Feb 2025) — namun para employer (pemberi kerja) sering mengatakan *"sulit mencari orang yang tepat"*. Akar penyebabnya adalah **triple mismatch (ketidakcocokan ganda)**:
 
-| Mismatch | Scale | Impact |
+| Mismatch | Skala | Dampak |
 |---|---|---|
-| **Skill mismatch** | 62% [ESTIMATE] of graduates work outside their field | Wasted education investment |
-| **Relevance mismatch** | Keyword search misses semantically-related skills | Good candidates rejected, bad ones shortlisted |
-| **Trust mismatch** | Unverifiable CVs → HR over-relies on brand-name universities | Regional talent (non-UI/ITB) systematically underestimated |
+| **Skill mismatch** | 62% [ESTIMASI] lulusan bekerja di luar bidangnya | Investasi pendidikan terbuang percuma |
+| **Relevance mismatch** | Pencarian kata kunci mengabaikan skill yang berhubungan secara semantik | Kandidat bagus ditolak, yang kurang tepat malah masuk shortlist |
+| **Trust mismatch** | CV yang tidak bisa diverifikasi → HR terlalu mengandalkan universitas ternama | Talenta daerah (non-UI/ITB) secara sistematis diremehkan |
 
-Existing portals (Jobstreet, Glints, Kalibrr) are **keyword search engines with a paywall**. They don't understand skills. KerjaCerdas does.
+Portal lowongan kerja yang ada saat ini (Jobstreet, Glints, Kalibrr) pada dasarnya adalah **mesin pencari kata kunci berbayar**. Mereka tidak memahami konteks skill. KerjaCerdas memahaminya.
 
 ---
 
-## ✨ What Makes KerjaCerdas Different
+## ✨ Apa yang Membuat KerjaCerdas Berbeda
 
-| Feature | Traditional Portals | **KerjaCerdas** |
+| Fitur | Portal Tradisional | **KerjaCerdas** |
 |---|---|---|
-| Matching engine | Keyword filter | **Gemini semantic embeddings** (3072-dim vectors) |
-| Skill gap | None | **Specific skills identified + course recommendations** |
-| Career guidance | None | **AI advisor in Bahasa Indonesia** (context-aware) |
-| Verification | Optional / self-reported | **Mock e-KYC: NIK, Ijazah, NPWP** |
-| Seeker cost | Premium upsell (Rp 49rb–199rb/mo) [ESTIMATE] | **Free forever** |
-| Employer posting | Rp 3–5 juta/post [ESTIMATE] | **Rp 499rb/post** [ESTIMATE] |
-| Regional fairness | Java-centric | **Region-weighted scoring** (34 provinces) |
+| Matching engine | Filter kata kunci | **Gemini semantic embeddings** (vektor 3072-dimensi) |
+| Skill gap | Tidak ada | **Spesifik skill diidentifikasi + rekomendasi course** |
+| Career guidance | Tidak ada | **AI advisor dalam Bahasa Indonesia** (memahami konteks) |
+| Verification | Opsional / diisi sendiri | **Mock e-KYC: NIK, Ijazah, NPWP** |
+| Biaya Seeker | Upsell premium (Rp 49rb–199rb/bulan) [ESTIMASI] | **Gratis selamanya** |
+| Posting Employer | Rp 3–5 juta/post [ESTIMASI] | **Rp 499rb/post** [ESTIMASI] |
+| Keadilan Regional | Berpusat di Jawa | **Region-weighted scoring** (34 provinsi) |
 
 ---
 
-## 🎯 MVP Features (Fully Working in This Demo)
+## 🎯 Fitur MVP (Berfungsi Penuh di Demo Ini)
 
-### For Job Seekers
+### Untuk Pencari Kerja (Seeker)
 - ✅ **Register & Login** (JWT auth, role-based)
-- ✅ **Upload CV (PDF)** → Gemini AI parses skills, experience, education automatically
-- ✅ **AI Job Matching** → semantic vector search against live job database
-- ✅ **Skill Gap Analysis** → exact missing skills identified per job
-- ✅ **Course Recommendations** → specific courses to bridge each gap
-- ✅ **AI Career Advisor** → chat-based, Bahasa Indonesia, context-aware
-- ✅ **Save Jobs** → bookmarked jobs synced to backend (cross-session)
+- ✅ **Upload CV (PDF)** → Gemini AI mem-parsing skill, pengalaman, dan pendidikan secara otomatis
+- ✅ **AI Job Matching** → pencarian vektor semantik terhadap database pekerjaan aktif
+- ✅ **Skill Gap Analysis** → mengidentifikasi dengan tepat skill yang kurang untuk setiap pekerjaan
+- ✅ **Course Recommendations** → rekomendasi course spesifik untuk menutup setiap celah skill (gap)
+- ✅ **AI Career Advisor** → berbasis chat, Bahasa Indonesia, memahami konteks profil
+- ✅ **Save Jobs** → pekerjaan yang disimpan disinkronkan ke backend (cross-session)
 - ✅ **Identity Verification** → mock KTP/NIK + Ijazah + trust badge
 
-### For Employers
-- ✅ **Register & Login** → Employer profile auto-created, ready to post immediately
-- ✅ **Post Job** → manual form OR upload PDF job pack (AI creates postings automatically)
-- ✅ **AI Candidate Ranking** → top-5 candidates ranked by Gemini for each posting
-- ✅ **Live Pool Estimation** → see estimated candidate count *as you type* the JD
-- ✅ **Manage Jobs** → view all active postings with real application counts
-- ✅ **Company Verification** → mock NPWP/Akta verification → trust badge
+### Untuk Employer
+- ✅ **Register & Login** → Profil employer dibuat otomatis, siap untuk memposting lowongan
+- ✅ **Post Job** → form manual ATAU upload job pack PDF (AI membuat postingan secara otomatis)
+- ✅ **AI Candidate Ranking** → top-5 kandidat diurutkan oleh Gemini untuk setiap postingan
+- ✅ **Live Pool Estimation** → melihat perkiraan jumlah kandidat *saat Anda mengetik* Job Description
+- ✅ **Manage Jobs** → melihat semua postingan aktif dengan jumlah pelamar real-time
+- ✅ **Company Verification** → mock verifikasi NPWP/Akta → trust badge
 
 ---
 
-## 🏆 Hackathon Judging Alignment
+## 🏆 Kesesuaian Penilaian Hackathon
 
-KerjaCerdas is explicitly designed to score highly against standard innovation hackathon criteria, grounded strictly in real-world data and market research:
+KerjaCerdas dirancang secara eksplisit untuk meraih skor tinggi terhadap kriteria penilaian inovasi hackathon standar, didasarkan pada data dunia nyata dan riset pasar:
 
-### 1. Alignment with Problem Statement & Market Needs
-- **The Data**: Indonesia faces 7.86 million unemployed [ESTIMATE] (BPS, Feb 2025) and a 62% skill mismatch rate [ESTIMATE]. Furthermore, 78% of HR managers [ESTIMATE] reject CVs without thorough review due to keyword-filtering limitations (from our initial HR validation surveys).
-- **The Solution**: We replace legacy keyword filters with semantic AI, directly addressing the core "triple mismatch" (Skill, Relevance, and Trust) in the Indonesian labor market.
+### 1. Keselarasan dengan Rumusan Masalah & Kebutuhan Pasar
+- **Data**: Indonesia menghadapi 7.86 juta pengangguran [ESTIMASI] (BPS, Feb 2025) dan tingkat mismatch skill sebesar 62% [ESTIMASI]. Selain itu, 78% dari manajer HR [ESTIMASI] menolak CV tanpa review mendalam karena keterbatasan filter keyword (dari survei validasi HR awal kami).
+- **Solusi**: Kami mengganti filter kata kunci lawas dengan AI semantik, secara langsung menangani inti dari "triple mismatch" (Skill, Relevansi, dan Kepercayaan) di pasar tenaga kerja Indonesia.
 
-### 2. Effectiveness & Impact
-- **Seeker Impact**: Empowers candidates (especially those from non-top-tier universities) by shifting the recruitment focus strictly to validated skills rather than institutional pedigree.
-- **Employer Impact**: Designed to slash the average time-to-hire from **45 days to < 15 days** [ESTIMATE]. By automatically serving a pre-ranked top-5 shortlist, we target a **4× increase** [ESTIMATE] in match relevance compared to traditional portals.
+### 2. Efektivitas & Dampak
+- **Dampak Pencari Kerja**: Memberdayakan kandidat (terutama dari universitas non-tier atas) dengan mengalihkan fokus rekrutmen ke arah skill yang divalidasi daripada nama institusi.
+- **Dampak Employer**: Dirancang untuk memangkas waktu rata-rata rekrutmen dari **45 hari menjadi < 15 hari** [ESTIMASI]. Dengan secara otomatis menyajikan top-5 shortlist yang sudah diranking, kami menargetkan **peningkatan 4× lipat** [ESTIMASI] pada relevansi match dibanding portal konvensional.
 
-### 3. Business Model Feasibility
-- **Sustainability**: A freemium ecosystem where job seekers always use the platform for free. Employers pay a highly accessible **Rp 499,000 per post** [ESTIMATE] (drastically cheaper than the Rp 3–5 million [ESTIMATE] charged by incumbents).
-- **Unit Economics**: Built for profitability with an estimated **78% gross margin** [ESTIMATE], driven by highly optimized Gemini API routing (costing only ~Rp 30 per seeker/month [ESTIMATE] for AI inferences).
+### 3. Kelayakan Model Bisnis
+- **Keberlanjutan**: Ekosistem freemium di mana pencari kerja selalu menggunakan platform secara gratis. Employer membayar dengan biaya terjangkau **Rp 499.000 per post** [ESTIMASI] (jauh lebih murah daripada incumbent yang mematok Rp 3–5 juta [ESTIMASI]).
+- **Unit Economics**: Dibangun untuk profitabilitas dengan estimasi **78% gross margin** [ESTIMASI], didorong oleh routing API Gemini yang sangat teroptimasi (biaya hanya ~Rp 30 per pencari kerja/bulan [ESTIMASI] untuk AI inference).
 
-### 4. Uniqueness & Creativity
-- **Beyond Keywords**: Mapping candidate capabilities into a 3072-dimensional vector space to find implicit matches that standard regex and keyword filters miss.
-- **Agentic Workflow**: Instead of static forms, we use LangGraph agents to orchestrate CV parsing, gap analysis, and course recommendations into a single, cohesive UI experience.
+### 4. Keunikan & Kreativitas
+- **Beyond Keywords**: Memetakan kemampuan kandidat ke dalam ruang vektor 3072-dimensi untuk menemukan kecocokan implisit yang terlewatkan oleh filter kata kunci dan regex standar.
+- **Agentic Workflow**: Menggunakan LangGraph agents untuk mengatur parsing CV, gap analysis, dan course recommendations menjadi sebuah pengalaman UI yang utuh, alih-alih form statis.
 
 ---
 
-## 🚀 Quick Start (5 Minutes)
+## 🚀 Quick Start (5 Menit)
 
-### Prerequisites
+### Prasyarat
 - **Python 3.11+**
 - **Node.js 18+**
-- (Optional) A `GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com) — the app works without it using an offline fallback embedder, but AI features will be less accurate
+- (Opsional) `GEMINI_API_KEY` dari [Google AI Studio](https://aistudio.google.com) — aplikasi tetap berjalan tanpanya menggunakan offline fallback embedder, tapi fitur AI akan kurang akurat.
 
-### Step 1 — Clone & Configure
+### Langkah 1 — Clone & Konfigurasi
 
 ```powershell
 git clone https://github.com/LouSens/KerjaCerdas.git
 cd KerjaCerdas
 
-# Copy environment template
+# Copy template environment
 Copy-Item .env.example .env
 ```
 
-Open `.env` and set at minimum:
+Buka `.env` dan atur nilai minimal:
 ```env
-# Required for persistent JWT tokens (generate once, keep it stable)
+# Diperlukan untuk token JWT persisten (generate sekali, biarkan stabil)
 JWT_SECRET_KEY=your-random-secret-here
 
-# Optional but recommended — enables real AI matching & CV parsing
+# Opsional tapi disarankan — mengaktifkan AI matching & CV parsing sesungguhnya
 GEMINI_API_KEY=your-gemini-api-key
 ```
 
-> **Generate a JWT secret on PowerShell:**
+> **Cara generate JWT secret di PowerShell:**
 > ```powershell
 > [Convert]::ToHexString((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
 > ```
 
-### Step 2 — Start the Backend
+### Langkah 2 — Jalankan Backend
 
 ```powershell
-# Create and activate virtual environment
+# Buat dan aktifkan virtual environment
 python -m venv .venv
 .\.venv\Scripts\Activate
 
 # Install dependencies
 pip install -e .[dev]
 
-# Start FastAPI server
+# Jalankan server FastAPI
 uvicorn backend.app.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir backend/app
 ```
 
-**What happens on first boot:**
-1. SQLite database is created at `data/kerjacerdas.db`
-2. Auto-seeder detects empty store → seeds **3 employers, 12 jobs, 5 seekers** from real Indonesian companies (Bank Mandiri, Tokopedia, Akulaku)
-3. API is live at `http://localhost:8000`
-4. Interactive docs at `http://localhost:8000/docs`
+**Apa yang terjadi saat pertama dijalankan:**
+1. Database SQLite dibuat di `data/kerjacerdas.db`
+2. Auto-seeder mendeteksi store kosong → memasukkan **3 employer, 12 jobs, 5 seeker** dari perusahaan Indonesia asli (Bank Mandiri, Tokopedia, Akulaku)
+3. API aktif di `http://localhost:8000`
+4. Interactive docs tersedia di `http://localhost:8000/docs`
 
-### Step 3 — Start the Frontend
+### Langkah 3 — Jalankan Frontend
 
 ```powershell
-# In a new terminal
+# Di terminal baru
 cd frontend
 npm install
 npm run dev
 ```
 
-Frontend is live at **`http://localhost:3000`**
+Frontend aktif di **`http://localhost:3000`**
 
-> The Vite dev server proxies `/api/*` to the FastAPI backend automatically — no CORS config needed in development.
+> Dev server Vite otomatis melakukan proxy `/api/*` ke backend FastAPI — tidak butuh konfigurasi CORS saat development.
 
-### Step 4 — Open the App & Log In
+### Langkah 4 — Buka Aplikasi & Login
 
-Go to **http://localhost:3000** and use one of the pre-seeded demo accounts:
+Buka **http://localhost:3000** dan gunakan salah satu akun demo berikut:
 
 | Role | Email | Password |
 |---|---|---|
@@ -166,225 +166,225 @@ Go to **http://localhost:3000** and use one of the pre-seeded demo accounts:
 
 ---
 
-## 🎬 Demo Walkthrough
+## 🎬 Panduan Demo
 
-### Path A — Job Seeker Flow
+### Jalur A — Flow Pencari Kerja (Seeker)
 
-> *Follow this path to demonstrate the full AI matching experience*
+> *Ikuti jalur ini untuk mendemonstrasikan pengalaman penuh AI matching*
 
-#### Step 1: Register or Login
-Click **"Masuk / Daftar"** in the top-right. Select **"Pencari Kerja"** tab.
+#### Langkah 1: Register atau Login
+Klik **"Masuk / Daftar"** di pojok kanan atas. Pilih tab **"Pencari Kerja"**.
 - Login: `andi@example.com` / `demo123456`
-- Or register a brand-new account → you'll land on the seeker dashboard
+- Atau daftar akun baru → Anda akan diarahkan ke dashboard seeker
 
-**What happens in the backend:**
-- `POST /api/v1/auth/login` validates credentials against SQLite `users` table
-- JWT token (HS256, 24h expiry) is issued and stored in browser localStorage
-- Zustand store is hydrated: role=seeker, user data, auth token
-- `GET /api/v1/seeker/bookmarks` fires automatically → saved jobs loaded
+**Apa yang terjadi di backend:**
+- `POST /api/v1/auth/login` memvalidasi kredensial ke tabel `users` SQLite
+- Token JWT (HS256, 24h expiry) diterbitkan dan disimpan di localStorage browser
+- State Zustand diisi: role=seeker, data user, token auth
+- `GET /api/v1/seeker/bookmarks` tereksekusi otomatis → job tersimpan diload
 
-#### Step 2: Upload Your CV
-Navigate to **"Upload CV"** (sidebar or dashboard button → "Upload CV").
-Drop or click to upload any PDF resume. Watch the AI parse it live.
+#### Langkah 2: Upload CV Anda
+Buka menu **"Upload CV"** (dari sidebar atau tombol dashboard → "Upload CV").
+Drop atau klik untuk mengupload resume PDF. Perhatikan AI mem-parsing data secara live.
 
-**What happens in the backend:**
+**Apa yang terjadi di backend:**
 ```
 PDF bytes → POST /api/v1/uploads/cv
   → Gemini multimodal (gemini-3.1-flash-lite)
-  → Extracts: full_name, headline, skills[], experience[], education[], salary_expectation
-  → SeekerProfile saved to data/seekers/{id}.json
-  → Gemini Embedding API → 3072-dim vector stored alongside profile
-  → seeker_id returned → stored in Zustand + localStorage
+  → Mengekstrak: full_name, headline, skills[], experience[], education[], salary_expectation
+  → SeekerProfile disimpan ke data/seekers/{id}.json
+  → Gemini Embedding API → vektor 3072-dimensi disimpan bersama profil
+  → seeker_id dikembalikan → disimpan di Zustand + localStorage
 ```
 
-**What you see:**
-- Skill count, experience count, education count update immediately
-- Profile completeness widget on dashboard updates
-- "Profil-mu siap di-match" confirmation card appears
+**Apa yang Anda lihat:**
+- Jumlah skill, jumlah pengalaman, jumlah pendidikan otomatis terupdate
+- Widget kelengkapan profil di dashboard ikut update
+- Kartu konfirmasi "Profil-mu siap di-match" akan muncul
 
-#### Step 3: Get AI Job Matches
-Click **"Refresh Match →"** on the dashboard, or navigate to **"Temukan Lowongan"**.
+#### Langkah 3: Dapatkan AI Job Matches
+Klik **"Refresh Match →"** di dashboard, atau navigasikan ke **"Temukan Lowongan"**.
 
-**What happens in the backend:**
+**Apa yang terjadi di backend:**
 ```
 POST /api/v1/agent/invoke
-  → LangGraph: IntentRouter detects intent = "match_jobs"
-  → SemanticMatcher: embed seeker query vector
-  → Cosine similarity vs all job embeddings in data/jobs/
-  → Scoring formula:
+  → LangGraph: IntentRouter mendeteksi intent = "match_jobs"
+  → SemanticMatcher: proses embed vektor query seeker
+  → Cosine similarity melawan semua embedding job di data/jobs/
+  → Formula scoring:
      score = cosine×0.50 + skill_overlap×0.30 + region×0.10 + salary×0.05 + exp×0.05
-  → Top-K results enriched with: title, company, salary_range, matching_skills, missing_skills
-  → LLM generates Bahasa Indonesia explanation per match
+  → Hasil Top-K diperkaya dengan: title, company, salary_range, matching_skills, missing_skills
+  → LLM menghasilkan penjelasan (explanation) Bahasa Indonesia untuk setiap match
 ```
 
-**What you see:**
-- Job cards with match score (e.g. 92%), company name, salary range
-- Green tags = skills you already have ✅
-- Orange tags = skills you're missing (with gap counts)
+**Apa yang Anda lihat:**
+- Job card dengan match score (misal: 92%), nama perusahaan, dan range gaji
+- Tag hijau = skill yang sudah Anda kuasai ✅
+- Tag oranye = skill yang kurang/belum dikuasai (dengan gap count)
 - AI explanation: *"Stack Go kamu 100% match sama requirement Tokopedia payment team"*
 
-#### Step 4: Analyze Skill Gap
-Click **"Skill Gap"** on a job card, or navigate to **"Skill Gap"** in sidebar.
+#### Langkah 4: Analisis Skill Gap
+Klik **"Skill Gap"** pada salah satu job card, atau navigasikan ke **"Skill Gap"** di sidebar.
 
-**What happens in the backend:**
+**Apa yang terjadi di backend:**
 ```
 POST /api/v1/agent/invoke { message: "analyze skill gap for [job_id]" }
   → LangGraph: intent = "skill_gap"
-  → SkillGapNode: compare seeker skills vs job requirements
-  → LLM generates specific gap analysis:
+  → SkillGapNode: membandingkan skill seeker dengan requirements lowongan
+  → LLM menghasilkan analisis gap yang detail:
      - Missing skills: ["Kafka", "Kubernetes", "gRPC"]
      - Matching: ["Python", "SQL", "Docker"]
-     - Recommended courses per gap (Dicoding, Coursera ID, Prakerja)
-     - Time estimate to close each gap
+     - Rekomendasi course per gap (Dicoding, Coursera ID, Prakerja)
+     - Estimasi waktu untuk menyelesaikan tiap gap
 ```
 
-**What you see:**
-- Side-by-side skill comparison: have / don't have
-- Recommended courses with platform name and time-to-complete
-- AI career message: *"Kafka bisa dikuasai dalam 3-4 minggu — prioritas ini"*
+**Apa yang Anda lihat:**
+- Perbandingan skill berdampingan: yang dimiliki / tidak dimiliki
+- Rekomendasi course dilengkapi nama platform dan waktu pengerjaan
+- Pesan AI advisor: *"Kafka bisa dikuasai dalam 3-4 minggu — prioritas ini"*
 
-#### Step 5: Chat with AI Advisor
-Click the **🤖 bubble** in the bottom-right corner (visible on all pages).
+#### Langkah 5: Chat dengan AI Advisor
+Klik tombol **🤖 bubble** di sudut kanan bawah (muncul di semua halaman).
 
-**What happens in the backend:**
+**Apa yang terjadi di backend:**
 ```
-POST /api/v1/agent/invoke { message: "user's question", session_id: seeker_id }
+POST /api/v1/agent/invoke { message: "pertanyaan user", session_id: seeker_id }
   → LangGraph: intent = "advise"
-  → AdvisorNode: Gemini (temp=0.7), persona = career counselor with 10yr Indonesia experience
-  → Response in Bahasa Indonesia
-  → Conversation history maintained per session_id
+  → AdvisorNode: Gemini (temp=0.7), persona = konselor karir dengan pengalaman 10 tahun di Indonesia
+  → Respon dalam Bahasa Indonesia
+  → Riwayat percakapan di-maintain berdasarkan session_id
 ```
 
-**What you see:**
-- AI responds in fluent Bahasa Indonesia
-- Knows your profile context (your skills, matches, gaps)
-- Can advise on salary negotiation, CV tips, regional job markets
+**Apa yang Anda lihat:**
+- AI merespon dengan Bahasa Indonesia yang fasih
+- Memahami konteks profil Anda (skill, match, gap yang Anda miliki)
+- Dapat memberikan saran terkait negosiasi gaji, tips CV, hingga info pasar kerja lokal
 
-#### Step 6: Save Jobs
-Click the bookmark icon on any job card. Saved jobs appear under **"Tersimpan"**.
+#### Langkah 6: Save Jobs
+Klik ikon bookmark di salah satu job card. Lowongan yang disimpan akan tampil di menu **"Tersimpan"**.
 
-**What happens in the backend:**
+**Apa yang terjadi di backend:**
 ```
 POST /api/v1/seeker/bookmarks { job_id: "..." }
-  → Application stored in data/applications/
-  → Next login → GET /api/v1/seeker/bookmarks → list restored
+  → Aplikasi/lamaran disimpan di data/applications/
+  → Saat login berikutnya → GET /api/v1/seeker/bookmarks → list dipulihkan
 ```
 
-Saved jobs **persist across sessions** — they sync to the backend, not just localStorage.
+Lowongan yang disimpan **bertahan (persisten) lintas session** — data tersinkronisasi ke backend, bukan sekadar localStorage.
 
-#### Step 7: Verify Identity
-Navigate to **"Verifikasi"** from the sidebar.
+#### Langkah 7: Verifikasi Identitas
+Navigasikan ke **"Verifikasi"** melalui sidebar.
 
-**What happens (demo simulation):**
-- Enter your NIK (16 digits). NIKs starting with `99` = simulate failure; all others = success
-- SHA-256 hash generated server-side (PII never stored in plaintext)
-- Upload Ijazah proof → SIVIL reference number validated → ✓ badge awarded
-- Verified badge increases candidate ranking visibility by 3× in employer searches
+**Apa yang terjadi (simulasi demo):**
+- Masukkan NIK (16 digit). NIK berawalan `99` = simulasi gagal; selain itu = sukses
+- Hash SHA-256 dibuat di server-side (data pribadi/PII tidak pernah disimpan plaintext)
+- Upload bukti Ijazah → nomor referensi SIVIL divalidasi → badge ✓ diberikan
+- Badge verifikasi meningkatkan visibilitas ranking kandidat hingga 3× lipat pada pencarian employer
 
 ---
 
-### Path B — Employer Flow
+### Jalur B — Flow Employer
 
-> *Follow this path to demonstrate the HR/employer experience*
+> *Ikuti jalur ini untuk mendemonstrasikan pengalaman HR/perusahaan*
 
-#### Step 1: Register as Employer
-Click **"Masuk / Daftar"** → Select **"Employer"** tab → Register.
+#### Langkah 1: Register sebagai Employer
+Klik **"Masuk / Daftar"** → Pilih tab **"Employer"** → Register.
 
-**What happens in the backend:**
+**Apa yang terjadi di backend:**
 ```
 POST /api/v1/auth/register { role: "employer" }
-  → User saved to SQLite
-  → Employer profile auto-created in JSON store:
-     { user_id, company_name: [user's name], region_code: "3171" }
-  → JWT token issued immediately
-  → Employer can post jobs RIGHT AWAY — no separate profile step required
+  → User tersimpan di SQLite
+  → Profil employer otomatis terbuat di JSON store:
+     { user_id, company_name: [nama user], region_code: "3171" }
+  → JWT token langsung diterbitkan
+  → Employer bisa memposting lowongan SAAT INI JUGA — tanpa butuh tahapan pengisian profil terpisah
 ```
 
-#### Step 2: View Dashboard
-You land on **Employer Dashboard** showing your active jobs and stats.
+#### Langkah 2: Lihat Dashboard
+Anda akan diarahkan ke **Dashboard Employer** yang menampilkan list pekerjaan aktif dan statistik Anda.
 
-**What happens in the backend:**
+**Apa yang terjadi di backend:**
 ```
 GET /api/v1/employer/jobs
-  → Auth-gated: only returns jobs for THIS employer
-  → For each job: real application_count computed from data/applications/
-  → Returns: { total, items: [{ id, title, location, salary_range, application_count }] }
+  → Auth-gated: hanya mengembalikan job milik employer INI
+  → Untuk setiap job: nilai application_count sesungguhnya dihitung dari data/applications/
+  → Mengembalikan: { total, items: [{ id, title, location, salary_range, application_count }] }
 ```
 
-**What you see:**
-- Your jobs only (not other employers' jobs)
-- Real applicant counts per posting
-- Stats: active jobs, total applications, plan quota
+**Apa yang Anda lihat:**
+- Hanya pekerjaan milik Anda (bukan milik employer lain)
+- Jumlah pelamar real-time per postingan
+- Statistik: lowongan aktif, total lamaran, sisa kuota posting
 
-#### Step 3: Post a New Job (Manual)
-Click **"+ Pasang Lowongan"** → Fill in the form.
+#### Langkah 3: Posting Lowongan Baru (Manual)
+Klik **"+ Pasang Lowongan"** → Isi formulir.
 
-**Live AI estimation** — as you type the job title, description, skills, and salary:
+**Estimasi AI Live** — saat Anda mengetik judul, deskripsi, skill, dan kisaran gaji:
 ```
 POST /api/v1/employer/jobs/estimate { title, description, skills, salary_min, salary_max, location }
-  → Debounced 500ms
-  → Quick heuristic match against seeker pool
-  → Returns: { pool_size: 340, match_score: 82, tip: "Raise salary to Rp 35-50M → 620 candidates" }
+  → Debounce 500ms
+  → Pencocokan heuristik cepat terhadap pool seeker
+  → Mengembalikan: { pool_size: 340, match_score: 82, tip: "Naikkan gaji ke Rp 35-50M → 620 kandidat" }
 ```
 
-Click **"Publish →"**:
+Klik **"Publish →"**:
 ```
 POST /api/v1/employer/jobs { title, description, required_skills, salary, location, work_type }
-  → Auth validated (employer role required)
-  → JobPosting saved to data/jobs/{id}.json
-  → GeminiEmbedder embeds job description → vector stored
-  → Immediately visible to seeker matching engine
-  → Dashboard refreshes: employerJobs count +1
+  → Validasi auth (harus role employer)
+  → JobPosting tersimpan di data/jobs/{id}.json
+  → GeminiEmbedder melakukan embedding terhadap deskripsi job → vektor tersimpan
+  → Langsung bisa dicari (matchable) oleh sistem matching pencari kerja
+  → Dashboard otomatis refresh: employerJobs count +1
 ```
 
-#### Step 4: Upload Job Pack (AI Batch Posting)
-Click **"Upload Job Pack (PDF)"** — upload a PDF containing multiple job descriptions.
+#### Langkah 4: Upload Job Pack (AI Batch Posting)
+Klik **"Upload Job Pack (PDF)"** — upload PDF yang berisi deskripsi beberapa lowongan sekaligus.
 
-**What happens in the backend:**
+**Apa yang terjadi di backend:**
 ```
 POST /api/v1/uploads/job-pack (multipart/form-data)
-  → Gemini multimodal: parse PDF → extract multiple job postings
-  → For each posting detected:
+  → Gemini multimodal: parse PDF → mengekstrak beberapa postingan job
+  → Untuk setiap job yang terdeteksi:
      { title, description, responsibilities[], required_skills[],
        salary_min, salary_max, region_code, remote_allowed }
-  → Each job embedded + saved to data/jobs/
-  → Returns: { created_job_ids: ["id1", "id2", ...] }
+  → Setiap job di-embed + disimpan ke data/jobs/
+  → Mengembalikan: { created_job_ids: ["id1", "id2", ...] }
 ```
 
-**What you see:**
-- Upload 1 PDF → 3 jobs created automatically in seconds
-- No manual form filling per position
-- Jobs immediately appear in dashboard and are matchable by seekers
+**Apa yang Anda lihat:**
+- Mengupload 1 PDF → 3 lowongan otomatis dibuat dalam hitungan detik
+- Tidak ada form isian manual per posisi
+- Lowongan langsung muncul di dashboard dan dapat dicari kandidat
 
-#### Step 5: See Top 5 Candidates
-Click **"Kandidat"** on any job row, or navigate to **"Top 5 Kandidat"**.
+#### Langkah 5: Lihat Top 5 Kandidat
+Klik **"Kandidat"** pada salah satu baris lowongan, atau navigasikan ke **"Top 5 Kandidat"**.
 
-**What happens in the backend:**
+**Apa yang terjadi di backend:**
 ```
 POST /api/v1/employer/jobs/{job_id}/candidates { top_k: 5 }
-  → Reverse matching: embed job → cosine sim vs all seeker embeddings
-  → Rerank by skill overlap + verification badge weight
-  → Returns: top-5 candidates with scores, skills, AI explanation
+  → Reverse matching: embed job → cosine similarity melawan semua embedding seeker
+  → Rerank (pengurutan ulang) berdasarkan irisan skill + bobot badge verifikasi
+  → Mengembalikan: top-5 kandidat beserta skor, skill, dan penjelasan AI
 ```
 
-**What you see:**
-- 5 candidate cards ranked #1–#5 with match score (e.g. 94%)
-- ✓ VERIFIED badge for e-KYC verified seekers
-- AI reasoning: *"Stack 100% match. Pernah handle 100K RPS di Bukalapak payment."*
-- Filter by: All / ✓ Verified KTP / >5yr exp / Location
+**Apa yang Anda lihat:**
+- 5 kartu kandidat dengan urutan #1–#5, dilengkapi match score (misal: 94%)
+- Badge ✓ VERIFIED untuk pencari kerja yang telah melewati e-KYC
+- Alasan AI: *"Stack 100% match. Pernah handle 100K RPS di Bukalapak payment."*
+- Opsi filter: Semua / ✓ Verified KTP / >5 tahun pengalaman / Lokasi
 
-#### Step 6: Verify Your Company
-Navigate to **"Verifikasi Perusahaan"** from the sidebar.
+#### Langkah 6: Verifikasi Perusahaan Anda
+Navigasikan ke **"Verifikasi Perusahaan"** via sidebar.
 
-**What happens (demo simulation):**
-- Enter NPWP (15 digits) → format validated → deterministic mock response from DJP
-- Upload Akta Pendirian → Kemenkumham AHU reference validated
-- Company email OTP → domain ownership confirmed
-- ✓ Verified badge appears on all your job postings → seekers see your company as trusted
+**Apa yang terjadi (simulasi demo):**
+- Masukkan NPWP (15 digit) → format divalidasi → menerima respon simulasi mock deterministik dari DJP
+- Upload Akta Pendirian → referensi AHU Kemenkumham divalidasi
+- OTP Email perusahaan → kepemilikan domain dipastikan
+- Badge ✓ Verified muncul pada seluruh postingan pekerjaan Anda → seeker mengenali bahwa perusahaan Anda terpercaya
 
 ---
 
-## 🏗️ System Architecture
+## 🏗️ Arsitektur Sistem
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -395,7 +395,7 @@ Navigate to **"Verifikasi Perusahaan"** from the sidebar.
 │  └────────────┘  └─────────────────┘                  └─────────┘ │
 │                  Zustand (global state) + react-hot-toast           │
 └─────────────────────────────────┬───────────────────────────────────┘
-                                  │  /api/v1/* (proxied by Vite)
+                                  │  /api/v1/* (proxied via Vite)
 ┌─────────────────────────────────▼───────────────────────────────────┐
 │                    BACKEND  (FastAPI + Uvicorn)                      │
 │  ┌────────────────────────────────────────────────────────────────┐ │
@@ -416,7 +416,7 @@ Navigate to **"Verifikasi Perusahaan"** from the sidebar.
 │  │                    Data Layer                                  │ │
 │  │  JsonRepository (dev: data/*.json) ← → SupabaseRepository     │ │
 │  │  GeminiEmbedder (3072-dim) ←fallback→ HashEmbedder (offline)  │ │
-│  │  SemanticMatcher (scoring formula: cosine+skill+region+salary)  │ │
+│  │  SemanticMatcher (formula scoring: cosine+skill+region+salary)  │ │
 │  └──────────────────────────────┬─────────────────────────────────┘ │
 │                                 │                                    │
 │  SQLite (auth) ◄────────────────┘  ──► PostgreSQL 15 (production)   │
@@ -425,85 +425,85 @@ Navigate to **"Verifikasi Perusahaan"** from the sidebar.
 ┌─────────────────────────────────▼───────────────────────────────────┐
 │                     GOOGLE AI PLATFORM                               │
 │  Gemini 3.1 Flash Lite (chat/parse)                                 │
-│  Gemini Embedding 001 (3072-dim semantic vectors)                   │
+│  Gemini Embedding 001 (vektor semantik 3072-dimensi)                │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### How Data Flows: From CV Upload to Match
+### Bagaimana Alur Data Bekerja: Dari Upload CV ke Match
 
 ```
-1.  Seeker uploads PDF
+1.  Seeker meng-upload PDF
          │
-2.  Gemini multimodal parses PDF
+2.  Gemini multimodal melakukan parsing PDF
          │ → { skills, experience, education, salary_expectation }
          │
-3.  GeminiEmbedder.embed(resume_text) → 3072-dim vector
+3.  GeminiEmbedder.embed(resume_text) → vektor 3072-dimensi
          │
-4.  SeekerProfile saved → data/seekers/{id}.json
+4.  SeekerProfile tersimpan → data/seekers/{id}.json
          │
-5.  Frontend: runAgent("show my top matches")
+5.  Frontend: memanggil agent ("show my top matches")
          │
 6.  LangGraph → MatcherNode
          │
-7.  Cosine similarity: seeker_vector vs all job_vectors in data/jobs/
+7.  Cosine similarity: vektor seeker dibandingkan semua vektor job di data/jobs/
          │
-8.  Top-K scored: cosine×0.50 + skill_overlap×0.30 + region×0.10 + ...
+8.  Scoring Top-K: cosine×0.50 + skill_overlap×0.30 + region×0.10 + ...
          │
-9.  EnrichMatches: join with JobPosting → add title/company/salary/skills
+9.  EnrichMatches: join dengan tabel JobPosting → tambah title/company/salary/skills
          │
-10. LLM generates Bahasa Indonesia explanation per match
+10. LLM membuat penjelasan dalam Bahasa Indonesia untuk setiap match
          │
-11. Response → Frontend renders full job cards with match scores
+11. Response → Frontend merender seluruh job card dilengkapi dengan nilai kecocokan (match score)
 ```
 
 ---
 
-## 📂 Repository Structure
+## 📂 Struktur Repositori
 
 ```
 KerjaCerdas/
 │
-├── backend/                        # Python service
+├── backend/                        # Service Python
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── main.py             # FastAPI entrypoint (auto-seeds on first boot)
+│   │   │   ├── main.py             # Entrypoint FastAPI (auto-seeds di start awal)
 │   │   │   ├── database.py         # SQLAlchemy async engine (SQLite→PostgreSQL)
-│   │   │   ├── models.py           # ORM: User (auth only)
-│   │   │   ├── dependencies.py     # JWT auth dependencies
+│   │   │   ├── models.py           # ORM: User (hanya untuk auth)
+│   │   │   ├── dependencies.py     # Dependensi JWT auth
 │   │   │   ├── routers/
-│   │   │   │   ├── auth.py         # Register / Login → JWT + employer auto-profile
-│   │   │   │   ├── seeker.py       # Profile, skill gap, bookmarks, gamification
+│   │   │   │   ├── auth.py         # Register / Login → JWT + auto-profile employer
+│   │   │   │   ├── seeker.py       # Profile, skill gap, bookmark, gamification
 │   │   │   │   ├── employer.py     # Profile, job CRUD, candidates, job-pack
-│   │   │   │   ├── agent.py        # Unified AI agent endpoint (match/gap/advise)
-│   │   │   │   ├── uploads.py      # CV + job-pack PDF → Gemini → JSON store
-│   │   │   │   ├── verify.py       # Identity / education / NPWP verification
-│   │   │   │   └── jobs.py         # Public job feed (no auth)
+│   │   │   │   ├── agent.py        # Endpoint AI agent (match/gap/advise)
+│   │   │   │   ├── uploads.py      # PDF CV + job-pack → Gemini → JSON store
+│   │   │   │   ├── verify.py       # Mock verifikasi e-KYC (NIK/Ijazah/NPWP)
+│   │   │   │   └── jobs.py         # Public job feed (tanpa auth)
 │   │   │   ├── services/
 │   │   │   │   ├── auth_service.py       # bcrypt + JWT
-│   │   │   │   ├── pdf_parser.py         # Gemini PDF → structured JSON
+│   │   │   │   ├── pdf_parser.py         # Gemini PDF → terstruktur ke JSON
 │   │   │   │   ├── identity_verifier.py  # Mock e-KYC (NIK/Ijazah/NPWP)
-│   │   │   │   └── prompt_loader.py      # System prompt templates
+│   │   │   │   └── prompt_loader.py      # Template sistem prompt
 │   │   │   └── schemas/
-│   │   │       └── auth.py               # Pydantic request/response schemas
+│   │   │       └── auth.py               # Skema request/response Pydantic
 │   │   │
 │   │   ├── agents/
 │   │   │   └── graph/
-│   │   │       ├── builder.py      # LangGraph graph compilation
+│   │   │       ├── builder.py      # Kompilasi LangGraph graph
 │   │   │       ├── nodes.py        # MatcherNode, SkillGapNode, AdvisorNode, RouterNode
 │   │   │       └── state.py        # AgentState TypedDict
 │   │   │
 │   │   ├── ml/
 │   │   │   ├── matcher.py          # SemanticMatcher: embed + score + rank
 │   │   │   └── embeddings/
-│   │   │       └── gemini.py       # GeminiEmbedder (+ HashEmbedder offline fallback)
+│   │   │       └── gemini.py       # GeminiEmbedder (+ fallback offline HashEmbedder)
 │   │   │
 │   │   ├── db/
-│   │   │   ├── schemas.py          # Canonical Pydantic models (single source of truth)
-│   │   │   ├── json_store.py       # JsonRepository (dev) — Supabase-API compatible
-│   │   │   └── supabase_store.py   # Supabase stub (production path)
+│   │   │   ├── schemas.py          # Pydantic models (single source of truth)
+│   │   │   ├── json_store.py       # JsonRepository (dev) — kompatibel dengan Supabase-API
+│   │   │   └── supabase_store.py   # Stub Supabase (jalur produksi)
 │   │   │
 │   │   └── config/
-│   │       └── settings.py         # Pydantic Settings (all from .env)
+│   │       └── settings.py         # Setting Pydantic (diambil dari .env)
 │   │
 │   └── tests/
 │       └── unit/
@@ -512,82 +512,82 @@ KerjaCerdas/
 ├── frontend/                       # React 18 + Vite
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── _design.jsx           # Design system (KC tokens, BrutalCard, etc.)
-│   │   │   ├── SeekerDashboard.jsx   # Seeker home (matches, profile, advisor CTA)
-│   │   │   ├── SeekerMatchResults.jsx # Full match list with score donuts
-│   │   │   ├── SkillGapPanel.jsx     # Skill gap + course recommendations
-│   │   │   ├── CVUploader.jsx        # PDF drag-drop → live Gemini parse
-│   │   │   ├── SavedJobsPage.jsx     # Bookmarked jobs (backend-synced)
-│   │   │   ├── EmployerDashboardV2.jsx  # Employer home (own jobs, metrics)
-│   │   │   ├── EmployerPostJob.jsx   # Job form + live AI estimation
-│   │   │   ├── EmployerCandidates.jsx # Top-5 candidate ranking
-│   │   │   ├── EmployerVerification.jsx # NPWP/Akta verification
-│   │   │   ├── JobPackUploader.jsx   # PDF batch job upload
-│   │   │   ├── VerificationDashboard.jsx # KTP/Ijazah verification flow
-│   │   │   ├── FloatingAdvisor.jsx   # Persistent chat bubble (all pages)
-│   │   │   └── AuthModal.jsx         # Login / Register modal
+│   │   │   ├── _design.jsx           # Design system (token KC, BrutalCard, dll.)
+│   │   │   ├── SeekerDashboard.jsx   # Seeker home (match, profil, CTA advisor)
+│   │   │   ├── SeekerMatchResults.jsx # Hasil match dengan skor berbentuk donat
+│   │   │   ├── SkillGapPanel.jsx     # Rekomendasi course + analisis skill gap
+│   │   │   ├── CVUploader.jsx        # Drag-drop PDF → parsing Gemini live
+│   │   │   ├── SavedJobsPage.jsx     # Pekerjaan tersimpan (disinkronkan dengan backend)
+│   │   │   ├── EmployerDashboardV2.jsx  # Employer home (job sendiri, metrik)
+│   │   │   ├── EmployerPostJob.jsx   # Form job + live estimasi AI
+│   │   │   ├── EmployerCandidates.jsx # Ranking Top-5 kandidat
+│   │   │   ├── EmployerVerification.jsx # Verifikasi NPWP/Akta
+│   │   │   ├── JobPackUploader.jsx   # Batch upload PDF lowongan kerja
+│   │   │   ├── VerificationDashboard.jsx # Alur verifikasi KTP/Ijazah
+│   │   │   ├── FloatingAdvisor.jsx   # Bubble chat menetap (seluruh halaman)
+│   │   │   └── AuthModal.jsx         # Modal Login / Register
 │   │   ├── store/
-│   │   │   └── useStore.js           # Zustand store (auth + UI + API calls)
+│   │   │   └── useStore.js           # State store Zustand (auth + UI + pemanggilan API)
 │   │   └── services/
-│   │       └── api.js                # All backend API calls (single source)
+│   │       └── api.js                # Akses API backend terpusat
 │   └── vite.config.js               # Proxy /api/* → :8000
 │
 ├── scripts/
-│   └── seed_json.py                 # Demo data seeder (also runs on first boot)
+│   └── seed_json.py                 # Seeder data demo (jalan saat boot awal)
 │
 ├── docs/
-│   ├── PROPOSAL_2ND.md              # Full business + technical proposal (27 sections)
+│   ├── PROPOSAL_2ND.md              # Proposal bisnis dan teknikal kompetisi (27 seksi)
 │   ├── PRD.md                       # Product Requirements Document
-│   ├── BUSINESS_MODEL.md            # Revenue model, unit economics
-│   ├── FEASIBILITY_REPORT.md        # Anti-hallucination & technical feasibility
-│   ├── ML_PIPELINE.md               # Full ML pipeline documentation
-│   ├── API_SPEC.md                  # OpenAPI spec narrative
-│   └── DEMO_SCRIPT.md              # Hackathon demo walkthrough
+│   ├── BUSINESS_MODEL.md            # Model bisnis dan metrik unit
+│   ├── FEASIBILITY_REPORT.md        # Laporan kelayakan teknis & anti-halusinasi
+│   ├── ML_PIPELINE.md               # Dokumentasi ML pipeline
+│   ├── API_SPEC.md                  # Spesifikasi naratif OpenAPI
+│   └── DEMO_SCRIPT.md               # Panduan skenario demo Hackathon
 │
-├── .env.example                     # Template — copy to .env
-├── docker-compose.yml               # Full stack (backend + frontend)
-├── pyproject.toml                   # Python dependencies
-└── README.md                        # This file
+├── .env.example                     # Contoh konfigurasi — copy ke .env
+├── docker-compose.yml               # Eksekusi full stack (backend + frontend)
+├── pyproject.toml                   # Dependensi instalasi Python
+└── README.md                        # Berkas informasi ini (This file)
 ```
 
 ---
 
-## 📊 Data & Feasibility
+## 📊 Data & Kelayakan
 
-### 1. Data Sources & Grounding
-Our models and matching algorithms are grounded in real Indonesian labor market data:
-- **BPS (Badan Pusat Statistik)**: Region codes, occupational classifications (KBJI).
-- **Industry Standard Taxonomies**: Real-world job titles and skills mapped to Indonesian context.
-- **Course Providers**: Live integration pathways with Dicoding, Coursera ID, and Prakerja.
+### 1. Sumber Data & Grounding
+Model AI dan algoritma matching kami didasarkan pada data pasar tenaga kerja Indonesia yang sesungguhnya:
+- **BPS (Badan Pusat Statistik)**: Kode region, klasifikasi okupasi (KBJI).
+- **Taksonomi Standar Industri**: Judul pekerjaan dan skill yang dipetakan pada konteks riil di Indonesia.
+- **Penyedia Course/Pelatihan**: Jalur integrasi dengan platform seperti Dicoding, Coursera ID, dan Prakerja.
 
-### 2. Semantic Embedding (Not Keywords)
+### 2. Semantic Embedding (Bukan Sekadar Kata Kunci)
 
-Traditional: `"Python" ∈ job.keywords` → binary match/no-match
+Tradisional: `"Python" ∈ job.keywords` → kecocokan biner (ya/tidak)
 
-**KerjaCerdas:** Every seeker profile and job posting is converted into a **3072-dimensional semantic vector** using Google Gemini Embedding API. The distance between these vectors captures *meaning*, not just token overlap.
+**KerjaCerdas:** Setiap profil pencari kerja dan lowongan diubah menjadi **vektor semantik 3072-dimensi** menggunakan API Google Gemini Embedding. Jarak antara vektor-vektor ini mewakili *makna* yang sebenarnya, bukan hanya kecocokan token teks.
 
 ```
-"5 years developing distributed payment systems in Go"
+"5 tahun mengembangkan sistem pembayaran terdistribusi di Go"
                     ↓ Gemini embed()
-[0.021, -0.143, 0.082, ..., 0.317]  ← 3072 floats
+[0.021, -0.143, 0.082, ..., 0.317]  ← 3072 angka float
                     ↓ cosine similarity
 vs "Backend Engineer – Go, Kafka, microservices, payment"
-→ score: 0.87  ← highly relevant, even without exact keyword match
+→ score: 0.87  ← Sangat relevan, walau tanpa kecocokan kata kunci eksak
 ```
 
-### 2. Multi-Signal Scoring Formula
+### 3. Formula Scoring Multi-Sinyal
 
 ```python
 final_score = (
-    cosine_similarity * 0.50 +   # What does the seeker actually know?
-    skill_overlap     * 0.30 +   # How many required skills match exactly?
-    region_boost      * 0.10 +   # Is the seeker in the right city/region?
-    salary_fit        * 0.05 +   # Does expected salary fit the range?
-    experience_fit    * 0.05     # Does YoE align with the requirement?
+    cosine_similarity * 0.50 +   # Apa yang pencari kerja benar-benar kuasai?
+    skill_overlap     * 0.30 +   # Berapa banyak jumlah skill yang relevan dan dibutuhkan?
+    region_boost      * 0.10 +   # Apakah lokasi berada di domisili yang sama?
+    salary_fit        * 0.05 +   # Apakah kisaran gaji sesuai?
+    experience_fit    * 0.05     # Apakah tahun pengalaman (YoE) sesuai syarat?
 )
 ```
 
-### 3. LangGraph Agentic Orchestration
+### 4. Orkestrasi Agen LangGraph (LangGraph Agentic Orchestration)
 
 ```
 User: "tampilkan 5 pekerjaan terbaik buat aku"
@@ -598,127 +598,127 @@ User: "tampilkan 5 pekerjaan terbaik buat aku"
           │
           ▼
    MatcherNode
-   → embeds seeker, runs cosine search, scores top-K
+   → melakukan embedding pencari kerja, pencarian cosine, perhitungan Top-K
           │
           ▼
    ComposeNode
-   → LLM writes Bahasa Indonesia explanation for each match
+   → LLM menghasilkan penjelasan/reasoning Bahasa Indonesia untuk setiap pekerjaan yang cocok
           │
           ▼
-   Response: 5 enriched job cards + explanations
+   Response: 5 hasil lowongan (job card) dilengkapi penjelasan AI
 ```
 
-The same endpoint handles **matching**, **skill gap analysis**, and **career advising** — intent routing happens automatically based on the user's message.
+Endpoint yang sama melayani **matching**, **skill gap analysis**, dan **career advising** — pengarah intent berjalan secara dinamis mengikuti pertanyaan dari pengguna.
 
-### 4. Graceful Degradation (No API Key? No Problem.)
+### 5. Degradasi Anggun (Graceful Degradation - Tanpa API Key? Tidak Masalah)
 
-If `GEMINI_API_KEY` is not configured:
-- `GeminiEmbedder` → automatically falls back to `HashEmbedder`
-- `HashEmbedder` produces deterministic vectors from token hashes — matching still works, just with lower semantic accuracy
-- PDF parsing falls back to text-heuristic extraction (pypdf)
-- Platform **never crashes** — degrades gracefully instead
+Jika `GEMINI_API_KEY` tidak diatur di lingkungan sistem:
+- `GeminiEmbedder` → otomatis jatuh ke sistem fallback `HashEmbedder`.
+- `HashEmbedder` menyusun vektor deterministik berbasis hashing text — fitur matching tetap menyala, walau dengan akurasi semantik yang lebih rendah.
+- Proses parsing PDF akan ditangani ekstraksi heuristik (menggunakan library pypdf).
+- Platform **tidak pernah crash** — melainkan mengalami reduksi kinerja dengan cara yang elegan (graceful degradation).
 
 ---
 
-## 🔐 Security & Compliance
+## 🔐 Keamanan & Kepatuhan
 
-KerjaCerdas is designed with **UU PDP (Undang-Undang Pelindungan Data Pribadi)** readiness in mind from day one.
+KerjaCerdas dikembangkan dengan kepatuhan standar dan siap terhadap prinsip-prinsip **UU PDP (Undang-Undang Pelindungan Data Pribadi)** sejak hari pertama.
 
-| Concern | Implementation |
+| Aspek Keamanan | Implementasi |
 |---|---|
-| Passwords | bcrypt hash (cost 12) — never stored plaintext |
-| Sessions | JWT HS256 (24h expiry) — from `.env` `JWT_SECRET_KEY` |
-| PII in AI calls | Regex redaction: email → `[email]`, phone → `[phone]`, NIK → `[nik]` before LLM |
-| Role enforcement | `require_employer`, `require_seeker` FastAPI dependencies per router |
-| CORS | Strict whitelist: localhost:3000/5173 in dev, production domain only |
-| Verification data | SHA-256 hash only stored — original NIK never persisted |
-| Secrets | RULE-01 (PROTOCOL.md): no hardcoded secrets anywhere |
-| Compliance | Localized data processing; strict separation of PII from AI prompt context |
+| Kata Sandi | Hashing bcrypt (cost 12) — data asli (plaintext) takkan pernah tersimpan |
+| Sesi (Sessions) | Akses berbasis JWT HS256 (masa aktif 24 jam) — mengacu dari file `.env` `JWT_SECRET_KEY` |
+| PII di Akses AI | Redaksi Regex otomatis: email → `[email]`, telepon → `[phone]`, NIK → `[nik]` sebelum dikirim ke LLM |
+| Penegakan Role | Parameter FastAPI `require_employer`, `require_seeker` dimuat di setiap router |
+| CORS | Akses hanya untuk localhost:3000/5173 ketika tahapan dev, terbatas pada domain web spesifik ketika production |
+| Data Verifikasi | Validasi dengan SHA-256 hash — input asli identitas (seperti NIK) tidak disimpan permanen |
+| Kode Rahasia | RULE-01 (PROTOCOL.md): tidak ada secret string (seperti token akses, api key) yang ditulis hardcode |
+| Kepatuhan | Menjaga separasi PII data pengguna dengan payload konteks AI system (Prompt Data) |
 
 ---
 
-## 🚀 Implementation Readiness (MVP)
+## 🚀 Kesiapan Implementasi (MVP)
 
-KerjaCerdas is not just a wireframe. We built a **fully functional MVP** ready for live user testing.
+KerjaCerdas bukanlah sekadar antarmuka (wireframe). Kami telah mendirikan **MVP yang berfungsi penuh** dan siap melayani skenario pengujian user yang sebenarnya.
 
-- **Backend Readiness**: Fully implemented FastAPI backend with LangGraph agentic orchestration, semantic vector search, and integrated Gemini capabilities.
-- **Frontend Readiness**: Responsive React 18 SPA with Zustand state management, capable of handling PDF uploads, live AI chat, and dynamic data visualization.
-- **Zero-Friction Demo**: The repository auto-seeds 20 real-world job seekers, 12 employers, and 15 courses on first boot, allowing judges to test the semantic matching engine immediately.
-- **Offline Fallback**: Designed to degrade gracefully using an offline `HashEmbedder` if API keys are unavailable, ensuring the platform never crashes during a demo.
+- **Kesiapan Backend**: Backend implementasi penuh di FastAPI dengan orkestrasi agent LangGraph, pencarian vektor semantik (vector search), serta pemanfaatan fitur integrasi Gemini yang komprehensif.
+- **Kesiapan Frontend**: Web SPA React 18 Responsif yang memanfaatkan manajemen state Zustand, kapabilitas menampung upload file, live chatbot AI, hingga visualisasi antarmuka dinamis.
+- **Demo Tanpa Kendala (Zero-Friction Demo)**: Program seed sistem akan secara otomatis memuat 20 pelamar riil (job seekers), 12 pemberi kerja (employers), beserta 15 contoh pelatihan ketika server pertama kali dijalankan, agar Juri dapat merasakan secara langsung interaksi platform.
+- **Offline Fallback**: Sistem dirancang untuk mengatasi kesalahan fatal apabila koneksi AI tak terjangkau. Berkat dukungan integrasi `HashEmbedder`, ekosistem sistem dijamin tahan banting alias bebas resiko gagal beroperasi selama demo.
 
 ---
 
-## 💼 Business Model (Summary)
+## 💼 Model Bisnis (Ringkasan)
 
-| Phase | Revenue Stream | Target MRR |
+| Fase | Alur Pemasukan | Target MRR |
 |---|---|---|
-| **Phase 1** (now) | Employer pay-per-post (Rp 499rb) [ESTIMATE], Seeker Pro (Rp 49rb/mo) [ESTIMATE], Affiliate courses 8–15% [ESTIMATE] | Rp 17,5 juta [ESTIMATE] |
-| **Phase 2** (6–18 mo) | Employer Growth plan (Rp 1,5jt/mo) [ESTIMATE], Enterprise (Rp 25jt/mo) [ESTIMATE], Verified Talent Pool | Rp 1 miliar [ESTIMATE] |
-| **Phase 3** (18mo+) | Government licensing (Disnaker), ATS integration, Regional analytics API | Rp 5 miliar [ESTIMATE] |
+| **Fase 1** (saat ini) | Akses Employer pay-per-post (Rp 499rb) [ESTIMASI], Seeker Pro (Rp 49rb/bulan) [ESTIMASI], Afiliasi kursus 8–15% [ESTIMASI] | Rp 17,5 juta [ESTIMASI] |
+| **Fase 2** (6–18 bln) | Layanan Growth Employer (Rp 1,5jt/bulan) [ESTIMASI], Enterprise (Rp 25jt/bulan) [ESTIMASI], Pool Kandidat Terverifikasi | Rp 1 miliar [ESTIMASI] |
+| **Fase 3** (18bln+) | Kemitraan lisensi pemerintah (Disnaker), integrasi sistem ATS internal, API analitik talenta antar daerah | Rp 5 miliar [ESTIMASI] |
 
-**Unit Economics:** LTV/CAC = **28×** [ESTIMATE] · Gross margin = **78%** [ESTIMATE] · Seeker is always **free**
+**Unit Economics:** Rasio LTV/CAC = **28×** [ESTIMASI] · Profit margin / Gross margin = **78%** [ESTIMASI] · Akses penuh Seeker selalu **gratis (free)**.
 
-→ See [docs/PROPOSAL_2ND.md](docs/PROPOSAL_2ND.md) for the full 27-section business proposal.
+→ Penjelasan detil bisnis tersedia dalam dokumen proposal spesifik 27 bagian di [docs/PROPOSAL_2ND.md](docs/PROPOSAL_2ND.md).
 
 ---
 
-## 🔧 Development Guide
+## 🔧 Panduan Pengembangan
 
-### Run Backend Tests
+### Jalankan Testing Backend
 ```powershell
 python -m pytest backend/tests/unit/test_api.py -v
 ```
 
-### Manually Re-Seed Demo Data
+### Proses Seed Data Demo Secara Manual
 ```powershell
 python -m scripts.seed_json
 ```
-This seeds: **Bank Mandiri, Tokopedia, Akulaku** as employers with **12 job postings** and **5 seeker profiles** (Andi, Rina, Budi, Sari, Dian). All with real Gemini embeddings if API key is set.
+Langkah ini meregistrasi profil entitas: **Bank Mandiri, Tokopedia, Akulaku** sebagai Employer yang diisi oleh total **12 jenis lowongan pekerjaan (job postings)**, ditemani oleh daftar pelamar fiktif yaitu **5 profil pencari kerja (seeker profiles)** (Andi, Rina, Budi, Sari, Dian). Proses eksekusi pemuatan data ke profil sudah ditenagai oleh format struktur embedding vektor dari engine AI Gemini (selama Gemini API token disertakan).
 
-### Check Backend Health
+### Periksa Status Kesehatan Backend (Health Check)
 ```
 GET http://localhost:8000/health
 → { "status": "healthy", "service": "KerjaCerdas API", "version": "0.3.0" }
 ```
 
-### API Interactive Docs
+### Dokumentasi Interaktif API
 ```
-http://localhost:8000/docs     ← Swagger UI (all endpoints, try-it-out)
-http://localhost:8000/redoc    ← ReDoc (cleaner reading)
+http://localhost:8000/docs     ← Swagger UI (menyediakan penelusuran seluruh endpoints dengan fitur uji coba respons 'try-it-out')
+http://localhost:8000/redoc    ← ReDoc (layout dokumentasi dengan bacaan yang tertata bersih)
 ```
 
-### Docker (Full Stack)
+### Sistem Docker (Opsi Instalasi Mode Full Stack)
 ```powershell
 docker-compose up --build
-# Frontend: http://localhost:3000
-# Backend:  http://localhost:8000
+# Akses Frontend (Aplikasi Antarmuka): http://localhost:3000
+# Akses Backend (Servis Server):  http://localhost:8000
 ```
 
 ---
 
 ## 🗺️ Roadmap
 
-| Phase | Timeline | Milestone |
+| Fase | Timeline | Milestone |
 |---|---|---|
-| **v0.3 (current)** | May 2026 | Full-stack MVP, Gemini matching, LangGraph agents, e-KYC mock |
-| **v0.4** | June 2026 | pgvector migration, IndoBERT fine-tuning baseline |
-| **v0.5** | July 2026 | Prakerja & Dicoding affiliate integration |
-| **v1.0** | Aug 2026 | Production PostgreSQL, real Dukcapil API, pilot with 10 employer SMEs |
-| **v1.5** | Q4 2026 | 100 employer, 5K seeker, 2 Disnaker province pilots |
+| **v0.3 (sekarang)** | Mei 2026 | Full-stack MVP, Gemini matching, agen LangGraph, mock integrasi verifikasi e-KYC |
+| **v0.4** | Juni 2026 | Migrasi ke pgvector, penyesuaian (fine-tuning) model baseline IndoBERT |
+| **v0.5** | Juli 2026 | Pengembangan integrasi afiliasi platform Prakerja & Dicoding |
+| **v1.0** | Ags 2026 | Produksi menggunakan database PostgreSQL, integrasi sesungguhnya pada layanan API Dukcapil pemerintah, pengujian bersama 10 mitra UKM (SMEs) |
+| **v1.5** | Q4 2026 | Ekspansi menampung 100 jaringan employer, pencapaian skala volume sistem hingga 5000 job seeker, dengan 2 program dinas percobaan di skala Disnaker level Provinsi |
 
 ---
 
-## 📚 Further Reading
+## 📚 Bacaan Lebih Lanjut
 
-| Document | Description |
+| Dokumen | Deskripsi |
 |---|---|
-| [PROPOSAL_2ND.md](docs/PROPOSAL_2ND.md) | Full 27-section business + technical competition proposal |
-| [PRD.md](docs/PRD.md) | Product Requirements Document |
-| [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) | Revenue model, unit economics, competitive analysis |
-| [FEASIBILITY_REPORT.md](docs/FEASIBILITY_REPORT.md) | Anti-hallucination design, evaluation metrics |
-| [ML_PIPELINE.md](docs/ML_PIPELINE.md) | Full ML pipeline: ingestion → training → evaluation → deployment |
-| [API_SPEC.md](docs/API_SPEC.md) | OpenAPI endpoint narrative |
-| [VERIFICATION_DEMO.md](docs/VERIFICATION_DEMO.md) | e-KYC demo behavior and test cases |
+| [PROPOSAL_2ND.md](docs/PROPOSAL_2ND.md) | Penjelasan dokumen rencana komprehensif bisnis teknikal dengan isi cakupan 27 subjek topik penjabaran proposal eksekutif kompetisi proyek |
+| [PRD.md](docs/PRD.md) | File Dokumen Spesifikasi Produk (Product Requirements Document) |
+| [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) | Susunan Model Arus Pendapatan (Revenue Model), struktur hitung ekonomi dan analisis kompetitor target komersialisasi platform pasaran persaingan bisnis platform ketenagakerjaan |
+| [FEASIBILITY_REPORT.md](docs/FEASIBILITY_REPORT.md) | Studi penilaian sistem pendukung model (Anti-hallucination design), dan rumusan formula metrik uji tingkat kehandalan AI terhadap kendali parameter output. |
+| [ML_PIPELINE.md](docs/ML_PIPELINE.md) | Skema utuh struktur Machine Learning pipeline untuk penelusuran proses: metode kompilasi asimilasi input (ingestion) → tahapan fase pengembangan pola algoritma machine learning (training) → sesi pengukuran analisis mutu penilaian kecocokan (evaluation) → fase deployment aplikasi |
+| [API_SPEC.md](docs/API_SPEC.md) | Rincian panduan komunikasi naratif spesifik OpenAPI standardisasi endpoints API |
+| [VERIFICATION_DEMO.md](docs/VERIFICATION_DEMO.md) | Pedoman demonstrasi alur pengujian verifikasi perilaku prosedur (e-KYC) dengan simulasi (test cases) |
 
 ---
 
@@ -726,6 +726,6 @@ docker-compose up --build
 
 **KerjaCerdas v0.3.0**
 
-*Built for Hackathon x Digdaya 2026*
+*Dibangun untuk Hackathon x Digdaya 2026*
 
 </div>
