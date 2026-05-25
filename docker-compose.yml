@@ -20,12 +20,12 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./src:/app/src
+      - ./backend:/app/backend
       - ./models:/app/models
 
   frontend:
     build:
-      context: ./src/frontend
+      context: ./frontend
     ports:
       - "3000:3000"
     depends_on:
@@ -57,14 +57,5 @@ services:
       timeout: 3s
       retries: 3
 
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.10.0
-    ports:
-      - "5001:5000"
-    volumes:
-      - mlflow_data:/mlflow
-    command: mlflow server --host 0.0.0.0 --backend-store-uri /mlflow
-
 volumes:
   postgres_data:
-  mlflow_data:

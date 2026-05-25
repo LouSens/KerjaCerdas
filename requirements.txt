@@ -1,2 +1,0 @@
-# Local editable install from this repo
--e .

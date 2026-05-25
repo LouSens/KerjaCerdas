@@ -41,7 +41,7 @@
 - **Base:** `indobert-base-uncased` fine-tuned on Indonesian job descriptions
 - **Bi-Encoder:** Dual tower — job embedding ↔ seeker embedding → cosine similarity
 - **Cross-Encoder:** Reranks top-50 candidates for precision
-- **Tracking:** All experiments logged to MLflow (RULE-03)
+- **Tracking:** All experiments logged (RULE-03)
 - **Seeds:** `random.seed(42)`, `torch.manual_seed(42)`, `numpy.random.seed(42)`
 - **Output:** `models/bert_matcher_v{version}.pt`
 

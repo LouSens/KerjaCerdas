@@ -9,7 +9,7 @@ Indonesia has **7.9 million unemployed** (BPS, 2025) with a severe mismatch betw
 ## 2. Solution
 
 **KerjaCerdas** ("Smart Work") is an AI-powered job matching platform that:
-- Uses **IndoBERT fine-tuned models** to semantically match seeker skills to job requirements
+- Uses **Semantic Embeddings** to semantically match seeker skills to job requirements
 - Provides **skill gap analysis** powered by Google Gemini LLM
 - Offers **personalized career advice** via LLM agent in Bahasa Indonesia
 - Covers all **34 provinces** with regional labor demand weighting
@@ -26,8 +26,8 @@ Indonesia has **7.9 million unemployed** (BPS, 2025) with a severe mismatch betw
 
 ### 4.1 AI Job Matching
 - Seeker inputs profile (skills, experience, education, region, salary)
-- BERT bi-encoder retrieves top-K job matches from 50,000+ postings
-- Cross-encoder reranks top-50 for precision
+- Embeddings model retrieves top-K job matches from 50,000+ postings
+- Weighted scoring system incorporating skill overlap, region, salary, and experience
 - Returns match score, skill overlap %, and explanation in Bahasa
 
 ### 4.2 Skill Gap Analysis
@@ -59,7 +59,7 @@ See `PROTOCOL.md §7` for locked technology decisions.
 | Milestone | Date | Deliverable |
 |-----------|------|-------------|
 | Week 0 | 2026-03-03 | Protocol + project scaffold |
-| Week 1 | 2026-03-10 | Data pipeline + BERT training baseline |
+| Week 1 | 2026-03-10 | Data ingestion + Semantic Embeddings pipeline |
 | Week 2 | 2026-03-17 | API + agent orchestration |
 | Week 3 | 2026-03-24 | Frontend MVP + integration |
 | Week 4 | 2026-03-31 | Demo polish + evaluation |

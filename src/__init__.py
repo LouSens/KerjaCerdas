@@ -1,1 +1,0 @@
-"""KerjaCerdas — Source package root."""
