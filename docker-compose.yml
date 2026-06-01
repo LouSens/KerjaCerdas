@@ -1,5 +1,5 @@
-# KerjaCerdas — Docker Compose Stack
-# Usage: docker-compose up (requires Docker Desktop running)
+# KerjaCerdas — Docker Compose Stack (MVP V2)
+# Usage: docker-compose up --build (requires Docker Desktop running)
 
 services:
   api:
@@ -9,53 +9,21 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://kerja:password@postgres:5432/kerjacerdas
-      - REDIS_URL=redis://redis:6379/0
       - DEMO_MODE=true
     env_file:
       - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     volumes:
       - ./backend:/app/backend
-      - ./models:/app/models
+      - ./data:/app/data
 
   frontend:
     build:
       context: ./frontend
     ports:
       - "3000:3000"
+    environment:
+      - VITE_API_URL=http://api:8000
+    volumes:
+      - ./frontend/src:/app/src
     depends_on:
       - api
-
-  postgres:
-    image: pgvector/pgvector:pg15
-    environment:
-      POSTGRES_USER: kerja
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: kerjacerdas
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U kerja -d kerjacerdas" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-
-volumes:
-  postgres_data:

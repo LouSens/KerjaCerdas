@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Toaster } from 'react-hot-toast'
+
 import useStore from './store/useStore'
 
 import PublicHeader from './components/PublicHeader'
@@ -44,7 +44,6 @@ export default function App() {
 
     return (
         <div className="min-h-screen bg-kc-cream font-sans text-kc-dark">
-            <Toaster position="top-right" />
             <AuthModal />
 
             {!isAuthenticated ? <PublicLayout view={activeView} /> : (

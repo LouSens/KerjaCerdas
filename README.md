@@ -5,21 +5,23 @@
 # KerjaCerdas
 **Autonomous Recruitment Platform powered by Semantic Matching & Multi-Agent Swarm**
 
-[![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com) [![Frontend: React 18](https://img.shields.io/badge/Frontend-React_18-61DAFB?style=flat-square&logo=react)](https://react.dev) [![AI: Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-4285F4?style=flat-square&logo=google)](https://ai.google.dev) [![Agents: LangGraph](https://img.shields.io/badge/Agents-LangGraph-FF6F00?style=flat-square)](https://langchain-ai.github.io/langgraph/) [![Tooling: Vite](https://img.shields.io/badge/Tooling-Vite-646CFF?style=flat-square&logo=vite)](https://vitejs.dev) [![Styling: Neo-Brutalism](https://img.shields.io/badge/Styling-Neo_Brutalism-FF6F00?style=flat-square)](https://react.dev)
+[![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com) [![Frontend: React 18](https://img.shields.io/badge/Frontend-React_18-61DAFB?style=flat-square&logo=react)](https://react.dev) [![AI: Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-4285F4?style=flat-square&logo=google)](https://ai.google.dev) [![Agents: LangGraph](https://img.shields.io/badge/Agents-LangGraph-FF6F00?style=flat-square)](https://langchain-ai.github.io/langgraph/) [![Tooling: Vite](https://img.shields.io/badge/Tooling-Vite-646CFF?style=flat-square&logo=vite)](https://vitejs.dev) 
 
 *An enterprise-grade talent matching infrastructure utilizing high-dimensional vector search and ReAct-based autonomous agents to streamline recruitment pipelines.*
 
-[Panduan Demo](#-panduan-demo-skenario-juri) · [Quick Start](#-quick-start-5-menit) · [Arsitektur](#-arsitektur-sistem) · [Proposal Bisnis](docs/PROPOSAL_FINAL.md)
+<br>
+
+[![Demo Guide](https://img.shields.io/badge/🎬_Demo_Guide-111827?style=for-the-badge)](#-panduan-demo-terperinci) [![Architecture](https://img.shields.io/badge/🧠_System_Architecture-111827?style=for-the-badge)](#-arsitektur-sistem-inti) [![Quick Start](https://img.shields.io/badge/🚀_Quick_Start-111827?style=for-the-badge)](#-quick-start-5-menit) [![Business Proposal](https://img.shields.io/badge/📄_Business_Proposal-FF6F00?style=for-the-badge)](docs/PROPOSAL_FINAL.md)
 
 </div>
 
 ---
 
-## 📌 Masalah yang Kami Pecahkan
+## 📌 Problem We Solve
 
-Indonesia memiliki **7.86 juta pengangguran** (BPS, Feb 2025) — namun employer sering mengatakan *"sulit mencari orang yang tepat"*. Akar penyebabnya adalah **triple mismatch**:
+Indonesia has **7.86 million unemployed** (BPS, Feb 2025) — but employers often say *"it's hard to find the right people"*. The root cause is **triple mismatch**:
 
-| Mismatch | Dampak |
+| Mismatch | Impact |
 |---|---|
 | **Structural Mismatch** (*Oversupply* pekerja umum vs *Undersupply* talenta digital) | Pertumbuhan industri modern terhambat kelangkaan SDM |
 | **Relevance Mismatch** (Pencarian *keyword* mengabaikan semantik) | Kandidat bagus ditolak; yang kurang tepat malah masuk shortlist |
@@ -29,21 +31,21 @@ Portal kerja yang ada (Jobstreet, Glints, Kalibrr) pada dasarnya adalah **mesin 
 
 ---
 
-## ✨ Perbedaan Utama KerjaCerdas
+## ✨ Key Differences
 
-| Fitur | Portal Tradisional | **KerjaCerdas (Enterprise AI)** |
+| Feature | Traditional Portal | **KerjaCerdas (Enterprise AI)** |
 |---|---|---|
-| **Matching Engine** | Filter *Keyword* Kaku | **Gemini Semantic Embeddings (3072-dim)** |
-| **Agentic Architecture** | Bot Chat Sederhana | **ReAct Multi-Agent Supervisor Swarm** |
+| **Matching Engine** | Kaku *Keyword* Filters | **Gemini Semantic Embeddings (3072-dim)** |
+| **Agentic Architecture** | Simple Chat Bot | **ReAct Multi-Agent Supervisor Swarm** |
 | **Sistem Navigasi UI** | Satu Arah | **Dual-Track (AI Autopilot & Manual Search)** |
 | **Skill Gap & Course** | Tidak ada | **Skill gap spesifik + rekomendasi kursus** |
 | **Monetisasi B2B** | Biaya Langganan/Iklan di Muka | **Hybrid: Pay-to-Unlock (Rp 50rb) & SaaS Pro** |
 
 ---
 
-## 🎯 Fitur MVP (Berjalan Penuh di Demo Ini)
+## 🎯 MVP Features (Fully functional in this demo)
 
-### Untuk Pencari Kerja (Seeker)
+### For Seeker
 - ✅ **Upload CV (PDF)** — Gemini AI parse skill, pengalaman, pendidikan otomatis.
 - ✅ **AI Job Matching** — pencarian vektor semantik terhadap 84+ lowongan aktif.
 - ✅ **Dual-Track Manual Search** — Cari loker manual namun tetap disematkan skor AI Match Ranking!
@@ -52,7 +54,7 @@ Portal kerja yang ada (Jobstreet, Glints, Kalibrr) pada dasarnya adalah **mesin 
 - ✅ **ATS Resume Review** — [NEW] Kritik ATS terhadap struktur CV kandidat.
 - ✅ **AI Career Advisor** — chat Bahasa Indonesia, sadar konteks profil.
 
-### Untuk Employer
+### For Employer
 - ✅ **Post Lowongan** — form manual + live AI pool estimation saat mengetik.
 - ✅ **Upload Job Pack (PDF)** — Gemini batch-parse PDF → banyak lowongan otomatis.
 - ✅ **AI Candidate Ranking** — top-5 kandidat diranking Gemini per lowongan secara otomatis.
@@ -72,10 +74,10 @@ Portal kerja yang ada (Jobstreet, Glints, Kalibrr) pada dasarnya adalah **mesin 
 
 ## 🚀 Quick Start (5 Menit)
 
-### Prasyarat
+### Prerequisites
 - **Python 3.11+**
 - **Node.js 18+**
-- (Opsional) `GEMINI_API_KEY` dari Google AI Studio.
+- (Optional) `GEMINI_API_KEY` from Google AI Studio.
 
 ### Langkah 1 — Clone & Konfigurasi
 ```powershell
@@ -111,11 +113,11 @@ Frontend aktif di **`http://localhost:3000`**
 
 ---
 
-## 🎬 Panduan Demo Terperinci
+## 🎬 Detailed Demo Guide
 
-### Jalur A — Flow Pencari Kerja (Seeker)
+### Path A — Seeker Flow
 
-#### 1. Login & Inisialisasi
+#### 1. Login & Initialization
 `andi@example.com` / `demo123456` → diarahkan ke Seeker Dashboard. Data *Zustand store* (profil, matches, aplikasi) di-hydrate.
 
 #### 2. Upload CV *atau* Isi Profil Manual
@@ -139,7 +141,7 @@ Sambil menguji AI Advisor (bubble 🤖 di kanan bawah), perintahkan: *"Beri saya
 
 ---
 
-### Jalur B — Flow Pemberi Kerja (Employer / HRD)
+### Path B — Employer Flow
 
 #### 1. Login sebagai Employer
 `hr@tokopedia.com` / `demo123456` → diarahkan ke Employer Dashboard.
@@ -154,7 +156,7 @@ Klik **"+ Pasang Lowongan"**. Saat Anda mengetik spesifikasi pekerjaan, algoritm
 Klik menu **"Kandidat"** pada baris lowongan. HRD tidak melihat ratusan CV statis, melainkan **Top-5 Kandidat Terbaik** yang sudah diurutkan (Rerank) berdasarkan *skill overlap* dan *Cosine Similarity*.
 - Klik **Unlock Kontak** (Simulasi tagihan Rp 50.000) untuk mengekstrak nomor telepon dan email pelamar yang terverifikasi.
 
-## 🧠 Arsitektur Agentic AI (Autonomous Swarm)
+## 🧠 Agentic AI Architecture (Autonomous Swarm)
 
 Kami tidak menggunakan *Prompt Wrapper* statis. Otak dari KerjaCerdas ditenagai oleh pola *Autonomous Multi-Agent Swarm* menggunakan **LangGraph (`create_react_agent`)** dan **Gemini 3.1 Flash**. 
 
@@ -199,7 +201,7 @@ Gemini Supervisor tidak lagi diarahkan secara statis. Jika kandidat meminta: *"C
 
 ---
 
-## 🏗️ Arsitektur Sistem Inti
+## 🏗️ System Architecture
 
 ### Alur Data V: Dual-Track Matching
 
@@ -232,7 +234,7 @@ final_score = (
 
 ---
 
-## 📂 Struktur Repositori
+## 📂 Repository Structure
 
 ```
 KerjaCerdas/
@@ -324,7 +326,7 @@ KerjaCerdas/
 
 ---
 
-## 💼 Model Bisnis (Ringkasan)
+## 💼 Business Model
 
 | Fase | Alur Pendapatan | Target MRR |
 |---|---|---|
@@ -333,12 +335,16 @@ KerjaCerdas/
 | **Fase 3** | Lisensi Pemerintahan (Disnaker), *Talent Analytics Subscriptions* | Rp 5 miliar |
 
 **Unit Economics:** LTV/CAC = 28× · Gross margin = 78% · Kandidat selalu **gratis**.
-→ Detail lengkap: [docs/PROPOSAL_FINAL.md](docs/PROPOSAL_FINAL.md)
+→ Detail lengkap: [Proposal](docs/PROPOSAL_FINAL.md)
 
 ---
 
 <div align="center">
 
 **KerjaCerdas © 2026** — *Enterprise Talent AI Infrastructure*
-[Documentation](docs/) | [API Reference](http://localhost:8000/docs) | [Enterprise Inquiries](#)
+
+<br>
+
+[![Docs](https://img.shields.io/badge/Documentation-docs%2F-009688?style=flat-square)](#) [![API](https://img.shields.io/badge/API_Reference-Swagger-009688?style=flat-square)](http://localhost:8000/docs) 
+
 </div>

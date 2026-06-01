@@ -24,6 +24,10 @@ dependencies = [
     "bcrypt>=4.1.0",
     "PyJWT>=2.8.0",
     "python-multipart>=0.0.20",
+    # Database
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.19.0",
+    "asyncpg>=0.29.0",
     # PDF text extraction (offline fallback when no Gemini/Vertex key)
     "pypdf>=5.0.0",
     # AI / agents
@@ -31,16 +35,6 @@ dependencies = [
     "langgraph>=0.2.50",
     "langchain-core>=0.3.0",
     "langchain-google-genai>=2.0.0",
-    # Data / storage
-    "sqlalchemy>=2.0.0",
-    "aiosqlite>=0.20.0",
-    "asyncpg>=0.29.0",
-    "alembic>=1.13.0",
-    "pgvector>=0.3.0",
-    # ML
-    "numpy>=1.26.0",
-    "scikit-learn>=1.4.0",
-    "pandas>=2.2.0",
 ]
 
 [project.optional-dependencies]

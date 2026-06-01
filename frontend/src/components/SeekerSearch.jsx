@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { searchJobs } from '../services/api'
 import useStore from '../store/useStore'
 import { BrutalCard, KC, topBtn, DesignStyles } from './_design'
-import JobCard from './JobCard' // assuming JobCard exists or we render manually
 
 export default function SeekerSearch() {
     const [query, setQuery] = useState('')
@@ -63,7 +62,7 @@ export default function SeekerSearch() {
                     {results.map(job => {
                         const aiScore = getAiScore(job.id)
                         return (
-                            <BrutalCard key={job.id} bg="#fff">
+                            <BrutalCard key={job.id} color="#fff">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>{job.title}</h3>

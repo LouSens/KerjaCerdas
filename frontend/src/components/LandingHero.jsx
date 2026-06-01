@@ -48,21 +48,21 @@ const KC_CSS = `
 .kc-fade-up.d3 { animation-delay: .28s; }
 .kc-fade-up.d4 { animation-delay: .38s; }
 
-.kc-card { transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease; }
-.kc-card:hover { transform: translate(-3px,-3px) rotate(-.3deg); box-shadow: 9px 9px 0 #0B0B0F; }
+.kc-card { transition: transform .2s ease, box-shadow .2s ease; }
+.kc-card:hover { transform: translateY(-4px); box-shadow: 6px 6px 0 #0B0B0F; }
 
-.kc-card-tilt { transition: transform .35s cubic-bezier(.22,.61,.36,1), box-shadow .35s ease; will-change: transform; }
-.kc-card-tilt:hover { transform: rotate(0deg) translateY(-8px) scale(1.04) !important; box-shadow: 10px 10px 0 #0B0B0F; z-index: 5; animation-play-state: paused; }
+.kc-card-tilt { transition: transform .3s ease, box-shadow .3s ease; will-change: transform; }
+.kc-card-tilt:hover { transform: translateY(-6px) scale(1.02) !important; box-shadow: 8px 8px 0 #0B0B0F; z-index: 5; animation-play-state: paused; }
 
 .kc-float-a { animation: kc-float-a 6s ease-in-out infinite; }
 .kc-float-b { animation: kc-float-b 5.5s ease-in-out infinite .3s; }
 .kc-float-c { animation: kc-float-c 7s ease-in-out infinite .6s; }
 
-.kc-sticker { animation: kc-pulse 3.5s ease-in-out infinite; cursor: pointer; }
-.kc-sticker:hover { animation: kc-spin-slow 1.6s ease-in-out forwards; }
+.kc-sticker { animation: kc-pulse 3.5s ease-in-out infinite; cursor: pointer; transition: transform .2s ease; }
+.kc-sticker:hover { transform: scale(1.05) rotate(0deg) !important; animation-play-state: paused; }
 
-.kc-headline-sticker { display: inline-block; animation: kc-wiggle 5s ease-in-out infinite; transform-origin: center; }
-.kc-headline-sticker:hover { animation: kc-spin-slow 1.4s ease-in-out forwards; }
+.kc-headline-sticker { display: inline-block; animation: kc-wiggle 5s ease-in-out infinite; transform-origin: center; transition: transform .2s ease; }
+.kc-headline-sticker:hover { transform: scale(1.05) rotate(0deg) !important; animation-play-state: paused; }
 
 .kc-avatar-stack > div { animation: kc-avatar-pop 2.2s ease-in-out infinite; transition: transform .2s ease; }
 .kc-avatar-stack > div:nth-child(2) { animation-delay: .15s; }
@@ -405,12 +405,12 @@ export default function LandingHero() {
                         <span className="kc-fade-up"><Tag color={KC.yellow} icon={<I.Sparkle s={12} />}>Smart Job Matching · Bahasa Indonesia</Tag></span>
                         <h1 className="kc-h1 kc-fade-up d1" style={{ fontWeight: 900, margin: '20px 0 12px' }}>
                             Kerja yang<br />
-                            <span className="kc-headline-sticker" style={{ background: KC.orange, color: '#fff', padding: '0 14px', boxShadow: `6px 6px 0 ${KC.ink}`, border: `3px solid ${KC.ink}`, marginTop: 6, cursor: 'pointer' }}>cocok beneran.</span><br />
+                            <span className="kc-headline-sticker" style={{ background: KC.orange, color: '#fff', padding: '0 14px', boxShadow: `6px 6px 0 ${KC.ink}`, border: `3px solid ${KC.ink}`, marginTop: 6, cursor: 'pointer' }}>Match Akurat.</span><br />
                             Bukan asal lempar CV.
                         </h1>
                         <p className="kc-fade-up d2" style={{ fontSize: 18, lineHeight: 1.55, color: KC.mute, maxWidth: 520, margin: '20px 0 28px' }}>
-                            Matching semantik 87% akurat dari CV-mu, peta skill gap dengan rekomendasi kursus, dan advisor karier AI 24 jam.
-                            Bos juga dapet top-5 kandidat tiap lowongan — tanpa pusing.
+                            AI Matching tingkat lanjut dari CV-mu, peta skill gap dengan rekomendasi kursus, dan advisor karier AI 24 jam.
+                            HR langsung dapat top-5 kandidat tiap lowongan — efisien & profesional.
                         </p>
                         <div className="kc-fade-up d3" style={{ display: 'flex', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
                             <BrutalButton variant="primary" size="lg" icon={<I.Arrow s={16} c="#fff" />} onClick={onDaftar}>Cari Kerja Sekarang</BrutalButton>
@@ -472,8 +472,8 @@ export default function LandingHero() {
 
                         <div className="kc-sticker" style={{ position: 'absolute', top: -8, left: 8, width: 110, height: 110, background: KC.orange, border: `3px solid ${KC.ink}`, borderRadius: '50%', display: 'grid', placeItems: 'center', boxShadow: `5px 5px 0 ${KC.ink}`, transform: 'rotate(-8deg)', color: '#fff', textAlign: 'center', lineHeight: 1, cursor: 'pointer' }}>
                             <div>
-                                <div style={{ fontSize: 28, fontWeight: 900 }}>87%</div>
-                                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase' }}>Akurasi<br />match</div>
+                                <div style={{ fontSize: 24, fontWeight: 900 }}>Top 5%</div>
+                                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 4 }}>Kandidat<br />Terbaik</div>
                             </div>
                         </div>
                     </div>
@@ -643,12 +643,13 @@ export default function LandingHero() {
                     </div>
                     <div className="kc-pricing-grid">
                         {[
-                            { name: 'Starter', price: '0', sub: 'forever', cta: 'Mulai Gratis', highlight: false, color: '#fff', perks: ['1 lowongan aktif', 'Top-3 kandidat per posting', 'Email applicants', 'Verifikasi NPWP'] },
-                            { name: 'Growth', price: '399rb', sub: '/bulan', cta: 'Coba 14 Hari', highlight: true, color: KC.orange, perks: ['10 lowongan aktif', 'Top-10 kandidat per posting', 'Analytics dashboard', 'Skill heatmap kandidat', 'Priority support'] },
-                            { name: 'Scale', price: '3jt', sub: '/bulan', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Unlimited lowongan', 'Top-50 kandidat + bulk export', 'ATS integration (Greenhouse, Lever)', 'API access', 'Custom branding', 'Dedicated CSM'] },
+                            { name: 'Basic', price: 'Gratis', sub: '', cta: 'Posting Gratis', highlight: false, color: '#fff', perks: ['Pasang lowongan selamanya', 'AI Shortlist (Top 5)', 'Skor Semantik', 'Verifikasi profil dasar'] },
+                            { name: 'Pay-per-Unlock', price: '50rb', sub: '/ kandidat', cta: 'Coba Unlock', highlight: true, color: KC.orange, perks: ['Buka kontak asli kandidat', 'Lihat CV PDF lengkap', 'KTP & NPWP Verified', 'Ijazah/SIVIL Verified', 'Bebas penipuan'] },
+                            { name: 'Enterprise API', price: 'Custom', sub: '', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Integrasi ATS internal', 'AI-as-a-Service', 'Unlimited scoring', 'Custom branding', 'SLA 99.9%'] },
                         ].map((p, i) => {
                             const dark = p.color === KC.ink
                             const accent = p.highlight
+                            const isText = p.price === 'Gratis' || p.price === 'Custom'
                             return (
                                 <div key={i} className={`kc-price-card${accent ? ' kc-price-accent' : ''}`} style={{
                                     background: p.color, color: dark || accent ? '#fff' : KC.ink,
@@ -658,10 +659,10 @@ export default function LandingHero() {
                                 }}>
                                     {accent && <div style={{ position: 'absolute', top: -16, right: 20, background: KC.yellow, border: `2px solid ${KC.ink}`, padding: '4px 10px', fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', borderRadius: 999, color: KC.ink, transform: 'rotate(4deg)', boxShadow: `2px 2px 0 ${KC.ink}` }}>paling laku</div>}
                                     <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.7 }}>{p.name}</div>
-                                    <div style={{ marginTop: 8, marginBottom: 18 }}>
-                                        <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.7 }}>Rp</span>
-                                        <span style={{ fontSize: 56, fontWeight: 900, letterSpacing: -2, lineHeight: 1 }}>{p.price}</span>
-                                        <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.7, marginLeft: 4 }}>{p.sub}</span>
+                                    <div style={{ marginTop: 8, marginBottom: 18, display: 'flex', alignItems: 'baseline' }}>
+                                        {!isText && <span style={{ fontSize: 16, fontWeight: 700, opacity: 0.7, marginRight: 6 }}>Rp</span>}
+                                        <span style={{ fontSize: isText ? 42 : 56, fontWeight: 900, letterSpacing: -2, lineHeight: 1 }}>{p.price}</span>
+                                        {p.sub && <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.7, marginLeft: 6 }}>{p.sub}</span>}
                                     </div>
                                     <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px 0', display: 'flex', flexDirection: 'column', gap: 9 }}>
                                         {p.perks.map((perk, j) => (

@@ -9,6 +9,14 @@ export const KC = {
     rose: '#FF6F61', mint: '#9BE6C2', mute: '#6B6760', ash: '#E5E0D6',
 }
 
+// Shared button-style factory (also exported for use by other components)
+export const topBtn = (bg, fg = KC.ink) => ({
+    padding: '10px 16px', background: bg, color: fg,
+    border: `2px solid ${KC.ink}`, borderRadius: 10,
+    fontWeight: 800, fontSize: 13, cursor: 'pointer',
+    boxShadow: `2px 2px 0 ${KC.ink}`,
+})
+
 export function BrutalCard({ children, color = '#fff', shadow = KC.ink, padding = 20, className = '', style = {} }) {
     return (
         <div className={`kc-card ${className}`} style={{
@@ -165,9 +173,11 @@ const CSS = `
 
 /* Responsive grid helpers used by dashboards */
 .kc-grid-4 { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px; }
+.kc-grid-3 { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
 .kc-grid-main { display:grid; grid-template-columns: minmax(0,1fr) 360px; gap: 20px; }
 @media (max-width: 1100px) {
   .kc-grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .kc-grid-3 { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .kc-grid-main { grid-template-columns: minmax(0,1fr); }
 }
 @media (max-width: 640px) {

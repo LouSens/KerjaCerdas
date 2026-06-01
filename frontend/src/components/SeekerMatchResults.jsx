@@ -169,7 +169,8 @@ export default function SeekerMatchResults() {
 }
 
 function MatchCard({ rank, match, saved, onSave, onView }) {
-    const score = Math.round((match.overall_score ?? match.score ?? 0.85) * 100)
+    const rawScore = match.overall_score ?? match.score ?? 0.85
+    const score = Math.round(rawScore > 1 ? rawScore : rawScore * 100)
     const accent = score >= 90 ? KC.orange : score >= 85 ? KC.yellow : score >= 80 ? KC.cyan : KC.lime
     const company = match.company || 'Company'
     const matchingSkills = match.matching_skills || []

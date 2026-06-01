@@ -38,7 +38,7 @@ export default function EmployerCandidates() {
                     setCandidates(data.candidates.map(c => ({
                         name: c.full_name || 'Kandidat',
                         verified: c.verified ?? false,
-                        score: Math.round((c.score ?? c.overall_score ?? 0) * 100),
+                        score: Math.round((c.score ?? c.overall_score ?? 0) > 1 ? (c.score ?? c.overall_score ?? 0) : (c.score ?? c.overall_score ?? 0) * 100),
                         title: c.headline || '—',
                         location: c.region_code || 'Jakarta',
                         exp: c.experience_years ? `${c.experience_years} thn` : '—',

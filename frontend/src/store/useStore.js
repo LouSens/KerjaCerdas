@@ -38,7 +38,7 @@ const PUBLIC_VIEWS = new Set(['home', 'pricing', 'about', 'privacy'])
 const ALLOWED_VIEWS = {
     seeker: new Set([
         'seeker-dashboard', 'seeker-match', 'seeker-skill-gap',
-        'seeker-verification', 'seeker-saved', 'seeker-profile',
+        'seeker-verification', 'seeker-saved', 'seeker-profile', 'seeker-search',
     ]),
     employer: new Set([
         'employer-dashboard', 'employer-jobs', 'employer-candidates',

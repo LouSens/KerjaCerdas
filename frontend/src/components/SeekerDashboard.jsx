@@ -11,7 +11,10 @@ export default function SeekerDashboard() {
 
     const topMatches = (matches.length ? matches : DEMO_MATCHES).slice(0, 3)
     const avg = matches.length
-        ? Math.round(matches.reduce((s, m) => s + (m.overall_score ?? m.score ?? 0.8), 0) / matches.length * 100)
+        ? Math.round(matches.reduce((s, m) => {
+            const raw = m.overall_score ?? m.score ?? 0.8;
+            return s + (raw > 1 ? raw : raw * 100);
+        }, 0) / matches.length)
         : 87
 
     const completionPct = computeProfileCompleteness()
@@ -114,7 +117,8 @@ export default function SeekerDashboard() {
 
 function DashMatchCard({ rank, match }) {
     const navigate = useStore(s => s.navigate)
-    const score = Math.round((match.overall_score ?? match.score ?? 0.85) * 100)
+    const rawScore = match.overall_score ?? match.score ?? 0.85
+    const score = Math.round(rawScore > 1 ? rawScore : rawScore * 100)
     const accent = score >= 90 ? KC.orange : score >= 85 ? KC.yellow : score >= 80 ? KC.cyan : KC.lime
     const company = match.company || 'Company'
     const matchingSkills = match.matching_skills || []
