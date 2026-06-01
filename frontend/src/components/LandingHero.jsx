@@ -644,7 +644,7 @@ export default function LandingHero() {
                     <div className="kc-pricing-grid">
                         {[
                             { name: 'Basic', price: 'Gratis', sub: '', cta: 'Posting Gratis', highlight: false, color: '#fff', perks: ['Pasang lowongan selamanya', 'AI Shortlist (Top 5)', 'Skor Semantik', 'Verifikasi profil dasar'] },
-                            { name: 'Pay-per-Unlock', price: '50rb', sub: '/ kandidat', cta: 'Coba Unlock', highlight: true, color: KC.orange, perks: ['Buka kontak asli kandidat', 'Lihat CV PDF lengkap', 'KTP & NPWP Verified', 'Ijazah/SIVIL Verified', 'Bebas penipuan'] },
+                            { name: 'Pay-per-Unlock', price: '50rb', sub: '/ 10 kandidat', cta: 'Coba Unlock', highlight: true, color: KC.orange, perks: ['Buka kontak asli 10 kandidat', 'Lihat CV PDF lengkap', 'KTP & NPWP Verified', 'Ijazah/SIVIL Verified', 'Bebas penipuan'] },
                             { name: 'Enterprise API', price: 'Custom', sub: '', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Integrasi ATS internal', 'AI-as-a-Service', 'Unlimited scoring', 'Custom branding', 'SLA 99.9%'] },
                         ].map((p, i) => {
                             const dark = p.color === KC.ink
@@ -656,6 +656,7 @@ export default function LandingHero() {
                                     border: `2px solid ${KC.ink}`, borderRadius: 16, padding: 28,
                                     boxShadow: accent ? `8px 8px 0 ${KC.ink}` : `4px 4px 0 ${KC.ink}`,
                                     transform: accent ? 'translateY(-12px)' : 'none', position: 'relative',
+                                    display: 'flex', flexDirection: 'column'
                                 }}>
                                     {accent && <div style={{ position: 'absolute', top: -16, right: 20, background: KC.yellow, border: `2px solid ${KC.ink}`, padding: '4px 10px', fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', borderRadius: 999, color: KC.ink, transform: 'rotate(4deg)', boxShadow: `2px 2px 0 ${KC.ink}` }}>paling laku</div>}
                                     <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.7 }}>{p.name}</div>
@@ -664,14 +665,16 @@ export default function LandingHero() {
                                         <span style={{ fontSize: isText ? 42 : 56, fontWeight: 900, letterSpacing: -2, lineHeight: 1 }}>{p.price}</span>
                                         {p.sub && <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.7, marginLeft: 6 }}>{p.sub}</span>}
                                     </div>
-                                    <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px 0', display: 'flex', flexDirection: 'column', gap: 9 }}>
+                                    <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px 0', display: 'flex', flexDirection: 'column', gap: 9, flex: 1 }}>
                                         {p.perks.map((perk, j) => (
                                             <li key={j} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 600 }}>
                                                 <I.Check s={14} c={dark || accent ? '#fff' : KC.ink} /> {perk}
                                             </li>
                                         ))}
                                     </ul>
-                                    <BrutalButton variant={dark ? 'accent' : (accent ? 'secondary' : 'primary')} size="md" full onClick={PRICING_ACTIONS[p.name] || onEmployer}>{p.cta}</BrutalButton>
+                                    <div style={{ marginTop: 'auto' }}>
+                                        <BrutalButton variant={dark ? 'accent' : (accent ? 'secondary' : 'primary')} size="md" full onClick={PRICING_ACTIONS[p.name] || onEmployer}>{p.cta}</BrutalButton>
+                                    </div>
                                 </div>
                             )
                         })}

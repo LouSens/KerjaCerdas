@@ -75,9 +75,8 @@ Portal kerja yang ada (Jobstreet, Glints, Kalibrr) pada dasarnya adalah **mesin 
 ## 🚀 Quick Start (5 Menit)
 
 ### Prerequisites
-- **Python 3.11+**
-- **Node.js 18+**
-- (Optional) `GEMINI_API_KEY` from Google AI Studio.
+- **Docker Desktop** terinstal dan berjalan.
+- (Opsional) `GEMINI_API_KEY` dari Google AI Studio.
 
 ### Langkah 1 — Clone & Konfigurasi
 ```powershell
@@ -86,30 +85,23 @@ cd KerjaCerdas
 
 Copy-Item .env.example .env
 ```
-Isi nilai minimal di `.env`:
+Isi nilai minimal di `.env` (Jika ingin menggunakan API Gemini Anda sendiri):
 ```env
 JWT_SECRET_KEY=your-random-secret-here
 GEMINI_API_KEY=your-gemini-api-key
 ```
 
-### Langkah 2 — Jalankan Backend
+### Langkah 2 — Jalankan dengan Docker
+Jalankan perintah berikut di terminal:
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate
-pip install -e .[dev]
-
-uvicorn backend.app.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir backend/app
+docker compose up --build
 ```
-*(Basis data JSON lokal MVP akan dimuat otomatis beserta 84 lowongan & 20 profil kandidat).*
+*(Proses ini akan mem-build image API dan Frontend, serta menjalankan database SQLite. Basis data awal beserta 84 lowongan & 20 profil kandidat akan dimuat secara otomatis).*
 
-### Langkah 3 — Jalankan Frontend
-Buka terminal baru:
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-Frontend aktif di **`http://localhost:3000`**
+### Langkah 3 — Akses Aplikasi
+- Frontend aktif di **`http://localhost:3000`**
+- API (Backend) aktif di **`http://localhost:8000`**
+- API Docs (Swagger) aktif di **`http://localhost:8000/docs`**
 
 ---
 
