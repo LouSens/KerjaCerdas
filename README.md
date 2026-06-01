@@ -147,7 +147,7 @@ Klik menu **"Kandidat"** pada baris lowongan. HRD tidak melihat ratusan CV stati
 
 ## 🧠 Arsitektur Agentic AI (V2 Autonomous Swarm)
 
-Kami tidak menggunakan *Prompt Wrapper* statis. Otak dari KerjaCerdas ditenagai oleh pola *Autonomous Multi-Agent Swarm* menggunakan **LangGraph (`create_react_agent`)** dan **Gemini 3.0 Flash**. 
+Kami tidak menggunakan *Prompt Wrapper* statis. Otak dari KerjaCerdas ditenagai oleh pola *Autonomous Multi-Agent Swarm* menggunakan **LangGraph (`create_react_agent`)** dan **Gemini 3.1 Flash**. 
 
 ```mermaid
 graph TD
@@ -253,7 +253,7 @@ KerjaCerdas/
 
 | Versi | Timeline | Milestone & Tech Stack |
 |---|---|---|
-| **v0.4 (sekarang)** | Jun 2026 | **V2 Autonomous Swarm** (ReAct), Dual-Track Search UI, Gemini 3.0 Flash. |
+| **v0.4 (sekarang)** | Jun 2026 | **V2 Autonomous Swarm** (ReAct), Dual-Track Search UI, Gemini 3.1 Flash. |
 | **v0.5** | Jul 2026 | **Google Cloud Platform (GCP)** migration. Implementasi **Cloud SQL (PostgreSQL + pgvector)** menggantikan SQLite lokal. |
 | **v1.0** | Ags 2026 | **Google Vertex AI** Enterprise deployment untuk menjamin *Zero Data Retention Policy* (kepatuhan UU PDP). Penyimpanan PDF via **Google Cloud Storage**. |
 | **v1.5** | Q4 2026 | B2B Pay-to-Unlock API. 100 employer network, 5000 seeker, 2 pilot Disnaker provinsi. |
@@ -264,9 +264,9 @@ KerjaCerdas/
 
 | Fase | Alur Pendapatan | Target MRR |
 |---|---|---|
-| **Fase 1** | B2B Microtransaction (Rp 50rb Pay-to-Unlock Kontak HRD), Afiliasi kursus 8–15% | Rp 17.5 juta |
-| **Fase 2** | Enterprise API (Rp 25jt/bln) | Rp 1 miliar |
-| **Fase 3** | Lisensi Disnaker, API analitik talenta, ATS integration | Rp 5 miliar |
+| **Fase 1** | *Hybrid*: B2B Pay-to-Unlock (Rp 50rb) + Langganan **KerjaCerdas Pro** (Rp 299rb/bln) + Afiliasi *Ed-Tech* | Rp 17.5 juta |
+| **Fase 2** | Enterprise API License (SaaS, Rp 25jt/bln) untuk integrasi HRIS MNC | Rp 1 miliar |
+| **Fase 3** | Lisensi Pemerintahan (Disnaker), *Talent Analytics Subscriptions* | Rp 5 miliar |
 
 **Unit Economics:** LTV/CAC = 28× · Gross margin = 78% · Kandidat selalu **gratis**.
 → Detail lengkap: [docs/PROPOSAL_FINAL.md](docs/PROPOSAL_FINAL.md)
