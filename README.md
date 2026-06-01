@@ -1,15 +1,13 @@
 <div align="center">
 
-<img src="https://via.placeholder.com/150/111827/FF6F00?text=KC" alt="KerjaCerdas Logo" width="120" height="120" style="border-radius: 20px;">
+<img src="frontend/public/vite.svg" alt="KerjaCerdas Logo" width="120" height="120">
 
-# 🚀 KerjaCerdas AI
-**Platform Rekrutmen Otonom Berbasis *Semantic Matching* & *Multi-Agent Swarm***
-
-Pemenang Potensial Hackathon Tingkat Nasional 2026 🏆
+# KerjaCerdas
+**Autonomous Recruitment Platform powered by Semantic Matching & Multi-Agent Swarm**
 
 [![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com) [![Frontend: React 18](https://img.shields.io/badge/Frontend-React_18-61DAFB?style=flat-square&logo=react)](https://react.dev) [![AI: Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-4285F4?style=flat-square&logo=google)](https://ai.google.dev) [![Agents: LangGraph](https://img.shields.io/badge/Agents-LangGraph-FF6F00?style=flat-square)](https://langchain-ai.github.io/langgraph/) [![Tooling: Vite](https://img.shields.io/badge/Tooling-Vite-646CFF?style=flat-square&logo=vite)](https://vitejs.dev) [![Styling: Neo-Brutalism](https://img.shields.io/badge/Styling-Neo_Brutalism-FF6F00?style=flat-square)](https://react.dev)
 
-*Ucapkan selamat tinggal pada penyortiran CV manual. KerjaCerdas menggunakan AI Vektor untuk mencocokkan makna (semantik) dari skill kandidat dengan kebutuhan perusahaan dalam hitungan detik.*
+*An enterprise-grade talent matching infrastructure utilizing high-dimensional vector search and ReAct-based autonomous agents to streamline recruitment pipelines.*
 
 [Panduan Demo](#-panduan-demo-skenario-juri) · [Quick Start](#-quick-start-5-menit) · [Arsitektur](#-arsitektur-sistem) · [Proposal Bisnis](docs/PROPOSAL_FINAL.md)
 
@@ -39,7 +37,7 @@ Portal kerja yang ada (Jobstreet, Glints, Kalibrr) pada dasarnya adalah **mesin 
 | **Agentic Architecture** | Bot Chat Sederhana | **ReAct Multi-Agent Supervisor Swarm** |
 | **Sistem Navigasi UI** | Satu Arah | **Dual-Track (AI Autopilot & Manual Search)** |
 | **Skill Gap & Course** | Tidak ada | **Skill gap spesifik + rekomendasi kursus** |
-| **Monetisasi UMKM** | Rp 3–5 juta/post | **Pay-to-Unlock Rp 50.000 (Microtransaction)** |
+| **Monetisasi B2B** | Biaya Langganan/Iklan di Muka | **Hybrid: Pay-to-Unlock (Rp 50rb) & SaaS Pro** |
 
 ---
 
@@ -58,6 +56,17 @@ Portal kerja yang ada (Jobstreet, Glints, Kalibrr) pada dasarnya adalah **mesin 
 - ✅ **Post Lowongan** — form manual + live AI pool estimation saat mengetik.
 - ✅ **Upload Job Pack (PDF)** — Gemini batch-parse PDF → banyak lowongan otomatis.
 - ✅ **AI Candidate Ranking** — top-5 kandidat diranking Gemini per lowongan secara otomatis.
+- ✅ **Direct Contact Unlock** — Buka akses kontak orisinal kandidat dengan skema B2B Microtransaction.
+
+---
+
+## 📸 Screenshots
+
+<div align="center">
+  <img src="docs/assets/seeker_dashboard.png" alt="Seeker Dashboard" width="32%">
+  <img src="docs/assets/job_matches.png" alt="AI Job Matches" width="32%">
+  <img src="docs/assets/employer_dashboard.png" alt="Employer Dashboard" width="32%">
+</div>
 
 ---
 
@@ -89,7 +98,7 @@ pip install -e .[dev]
 
 uvicorn backend.app.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir backend/app
 ```
-*(SQLite akan dibuat otomatis beserta 84 lowongan & 20 profil kandidat + embedding vektor).*
+*(Basis data JSON lokal MVP akan dimuat otomatis beserta 84 lowongan & 20 profil kandidat).*
 
 ### Langkah 3 — Jalankan Frontend
 Buka terminal baru:
@@ -123,7 +132,7 @@ Secara otomatis *SemanticMatcher* membandingkan vektor kandidat dengan 84 vektor
 
 #### 5. Proactive Skill Gap & Upskilling
 Pada hasil pencarian manual bernilai rendah tadi, klik **"🧠 Cek Gap"**.
-`AnalyzeGapAgent` (dari Supervisor Swarm V2) akan mengambil alih, membongkar habis kelemahan spesifik Andi untuk loker tersebut, dan menyarankan kursus di Dicoding/Coursera.
+`AnalyzeGapAgent` (dari Supervisor Swarm) akan mengambil alih, membongkar habis kelemahan spesifik Andi untuk loker tersebut, dan menyarankan kursus di Dicoding/Coursera.
 
 #### 6. Mock Interview & Resume Review
 Sambil menguji AI Advisor (bubble 🤖 di kanan bawah), perintahkan: *"Beri saya simulasi interview untuk posisi tersebut"*. Agen `InterviewPrepAgent` akan menjalankan perannya secara otomatis.
@@ -145,7 +154,7 @@ Klik **"+ Pasang Lowongan"**. Saat Anda mengetik spesifikasi pekerjaan, algoritm
 Klik menu **"Kandidat"** pada baris lowongan. HRD tidak melihat ratusan CV statis, melainkan **Top-5 Kandidat Terbaik** yang sudah diurutkan (Rerank) berdasarkan *skill overlap* dan *Cosine Similarity*.
 - Klik **Unlock Kontak** (Simulasi tagihan Rp 50.000) untuk mengekstrak nomor telepon dan email pelamar yang terverifikasi.
 
-## 🧠 Arsitektur Agentic AI (V2 Autonomous Swarm)
+## 🧠 Arsitektur Agentic AI (Autonomous Swarm)
 
 Kami tidak menggunakan *Prompt Wrapper* statis. Otak dari KerjaCerdas ditenagai oleh pola *Autonomous Multi-Agent Swarm* menggunakan **LangGraph (`create_react_agent`)** dan **Gemini 3.1 Flash**. 
 
@@ -192,29 +201,32 @@ Gemini Supervisor tidak lagi diarahkan secara statis. Jika kandidat meminta: *"C
 
 ## 🏗️ Arsitektur Sistem Inti
 
-### Alur Data: CV → Match
+### Alur Data V: Dual-Track Matching
 
-```
-1. Seeker upload PDF
-2. Gemini multimodal parse → { skills, experience, education, salary }
-3. GeminiEmbedder.embed(resume_text) → vektor 3072-dim
-4. SeekerProfile disimpan → data/seekers/{id}.json
-5. Frontend invoke agent("show my top matches")
-6. SemanticMatcher: embed seeker vs 84 job vectors
-7. Scoring: cosine×0.50 + skill_overlap×0.30 + region×0.10 + salary×0.05 + exp×0.05
-8. Enrich: join JobPosting → title/company/salary/skills/description
-9. Response → Frontend render match cards + Match Ranking Badge
-```
+**Jalur AI Autopilot (Default):**
+1. Seeker upload CV (PDF)
+2. Gemini multimodal parse → ekstraksi `{ skills, experience, education, salary }`
+3. GeminiEmbedder.embed(resume_text) → vektor semantik 768-dim
+4. SeekerProfile tersimpan ke → `data/seekers/{id}.json`
+5. SemanticMatcher membandingkan vektor kandidat dengan ratusan vektor loker secara otomatis.
+6. UI menampilkan daftar loker berurutan dengan label skor "Match Ranking".
 
-### Formula Scoring Multi-Sinyal
-Algoritma kami bukan sekadar cosine similarity mentah, melainkan kombinasi tertimbang (weighted):
+**Jalur Pencarian Kustom + Supervisor Swarm:**
+1. Kandidat melakukan pencarian *keyword* kustom (contoh: "Data Scientist").
+2. Jika skor kualifikasi AI sangat rendah, kandidat menekan tombol "🧠 Cek Gap".
+3. *LangGraph Swarm* merutekan *intent* ke `AnalyzeGapAgent`.
+4. Agen membongkar spesifikasi lowongan, membandingkannya dengan CV kandidat.
+5. Agen menarik rekomendasi program Ed-Tech (Upskilling) dari data kursus terafiliasi.
+
+### Formula Scoring Multi-Sinyal (Hybrid Ranking)
+Algoritma kami bukan sekadar *cosine similarity* mentah, melainkan kombinasi tertimbang (*weighted*) untuk mengakomodasi batasan (*hard-constraints*) nyata HRD:
 ```python
 final_score = (
-    cosine_similarity * 0.50 +   # Semantic skill match (embedding space)
-    skill_overlap     * 0.30 +   # Jaccard intersection of skill lists
-    region_boost      * 0.10 +   # Same region/province bonus
-    salary_fit        * 0.05 +   # Expected salary within job range
-    experience_fit    * 0.05     # Years of experience within requirement
+    cosine_similarity * 0.50 +   # Semantic skill match (vektor dari Gemini)
+    skill_overlap     * 0.30 +   # Jaccard intersection dari skill eksplisit
+    region_boost      * 0.10 +   # Bonus untuk kesamaan domisili / WFA
+    salary_fit        * 0.05 +   # Ekspektasi gaji dalam rentang budget perusahaan
+    experience_fit    * 0.05     # Tahun pengalaman relevan dengan syarat lowongan
 )
 ```
 
@@ -225,38 +237,90 @@ final_score = (
 ```
 KerjaCerdas/
 │
-├── backend/
-│   └── app/
-│       ├── api/routers/        # FastAPI endpoints (auth, seeker, employer, agent)
-│       ├── agents/graph/       # LangGraph (builder_v2.py: ReAct Supervisor Swarm)
-│       ├── agents/tools/       # [NEW] superpowers.py (Interview, Resume, Gap Tools)
-│       ├── services/matching/  # SemanticMatcher: embed + score + rank
-│       └── db/                 # Pydantic schemas, JsonRepository (asyncio.Lock)
+├── backend/                  # API FastAPI & Logika LangGraph Swarm
+│   ├── app/
+│   │   ├── api/              # Interface Endpoints FastAPI
+│   │   │   ├── routers/
+│   │   │   │   ├── agent.py       # Endpoint streaming SSE untuk LangGraph
+│   │   │   │   ├── auth.py        # Login/Register (JWT)
+│   │   │   │   ├── employer.py    # Endpoint perusahaan & kandidat pelamar
+│   │   │   │   ├── jobs.py        # Pencarian dan paginasi lowongan
+│   │   │   │   ├── seeker.py      # Profil, bookmark, history aplikasi
+│   │   │   │   ├── uploads.py     # Endpoint Multi-modal PDF Parser
+│   │   │   │   └── verify.py      # E-KYC Dukcapil/SIVIL webhook
+│   │   │   ├── schemas/           # Pydantic validation schemas
+│   │   │   └── services/          # Business logic helpers
+│   │   ├── agents/           # Arsitektur Multi-Agent & LLM
+│   │   │   ├── graph/
+│   │   │   │   ├── builder_v2.py  # Konstruktor ReAct Supervisor Swarm
+│   │   │   │   └── nodes.py       # Worker Nodes (Search, SkillGap, Advisor)
+│   │   │   ├── tools/
+│   │   │   │   └── superpowers.py # Kumpulan fungsi (tools) untuk Gemini
+│   │   │   ├── memory/            # Checkpointer & conversational state
+│   │   │   └── telemetry/         # Logger & tracing performa AI
+│   │   ├── services/
+│   │   │   └── matching/          # Core Recommendation Engine
+│   │   │       ├── embeddings/    # Gemini Vector generator
+│   │   │       ├── matcher.py     # Algoritma Cosine Similarity + Heuristik
+│   │   │       └── ranker.py      # Pembobotan skor
+│   │   ├── db/
+│   │   │   ├── json_store.py      # Asyncio.Lock File-based Repository (MVP)
+│   │   │   └── migrations/        # Skrip transisi ke PostgreSQL (pgvector)
+│   │   └── config/
+│   │       └── settings.py        # Manajemen variabel lingkungan (.env)
+│   ├── tests/                # Unit & Integration Tests (Pytest)
+│   └── requirements.txt
 │
-├── frontend/
-│   └── src/
-│       ├── components/
-│       │   ├── _design.jsx           # Design system Neo-Brutalism tokens
-│       │   ├── SeekerDashboard.jsx   # Live stats, trigger AI autopilot
-│       │   ├── SeekerSearch.jsx      # [NEW] Dual-Track Manual Search dengan AI Badge
-│       │   ├── SkillGapPanel.jsx     # Integrasi Ed-Tech upskilling
-│       │   └── EmployerDashboard.jsx # Real stats, live pool estimation
-│       └── store/useStore.js         # Zustand: state management (matches, auth)
+├── frontend/                 # Aplikasi Web React.js (Vite)
+│   ├── src/
+│   │   ├── components/       # UI Library (Neo-Brutalism)
+│   │   │   ├── _design.jsx           # Komponen dasar desain sistem (Button, Card)
+│   │   │   ├── SeekerDashboard.jsx   # Dasbor utama pencari kerja
+│   │   │   ├── SeekerMatchResults.jsx# UI visualisasi skor kecocokan vektor
+│   │   │   ├── SeekerSearch.jsx      # Dual-Track Manual Search
+│   │   │   ├── SkillGapPanel.jsx     # Panel rekomendasi kursus Ed-Tech
+│   │   │   ├── FloatingAdvisor.jsx   # Antarmuka chat interaktif dengan Swarm
+│   │   │   ├── EmployerDashboard.jsx # Analitik kolam kandidat untuk HRD
+│   │   │   ├── EmployerCandidates.jsx# AI Shortlist & tombol "Unlock Kontak"
+│   │   │   ├── EmployerPostJob.jsx   # Form pembuatan lowongan instan
+│   │   │   ├── CVUploader.jsx        # Komponen unggah PDF kandidat
+│   │   │   ├── AuthModal.jsx         # Popup Login/Register terintegrasi
+│   │   │   ├── PublicHeader.jsx      # Navigasi utama
+│   │   │   └── LandingHero.jsx       # Halaman pendaratan publik
+│   │   ├── services/
+│   │   │   └── api.js        # Wrapper fetch API dengan auto-logout 401
+│   │   ├── store/
+│   │   │   └── useStore.js   # State Management global (Zustand)
+│   │   └── App.jsx
+│   └── package.json
 │
-├── scripts/seed_json.py             # Demo data seeder (84 jobs, 20 seekers)
-└── docs/PROPOSAL_FINAL.md           # Master Business Proposal & Tech Specs
+├── data/                     # Local Storage Data (Berisi JSON objects)
+│   ├── employers/            # Profil entitas perusahaan
+│   ├── jobs/                 # Basis data lowongan terstruktur
+│   ├── seekers/              # Repositori vektor talenta
+│   ├── applications/         # Riwayat status lamaran
+│   └── ai_logs/              # Rekaman jejak pemikiran agen
+│
+├── docs/                     # Dokumentasi Resmi & Presentasi
+│   ├── PROPOSAL_FINAL.md     # Proposal Bisnis Lengkap (Juri Hackathon)
+│   ├── VERIFICATION_DEMO.md  # Skenario Demo Produk
+│   └── API_SPEC.md           # Spesifikasi API OpenAPI/Swagger
+│
+└── scripts/
+    ├── seed_json.py          # Skrip populasi data palsu untuk Demo
+    └── sync_sqlite.py        # Skrip uji coba migrasi RDBMS
 ```
 
 ---
 
 ## 🗺️ Roadmap & Future Tech Stack
 
-| Versi | Timeline | Milestone & Tech Stack |
+| Versi | Fase Eksekusi | Milestone & Tech Stack |
 |---|---|---|
-| **v0.4 (sekarang)** | Jun 2026 | **V2 Autonomous Swarm** (ReAct), Dual-Track Search UI, Gemini 3.1 Flash. |
-| **v0.5** | Jul 2026 | **Google Cloud Platform (GCP)** migration. Implementasi **Cloud SQL (PostgreSQL + pgvector)** menggantikan SQLite lokal. |
-| **v1.0** | Ags 2026 | **Google Vertex AI** Enterprise deployment untuk menjamin *Zero Data Retention Policy* (kepatuhan UU PDP). Penyimpanan PDF via **Google Cloud Storage**. |
-| **v1.5** | Q4 2026 | B2B Pay-to-Unlock API. 100 employer network, 5000 seeker, 2 pilot Disnaker provinsi. |
+| **v2.0 (sekarang)** | Fase MVP | **Autonomous Swarm** (ReAct), Dual-Track Search UI, Gemini 3.1 Flash. |
+| **v2.1** | Fase Stabilisasi | **Google Cloud Platform (GCP)** migration. Implementasi **Cloud SQL (PostgreSQL + pgvector)** menggantikan SQLite lokal. |
+| **v2.5** | Fase Kepatuhan | **Google Vertex AI** Enterprise deployment untuk menjamin *Zero Data Retention Policy* (kepatuhan UU PDP). Penyimpanan PDF via **Google Cloud Storage**. |
+| **v3.0** | Fase Ekspansi | Ekspansi Skala Korporat. *SaaS Enterprise API License* terintegrasi HRIS, 500 employer network, 50.000 seeker. |
 
 ---
 
@@ -274,6 +338,7 @@ KerjaCerdas/
 ---
 
 <div align="center">
-  <b>Membangun Talenta Indonesia Emas 2045, Satu Vektor pada Satu Waktu.</b><br>
-  Dibuat dengan ❤️ oleh Tim Digdaya untuk Hackathon Tingkat Nasional 2026.
+
+**KerjaCerdas © 2026** — *Enterprise Talent AI Infrastructure*
+[Documentation](docs/) | [API Reference](http://localhost:8000/docs) | [Enterprise Inquiries](#)
 </div>
