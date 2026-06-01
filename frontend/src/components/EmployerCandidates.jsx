@@ -16,15 +16,15 @@ const DEMO_CANDIDATES = [
 ]
 
 export default function EmployerCandidates() {
-    const { jobs, refreshJobs } = useStore()
+    const { employerJobs, refreshEmployerJobs } = useStore()
     const [candidates, setCandidates] = useState([])
     const [loading, setLoading] = useState(false)
     const [selectedJobId, setSelectedJobId] = useState(null)
     const [usedDemo, setUsedDemo] = useState(false)
     const [filter, setFilter] = useState('all')
 
-    useEffect(() => { refreshJobs() }, []) // eslint-disable-line react-hooks/exhaustive-deps
-    useEffect(() => { if (jobs.length && !selectedJobId) setSelectedJobId(jobs[0].id) }, [jobs]) // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => { refreshEmployerJobs() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => { if (employerJobs.length && !selectedJobId) setSelectedJobId(employerJobs[0].id) }, [employerJobs]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!selectedJobId) { setCandidates(DEMO_CANDIDATES); setUsedDemo(true); return }
@@ -56,7 +56,7 @@ export default function EmployerCandidates() {
         return () => { alive = false }
     }, [selectedJobId])
 
-    const selectedJob = jobs.find(j => j.id === selectedJobId)
+    const selectedJob = employerJobs.find(j => j.id === selectedJobId)
     const jobTitle = selectedJob?.title || 'Senior Backend Engineer'
     const totalApplicants = selectedJob?.application_count ?? 84
 
@@ -74,8 +74,8 @@ export default function EmployerCandidates() {
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                     <select value={selectedJobId || ''} onChange={(e) => setSelectedJobId(e.target.value)} style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` }}>
-                        {jobs.length === 0 && <option value="">{jobTitle} ({totalApplicants})</option>}
-                        {jobs.map(j => <option key={j.id} value={j.id}>{j.title} ({j.application_count ?? 0})</option>)}
+                        {employerJobs.length === 0 && <option value="">{jobTitle} ({totalApplicants})</option>}
+                        {employerJobs.map(j => <option key={j.id} value={j.id}>{j.title} ({j.application_count ?? 0})</option>)}
                     </select>
                     <button onClick={() => setSelectedJobId(selectedJobId)} style={topBtn(KC.orange, '#fff')}>✨ Re-match AI</button>
                 </div>
@@ -108,14 +108,16 @@ export default function EmployerCandidates() {
 }
 
 function CandidateCard({ candidate: c, rank }) {
+    const [unlocked, setUnlocked] = React.useState(false)
     const accent = c.score >= 90 ? KC.orange : c.score >= 85 ? KC.yellow : c.score >= 80 ? KC.cyan : KC.lime
     const avatarColors = [KC.cyan, KC.yellow, KC.lime, KC.pink, KC.orange]
     const aColor = avatarColors[(rank - 1) % avatarColors.length]
     const initials = c.name.split(' ').map(n => n[0]).slice(0, 2).join('')
+    
     return (
         <BrutalCard color="#fff" padding={20} style={{ position: 'relative' }}>
             <RankSticker rank={rank} />
-            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr auto', gap: 16, alignItems: 'flex-start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: 16, alignItems: 'flex-start' }}>
                 <div style={{ width: 60, height: 60, background: aColor, border: `2px solid ${KC.ink}`, borderRadius: 12, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 22, color: KC.ink, boxShadow: `2px 2px 0 ${KC.ink}` }}>
                     {initials}
                 </div>
@@ -129,19 +131,56 @@ function CandidateCard({ candidate: c, rank }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontWeight: 700, color: KC.mute, flexWrap: 'wrap' }}>
                         <span>📍 {c.location}</span><span>⏱ {c.exp}</span><span>🎓 {c.edu}</span><span>💼 {c.prev}</span>
                     </div>
+                    
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
                         {c.skills.map(s => <Tag key={s} color={KC.lime} size="sm">{s}</Tag>)}
                         {c.gap.map(s => <Tag key={s} color={KC.orangeSoft} size="sm">{s} (gap)</Tag>)}
                     </div>
+                    
                     {c.ai && (
                         <div style={{ marginTop: 12, padding: '10px 12px', background: KC.bone, border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 12, fontWeight: 600, lineHeight: 1.5 }}>
-                            <b>✨ AI · </b>{c.ai}
+                            <b>✨ AI Copilot · </b>{c.ai}
                         </div>
                     )}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button style={{ width: 38, height: 38, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 9, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}`, fontSize: 16 }}>☆</button>
-                    <button style={topBtn(KC.orange, '#fff')}>Hubungi →</button>
+                    
+                    <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <button 
+                            onClick={() => alert("Membuka PDF Viewer CV Asli... (Simulasi UI AI Copilot Split-Screen)")}
+                            style={{ 
+                                padding: '8px 16px', background: '#fff', color: KC.ink, 
+                                border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 13, 
+                                cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` 
+                            }}>
+                            📄 Lihat CV Asli
+                        </button>
+
+                        {!unlocked ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <button 
+                                    onClick={() => setUnlocked(true)}
+                                    style={{ 
+                                        padding: '8px 16px', background: KC.pink, color: KC.ink, 
+                                        border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 13, 
+                                        cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` 
+                                    }}>
+                                    🔒 Buka Kontak (Rp 50.000)
+                                </button>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: KC.mute }}>Termasuk: ✓ SIVIL & KTP Verified</span>
+                            </div>
+                        ) : (
+                            <a 
+                                href={`https://wa.me/6281234567890?text=Halo%20${encodeURIComponent(c.name)},%20kami%20dari%20perusahaan%20melihat%20profil%20Anda%20di%20KerjaCerdas...`}
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                style={{ 
+                                    display: 'inline-block', padding: '8px 16px', background: '#25D366', color: '#fff', 
+                                    border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 13, 
+                                    textDecoration: 'none', boxShadow: `2px 2px 0 ${KC.ink}` 
+                                }}>
+                                📞 Unlock Kontak
+                            </a>
+                        )}
+                    </div>
                 </div>
             </div>
         </BrutalCard>

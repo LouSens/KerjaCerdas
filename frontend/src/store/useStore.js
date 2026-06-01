@@ -26,6 +26,10 @@ import {
     removeBookmark,
     loginUser,
     registerUser,
+    fetchApplications,
+    applyToJob,
+    fetchEmployerProfile,
+    updateEmployerProfile,
 } from '../services/api'
 
 const PUBLIC_VIEWS = new Set(['home', 'pricing', 'about', 'privacy'])
@@ -87,6 +91,7 @@ const useStore = create(
                     store.loadSeekerProfile()
                 } else if (resolvedRole === 'employer') {
                     store.refreshEmployerJobs()
+                    store.loadEmployerProfile()
                 }
                 return res
             },
@@ -106,7 +111,10 @@ const useStore = create(
                     matches: [],
                 })
                 toast.success(`Akun ${user.role} dibuat — selamat datang ${user.name}!`)
-                if (user.role === 'employer') get().refreshEmployerJobs()
+                if (user.role === 'employer') {
+                    get().refreshEmployerJobs()
+                    get().loadEmployerProfile()
+                }
                 return res
             },
 
@@ -188,6 +196,7 @@ const useStore = create(
             missingSkills: [],
             matchingSkills: [],
             recommendedCourses: [],
+            applications: [],
             agentLoading: false,
             agentError: null,
             advisorLog: [
@@ -196,15 +205,15 @@ const useStore = create(
             advisorInput: '',
             setAdvisorInput: (v) => set({ advisorInput: v }),
 
-            runAgent: async ({ message, targetJobId } = {}) => {
+            runAgent: async ({ message, targetJobId, explicitIntent } = {}) => {
                 const { seekerId, profile, advisorLog } = get()
                 const userMsg = message ? { role: 'user', content: message } : null
                 if (userMsg) set({ advisorLog: [...advisorLog, userMsg], advisorInput: '' })
                 set({ agentLoading: true, agentError: null })
                 try {
                     const payload = seekerId
-                        ? { seekerId, message, targetJobId, sessionId: seekerId }
-                        : { seeker: { ...profile, user_id: 'demo' }, message, targetJobId, sessionId: 'demo' }
+                        ? { seekerId, message, targetJobId, explicitIntent, sessionId: seekerId }
+                        : { seeker: { ...profile, user_id: 'demo' }, message, targetJobId, explicitIntent, sessionId: 'demo' }
                     const res = await invokeAgent(payload)
                     set({
                         agentLoading: false,
@@ -221,6 +230,29 @@ const useStore = create(
                 } catch (e) {
                     set({ agentLoading: false, agentError: e.message })
                     toast.error('Agent gagal — cek backend')
+                }
+            },
+
+            loadApplications: async () => {
+                try {
+                    const data = await fetchApplications()
+                    set({ applications: Array.isArray(data) ? data : [] })
+                } catch {
+                    // Silently ignore
+                }
+            },
+
+            applyJob: async (jobId, coverLetter = '') => {
+                try {
+                    const res = await applyToJob(jobId, coverLetter)
+                    if (res.already_applied) {
+                        toast('Sudah melamar ke lowongan ini', { icon: '✓' })
+                    } else {
+                        toast.success('Lamaran terkirim! +50 XP')
+                    }
+                    return res
+                } catch (e) {
+                    toast.error('Gagal melamar: ' + e.message)
                 }
             },
 
@@ -312,6 +344,17 @@ const useStore = create(
 
             isJobSaved: (id) => get().savedJobs.some(j => (j.job_id || j.id) === id),
 
+            computeProfileCompleteness: () => {
+                const { profile, seekerId } = get()
+                let score = 0
+                if (seekerId) score += 20                           // CV uploaded
+                if ((profile.skills || []).length > 0) score += 25  // Has skills
+                if ((profile.experience || []).length > 0) score += 25 // Has experience
+                if ((profile.education || []).length > 0) score += 20 // Has education
+                if (profile.salary_expectation_min > 0) score += 10  // Salary set
+                return score
+            },
+
             // ─── Public jobs feed ────────────────────────────────────────
             jobs: [],
             jobsLoading: false,
@@ -329,6 +372,7 @@ const useStore = create(
             // Separate from public jobs — auth-gated, returns only this employer's postings
             employerJobs: [],
             employerJobsLoading: false,
+            employerProfile: null,
             refreshEmployerJobs: async () => {
                 set({ employerJobsLoading: true })
                 try {
@@ -336,6 +380,15 @@ const useStore = create(
                     set({ employerJobs: data.items || [], employerJobsLoading: false })
                 } catch {
                     set({ employerJobsLoading: false })
+                }
+            },
+
+            loadEmployerProfile: async () => {
+                try {
+                    const data = await fetchEmployerProfile()
+                    set({ employerProfile: data })
+                } catch {
+                    // Profile might not exist yet
                 }
             },
 

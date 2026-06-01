@@ -28,6 +28,7 @@ class AgentState(TypedDict, total=False):
     user_message: str
     seeker: SeekerProfile
     target_job_id: str | None
+    explicit_intent: str | None
     candidate_jobs: list[JobPosting]
 
     # Routing

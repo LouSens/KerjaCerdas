@@ -1,12 +1,50 @@
 import { useEffect, useRef, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, Tag, FilledStat, DesignStyles } from './_design'
+import { updateSeekerProfile } from '../services/api'
+import toast from 'react-hot-toast'
 
 export default function CVUploader() {
     const { uploadResume, cvUploading, seekerId, profile, navigate, loadSeekerProfile } = useStore()
     const inputRef = useRef(null)
     const [dragOver, setDragOver] = useState(false)
     const [fileMeta, setFileMeta] = useState(null)
+    const [activeTab, setActiveTab] = useState('upload') // 'upload' | 'manual'
+
+    const [manualForm, setManualForm] = useState({
+        skillInput: '',
+        skills: (profile?.skills || []).map(s => s.name || s),
+        headline: profile?.headline || '',
+        salary_expectation_min: profile?.salary_expectation_min || '',
+        salary_expectation_max: profile?.salary_expectation_max || '',
+    })
+    const [manualSaving, setManualSaving] = useState(false)
+
+    const handleManualSave = async () => {
+        setManualSaving(true)
+        try {
+            await updateSeekerProfile({
+                headline: manualForm.headline,
+                skills: manualForm.skills.map(name => ({ name, level: 'intermediate', years: 0 })),
+                salary_expectation_min: Number(manualForm.salary_expectation_min) || 0,
+                salary_expectation_max: Number(manualForm.salary_expectation_max) || 0,
+            })
+            await loadSeekerProfile()
+            toast.success('Profil tersimpan!')
+        } catch (e) {
+            toast.error('Gagal simpan: ' + e.message)
+        } finally {
+            setManualSaving(false)
+        }
+    }
+
+    const addSkill = () => {
+        const s = manualForm.skillInput.trim()
+        if (s && !manualForm.skills.includes(s)) {
+            setManualForm(prev => ({ ...prev, skills: [...prev.skills, s], skillInput: '' }))
+        }
+    }
+    const removeSkill = (s) => setManualForm(prev => ({ ...prev, skills: prev.skills.filter(x => x !== s) }))
 
     // If user already has a seekerId (from a previous CV upload), reload their
     // profile from the backend so we always show fresh stats.
@@ -42,7 +80,78 @@ export default function CVUploader() {
                 </div>
             </header>
 
-            <div className="kc-grid-main">
+            {/* ── Tab switcher ───────────────────────────────────── */}
+            <div style={{ display: 'flex', gap: 0, border: `2px solid ${KC.ink}`, borderRadius: 12, overflow: 'hidden', alignSelf: 'flex-start' }}>
+                {[['upload', '📄 Upload PDF'], ['manual', '✏️ Isi Manual']].map(([tab, label]) => (
+                    <button key={tab} onClick={() => setActiveTab(tab)} style={{
+                        padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                        background: activeTab === tab ? KC.ink : '#fff',
+                        color: activeTab === tab ? '#fff' : KC.ink,
+                        border: 'none', fontFamily: 'inherit',
+                    }}>{label}</button>
+                ))}
+            </div>
+
+            {activeTab === 'manual' && (
+                <BrutalCard color="#fff" padding={28}>
+                    <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.5, margin: '0 0 20px' }}>Isi Profil Manual</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Headline / Posisi Saat Ini</label>
+                            <input
+                                value={manualForm.headline}
+                                onChange={e => setManualForm(p => ({ ...p, headline: e.target.value }))}
+                                placeholder="Contoh: Senior Backend Engineer · 5 tahun di fintech"
+                                style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Skills ({manualForm.skills.length} ditambahkan)</label>
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                                <input
+                                    value={manualForm.skillInput}
+                                    onChange={e => setManualForm(p => ({ ...p, skillInput: e.target.value }))}
+                                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                                    placeholder="Ketik skill lalu tekan Enter…"
+                                    style={{ flex: 1, padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
+                                />
+                                <button onClick={addSkill} style={{ padding: '10px 16px', background: KC.cyan, border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', boxShadow: `2px 2px 0 ${KC.ink}` }}>+ Tambah</button>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                {manualForm.skills.map(s => (
+                                    <button key={s} onClick={() => removeSkill(s)} style={{ padding: '6px 12px', background: KC.lime, border: `1.5px solid ${KC.ink}`, borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', boxShadow: `1px 1px 0 ${KC.ink}` }}>
+                                        {s} ×
+                                    </button>
+                                ))}
+                                {manualForm.skills.length === 0 && <span style={{ fontSize: 12, color: KC.mute, fontWeight: 600 }}>Belum ada skill — tambahkan di atas</span>}
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Ekspektasi Gaji Min (Rp)</label>
+                                <input type="number" value={manualForm.salary_expectation_min} onChange={e => setManualForm(p => ({ ...p, salary_expectation_min: e.target.value }))}
+                                    placeholder="Contoh: 15000000" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Ekspektasi Gaji Max (Rp)</label>
+                                <input type="number" value={manualForm.salary_expectation_max} onChange={e => setManualForm(p => ({ ...p, salary_expectation_max: e.target.value }))}
+                                    placeholder="Contoh: 25000000" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                        </div>
+                        <button onClick={handleManualSave} disabled={manualSaving} style={{
+                            padding: '14px 20px', background: KC.orange, color: '#fff',
+                            border: `2px solid ${KC.ink}`, borderRadius: 12, fontWeight: 900,
+                            fontSize: 15, cursor: manualSaving ? 'wait' : 'pointer',
+                            boxShadow: `4px 4px 0 ${KC.ink}`, opacity: manualSaving ? 0.7 : 1,
+                            fontFamily: 'inherit', alignSelf: 'flex-start',
+                        }}>
+                            {manualSaving ? 'Menyimpan…' : 'Simpan Profil →'}
+                        </button>
+                    </div>
+                </BrutalCard>
+            )}
+
+            {activeTab === 'upload' && (<>
                 {/* ── Upload dropzone ───────────────────────────────────────── */}
                 <BrutalCard color="#fff" padding={0} style={{ overflow: 'hidden' }}>
                     <div
@@ -190,7 +299,7 @@ export default function CVUploader() {
                         </div>
                     </BrutalCard>
                 </div>
-            </div>
+            </>)}
         </div>
     )
 }

@@ -19,35 +19,35 @@ export default function PricingPage() {
                         tier="Seeker Free"
                         price="Rp 0"
                         period="selamanya"
-                        features={['Top-5 match per search', 'Skill gap + 3 kursus', 'AI advisor 5 chat/hari', 'Upload 1 CV']}
+                        features={['Pencocokan AI Semantik', 'Analisis Skill Gap', 'AI Career Advisor (5x/hari)', 'Rekomendasi Prakerja']}
                         accent="bg-kc-lime"
                         cta="Daftar Gratis"
                         onCta={() => openAuthModal('register', 'seeker')}
                     />
                     <PricingCard
-                        tier="Seeker Pro"
-                        price="Rp 49k"
-                        period="/bulan"
-                        features={['Top-20 match', 'Unlimited AI advisor', 'Priority rerank', 'Interview prep AI', 'Multiple CV profiles']}
+                        tier="Employer Basic"
+                        price="Rp 0"
+                        period="pasang lowongan"
+                        features={['Pasang Lowongan Gratis', 'AI Shortlist (Top 5)', 'Skor Semantik']}
                         accent="bg-kc-cyan"
-                        cta="Upgrade Pro"
-                        onCta={() => openAuthModal('register', 'seeker')}
-                    />
-                    <PricingCard
-                        tier="Employer Growth"
-                        price="Rp 299k"
-                        period="/lowongan"
-                        features={['Top-5 kandidat per lowongan', 'AI job desc writer', 'Verified badge', '10 lowongan aktif', 'Email outreach']}
-                        accent="bg-kc-yellow"
-                        featured
-                        cta="Mulai Sekarang"
+                        cta="Posting Sekarang"
                         onCta={() => openAuthModal('register', 'employer')}
                     />
                     <PricingCard
-                        tier="Enterprise"
+                        tier="Verified Unlock"
+                        price="Rp 50k"
+                        period="/kandidat"
+                        features={['Buka Kontak Asli Kandidat', 'Lihat CV PDF Lengkap', '✓ Background Checked', '✓ Ijazah/SIVIL Verified']}
+                        accent="bg-kc-yellow"
+                        featured
+                        cta="Coba Unlock"
+                        onCta={() => openAuthModal('register', 'employer')}
+                    />
+                    <PricingCard
+                        tier="Enterprise API"
                         price="Custom"
-                        period="contact"
-                        features={['Top-50 kandidat', 'Unlimited lowongan', 'ATS integration', 'Dedicated AM', 'SLA 99.9%']}
+                        period="/bulan"
+                        features={['Integrasi ATS Internal', 'AI-as-a-Service', 'Unlimited Scoring', 'SLA 99.9%']}
                         accent="bg-kc-pink"
                         cta="Hubungi Sales"
                         onCta={() => {}}
@@ -58,8 +58,8 @@ export default function PricingPage() {
                 <div className="mt-20">
                     <h2 className="text-2xl font-black text-kc-dark mb-6">FAQ</h2>
                     <div className="space-y-3">
-                        <FaqItem q="Pencari kerja harus bayar?" a="Tidak. Fitur dasar gratis selamanya. Pro opsional untuk yang mau lebih banyak match dan unlimited AI advisor." />
-                        <FaqItem q="Employer bisa coba dulu?" a="Ya. Daftar gratis, posting 1 lowongan pertama gratis. Baru bayar kalau mau lanjut." />
+                        <FaqItem q="Pencari kerja harus bayar?" a="Tidak. Fitur dasar gratis selamanya. Termasuk analisis skill gap dan rekomendasi kursus." />
+                        <FaqItem q="Employer benar-benar gratis pasang lowongan?" a="Ya! Pasang lowongan dan lihat AI Shortlist (Skor + Profil Singkat) gratis. Anda baru bayar Rp 50.000 jika ingin membuka akses kontak langsung & CV Full kandidat." />
                         <FaqItem q="Data saya aman?" a="AES-256 encryption, server Indonesia, UU PDP compliant. Dokumen tidak ditampilkan ke user lain." />
                     </div>
                 </div>

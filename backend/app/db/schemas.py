@@ -52,6 +52,7 @@ class EducationLevel(str, Enum):
 
 
 class ApplicationStatus(str, Enum):
+    SAVED = "saved"          # Bookmarked/saved (not yet applied)
     APPLIED = "applied"
     REVIEWED = "reviewed"
     INTERVIEW = "interview"

@@ -36,7 +36,6 @@ dependencies = [
     "aiosqlite>=0.20.0",
     "asyncpg>=0.29.0",
     "alembic>=1.13.0",
-    "supabase>=2.5.0",
     "pgvector>=0.3.0",
     # ML
     "numpy>=1.26.0",
@@ -50,11 +49,6 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "ruff>=0.3.0",
     "mypy>=1.9.0",
-]
-ml-heavy = [
-    "torch>=2.2.0",
-    "transformers>=4.38.0",
-    "sentence-transformers>=2.6.0",
 ]
 
 [tool.ruff]

@@ -85,18 +85,29 @@ def _explain(
     region_ok: bool,
     salary_ok: bool,
 ) -> str:
-    """Human-readable explanation, preserving original skill casing."""
+    """Human-readable explanation, following prompts/tasks/match_explainer.md rules."""
     s_lower = {x.lower() for x in seeker_skill_names}
     matched = [s for s in job.required_skills if s.lower() in s_lower]
     missing  = [s for s in job.required_skills if s.lower() not in s_lower]
-    parts = [f"skill cocok {len(matched)}/{len(job.required_skills)}"]
-    if region_ok:
-        parts.append("lokasi sesuai")
-    if salary_ok:
-        parts.append("gaji masuk ekspektasi")
+    
+    sentences = []
+    
+    # 1. Strongest reason
+    if matched:
+        sentences.append(f"Kecocokan tinggi karena kamu menguasai {', '.join(matched[:2])}.")
+    elif region_ok:
+        sentences.append("Lokasi pekerjaan ini sangat sesuai dengan preferensimu.")
+    else:
+        sentences.append("Ada potensi kecocokan berdasarkan pengalamanmu.")
+        
+    # 2. Gentle gap (up to 2 missing)
     if missing:
-        parts.append(f"perlu tambah: {', '.join(missing[:3])}")
-    return "; ".join(parts)
+        sentences.append(f"Kamu bisa meningkatkan peluang dengan mempelajari {', '.join(missing[:2])}.")
+        
+    # 3. Action
+    sentences.append("**Aksi:** Kirim lamaranmu sekarang sebelum kuota penuh!")
+    
+    return " ".join(sentences)
 
 
 # ── Matcher ───────────────────────────────────────────────────────────────────

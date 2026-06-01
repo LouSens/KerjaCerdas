@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, RankSticker, ScoreDonut, Tag, DesignStyles } from './_design'
+import JobDetailModal from './JobDetailModal'
 
 // ── LinkedIn-style multi-facet filters ─────────────────────────────────────
 // Auto-matching to seeker profile still happens server-side. These filters
@@ -64,6 +65,7 @@ export default function SeekerMatchResults() {
     const { matches, agentLoading, runAgent, toggleSaveJob, isJobSaved } = useStore()
     const [facets, setFacets] = useState(DEFAULT_FACETS)
     const [showFilters, setShowFilters] = useState(true)
+    const [selectedJob, setSelectedJob] = useState(null)
 
     if (agentLoading) return <MatchSkeleton />
 
@@ -103,8 +105,8 @@ export default function SeekerMatchResults() {
                     <button className="kc-btn" onClick={() => setShowFilters(v => !v)} style={topBtn('#fff')}>
                         ⚙️ Filter {activeCount > 0 && <span style={{ marginLeft: 6, padding: '2px 6px', background: KC.orange, color: '#fff', borderRadius: 4, fontSize: 10, fontWeight: 900 }}>{activeCount}</span>}
                     </button>
-                    <button className="kc-btn" onClick={() => runAgent({ message: 're-match my profile' })} style={topBtn(KC.orange, '#fff')}>
-                        ✨ Re-match
+                    <button className="kc-btn" onClick={() => runAgent({ explicitIntent: 'match_jobs' })} style={topBtn(KC.orange, '#fff')}>
+                        Re-Match
                     </button>
                 </div>
             </header>
@@ -152,19 +154,22 @@ export default function SeekerMatchResults() {
             <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
                 {list.map((m, i) => (
                     <MatchCard key={m.job_id || i} rank={i + 1} match={m}
-                        saved={isJobSaved(m.job_id || m.id)} onSave={() => toggleSaveJob(m)} />
+                        saved={isJobSaved(m.job_id || m.id)} onSave={() => toggleSaveJob(m)}
+                        onView={() => setSelectedJob(m)} />
                 ))}
             </div>
 
             <div style={{ marginTop: 12, padding: 14, background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, textAlign: 'center', fontSize: 13, fontWeight: 700, color: KC.mute }}>
                 Hanya 5 hasil teratas yang ditampilkan. <span style={{ color: KC.ink, textDecoration: 'underline', cursor: 'pointer' }}>Upgrade ke Pro</span> buat akses top-20 + insight mingguan.
             </div>
+
+            <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
         </div>
     )
 }
 
-function MatchCard({ rank, match, saved, onSave }) {
-    const score = Math.round((match.overall_score ?? match.score / 100 ?? 0.85) * 100)
+function MatchCard({ rank, match, saved, onSave, onView }) {
+    const score = Math.round((match.overall_score ?? match.score ?? 0.85) * 100)
     const accent = score >= 90 ? KC.orange : score >= 85 ? KC.yellow : score >= 80 ? KC.cyan : KC.lime
     const company = match.company || 'Company'
     const matchingSkills = match.matching_skills || []
@@ -202,7 +207,7 @@ function MatchCard({ rank, match, saved, onSave }) {
                     <button className="kc-btn" onClick={onSave} aria-label={saved ? 'Unsave' : 'Save'} style={{ width: 38, height: 38, background: saved ? KC.yellow : '#fff', border: `2px solid ${KC.ink}`, borderRadius: 9, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}`, fontSize: 16 }}>
                         {saved ? '★' : '☆'}
                     </button>
-                    <button className="kc-btn" style={topBtn(KC.orange, '#fff')}>Lihat →</button>
+                    <button className="kc-btn" onClick={onView} style={topBtn(KC.orange, '#fff')}>Lihat →</button>
                 </div>
             </div>
         </BrutalCard>

@@ -29,11 +29,66 @@ _ADV_RE   = re.compile(r"(saran|tips|karier|gaji|negosiasi|interview|cv|resume)"
 
 
 async def route_intent(state: AgentState) -> dict:
-    """Classify user intent from the message using lightweight regex."""
+    """Classify user intent from the message.
+
+    Strategy (in priority order):
+    1. Gemini structured output — accurate for Indonesian slang + English mix.
+    2. Regex heuristic fallback — used when GEMINI_API_KEY is absent or LLM fails.
+
+    Returns intent one of: 'match_jobs' | 'skill_gap' | 'advise'
+    """
+    import os, json
+    from backend.app.config.settings import settings
+
+    # 1. Check for explicit intent bypass from structured UI clicks
+    explicit_intent = state.get("explicit_intent")
+    if explicit_intent in ("match_jobs", "skill_gap", "advise"):
+        return {"intent": explicit_intent, "reasoning": "UI button click (structured bypass)"}
+
+    # 2. Fallback to Natural Language Processing
     msg = (state.get("user_message") or "").strip()
     if not msg:
-        intent: Intent = "match_jobs"
-    elif _GAP_RE.search(msg):
+        return {"intent": "match_jobs", "reasoning": "empty message → default to match"}
+
+    gemini_key = (
+        settings.gemini_api_key
+        or os.environ.get("GEMINI_API_KEY", "")
+        or os.environ.get("GOOGLE_API_KEY", "")
+    )
+    if gemini_key:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            from langchain_core.messages import HumanMessage, SystemMessage
+
+            llm = ChatGoogleGenerativeAI(
+                model=settings.gemini_chat_model,
+                temperature=0.0,
+            )
+            sys = (
+                "Kamu adalah intent classifier untuk platform job matching. "
+                "Klasifikasikan pesan user ke salah satu intent berikut: "
+                "'match_jobs' (cari/rekomendasi pekerjaan), "
+                "'skill_gap' (analisis skill gap, kursus, belajar), "
+                "'advise' (saran karier, gaji, interview, CV). "
+                "Balas HANYA dengan JSON: {\"intent\": \"<value>\", \"reasoning\": \"<1 kalimat>\"}"
+            )
+            resp = await llm.ainvoke([
+                SystemMessage(content=sys),
+                HumanMessage(content=msg),
+            ])
+            raw = resp.content.strip()
+            if raw.startswith("```"):
+                raw = re.sub(r"```[a-z]*\n?", "", raw).rstrip("`").strip()
+            data = json.loads(raw)
+            intent = data.get("intent", "match_jobs")
+            if intent not in ("match_jobs", "skill_gap", "advise"):
+                intent = "match_jobs"
+            return {"intent": intent, "reasoning": data.get("reasoning", "")}
+        except Exception as exc:
+            logger.debug("LLM intent routing failed (%s) — falling back to regex", exc)
+
+    # Regex fallback (offline / no key)
+    if _GAP_RE.search(msg):
         intent = "skill_gap"
     elif _ADV_RE.search(msg):
         intent = "advise"
@@ -41,7 +96,7 @@ async def route_intent(state: AgentState) -> dict:
         intent = "match_jobs"
     else:
         intent = "match_jobs"
-    return {"intent": intent, "reasoning": f"heuristic: {msg[:80]}"}
+    return {"intent": intent, "reasoning": f"regex fallback: {msg[:80]}"}
 
 
 # ── 2. Matcher ────────────────────────────────────────────────────────────────

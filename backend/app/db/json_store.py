@@ -7,6 +7,7 @@ single import change.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -23,9 +24,11 @@ class JsonRepository(Generic[T]):
     """Async-friendly JSON file repository keyed on `id`."""
 
     def __init__(self, model: Type[T], folder: str) -> None:
+        """Initialise the repository, creating the storage folder if absent."""
         self.model = model
         self.folder = DATA_ROOT / folder
         self.folder.mkdir(parents=True, exist_ok=True)
+        self._lock = asyncio.Lock()
 
     def _path(self, oid: str) -> Path:
         return self.folder / f"{oid}.json"
@@ -37,19 +40,32 @@ class JsonRepository(Generic[T]):
         return self.model.model_validate_json(p.read_text(encoding="utf-8"))
 
     async def upsert(self, obj: T) -> T:
-        oid = getattr(obj, "id")
-        self._path(oid).write_text(
-            obj.model_dump_json(indent=2),
-            encoding="utf-8",
-        )
-        return obj
+        """Persist *obj* to disk, creating or overwriting its JSON file.
+
+        The write is serialised with an asyncio.Lock to prevent race
+        conditions when multiple coroutines write to the same folder.
+        """
+        async with self._lock:
+            oid = getattr(obj, "id")
+            self._path(oid).write_text(
+                obj.model_dump_json(indent=2),
+                encoding="utf-8",
+            )
+            return obj
 
     async def delete(self, oid: str) -> bool:
-        p = self._path(oid)
-        if p.exists():
-            p.unlink()
-            return True
-        return False
+        """Remove the JSON file for *oid* from disk.
+
+        The deletion is serialised with the same asyncio.Lock used by upsert
+        to avoid a delete/write race on the same file.
+        Returns True if a file was removed, False if it did not exist.
+        """
+        async with self._lock:
+            p = self._path(oid)
+            if p.exists():
+                p.unlink()
+                return True
+            return False
 
     async def list(self, limit: int | None = None) -> list[T]:
         items: list[T] = []

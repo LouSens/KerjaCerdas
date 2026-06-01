@@ -21,13 +21,15 @@ import SkillGapPanel from './components/SkillGapPanel'
 import SavedJobsPage from './components/SavedJobsPage'
 import VerificationDashboard from './components/VerificationDashboard'
 import CVUploader from './components/CVUploader'
+import SeekerSearch from './components/SeekerSearch'
 
 // Employer views
-import EmployerDashboardV2 from './components/EmployerDashboardV2'
+import EmployerDashboard from './components/EmployerDashboard'
 import EmployerPostJob from './components/EmployerPostJob'
 import EmployerCandidates from './components/EmployerCandidates'
 import EmployerVerification from './components/EmployerVerification'
 import JobPackUploader from './components/JobPackUploader'
+import EmployerProfile from './components/EmployerProfile'
 
 
 /**
@@ -85,27 +87,21 @@ function AuthedView({ view, userRole, matches }) {
         if (view === 'seeker-saved')        return <SavedJobsPage />
         if (view === 'seeker-verification') return <VerificationDashboard />
         if (view === 'seeker-profile')      return <CVUploader />
+        if (view === 'seeker-search')       return <SeekerSearch />
     }
 
     if (userRole === 'employer') {
-        if (view === 'employer-dashboard')    return <EmployerDashboardV2 />
-        if (view === 'employer-jobs')         return <EmployerDashboardV2 />
+        if (view === 'employer-dashboard')    return <EmployerDashboard />
+        if (view === 'employer-jobs')         return <EmployerDashboard />
         if (view === 'employer-post-job')     return <EmployerPostJob />
         if (view === 'employer-candidates')   return <EmployerCandidates />
         if (view === 'employer-verification') return <EmployerVerification />
         if (view === 'employer-upload')       return <JobPackUploader />
-        if (view === 'employer-profile')      return <EmployerProfilePlaceholder />
+        if (view === 'employer-profile')      return <EmployerProfile />
     }
 
 
     return <p className="text-sm text-kc-gray">Halaman tidak ditemukan untuk peran Anda.</p>
 }
 
-function EmployerProfilePlaceholder() {
-    return (
-        <div className="border-2 border-kc-dark bg-white p-8">
-            <h2 className="text-lg font-bold mb-1">Profil Perusahaan</h2>
-            <p className="text-sm text-kc-gray">Edit nama, NPWP, industri, ukuran, dan deskripsi singkat untuk meningkatkan kredibilitas posting.</p>
-        </div>
-    )
-}
+

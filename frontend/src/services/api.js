@@ -28,6 +28,13 @@ async function request(path, opts = {}) {
         ...opts,
     })
     if (!res.ok) {
+        // Auto-logout on token expiry
+        if (res.status === 401) {
+            try {
+                const { default: useStore } = await import('../store/useStore')
+                useStore.getState().logout()
+            } catch { /* ignore if store unavailable */ }
+        }
         // Try to surface FastAPI's `detail` so the UI can show real messages.
         let detail = `${res.status} ${res.statusText}`
         try {
@@ -61,7 +68,7 @@ export const registerUser = ({ name, email, password, role }) =>
     })
 
 // ── Agent (unified entrypoint for match / skill-gap / advisor) ──────────────
-export async function invokeAgent({ message, seekerId, seeker, targetJobId, sessionId }) {
+export async function invokeAgent({ message, seekerId, seeker, targetJobId, explicitIntent, sessionId }) {
     return request(`${API_BASE}/agent/invoke`, {
         method: 'POST',
         body: JSON.stringify({
@@ -69,6 +76,7 @@ export async function invokeAgent({ message, seekerId, seeker, targetJobId, sess
             seeker_id: seekerId,
             seeker,
             target_job_id: targetJobId ?? null,
+            explicit_intent: explicitIntent ?? null,
             session_id: sessionId,
         }),
     })
@@ -168,7 +176,18 @@ export const estimateJobPool = (payload) => request(`${API_BASE}/employer/jobs/e
 // ── Verification documents (encrypted file_ids visible only to owner) ───────
 export const listVerificationDocs = () => request(`${API_BASE}/verify/documents`)
 
+// ── Seeker applications ──────────────────────────────────────────────────────
+export const applyToJob = (jobId, coverLetter = '') =>
+    request(`${API_BASE}/seeker/apply`, {
+        method: 'POST',
+        body: JSON.stringify({ job_id: jobId, cover_letter: coverLetter }),
+    })
 
+export const fetchApplications = () => request(`${API_BASE}/seeker/applications`)
+
+// ── Jobs search ──────────────────────────────────────────────────────────────
+export const searchJobs = (q = '', offset = 0, limit = 20) =>
+    request(`${API_BASE}/jobs?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`)
 
 // ── Health ──────────────────────────────────────────────────────────────────
 export const healthCheck = () => request('/health')

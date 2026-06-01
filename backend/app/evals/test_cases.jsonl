@@ -1,0 +1,30 @@
+{"input": "saya baru lulus SMK akuntansi, tidak punya pengalaman, pingin kerja kantoran", "expected_intent": "skill_gap", "expected_response_keyword": "kursus"}
+{"input": "tolong carikan loker untuk react js developer dengan pengalaman 3 tahun", "expected_intent": "match_jobs", "expected_response_keyword": "frontend"}
+{"input": "berapa gaji wajar untuk seorang graphic designer di jakarta?", "expected_intent": "advise", "expected_response_keyword": "gaji"}
+{"input": "ada lowongan kerja part time buat mahasiswa tingkat akhir nggak?", "expected_intent": "match_jobs", "expected_response_keyword": "part time"}
+{"input": "gimana caranya nego gaji kalau kita baru fresh graduate?", "expected_intent": "advise", "expected_response_keyword": "nego"}
+{"input": "saya sering ditolak lamaran, kira-kira skill apa ya yang masih kurang buat jadi data analyst?", "expected_intent": "skill_gap", "expected_response_keyword": "kurang"}
+{"input": "carikan loker SPG di daerah surabaya timur dong", "expected_intent": "match_jobs", "expected_response_keyword": "spg"}
+{"input": "apa bedanya digital marketing sama social media specialist?", "expected_intent": "advise", "expected_response_keyword": "marketing"}
+{"input": "rekomendasi bootcamp gratis buat belajar UI UX dimana ya?", "expected_intent": "skill_gap", "expected_response_keyword": "bootcamp"}
+{"input": "loker fullstack developer WFH gaji di atas 10 juta", "expected_intent": "match_jobs", "expected_response_keyword": "fullstack"}
+{"input": "pertanyaan apa saja yang sering muncul pas interview HRD?", "expected_intent": "advise", "expected_response_keyword": "interview"}
+{"input": "aku lulusan sastra inggris tapi pengen banting setir ke HR, belajarnya darimana?", "expected_intent": "skill_gap", "expected_response_keyword": "belajar"}
+{"input": "mau cari kerjaan admin sosmed yang bisa remote", "expected_intent": "match_jobs", "expected_response_keyword": "admin"}
+{"input": "lebih bagus CV pake bahasa inggris atau indonesia ya kalau buat perusahaan BUMN?", "expected_intent": "advise", "expected_response_keyword": "cv"}
+{"input": "skill wajib apa yang harus dikuasai kalau mau jadi backend engineer di tahun 2024?", "expected_intent": "skill_gap", "expected_response_keyword": "wajib"}
+{"input": "info lowongan kerja supir sim B1 area jabodetabek", "expected_intent": "match_jobs", "expected_response_keyword": "supir"}
+{"input": "kalau ditanya 'apa kelemahan terbesar anda' jawabnya gimana yang aman?", "expected_intent": "advise", "expected_response_keyword": "kelemahan"}
+{"input": "saya jago desain pake canva tapi kurang di photoshop, ada kelas rekomendasinya?", "expected_intent": "skill_gap", "expected_response_keyword": "kelas"}
+{"input": "butuh loker content creator untuk tiktok, gaji UMR", "expected_intent": "match_jobs", "expected_response_keyword": "tiktok"}
+{"input": "apakah sertifikat coursera dihargai oleh HRD di indonesia?", "expected_intent": "advise", "expected_response_keyword": "sertifikat"}
+{"input": "saya mau transisi dari sales ke product manager, gap kompetensinya sejauh apa ya?", "expected_intent": "skill_gap", "expected_response_keyword": "transisi"}
+{"input": "cari lowongan kasir indomaret atau alfamart", "expected_intent": "match_jobs", "expected_response_keyword": "kasir"}
+{"input": "format CV ATS friendly itu yang kayak gimana sih bentuknya?", "expected_intent": "advise", "expected_response_keyword": "ats"}
+{"input": "saya butuh upgrade skill excel dari basic ke advanced buat admin finance", "expected_intent": "skill_gap", "expected_response_keyword": "excel"}
+{"input": "ada lowongan magang buat anak D3 teknik mesin?", "expected_intent": "match_jobs", "expected_response_keyword": "magang"}
+{"input": "tanda-tanda kita bakal lolos interview user itu seperti apa?", "expected_intent": "advise", "expected_response_keyword": "lolos"}
+{"input": "apa saja requirement buat jadi cybersecurity analyst? saya mau ngecek yang kurang", "expected_intent": "skill_gap", "expected_response_keyword": "requirement"}
+{"input": "loker videografer freelance di bandung", "expected_intent": "match_jobs", "expected_response_keyword": "videografer"}
+{"input": "gimana cara bikin cover letter yang gak keliatan kaku?", "expected_intent": "advise", "expected_response_keyword": "cover letter"}
+{"input": "kayaknya aku kurang paham AWS, ada saran course AWS yang murah nggak?", "expected_intent": "skill_gap", "expected_response_keyword": "aws"}

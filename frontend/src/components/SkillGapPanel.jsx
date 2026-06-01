@@ -6,10 +6,10 @@ export default function SkillGapPanel() {
     const { missingSkills, recommendedCourses, runAgent, agentLoading } = useStore()
 
     useEffect(() => {
-        if (!missingSkills.length && !agentLoading) {
-            runAgent({ message: 'analyze my skill gap for top matches' })
+        if (!missingSkills.length && !recommendedCourses.length && !agentLoading) {
+            runAgent({ explicitIntent: 'skill_gap' })
         }
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [missingSkills.length, recommendedCourses.length, agentLoading, runAgent]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const gaps = (missingSkills.length ? missingSkills : ['Kafka', 'Terraform', 'Redis']).slice(0, 3)
     const courses = recommendedCourses.length ? recommendedCourses : DEMO_COURSES

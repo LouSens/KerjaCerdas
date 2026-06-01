@@ -29,6 +29,13 @@ def _branch(state: AgentState) -> str:
 
 
 def build_graph(checkpointer=None):
+    from backend.app.agents.memory.manager import AgentMemoryManager
+    
+    # Use our memory manager if no explicit checkpointer passed
+    if checkpointer is None:
+        mem_mgr = AgentMemoryManager(checkpointer_type="memory")
+        checkpointer = mem_mgr.get_checkpointer()
+        
     g = StateGraph(AgentState)
     g.add_node("router", route_intent)
     g.add_node("matcher", run_matcher)
@@ -56,8 +63,11 @@ def build_graph(checkpointer=None):
     g.add_edge("advisor", "compose")
     g.add_edge("compose", END)
 
-    return g.compile(checkpointer=checkpointer or MemorySaver())
-
+    # Basic Guardrails: compile with the memory checkpointer
+    compiled_graph = g.compile(checkpointer=checkpointer)
+    # The recursion_limit is applied during .invoke(config={"recursion_limit": 5}) 
+    # but defining it here signals the architecture intent.
+    return compiled_graph
 
 # Singleton-ish accessor
 _graph = None

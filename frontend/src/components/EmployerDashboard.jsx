@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, FilledStat, Tag, DesignStyles } from './_design'
 
-export default function EmployerDashboardV2() {
-    const { user, employerJobs, refreshEmployerJobs, navigate } = useStore()
+export default function EmployerDashboard() {
+    const { user, employerJobs, refreshEmployerJobs, navigate, employerProfile, loadEmployerProfile } = useStore()
     const [openJobId, setOpenJobId] = useState(null)
 
-    useEffect(() => { refreshEmployerJobs() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => { refreshEmployerJobs(); loadEmployerProfile() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     const activeJobs = (employerJobs || []).filter(j => j.is_active !== false)
+    const totalApplications = activeJobs.reduce((sum, j) => sum + (j.application_count || 0), 0)
     const display = activeJobs.length ? activeJobs.slice(0, 4) : DEMO_JOBS
 
     return (
@@ -20,7 +21,7 @@ export default function EmployerDashboardV2() {
                         Halo, {user.name || 'Employer'} 👋
                     </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        {activeJobs.length || 4} lowongan aktif · 287 lamaran masuk · Top kandidat di-refresh tiap 6 jam
+                        {activeJobs.length || 4} lowongan aktif · {totalApplications} lamaran masuk · Top kandidat di-refresh tiap 6 jam
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -31,7 +32,7 @@ export default function EmployerDashboardV2() {
 
             <div className="kc-grid-4 kc-stagger">
                 <FilledStat label="Lowongan Aktif" value={String(activeJobs.length || 4)} sub="/ 10 quota (Growth)" color={KC.ink} dark onClick={() => navigate('employer-jobs')} />
-                <FilledStat label="Total Lamaran" value="287" sub="+34 minggu ini" color={KC.cyan} onClick={() => navigate('employer-candidates')} />
+                <FilledStat label="Total Lamaran" value={String(totalApplications)} sub={activeJobs.length + ' lowongan aktif'} color={KC.cyan} onClick={() => navigate('employer-candidates')} />
                 <FilledStat label="Top-5 Diakses" value="23×" sub="plan: ∞ (Growth)" color={KC.yellow} onClick={() => navigate('employer-candidates')} />
                 <FilledStat label="Time-to-Hire" value="12d" sub="↓ 8d vs rata-rata" color={KC.lime} onClick={() => navigate('employer-candidates')} />
             </div>
@@ -79,15 +80,27 @@ export default function EmployerDashboardV2() {
                         </div>
                     </BrutalCard>
 
-                    <BrutalCard color={KC.lime} padding={18}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontSize: 24 }}>✓</span>
-                            <div>
-                                <div style={{ fontSize: 12, fontWeight: 800 }}>NPWP Terverifikasi</div>
-                                <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>Diverifikasi 12 Mei · valid hingga 2027</div>
+                    {employerProfile?.verified === 'verified' ? (
+                        <BrutalCard color={KC.lime} padding={18}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 24 }}>✓</span>
+                                <div>
+                                    <div style={{ fontSize: 12, fontWeight: 800 }}>NPWP Terverifikasi</div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>Aktif · valid hingga 2027</div>
+                                </div>
                             </div>
-                        </div>
-                    </BrutalCard>
+                        </BrutalCard>
+                    ) : (
+                        <BrutalCard color={KC.bone} padding={18}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 24 }}>🔍</span>
+                                <div>
+                                    <div style={{ fontSize: 12, fontWeight: 800 }}>NPWP Belum Diverifikasi</div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>Verifikasi untuk meningkatkan kepercayaan kandidat</div>
+                                </div>
+                            </div>
+                        </BrutalCard>
+                    )}
                 </div>
             </div>
         </div>

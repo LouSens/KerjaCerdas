@@ -146,7 +146,7 @@ async def save_job(
     if existing:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sudah tersimpan")
 
-    app = Application(job_id=job_id, seeker_id=seeker_id, status=ApplicationStatus.APPLIED)
+    app = Application(job_id=job_id, seeker_id=seeker_id, status=ApplicationStatus.SAVED)
     await repos.applications.upsert(app)
     return {"id": app.id, "job_id": job_id, "status": app.status}
 
@@ -158,7 +158,7 @@ async def unsave_job(job_id: str, current_user: User = Depends(get_current_user)
     seeker_id = profiles[0].id if profiles else current_user.id
 
     apps = await repos.applications.find(
-        lambda a: a.job_id == job_id and a.seeker_id == seeker_id
+        lambda a: a.job_id == job_id and a.seeker_id == seeker_id and a.status == ApplicationStatus.SAVED
     )
     for a in apps:
         await repos.applications.delete(a.id)
@@ -167,22 +167,106 @@ async def unsave_job(job_id: str, current_user: User = Depends(get_current_user)
 
 @router.get("/bookmarks")
 async def list_bookmarks(current_user: User = Depends(get_current_user)):
+    """Return all saved job bookmarks for the logged-in seeker, enriched with job and employer metadata."""
+    repos = get_repositories()
+    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
+    if not profiles:
+        return []
+    seeker_id = profiles[0].id
+    apps = await repos.applications.find(lambda a: a.seeker_id == seeker_id and a.status == ApplicationStatus.SAVED)
+    # Enrich with job titles
+    result = []
+    for app in apps:
+        job = await repos.jobs.get(app.job_id)
+        # Resolve employer name
+        emp = await repos.employers.get(job.employer_id) if job else None
+        result.append({
+            'application_id': app.id,
+            'job_id': app.job_id,
+            'title': job.title if job else '—',
+            'company': emp.company_name if emp else (job.employer_id if job else '—'),
+            'status': app.status,
+            'saved_at': app.created_at.isoformat(),
+        })
+    return result
+
+
+@router.post("/apply", status_code=status.HTTP_201_CREATED)
+async def apply_to_job(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """Create a job application (status=applied) for the logged-in seeker.
+
+    Accepts: { job_id: str, cover_letter: str (optional) }
+    Returns: { application_id, job_id, status }
+    Idempotent — returns existing application if already applied.
+    """
+    job_id: str = body.get("job_id", "")
+    if not job_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "job_id diperlukan")
+    repos = get_repositories()
+    job = await repos.jobs.get(job_id)
+    if not job:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
+
+    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
+    seeker_id = profiles[0].id if profiles else current_user.id
+
+    existing = await repos.applications.find(
+        lambda a: a.job_id == job_id and a.seeker_id == seeker_id
+    )
+    if existing:
+        return {
+            "application_id": existing[0].id,
+            "job_id": job_id,
+            "status": existing[0].status,
+            "already_applied": True,
+        }
+
+    app = Application(
+        job_id=job_id,
+        seeker_id=seeker_id,
+        status=ApplicationStatus.APPLIED,
+        cover_letter=body.get("cover_letter", ""),
+    )
+    await repos.applications.upsert(app)
+
+    # Award XP for applying
+    gam_list = await repos.gamification.find(lambda g: g.seeker_id == seeker_id)
+    if gam_list:
+        gam = gam_list[0]
+        gam.xp += 50
+        if "first_apply" not in gam.badges:
+            gam.badges.append("first_apply")
+        await repos.gamification.upsert(gam)
+
+    logger.info("Application created: seeker %s → job %s", seeker_id, job_id)
+    return {"application_id": app.id, "job_id": job_id, "status": app.status, "already_applied": False}
+
+
+@router.get("/applications")
+async def list_applications(current_user: User = Depends(get_current_user)):
+    """Return all job applications for the logged-in seeker with job metadata.
+
+    Returns list of { application_id, job_id, title, company, status, applied_at }.
+    """
     repos = get_repositories()
     profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
     if not profiles:
         return []
     seeker_id = profiles[0].id
     apps = await repos.applications.find(lambda a: a.seeker_id == seeker_id)
-    # Enrich with job titles
     result = []
     for app in apps:
         job = await repos.jobs.get(app.job_id)
+        emp = await repos.employers.get(job.employer_id) if job else None
         result.append({
             "application_id": app.id,
             "job_id": app.job_id,
             "title": job.title if job else "—",
-            "company": job.employer_id if job else "—",
+            "company": emp.company_name if emp else "—",
             "status": app.status,
-            "saved_at": app.created_at.isoformat(),
+            "applied_at": app.created_at.isoformat(),
         })
     return result

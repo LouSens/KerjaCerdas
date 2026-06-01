@@ -3,7 +3,7 @@ import useStore from '../store/useStore'
 import { KC, BrutalCard, FilledStat, ScoreDonut, RankSticker, Tag, DesignStyles } from './_design'
 
 export default function SeekerDashboard() {
-    const { user, matches, navigate, runAgent, agentLoading, seekerId } = useStore()
+    const { user, matches, navigate, runAgent, agentLoading, seekerId, profile, recommendedCourses, missingSkills, computeProfileCompleteness } = useStore()
 
     useEffect(() => {
         if (!matches.length && !agentLoading) runAgent({ message: 'show my top matches' })
@@ -11,12 +11,13 @@ export default function SeekerDashboard() {
 
     const topMatches = (matches.length ? matches : DEMO_MATCHES).slice(0, 3)
     const avg = matches.length
-        ? Math.round(matches.reduce((s, m) => s + (m.overall_score ?? m.score / 100 ?? 0.8), 0) / matches.length * 100)
+        ? Math.round(matches.reduce((s, m) => s + (m.overall_score ?? m.score ?? 0.8), 0) / matches.length * 100)
         : 87
 
+    const completionPct = computeProfileCompleteness()
+
     const handleCariCepat = () => {
-        runAgent({ message: 'refresh my matches' })
-        navigate('seeker-match')
+        navigate('seeker-search')
     }
 
     return (
@@ -34,7 +35,7 @@ export default function SeekerDashboard() {
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={topBtn('#fff')}>📄 Upload CV</button>
                     <button className="kc-btn" onClick={handleCariCepat} style={topBtn('#fff')}>🔍 Cari cepat</button>
-                    <button className="kc-btn" onClick={() => runAgent({ message: 'refresh my matches' })} disabled={agentLoading} style={{ ...topBtn(KC.orange, '#fff'), opacity: agentLoading ? 0.6 : 1 }}>
+                    <button className="kc-btn" onClick={() => runAgent({ explicitIntent: 'match_jobs' })} disabled={agentLoading} style={{ ...topBtn(KC.orange, '#fff'), opacity: agentLoading ? 0.6 : 1 }}>
                         {agentLoading ? 'Memproses…' : 'Refresh Match →'}
                     </button>
                 </div>
@@ -43,8 +44,8 @@ export default function SeekerDashboard() {
             <div className="kc-grid-4 kc-stagger">
                 <FilledStat label="Match Score Avg" value={`${avg}%`} sub="+4 dari minggu lalu" color={KC.orange} dark onClick={() => navigate('seeker-match')} />
                 <FilledStat label="Top-5 Match Aktif" value={String(Math.min(5, matches.length || 5))} sub="2 baru hari ini" color={KC.cyan} onClick={() => navigate('seeker-match')} />
-                <FilledStat label="Skill Gap" value="3" sub="Kafka, Redis, k8s" color={KC.yellow} onClick={() => navigate('seeker-skill-gap')} />
-                <FilledStat label="Profile Views (HR)" value="14" sub="+7 hari ini" color={KC.lime} onClick={() => navigate('seeker-profile')} />
+                <FilledStat label="Skill Gap" value={String(missingSkills?.length || '—')} sub={missingSkills?.slice(0,2).join(', ') || 'Jalankan match dulu'} color={KC.yellow} onClick={() => navigate('seeker-skill-gap')} />
+                <FilledStat label="Kursus Rekomendasi" value={String(recommendedCourses?.length || '—')} sub="dari Gemini skill gap" color={KC.lime} onClick={() => navigate('seeker-skill-gap')} />
             </div>
 
             <div className="kc-grid-main">
@@ -64,12 +65,12 @@ export default function SeekerDashboard() {
                     <BrutalCard color="#fff" padding={18}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                             <h3 style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>Kelengkapan Profil</h3>
-                            <span style={{ fontSize: 18, fontWeight: 900, color: KC.orange }}>78%</span>
+                            <span style={{ fontSize: 18, fontWeight: 900, color: KC.orange }}>{completionPct}%</span>
                         </div>
                         <div style={{ height: 10, background: KC.ash, border: `1.5px solid ${KC.ink}`, borderRadius: 6, overflow: 'hidden', marginBottom: 14 }}>
-                            <div style={{ width: '78%', height: '100%', background: `repeating-linear-gradient(45deg, ${KC.orange} 0 8px, ${KC.orangeDeep} 8px 16px)` }} />
+                            <div style={{ width: `${completionPct}%`, height: '100%', background: `repeating-linear-gradient(45deg, ${KC.orange} 0 8px, ${KC.orangeDeep} 8px 16px)` }} />
                         </div>
-                        {[['CV uploaded', true], ['Skills (14)', true], ['Verifikasi KTP', true], ['Verifikasi Ijazah', false], ['Portfolio link', false]].map(([l, ok], i) => (
+                        {[['CV uploaded', !!seekerId], ['Skills ('+( profile.skills?.length||0)+')', (profile.skills?.length||0)>0], ['Verifikasi KTP', false], ['Verifikasi Ijazah', false], ['Portfolio link', false]].map(([l, ok], i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: ok ? KC.ink : KC.mute, marginTop: 6 }}>
                                 <span style={{ width: 18, height: 18, borderRadius: 5, background: ok ? KC.lime : '#fff', border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', fontSize: 11 }}>{ok ? '✓' : ''}</span>
                                 {l}
@@ -113,7 +114,7 @@ export default function SeekerDashboard() {
 
 function DashMatchCard({ rank, match }) {
     const navigate = useStore(s => s.navigate)
-    const score = Math.round((match.overall_score ?? match.score / 100 ?? 0.85) * 100)
+    const score = Math.round((match.overall_score ?? match.score ?? 0.85) * 100)
     const accent = score >= 90 ? KC.orange : score >= 85 ? KC.yellow : score >= 80 ? KC.cyan : KC.lime
     const company = match.company || 'Company'
     const matchingSkills = match.matching_skills || []

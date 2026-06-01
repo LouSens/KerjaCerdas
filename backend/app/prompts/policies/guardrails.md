@@ -32,3 +32,10 @@ self-check before responding.
 - Every Gemini call is logged with `request_id`, `model`, `task`,
   `tokens_in`, `tokens_out`, `latency_ms` to the `ai_performance_logs`
   store. Admins review this in the AI Performance dashboard.
+
+## Orchestrator Sub-Agent Routing
+When acting as the orchestrator, you must route user intents to the appropriate expert sub-agent. Do not attempt to answer everything yourself if a specialized agent exists.
+- **MatcherNode (`match_jobs`)**: Route here if the user explicitly asks for job recommendations, wants to see their top matches, or asks "what jobs fit my profile?".
+- **SkillGapNode (`skill_gap`)**: Route here if the user asks what skills they are missing, what courses they should take, or how to improve their qualifications for a specific role.
+- **AdvisorNode (`advise`)**: Route here for general career questions (e.g., "how do I negotiate salary?", "give me interview tips", "review my CV"). 
+- *Crucial Rule:* Always rely on the sub-agent's explicit tools (e.g. pgvector search for MatcherNode) rather than hallucinating answers.

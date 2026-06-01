@@ -47,6 +47,7 @@ class AgentInvokeRequest(BaseModel):
     seeker_id: str | None = None
     seeker: SeekerProfile | None = None
     target_job_id: str | None = None
+    explicit_intent: str | None = None
     session_id: str | None = Field(default=None, description="thread id for memory")
 
 
@@ -170,18 +171,57 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     jobs = await repos.jobs.list()
 
     # --- Run agent --------------------------------------------------------
-    state_in = {
-        "user_message": req.user_message,
-        "seeker": seeker,
-        "candidate_jobs": jobs,
-        "target_job_id": req.target_job_id,
+    USE_V2_SWARM = True
+
+    if USE_V2_SWARM:
+        from backend.app.agents.graph.builder_v2 import get_graph_v2
+        app_graph = get_graph_v2()
+        
+        # Build context prompt for ReAct agent
+        skills = [s.name for s in seeker.skills] if seeker.skills else []
+        context = f"[Context System]\nProfil Kandidat:\nNama: {seeker.full_name}\nSkill: {skills}\n"
+        if req.explicit_intent:
+            context += f"\nInstruksi Prioritas (Bypass UI): Kandidat menekan tombol dengan intent '{req.explicit_intent}'. Segera eksekusi alat yang relevan!\n"
+            if req.target_job_id:
+                context += f"Target Job ID: {req.target_job_id}\n"
+        
+        context += f"\n[Pesan User]\n{req.user_message}"
+        
+        state_in = {"messages": [("user", context)]}
+    else:
+        from backend.app.agents.graph.builder import get_graph
+        app_graph = get_graph()
+        state_in = {
+            "user_message": req.user_message,
+            "seeker": seeker,
+            "candidate_jobs": jobs,
+            "target_job_id": req.target_job_id,
+            "explicit_intent": req.explicit_intent,
+        }
+    config = {
+        "configurable": {"thread_id": req.session_id or seeker.id},
+        "recursion_limit": 5,
     }
-    config = {"configurable": {"thread_id": req.session_id or seeker.id}}
-    graph = get_graph()
-    out = await graph.ainvoke(state_in, config=config)
+    out = await app_graph.ainvoke(state_in, config=config)
+
+    if USE_V2_SWARM:
+        final_response = out["messages"][-1].content
+        # V2 Swarm doesn't natively return structured objects, so we calculate the baseline matches 
+        # using the semantic matcher to ensure the UI job cards never break.
+        from backend.app.services.matching.matcher import SemanticMatcher
+        matcher = SemanticMatcher()
+        raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs)
+        missing_skills = []
+        matching_skills = []
+        recommended_courses = []
+    else:
+        raw_matches = out.get("matches", [])
+        final_response = out.get("final_response", "")
+        missing_skills = out.get("missing_skills", [])
+        matching_skills = out.get("matching_skills", [])
+        recommended_courses = out.get("recommended_courses", [])
 
     # --- Enrich matches with job metadata --------------------------------
-    raw_matches: list[MatchResult] = out.get("matches", [])
     seeker_skill_names = [s.name for s in (seeker.skills or [])]
     enriched = await _enrich_matches(raw_matches, jobs, seeker_skill_names)
 
@@ -196,7 +236,7 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
 
     return AgentInvokeResponse(
         intent=out.get("intent", "match_jobs"),
-        final_response=out.get("final_response", ""),
+        final_response=final_response,
         matches=enriched,
         missing_skills=out.get("missing_skills", []),
         matching_skills=out.get("matching_skills", []),
