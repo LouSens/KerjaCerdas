@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from backend.app.db.json_store import get_repositories
+from backend.app.db.postgres_store import get_repositories
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 

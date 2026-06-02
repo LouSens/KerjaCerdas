@@ -27,22 +27,9 @@ models/*.onnx
 models/*.bin
 *.h5
 
-# Data (versioned via DVC, not git)
-data/raw/
-data/processed/
-data/features/
-data/seed/
-# Dev JSON store contents (keep folders, ignore records)
-data/users/*.json
-data/seekers/*.json
-data/employers/*.json
-data/jobs/*.json
-data/applications/*.json
-data/matches/*.json
-data/embeddings/*.json
-data/conversations/*.json
-data/skill_gaps/*.json
-data/courses/*.json
+# Database
+database/*
+!database/init.sql
 
 # Reports (generated output)
 reports/

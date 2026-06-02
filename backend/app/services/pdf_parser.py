@@ -45,35 +45,20 @@ def _client():
 def _pdf_to_text(pdf_bytes: bytes, max_chars: int = 8000) -> str:
     """Cheap text extraction so we always have *some* signal even offline.
 
-    Tries pypdf → PyPDF2 → pdfplumber, returns '' if none are installed.
+    Uses PyMuPDF (fitz) for reliable text extraction.
     """
-    for mod_name, page_iter in (
-        ("pypdf", lambda r: r.pages),
-        ("PyPDF2", lambda r: r.pages),
-    ):
-        try:
-            mod = __import__(mod_name)
-            import io
-            reader = mod.PdfReader(io.BytesIO(pdf_bytes))
+    try:
+        import fitz  # PyMuPDF
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
             out: list[str] = []
-            for p in page_iter(reader):
-                try:
-                    out.append(p.extract_text() or "")
-                except Exception:
-                    continue
+            for page in doc:
+                out.append(page.get_text())
                 if sum(len(s) for s in out) > max_chars:
                     break
             text = "\n".join(out).strip()
-            if text:
-                return text[:max_chars]
-        except Exception:
-            continue
-    try:
-        import pdfplumber, io  # type: ignore
-        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-            text = "\n".join((page.extract_text() or "") for page in pdf.pages).strip()
             return text[:max_chars]
-    except Exception:
+    except Exception as e:
+        logger.warning("PyMuPDF fallback extraction failed: %s", e)
         return ""
 
 

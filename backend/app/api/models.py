@@ -5,7 +5,7 @@ SQLAlchemy 2.0 declarative model for the **auth** layer only.
 
 IMPORTANT: All business-domain models (SeekerProfile, JobPosting, Employer,
 Application, etc.) live in `backend.app.db.schemas` (Pydantic) and are
-persisted by `backend.app.db.json_store` (JSON files in dev mode).
+persisted by `backend.app.db.postgres_store` (JSON files in dev mode).
 
 Only the `User` model needs SQLAlchemy because the auth router validates
 JWT tokens by querying the SQLite/Postgres `users` table. Everything else

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from langchain_core.tools import tool
 
-from backend.app.db.json_store import get_repositories
+from backend.app.db.postgres_store import get_repositories
 from backend.app.services.matching.matcher import SemanticMatcher
 from backend.app.db.schemas import SeekerProfile, JobPosting
 

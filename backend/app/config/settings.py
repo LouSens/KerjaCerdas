@@ -82,10 +82,10 @@ class Settings(BaseSettings):
 
     @property
     def effective_database_url(self) -> str:
-        """Return the DB URL to actually use (auto-SQLite in dev)."""
+        """Return the DB URL to actually use."""
         if self.database_url:
             return self.database_url
-        return f"sqlite+aiosqlite:///{self.kerja_data_root}/kerjacerdas.db"
+        return "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
 
 
 settings = Settings()

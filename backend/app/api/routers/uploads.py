@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from backend.app.db.json_store import get_repositories
+from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     Education,
     EducationLevel,

@@ -248,7 +248,7 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
 async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
     """Match missing skills against the courses seeded into data/courses/*.json."""
     try:
-        from backend.app.db.json_store import get_repositories
+        from backend.app.db.postgres_store import get_repositories
         repos = get_repositories()
         all_courses = await repos.courses.list()
         missing_lower = {s.lower() for s in missing}

@@ -23,7 +23,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from backend.app.agents.graph.builder import get_graph
-from backend.app.db.json_store import get_repositories
+from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     CourseRecommendation,
     MatchResult,

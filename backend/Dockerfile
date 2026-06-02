@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc \
 COPY pyproject.toml .
 RUN pip install --no-cache-dir -e ".[dev]"
 
-COPY backend/ backend/
-COPY scripts/ scripts/
+COPY . backend/
+
 
 EXPOSE 8000
 

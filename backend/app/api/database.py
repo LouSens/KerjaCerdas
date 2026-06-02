@@ -63,7 +63,7 @@ def _build_engine(database_url: str):
 # Default engine + session (created lazily on first import / startup)
 # ---------------------------------------------------------------------------
 
-_DEFAULT_DB_URL = "sqlite+aiosqlite:///./kerjacerdas.db"
+_DEFAULT_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
 
 engine = _build_engine(_DEFAULT_DB_URL)
 async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

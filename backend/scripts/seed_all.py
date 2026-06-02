@@ -17,11 +17,11 @@ import asyncio
 import shutil
 from pathlib import Path
 
-from backend.app.api.database import async_session_factory
-from backend.app.api.models import User as SqlUser
+from backend.app.db.session import async_session as async_session_factory
+from backend.app.db.models import User as SqlUser
 from sqlalchemy.future import select
 
-from backend.app.db.json_store import DATA_ROOT, get_repositories
+from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     Course,
     Education,
@@ -543,14 +543,12 @@ DEFAULT_PWD = "$2b$12$demoDemoDemoDemoDemoDe.uM5RyP4OkmdRY3hCmF5wxJ2sLb7gqXa"  #
 
 
 async def seed(clear: bool) -> None:
-    from backend.app.api.database import init_db
-    await init_db()
+    # await init_db()  # handled by alembic now
 
     if clear:
-        for p in DATA_ROOT.rglob("*.json"):
-            if p.is_file():
-                p.unlink()
-        print("[OK] JSON store cleared")
+        async with async_session_factory() as session:
+            # We don't drop tables, just rely on alembic or a fresh db.
+            pass
 
     # Helper to seed users into SQLAlchemy (the auth DB)
     async def _seed_auth_user(email: str, name: str, role: str) -> SqlUser:
@@ -559,10 +557,10 @@ async def seed(clear: bool) -> None:
             result = await session.execute(stmt)
             u = result.scalar_one_or_none()
             if not u:
-                u = SqlUser(email=email, name=name, password_hash=DEFAULT_PWD, role=role)
+                import uuid
+                u = SqlUser(id=str(uuid.uuid4()), email=email, password_hash=DEFAULT_PWD, role=role)
                 session.add(u)
             else:
-                u.name = name
                 u.role = role
                 u.password_hash = DEFAULT_PWD
             await session.commit()

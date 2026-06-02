@@ -1,20 +1,35 @@
-# KerjaCerdas — Docker Compose Stack (MVP V2)
+﻿# KerjaCerdas — Docker Compose Stack (MVP V2)
 # Usage: docker-compose up --build (requires Docker Desktop running)
 
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=kerjacerdas
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
   api:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
       - DEMO_MODE=true
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/kerjacerdas
     env_file:
       - .env
     volumes:
       - ./backend:/app/backend
-      - ./data:/app/data
+    depends_on:
+      - db
 
   frontend:
     build:
@@ -27,3 +42,6 @@ services:
       - ./frontend/src:/app/src
     depends_on:
       - api
+
+volumes:
+  pgdata:

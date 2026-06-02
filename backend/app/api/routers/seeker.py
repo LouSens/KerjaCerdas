@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.app.api.dependencies import get_current_user, require_seeker
 from backend.app.api.models import User
-from backend.app.db.json_store import get_repositories
+from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     Application,
     ApplicationStatus,
