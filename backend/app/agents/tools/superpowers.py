@@ -50,21 +50,41 @@ async def analyze_skill_gap_tool(seeker_skills: list[str], target_job_requiremen
     missing = [req for req in target_job_requirements if req.lower() not in seeker_lower]
     matching = [req for req in target_job_requirements if req.lower() in seeker_lower]
     
+    free_sources = []
+    for m in missing:
+        skill_lower = m.lower()
+        if skill_lower in ["sql", "mysql", "postgresql"]:
+            free_sources.append(f"{m}: W3Schools SQL Tutorial (Gratis)")
+        elif skill_lower in ["python", "javascript", "react", "html", "css", "php", "go"]:
+            free_sources.append(f"{m}: Channel YouTube Web Programming Unpas / Programmer Zaman Now (Gratis)")
+        elif skill_lower in ["excel", "data analysis", "power bi", "tableau"]:
+            free_sources.append(f"{m}: Channel YouTube Ignasius Ryan / MySkill Free Series (Gratis)")
+        elif skill_lower in ["digital marketing", "seo", "sem"]:
+            free_sources.append(f"{m}: Google Digital Garage (Gratis + Sertifikat)")
+        else:
+            free_sources.append(f"{m}: Cari playlist '{m} tutorial bahasa indonesia' di YouTube (Gratis)")
+
     return json.dumps({
         "matching_skills": matching,
         "missing_skills": missing,
-        "recommendation": "Sarankan kandidat untuk mengambil kursus online untuk missing_skills tersebut."
+        "micro_learning_tier1": "Mulai pelajari dasar-dasarnya hari ini melalui sumber gratis berikut:",
+        "free_resources": free_sources,
+        "recommendation": "Setelah Anda paham dasarnya dan membuat mini-project, pertimbangkan mengambil kursus bersertifikat berbayar untuk memperkuat CV Anda."
     })
 
 
 @tool
-async def interview_prep_tool(job_title: str) -> str:
+async def interview_prep_tool(job_title: str, seeker_skills: list[str] = None, required_skills: list[str] = None) -> str:
     """Hasilkan pertanyaan simulasi wawancara (Mock Interview) untuk posisi tertentu.
     
     Gunakan tool ini jika kandidat akan menghadapi interview atau minta tips wawancara.
     """
-    # In a real app, this might call another LLM prompt or a vector DB of questions.
-    # For now, we return dynamic templates.
+    if seeker_skills and required_skills:
+        seeker_lower = [s.lower() for s in seeker_skills]
+        missing = [req for req in required_skills if req.lower() not in seeker_lower]
+        if len(missing) == len(required_skills) and len(required_skills) > 0:
+            return "DYNAMIC ROUTING TRIGGERED: Kandidat tidak memiliki SATU PUN skill wajib untuk posisi ini. Simulasi interview DITOLAK untuk menghemat penggunaan token. Arahkan kandidat untuk melakukan Analisa Skill Gap terlebih dahulu."
+
     title = job_title.lower()
     if "developer" in title or "engineer" in title:
         return "1. Ceritakan proyek teknis tersulit yang pernah Anda buat.\n2. Bagaimana cara Anda melakukan debugging pada kode yang error di production?"

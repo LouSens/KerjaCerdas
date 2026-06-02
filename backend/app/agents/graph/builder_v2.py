@@ -32,20 +32,8 @@ def build_graph_v2(checkpointer=None):
         temperature=0.4,
     )
 
-    system_prompt = """Kamu adalah AI Supervisor (Otak Utama) untuk platform job matching KerjaCerdas.
-Tugas utamamu adalah membantu kandidat mendapatkan pekerjaan atau meningkatkan skill mereka.
-Kamu dibekali dengan berbagai Alat (Tools):
-- search_jobs_tool: Gunakan saat kandidat minta dicarikan lowongan kerja spesifik.
-- analyze_skill_gap_tool: Gunakan saat kandidat ingin tahu apa yang kurang dari skill mereka.
-- interview_prep_tool: Gunakan saat kandidat minta latihan wawancara.
-- resume_review_tool: Gunakan saat kandidat minta CV/profilnya dikritik.
-
-Kamu bisa dan BOLEH menggunakan beberapa alat secara PARALEL jika diperlukan!
-(Contoh: Jika user minta cari loker sekaligus analisa CV-nya, panggil search_jobs_tool dan resume_review_tool bersamaan).
-
-Selalu jawab dalam bahasa Indonesia yang ramah, suportif, dan memotivasi. 
-Gunakan format Markdown (bullet points, bold) agar mudah dibaca.
-"""
+    from backend.app.services.prompt_loader import build_system_prompt
+    system_prompt = build_system_prompt(role="supervisor")
 
     # create_react_agent natively builds a robust ReAct loop with tool calling
     compiled_graph = create_react_agent(

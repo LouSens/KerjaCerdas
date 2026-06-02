@@ -200,6 +200,9 @@ Sebelum diproses oleh model eksternal, komponen PII (Personally Identifiable Inf
 ### 4. Skema Basis Data (Entity-Relationship)
 Infrastruktur relasional kami direkayasa untuk menangani entitas dalam skala tinggi (High-Volume) sekaligus memfasilitasi pencarian jarak vektor komputasional menggunakan `pgvector`.
 
+### 5. Data Acquisition & AI Feedback Loop
+Sistem mengakuisisi data riwayat lowongan (*historical data*) melalui tiga jalur: **B2B Web Scraping (ETL)** terhadap lowongan lama, **Kemitraan Data B2G** dengan Kemnaker/BPS, serta yang paling krusial, **Internal Feedback Loop**. Platform mencatat aktivitas kandidat secara *closed-loop* (lolos wawancara, tingkat retensi). Data organik ini akan melatih-ulang (*fine-tuning*) rekomendasi agen AI agar relevansinya mengungguli pangkalan data rekrutmen manapun.
+
 ```mermaid
 ---
 title: Core Relational Schema (PostgreSQL 16 + pgvector)

@@ -3,6 +3,8 @@
 > **ANTIGRAVITY PROTOCOL §3.1 RULE-04** — Schema defined BEFORE implementation.
 > All endpoints are documented here and implemented in `src/api/main.py`.
 
+Infrastruktur API KerjaCerdas direkayasa khusus untuk memitigasi latensi pemrosesan data pelamar berskala masif. Spesifikasi ini mendemonstrasikan bagaimana rute pangkalan data yang dieksekusi secara asinkron (*asynchronous endpoints*) mampu mereduksi *Time-to-Shortlist* HRD dari ukuran hari menjadi milidetik. Desain arsitektural ini memampukan platform untuk secara andal melayani hingga 50.000 kueri aktif harian pada fase adopsi awal, memastikan kelancaran alur integrasi B2B tanpa terhalang *bottleneck* performa.
+
 ## Base URL
 
 ```

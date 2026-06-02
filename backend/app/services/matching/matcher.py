@@ -157,17 +157,19 @@ class SemanticMatcher:
         seeker: SeekerProfile,
         jobs: Iterable[JobPosting],
         top_k: int | None = None,
+        filters: dict | None = None,
     ) -> list[MatchResult]:
         from backend.app.config.settings import settings
         if top_k is None:
             top_k = settings.matching_top_k
+        if filters is None:
+            filters = {}
 
         query_vec = await self.embedder.embed(
             _build_seeker_text(seeker), task_type="RETRIEVAL_QUERY"
         )
         seeker_skill_names = [s.name for s in seeker.skills]
         years_exp = _experience_years(seeker)
-        w = self._weights()
 
         scored: list[MatchResult] = []
         for j in jobs:
@@ -177,30 +179,33 @@ class SemanticMatcher:
             cos    = cosine(query_vec, j.embedding or [])
             skill  = _skill_overlap(seeker_skill_names, j.required_skills)
 
-            region_ok = (
-                j.region_code == seeker.region_code
-                or j.region_code in (seeker.preferred_regions or [])
-                or (j.remote_allowed and seeker.open_to_remote)
-            )
+            # 1. Base Score (Semantic + Skill Only)
+            base_score = 0.60 * max(cos, 0.0) + 0.40 * skill
+            
+            # 2. Hybrid AI Boosts (Only applied if user actively sets filters)
+            loc_boost = 0.0
+            region_ok = False
+            if filters.get("location"):
+                target_loc = filters["location"].lower()
+                if j.region_code.lower() == target_loc or target_loc in [r.lower() for r in (seeker.preferred_regions or [])]:
+                    loc_boost = 0.15
+                    region_ok = True
 
-            if seeker.salary_expectation_min == 0:
-                salary_ok = True
-            else:
-                salary_ok = (
-                    j.salary_max >= seeker.salary_expectation_min
-                    and j.salary_min <= max(seeker.salary_expectation_max, j.salary_max)
-                )
+            sal_boost = 0.0
+            salary_ok = False
+            if filters.get("salary_min"):
+                target_sal = int(filters["salary_min"])
+                if j.salary_max >= target_sal:
+                    sal_boost = 0.10
+                    salary_ok = True
 
-            # Experience: how many years has seeker vs what job requires
-            exp_score = min(1.0, years_exp / max(j.experience_years_min, 1))
+            exp_boost = 0.0
+            if filters.get("experience_min"):
+                target_exp = int(filters["experience_min"])
+                if j.experience_years_min <= target_exp:
+                    exp_boost = 0.10
 
-            score = (
-                w["cosine"]     * max(cos, 0.0)
-                + w["skill"]    * skill
-                + w["region"]   * float(region_ok)
-                + w["salary"]   * float(salary_ok)
-                + w["experience"] * exp_score
-            )
+            score = base_score + loc_boost + sal_boost + exp_boost
 
             scored.append(MatchResult(
                 job_id=j.id,
@@ -208,8 +213,8 @@ class SemanticMatcher:
                 score=round(score, 4),
                 cosine=round(cos, 4),
                 skill_overlap=round(skill, 4),
-                region_match=bool(region_ok),
-                salary_in_range=bool(salary_ok),
+                region_match=region_ok,
+                salary_in_range=salary_ok,
                 rank=0,
                 explanation=_explain(j, seeker_skill_names, cos, skill, region_ok, salary_ok),
             ))
@@ -224,11 +229,14 @@ class SemanticMatcher:
         job: JobPosting,
         seekers: Iterable[SeekerProfile],
         top_k: int | None = None,
+        filters: dict | None = None,
     ) -> list[dict]:
         """Reverse matching: given a job, rank seekers by fit. Used by employer dashboard."""
         from backend.app.config.settings import settings
         if top_k is None:
             top_k = settings.matching_top_k
+        if filters is None:
+            filters = {}
 
         query_vec = await self.embedder.embed(
             _build_job_text(job), task_type="RETRIEVAL_QUERY"
@@ -237,7 +245,19 @@ class SemanticMatcher:
         for s in seekers:
             cos   = cosine(query_vec, s.embedding or [])
             skill = _skill_overlap([sk.name for sk in s.skills], job.required_skills)
-            score = round(0.60 * max(cos, 0.0) + 0.40 * skill, 4)
+            
+            # Hybrid AI Boost based on filters
+            loc_boost = 0.0
+            if filters.get("location") and filters["location"].lower() == (s.region_code or "").lower():
+                loc_boost = 0.15
+                
+            exp_boost = 0.0
+            if filters.get("experience_min"):
+                years_exp = _experience_years(s)
+                if years_exp >= int(filters["experience_min"]):
+                    exp_boost = 0.10
+                    
+            score = round(0.60 * max(cos, 0.0) + 0.40 * skill + loc_boost + exp_boost, 4)
             scored.append({
                 "seeker_id":   s.id,
                 "full_name":   s.full_name,

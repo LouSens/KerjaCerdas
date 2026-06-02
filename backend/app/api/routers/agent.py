@@ -47,6 +47,7 @@ class AgentInvokeRequest(BaseModel):
     target_job_id: str | None = None
     explicit_intent: str | None = None
     session_id: str | None = Field(default=None, description="thread id for memory")
+    filters: dict | None = Field(default_factory=dict, description="Active UI filters like location, salary")
 
 
 class EnrichedMatch(BaseModel):
@@ -208,7 +209,7 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
         # using the semantic matcher to ensure the UI job cards never break.
         from backend.app.services.matching.matcher import SemanticMatcher
         matcher = SemanticMatcher()
-        raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs)
+        raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs, filters=req.filters)
         missing_skills = []
         matching_skills = []
         recommended_courses = []

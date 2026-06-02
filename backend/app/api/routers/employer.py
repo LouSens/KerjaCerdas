@@ -246,10 +246,28 @@ async def find_candidates(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
 
     top_k = int((body or {}).get("top_k", 10))
+    filters = (body or {}).get("filters", {})
     seekers = await repos.seekers.list()
     if not seekers:
         return {"job_id": job_id, "total": 0, "candidates": []}
 
     matcher = SemanticMatcher()
-    ranked = await matcher.rank_seekers_for_job(job, seekers, top_k=top_k)
+    ranked = await matcher.rank_seekers_for_job(job, seekers, top_k=top_k, filters=filters)
+    
+    # Redact full_name (Teaser Method / LinkedIn Style)
+    for c in ranked:
+        seeker = next((s for s in seekers if s.id == c["seeker_id"]), None)
+        if seeker and seeker.experience and isinstance(seeker.experience[0], dict) and seeker.experience[0].get("company"):
+            c["full_name"] = f"Someone at {seeker.experience[0]['company']}"
+        elif seeker and getattr(seeker, 'experience', []) and hasattr(seeker.experience[0], 'company'):
+            c["full_name"] = f"Someone at {seeker.experience[0].company}"
+        elif seeker and seeker.education and isinstance(seeker.education[0], dict) and seeker.education[0].get("institution"):
+            c["full_name"] = f"Someone from {seeker.education[0]['institution']}"
+        elif seeker and getattr(seeker, 'education', []) and hasattr(seeker.education[0], 'institution'):
+            c["full_name"] = f"Someone from {seeker.education[0].institution}"
+        elif seeker and seeker.region_code:
+            c["full_name"] = f"Someone in region {seeker.region_code}"
+        else:
+            c["full_name"] = "Hidden Candidate"
+            
     return {"job_id": job_id, "total": len(ranked), "candidates": ranked}
