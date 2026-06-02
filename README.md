@@ -53,13 +53,13 @@ Modul ini dirancang untuk menyelesaikan masalah kelelahan administratif (*screen
 
 ---
 
-## 📸 Screenshots
+## 📸 Screenshots (Live Demo)
 
-<div align="center">
-  <img src="docs/assets/seeker_dashboard.png" alt="Seeker Dashboard" width="32%">
-  <img src="docs/assets/job_matches.png" alt="AI Job Matches" width="32%">
-  <img src="docs/assets/employer_dashboard.png" alt="Employer Dashboard" width="32%">
-</div>
+*Geser ke kanan untuk melihat semua tampilan aplikasi (Horizontal Scroll).*
+
+| Home | Pricing | About | Login | Register | Seeker Dashboard | Seeker Match | Seeker Profile | Employer Dashboard | Post Job |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| <img src="docs/assets/01-home.png" width="1000"> | <img src="docs/assets/02-pricing.png" width="1000"> | <img src="docs/assets/03-about.png" width="1000"> | <img src="docs/assets/04-login.png" width="1000"> | <img src="docs/assets/05-register.png" width="1000"> | <img src="docs/assets/06-seeker-dashboard.png" width="1000"> | <img src="docs/assets/07-seeker-match.png" width="1000"> | <img src="docs/assets/08-seeker-profile.png" width="1000"> | <img src="docs/assets/09-employer-dashboard.png" width="1000"> | <img src="docs/assets/10-employer-post-job.png" width="1000"> |
 
 ---
 
