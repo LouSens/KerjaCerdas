@@ -3,10 +3,9 @@ from __future__ import annotations
 
 import uuid
 
+from backend.app.api.services.identity_verifier import MockIdentityVerificationService
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
-
-from backend.app.api.services.identity_verifier import MockIdentityVerificationService
 
 router = APIRouter(prefix="/verify", tags=["verify"])
 

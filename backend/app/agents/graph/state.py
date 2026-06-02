@@ -1,18 +1,16 @@
 """LangGraph state object for the KerjaCerdas job-matching agent."""
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, TypedDict
+from typing import Annotated, Literal, TypedDict
 
 from langgraph.graph.message import add_messages
 
 from backend.app.db.schemas import (
-    ChatMessage,
     CourseRecommendation,
     JobPosting,
     MatchResult,
     SeekerProfile,
 )
-
 
 Intent = Literal["match_jobs", "skill_gap", "advise", "fallback"]
 

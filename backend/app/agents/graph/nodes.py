@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import re
 
-from backend.app.agents.graph.state import AgentState, Intent
+from backend.app.agents.graph.state import AgentState
 from backend.app.db.schemas import CourseRecommendation
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,9 @@ async def route_intent(state: AgentState) -> dict:
 
     Returns intent one of: 'match_jobs' | 'skill_gap' | 'advise'
     """
-    import os, json
+    import json
+    import os
+
     from backend.app.config.settings import settings
 
     # 1. Check for explicit intent bypass from structured UI clicks
@@ -57,8 +59,8 @@ async def route_intent(state: AgentState) -> dict:
     )
     if gemini_key:
         try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
             from langchain_core.messages import HumanMessage, SystemMessage
+            from langchain_google_genai import ChatGoogleGenerativeAI
 
             llm = ChatGoogleGenerativeAI(
                 model=settings.gemini_chat_model,
@@ -191,8 +193,10 @@ async def run_skill_gap(state: AgentState) -> dict:
 
 async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendation]:
     """Try Gemini first, then JSON store courses, then hardcoded catalog."""
+    import json
+    import os
+
     from backend.app.config.settings import settings
-    import os, json
 
     if not missing:
         return []
@@ -202,8 +206,9 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
                   or os.environ.get("GOOGLE_API_KEY", ""))
     if gemini_key:
         try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
             from langchain_core.messages import HumanMessage, SystemMessage
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
             from backend.app.services.prompt_loader import build_system_prompt
 
             llm = ChatGoogleGenerativeAI(
@@ -346,8 +351,9 @@ async def run_advisor(state: AgentState) -> dict:
 
     This gives contextual, personalized advice rather than generic responses.
     """
-    from backend.app.config.settings import settings
     import os
+
+    from backend.app.config.settings import settings
 
     msg = state.get("user_message", "")
     gemini_key = (settings.gemini_api_key
@@ -357,8 +363,9 @@ async def run_advisor(state: AgentState) -> dict:
         return {"advisor_response": _build_fallback(state)}
 
     try:
-        from langchain_google_genai import ChatGoogleGenerativeAI
         from langchain_core.messages import HumanMessage, SystemMessage
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
         from backend.app.services.prompt_loader import build_system_prompt
 
         llm = ChatGoogleGenerativeAI(

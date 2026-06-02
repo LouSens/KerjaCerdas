@@ -1,6 +1,6 @@
 import hashlib
 import logging
-from typing import Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +17,11 @@ class MockIdentityVerificationService:
         """
         Generate a deterministic verification hash from the submitted identity.
         """
-        payload = f"{nik}:{name}".encode("utf-8")
+        payload = f"{nik}:{name}".encode()
         return hashlib.sha256(payload).hexdigest()
 
     @staticmethod
-    def verify_identity(nik: str, full_name: str) -> Dict[str, Any]:
+    def verify_identity(nik: str, full_name: str) -> dict[str, Any]:
         """
         Apply demo verification rules and return a neutral mock result.
         """

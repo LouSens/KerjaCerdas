@@ -17,6 +17,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 from backend.app.db.models import Base
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

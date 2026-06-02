@@ -1,9 +1,8 @@
 """Consolidated public + admin /jobs surface."""
 from __future__ import annotations
 
-from fastapi import APIRouter
-
 from backend.app.db.postgres_store import get_repositories
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 

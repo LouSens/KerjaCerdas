@@ -12,11 +12,10 @@ Weights are read from settings so they can be tuned via .env without a code chan
 from __future__ import annotations
 
 import math
-from typing import Iterable
+from collections.abc import Iterable
 
 from backend.app.db.schemas import JobPosting, MatchResult, SeekerProfile
 from backend.app.services.matching.embeddings.gemini import get_embedder
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

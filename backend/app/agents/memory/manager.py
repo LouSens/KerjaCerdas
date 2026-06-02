@@ -4,7 +4,6 @@ This module provides an abstraction over Short-term (Conversation buffer via Lan
 and Long-term memory (Semantic search via pgvector).
 """
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

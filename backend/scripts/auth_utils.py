@@ -1,7 +1,8 @@
 import uuid
-from sqlalchemy.future import select
-from backend.app.db.session import async_session as async_session_factory
+
 from backend.app.db.models import User as SqlUser
+from backend.app.db.session import async_session as async_session_factory
+from sqlalchemy.future import select
 
 DEFAULT_PWD = "$2b$12$demoDemoDemoDemoDemoDe.uM5RyP4OkmdRY3hCmF5wxJ2sLb7gqXa"
 

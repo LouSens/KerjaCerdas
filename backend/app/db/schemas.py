@@ -11,18 +11,17 @@ The `embedding` field uses list[float] in Python and `vector(768)` in pgvector.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
-
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 # ── Common ────────────────────────────────────────────────────────────────────
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _uid() -> str:

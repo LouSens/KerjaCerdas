@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from backend.app.api.database import get_session
-from backend.app.api.models import User
+from backend.app.db.models import User
 from backend.app.api.services.auth_service import decode_access_token
 
 logger = logging.getLogger(__name__)

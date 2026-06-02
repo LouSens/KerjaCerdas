@@ -1,8 +1,10 @@
 import asyncio
-from backend.scripts.seed_all import EMPLOYERS, JOB_POSTINGS, _seed_auth_user
+
 from backend.app.db.postgres_store import get_repositories
-from backend.app.db.schemas import Employer, JobPosting, EducationLevel, UserRole
+from backend.app.db.schemas import EducationLevel, Employer, JobPosting, UserRole
 from backend.app.services.matching.matcher import SemanticMatcher
+from backend.scripts.seed_all import EMPLOYERS, JOB_POSTINGS, _seed_auth_user
+
 
 async def seed_employers_data():
     repos = get_repositories()

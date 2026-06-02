@@ -9,10 +9,10 @@ import os
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
-from langgraph.graph.message import MessagesState
 
-from backend.app.config.settings import settings
 from backend.app.agents.tools.superpowers import SUPERPOWER_TOOLS
+from backend.app.config.settings import settings
+
 
 def build_graph_v2(checkpointer=None):
     from backend.app.agents.memory.manager import AgentMemoryManager

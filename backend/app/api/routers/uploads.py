@@ -4,8 +4,6 @@ Files are parsed by Gemini and merged into the user's profile / posting list.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     Education,
@@ -17,6 +15,7 @@ from backend.app.db.schemas import (
 )
 from backend.app.services.matching.matcher import SemanticMatcher
 from backend.app.services.pdf_parser import parse_cv, parse_job_pack
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 

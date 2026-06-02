@@ -7,18 +7,10 @@ ANTIGRAVITY PROTOCOL: All API changes require test updates.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import inspect, text
-from sqlalchemy.dialects import postgresql
-from sqlalchemy.schema import CreateTable
 
-from backend.app.api import database as database_module
 from backend.app.api.main import app
-
-from backend.app.api.schemas.auth import UserLoginRequest, UserRegisterRequest
 
 
 @pytest.fixture

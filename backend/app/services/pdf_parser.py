@@ -26,6 +26,7 @@ class _NoKey(RuntimeError):
 def _client():
     """Return a google-genai client — Vertex AI if a project is set, else AI Studio."""
     import os
+
     from google import genai
     project = (settings.vertex_ai_project
                or os.environ.get("VERTEX_AI_PROJECT", "")

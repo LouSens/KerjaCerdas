@@ -19,16 +19,14 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
-from pydantic import BaseModel, Field
-
-from backend.app.agents.graph.builder import get_graph
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     CourseRecommendation,
     MatchResult,
     SeekerProfile,
 )
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)

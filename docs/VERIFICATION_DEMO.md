@@ -20,9 +20,9 @@ Dokumen ini disusun sebagai panduan langkah demi langkah (*step-by-step*) bagi p
 *Tujuan: Mendemonstrasikan bagaimana AI secara aktif memecahkan kebingungan pelamar (undersupply) dan melakukan "Skill Gap Analysis".*
 
 ### Langkah 1.1 — Inisialisasi & Ekstraksi Profil Otomatis
-- **Aksi:** Login menggunakan akun `andi@example.com` (Sandi: `demo123456`).
+- **Aksi:** Login menggunakan akun `budi.santoso@example.com` (Sandi: `demo`).
 - **Narasi Juri:** *"Kelemahan portal kerja tradisional adalah kandidat harus mengisi form panjang. Di KerjaCerdas, kandidat cukup mengunggah CV PDF. Mari kita lihat..."*
-- **Aksi:** Unggah berkas `CV_Andi_Backend.pdf` di panel dasbor.
+- **Aksi:** Unggah berkas contoh CV PDF di panel dasbor.
 - **Hasil:** Gemini AI langsung melakukan parsing seketika (*real-time*). Keahlian teknis (Python, SQL), riwayat pendidikan, dan pengalaman langsung diekstrak dan dikonversi menjadi Vektor 3072-dimensi.
 
 ### Langkah 1.2 — AI Autopilot Matching (Pencocokan Semantik)
@@ -46,7 +46,7 @@ Dokumen ini disusun sebagai panduan langkah demi langkah (*step-by-step*) bagi p
 *Tujuan: Mendemonstrasikan bagaimana AI mengeliminasi keletihan administratif HRD (oversupply) dan model bisnis mikrotransaksi.*
 
 ### Langkah 2.1 — Penciptaan Lowongan & AI Live Pool
-- **Aksi:** Buka tab penyamaran (*Incognito*) baru, login sebagai `hr@tokopedia.com` (Sandi: `demo123456`). Masuk ke menu **"Pasang Lowongan"**.
+- **Aksi:** Buka tab penyamaran (*Incognito*) baru, login sebagai `hr@goto.id` (Sandi: `demo`). Masuk ke menu **"Pasang Lowongan"**.
 - **Aksi:** Mulai ketik jabatan: **"Senior Data Engineer"**.
 - **Narasi Juri:** *"Sesaat setelah HRD mengetik, perhatikan angka di pojok kanan. Algoritma vektor kami memprediksi ketersediaan talenta secara real-time. 'Terdapat 14 kandidat dengan profil 80% mirip di pangkalan data'. HRD tahu sebelum lowongan diterbitkan."*
 

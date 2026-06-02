@@ -1,13 +1,14 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, ForeignKey
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from pgvector.sqlalchemy import Vector
+
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 class Base(DeclarativeBase):
     pass
@@ -21,6 +22,7 @@ class User(Base, TimestampedMixin):
     
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), default="")
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

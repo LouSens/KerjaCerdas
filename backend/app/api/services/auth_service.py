@@ -8,7 +8,7 @@ ANTIGRAVITY PROTOCOL: RULE-01 — No hardcoded secrets.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt  # PyJWT
@@ -92,14 +92,14 @@ def create_access_token(user_id: str, role: str, name: str, email: str) -> str:
     Returns:
         Encoded JWT string.
     """
-    expire = datetime.now(timezone.utc) + timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": user_id,
         "role": role,
         "name": name,
         "email": email,
         "exp": expire,
-        "iat": datetime.now(timezone.utc),
+        "iat": datetime.now(UTC),
     }
     return jwt.encode(payload, _get_secret_key(), algorithm=_ALGORITHM)
 

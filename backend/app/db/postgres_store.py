@@ -1,21 +1,34 @@
 from __future__ import annotations
 
-from typing import Generic, Type, TypeVar, Any
-from sqlalchemy import select, delete
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
+from sqlalchemy import select
 
-from backend.app.db.schemas import (
-    User as UserSchema, SeekerProfile as SeekerSchema, Employer as EmployerSchema,
-    JobPosting as JobSchema, Application as ApplicationSchema, MatchBundle as MatchSchema,
-    SkillGapResult as SkillGapSchema, ChatSession as ChatSchema, Course as CourseSchema,
-    AIPerformanceLog as LogSchema, GamificationStats as GameSchema
-)
 from backend.app.db.models import (
-    User, SeekerProfile, Employer, JobPosting, Application, MatchBundle,
-    SkillGapResult, ChatSession, Course, AIPerformanceLog, GamificationStats
+    AIPerformanceLog,
+    Application,
+    ChatSession,
+    Course,
+    Employer,
+    GamificationStats,
+    JobPosting,
+    MatchBundle,
+    SeekerProfile,
+    SkillGapResult,
+    User,
 )
+from backend.app.db.schemas import AIPerformanceLog as LogSchema
+from backend.app.db.schemas import Application as ApplicationSchema
+from backend.app.db.schemas import ChatSession as ChatSchema
+from backend.app.db.schemas import Course as CourseSchema
+from backend.app.db.schemas import Employer as EmployerSchema
+from backend.app.db.schemas import GamificationStats as GameSchema
+from backend.app.db.schemas import JobPosting as JobSchema
+from backend.app.db.schemas import MatchBundle as MatchSchema
+from backend.app.db.schemas import SeekerProfile as SeekerSchema
+from backend.app.db.schemas import SkillGapResult as SkillGapSchema
+from backend.app.db.schemas import User as UserSchema
 from backend.app.db.session import async_session
 
 TSchema = TypeVar("TSchema", bound=BaseModel)
@@ -24,7 +37,7 @@ TModel = TypeVar("TModel")
 class PostgresRepository(Generic[TSchema, TModel]):
     """Async Postgres repository keyed on `id`."""
 
-    def __init__(self, schema: Type[TSchema], model: Type[TModel]) -> None:
+    def __init__(self, schema: type[TSchema], model: type[TModel]) -> None:
         self.schema = schema
         self.model = model
 

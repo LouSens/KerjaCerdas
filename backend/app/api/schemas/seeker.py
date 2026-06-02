@@ -6,7 +6,9 @@ Pydantic schemas for Job Seeker actions (Profile, Bookmarks).
 from __future__ import annotations
 
 from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
+
 
 class SeekerProfileUpdate(BaseModel):
     """Payload to update an existing SeekerProfile."""

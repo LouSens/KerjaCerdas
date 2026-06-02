@@ -1,7 +1,9 @@
 import asyncio
-from backend.scripts.seed_all import COURSES
+
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import Course
+from backend.scripts.seed_all import COURSES
+
 
 async def seed_courses_data():
     repos = get_repositories()

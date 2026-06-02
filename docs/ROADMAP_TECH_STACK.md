@@ -1,28 +1,20 @@
 # Peta Jalan Implementasi Teknologi & Migrasi Infrastruktur Korporasi
 
-Sistem yang digunakan pada demonstrasi purwarupa saat ini (MVP/Demo Mode) beroperasi dengan struktur data lokal terisolasi (*in-memory/file-system SQLite & JSON*). Demi memastikan keandalan, redundansi data, dan skalabilitas bagi jutaan entitas saat diluncurkan secara komersial, berikut adalah pembedahan mendalam *Roadmap* arsitektur teknologi pasca-MVP.
+Sistem yang digunakan pada demonstrasi purwarupa saat ini (MVP/Demo Mode) telah dibangun di atas infrastruktur relasional tangguh berbasis **PostgreSQL** dengan ekstensi **pgvector**. Meskipun MVP ini sudah kokoh secara arsitektural, demi memastikan keandalan, redundansi data skala global, dan skalabilitas bagi jutaan entitas saat peluncuran komersial, berikut adalah pembedahan mendalam *Roadmap* migrasi teknologi tingkat lanjut (*Enterprise Cloud*) pasca-MVP.
 
 ---
 
-## Fase 1 (Sekarang): Minimum Viable Product (MVP)
-*Tujuan: Pembuktian fungsional interaksi orkestrasi Swarm dan semantik.*
-- **Datastore Utama:** SQLite dan manajemen basis data berkas (JSON).
-- **Injeksi Data:** Simulasi *mock-data* statis tanpa orkestrasi multi-threading tingkat lanjut.
-- **Pengolahan Model:** LangGraph di sisi *FastAPI runtime*. 
+## Fase 1 (Sekarang): Enterprise Relational Backend (PostgreSQL + pgvector)
+*Tujuan: Memastikan integritas data, kueri analitik volume tinggi, dan pencarian semantik instan.*
+
+Pada fase rilis saat ini (MVP/Demo Mode), kami telah sepenuhnya mengadopsi **PostgreSQL** dan membuang penyimpanan statis (SQLite/JSON). Keputusan teknis ini tidak didasarkan pada skala semata, melainkan integrasi mutlak terhadap ekstensi **pgvector**.
+- **Peran pgvector:** Mengambil alih proses kalkulasi jarak (Cosine Similarity) vektor 768-dimensi secara internal di dalam basis data. Ini meningkatkan *query throughput* secara masif dan memungkinkan pencarian pencocokan talenta seketika (*real-time*).
+- **Alembic ORM Migrations:** Skema tabel dikelola secara progresif menggunakan Alembic. Perubahan kolom *vector embeddings* pada rilis fitur tidak akan mengganggu ketersediaan server berkat metode iterasi migrasi berkelanjutan.
+- **Injeksi Data Kontainer:** Simulasi basis data diinjeksi langsung pada saat inisialisasi kontainer Docker melalui `init.sql`, memastikan konsistensi struktur dan stabilitas eksekusi AI di setiap lingkungan *deploy*.
 
 ---
 
-## Fase 2: Enterprise Relational Backend (Migrasi PostgreSQL) - [SELESAI]
-*Tujuan: Memastikan integritas data dan kueri analitik volume tinggi.*
-
-### Migrasi Database (PostgreSQL & Alembic)
-Kami akan beralih secara menyeluruh dari SQLite ke **PostgreSQL**. Keputusan teknis ini tidak didasarkan pada skala semata, melainkan integrasi mutlak terhadap ekstensi **pgvector**.
-- **Peran pgvector:** Mengambil alih proses kalkulasi jarak (Cosine Similarity) 3072 dimensi dari komputasi memori RAM *Python* ke lapisan abstraksi *Database Layer* secara internal. Ini meningkatkan *query throughput* sebesar ribuan kali lipat dengan indeks komputasi *HNSW (Hierarchical Navigable Small World)*.
-- **Alembic ORM Migrations:** Skema tabel (Entitas Seeker, Entitas Job, Riwayat Transaksi) akan diaudit secara progresif (*version-controlled*) menggunakan Alembic. Perubahan kolom *vector embeddings* pada rilis fitur minor tidak akan menumbangkan ketersediaan server berkat metode iterasi migrasi berkelanjutan (CI/CD *pipeline migrations*).
-
----
-
-## Fase 3: Stabilitas Infrastruktur Tingkat Awan (GCP Cloud SQL & GCS)
+## Fase 2: Stabilitas Infrastruktur Tingkat Awan (GCP Cloud SQL & GCS)
 *Tujuan: Isolasi state serverless, replikasi global, dan keandalan tingkat komersial (99.9% Uptime).*
 
 ### Arsitektur Google Cloud Platform (GCP)
@@ -32,7 +24,7 @@ Kami akan beralih secara menyeluruh dari SQLite ke **PostgreSQL**. Keputusan tek
 
 ---
 
-## Fase 4: Privasi Kognitif Mutlak (Google Vertex AI Integration)
+## Fase 3: Privasi Kognitif Mutlak (Google Vertex AI Integration)
 *Tujuan: Garansi Kepatuhan Hukum (UU PDP) dan Zero Data Retention.*
 
 Pada penetrasi tingkat akhir korporasi perbankan atau pemerintahan, pelamar sangat konservatif terhadap penyebaran parameter PII (Personally Identifiable Information). Integrasi **Google Vertex AI** menjembatani dua limitasi kritis tersebut:

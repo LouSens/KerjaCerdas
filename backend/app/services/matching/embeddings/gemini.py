@@ -131,7 +131,8 @@ class HashEmbedder:
     async def embed_batch(
         self, texts: list[str], task_type: TaskType = "RETRIEVAL_DOCUMENT"
     ) -> list[list[float]]:
-        import hashlib, math, struct
+        import hashlib
+        import math
 
         results: list[list[float]] = []
         for text in texts:

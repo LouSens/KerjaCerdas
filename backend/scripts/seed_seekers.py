@@ -1,8 +1,17 @@
 import asyncio
-from backend.scripts.seed_all import SEEKERS, _seed_auth_user
+
 from backend.app.db.postgres_store import get_repositories
-from backend.app.db.schemas import SeekerProfile, Education, WorkExperience, Skill, EducationLevel, UserRole
+from backend.app.db.schemas import (
+    Education,
+    EducationLevel,
+    SeekerProfile,
+    Skill,
+    UserRole,
+    WorkExperience,
+)
 from backend.app.services.matching.matcher import SemanticMatcher
+from backend.scripts.seed_all import SEEKERS, _seed_auth_user
+
 
 async def seed_seekers_data():
     repos = get_repositories()

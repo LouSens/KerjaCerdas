@@ -9,17 +9,21 @@ store so the user can post jobs immediately without a separate onboarding step.
 """
 import logging
 
+from backend.app.api.database import get_session
+from backend.app.db.models import User
+from backend.app.api.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
+from backend.app.api.services.auth_service import (
+    create_access_token,
+    hash_password,
+    verify_password,
+)
+from backend.app.db.postgres_store import get_repositories
+from backend.app.db.schemas import Employer, UserRole
+from backend.app.db.schemas import User as JsonUser
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-
-from backend.app.api.database import get_session
-from backend.app.api.models import User
-from backend.app.api.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
-from backend.app.api.services.auth_service import create_access_token, hash_password, verify_password
-from backend.app.db.postgres_store import get_repositories
-from backend.app.db.schemas import Employer, User as JsonUser, UserRole
 
 logger = logging.getLogger(__name__)
 

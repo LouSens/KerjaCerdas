@@ -14,13 +14,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import shutil
-from pathlib import Path
 
-from backend.app.db.session import async_session as async_session_factory
 from backend.app.db.models import User as SqlUser
-from sqlalchemy.future import select
-
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     Course,
@@ -30,12 +25,12 @@ from backend.app.db.schemas import (
     JobPosting,
     SeekerProfile,
     Skill,
-    User,
     UserRole,
     WorkExperience,
 )
+from backend.app.db.session import async_session as async_session_factory
 from backend.app.services.matching.matcher import SemanticMatcher
-
+from sqlalchemy.future import select
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Employers

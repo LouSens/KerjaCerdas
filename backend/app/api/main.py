@@ -51,41 +51,13 @@ async def lifespan(app: FastAPI):
         logger.warning("JWT_SECRET_KEY missing — using ephemeral dev secret")
     configure_auth(secret_key=jwt_secret, expire_minutes=settings.jwt_access_token_expire_minutes)
 
-    # Auto-seed demo data on first boot (idempotent — upsert semantics mean
-    # running this on a populated store is safe and fast).
-    await _maybe_seed()
+
 
     yield
     logger.info("KerjaCerdas API shutting down")
 
 
-async def _maybe_seed() -> None:
-    """Seed demo jobs/seekers/employers if the store is empty.
 
-    Uses scripts/seed_demo.py — 20 real Indonesian companies, 20 diverse
-    seekers, 15 courses, 1 admin user.  Running this on a populated store
-    is safe (upsert-by-id semantics) but skipped for performance.
-    """
-    try:
-        from backend.app.api.database import async_session_factory
-        from backend.app.api.models import User
-        from sqlalchemy.future import select
-        from sqlalchemy import func
-
-        async with async_session_factory() as session:
-            result = await session.execute(select(func.count(User.id)))
-            user_count = result.scalar() or 0
-
-        if user_count >= 5:
-            logger.info("SQLite auth store has %d user(s) — skipping auto-seed.", user_count)
-            return
-
-        logger.info("Empty store detected (%d users) — running demo seed…", user_count)
-        from scripts.seed_demo import seed as seed_main
-        await seed_main(clear=False)
-        logger.info("Demo seed complete.")
-    except Exception as exc:
-        logger.warning("Auto-seed failed (non-fatal): %s", exc)
 
 
 app = FastAPI(

@@ -32,7 +32,7 @@ async def run_evaluation():
     passed_count = 0
     failed_count = 0
 
-    with open(TEST_CASES_FILE, "r", encoding="utf-8") as f:
+    with open(TEST_CASES_FILE, encoding="utf-8") as f:
         cases = [json.loads(line) for line in f if line.strip()]
 
     logger.info(f"Loaded {len(cases)} test cases from {TEST_CASES_FILE.name}")

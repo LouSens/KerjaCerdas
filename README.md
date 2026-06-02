@@ -63,41 +63,121 @@ Modul ini dirancang untuk menyelesaikan masalah kelelahan administratif (*screen
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Panduan Eksekusi Lengkap)
 
 ### Persyaratan Sistem
-- **Docker Desktop** beroperasi pada sistem.
-- (Opsional) Kunci API `GEMINI_API_KEY` dari Google AI Studio.
+- **Docker Desktop** terinstal dan berjalan pada sistem Anda.
+- **Git** untuk mengklon repositori.
+- **Kunci API Gemini (`GEMINI_API_KEY`)** dari Google AI Studio (Wajib untuk fitur *Resume Parsing* dan *Skill Gap Analyzer*).
 
-### Langkah 1 — Inisialisasi Repositori
+### Langkah 1 — Kloning & Konfigurasi
 ```powershell
 git clone https://github.com/LouSens/KerjaCerdas.git
 cd KerjaCerdas
 Copy-Item .env.example .env
 ```
-Konfigurasi kredensial pada berkas `.env` (isi dengan kredensial Anda):
+Buka berkas `.env` yang baru saja dibuat, lalu isi dengan kredensial Anda:
 ```env
-JWT_SECRET_KEY=kredensial-rahasia-anda
-GEMINI_API_KEY=kunci-api-gemini-anda
+# Contoh konfigurasi .env
+JWT_SECRET_KEY=rahasia-jwt-kerjacerdas-super-aman
+GEMINI_API_KEY=AIzaSy... (Masukkan kunci Gemini Anda)
 ```
 
-### Langkah 2 — Eksekusi Kontainer
-Jalankan perintah berikut di terminal:
+### Langkah 2 — Menjalankan Seluruh Ekosistem (Docker Compose)
+Platform ini diorkestrasi sepenuhnya menggunakan Docker. Jalankan perintah berikut di terminal/PowerShell pada *root directory* proyek:
 ```powershell
 docker compose up --build
 ```
-*(Proses ini akan membangun image backend dan frontend, memuat basis data PostgreSQL lokal (pgvector), serta memuat data awal (21 lowongan dan 20 kandidat) otomatis via `init.sql`).*
+> [!NOTE]
+> Proses ini akan mengunduh *image* yang diperlukan, meng-kompilasi *frontend* React, membangun *backend* FastAPI, serta menjalankan PostgreSQL 16 lengkap dengan ekstensi `pgvector`. Basis data akan secara **otomatis terisi** dengan 21 lowongan pekerjaan asli Indonesia dan 20 kandidat (via skrip `init.sql`). Tunggu hingga terminal menampilkan log bahwa *backend* dan *frontend* telah siap (biasanya memakan waktu 1-3 menit).
 
 ### Langkah 3 — Akses Lingkungan Demo
-- **Frontend App:** `http://localhost:3000`
-- **Backend API:** `http://localhost:8000`
-- **API Documentation (Swagger):** `http://localhost:8000/docs`
+Setelah semua kontainer berjalan (*healthy*), buka tautan berikut di *browser*:
+- **Aplikasi Web (Frontend):** [http://localhost:3000](http://localhost:3000)
+- **API Server (Backend):** [http://localhost:8000/health](http://localhost:8000/health)
+- **Dokumentasi API (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Langkah 4 — Uji Coba (Akun Demo)
+Gunakan kredensial bawaan berikut untuk langsung mengeksplorasi fitur tanpa perlu mendaftar dari awal:
+
+**A. Sebagai Pencari Kerja (Seeker):**
+- **Email:** `budi.santoso@example.com`
+- **Sandi:** `demo`
+- *(Fokus Uji Coba: Unggah CV, AI Job Matching, Skill Gap Analyzer)*
+
+**B. Sebagai HRD Perusahaan (Employer):**
+- **Email:** `hr@goto.id` (GoTo Group) atau `hr@mandiri.id` (Bank Mandiri)
+- **Sandi:** `demo`
+- *(Fokus Uji Coba: Pembuatan Lowongan Instan, AI Candidate Shortlisting, Buka Akses Kontak)*
+
+### Langkah 5 — Menghentikan & Membersihkan Sistem
+Jika ingin menghentikan sistem, tekan `CTRL+C` pada terminal yang menjalankan *docker-compose*.
+Untuk menghapus kontainer dan menghapus basis data (reset total), gunakan:
+```powershell
+docker compose down -v
+```
 
 ---
 
 ## 🧠 Arsitektur Sistem Inti
 
 Platform kami tidak mengandalkan *Prompt Wrapper* statis. Pusat logika diorkestrasi oleh arsitektur *Autonomous Multi-Agent Swarm* memanfaatkan framework **LangGraph** dan model **Gemini 3.1 Flash**.
+
+```mermaid
+flowchart TD
+    %% Modern Startup Aesthetics
+    classDef user fill:#1A1A1A,stroke:#646CFF,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef api fill:#2D3748,stroke:#38B2AC,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef supervisor fill:#4A5568,stroke:#F6E05E,stroke-width:3px,color:#FFF,font-weight:bold
+    classDef worker fill:#2B6CB0,stroke:#63B3ED,stroke-width:2px,color:#FFF
+    classDef state fill:#2C7A7B,stroke:#81E6D9,stroke-width:2px,color:#FFF,stroke-dasharray: 5 5
+    classDef db fill:#276749,stroke:#68D391,stroke-width:2px,color:#FFF
+    classDef llm fill:#702459,stroke:#D6BCFA,stroke-width:2px,color:#FFF,font-weight:bold
+
+    User((👤 Seeker / Employer)):::user
+
+    subgraph API_Layer ["API Gateway"]
+        FastAPI["⚡ FastAPI / WebSockets"]:::api
+    end
+
+    subgraph LangGraph_Swarm ["🧠 Multi-Agent Swarm (LangGraph)"]
+        Supervisor{"👑 Supervisor Node\n(Routing & Synthesis)"}:::supervisor
+        
+        %% Agents
+        SearchAgent["🔍 SearchJobs"]:::worker
+        ReviewAgent["📄 ResumeReview"]:::worker
+        GapAgent["🎯 SkillGap"]:::worker
+        
+        GraphState[("💬 Conversational\nMemory / State")]:::state
+
+        Supervisor <--> SearchAgent
+        Supervisor <--> ReviewAgent
+        Supervisor <--> GapAgent
+        
+        Supervisor -.-> GraphState
+        SearchAgent -.-> GraphState
+    end
+
+    subgraph Infrastructure ["Vector & LLM Engine"]
+        Gemini{"✨ Google Gemini\n3.1 Flash"}:::llm
+        PG[("🐘 PostgreSQL\n(pgvector)")]:::db
+        
+        Gemini ~~~ PG
+    end
+
+    %% Vertical Data Flow
+    User -->|HTTP/SSE| FastAPI
+    FastAPI -->|Submit Task| Supervisor
+    FastAPI <-->|Stream Response| GraphState
+
+    %% Agents to Infrastructure
+    SearchAgent -->|Vector Search| PG
+    GapAgent -->|Read SQL| PG
+
+    ReviewAgent -->|Multimodal Extract| Gemini
+    GapAgent -->|Reasoning| Gemini
+    Supervisor -->|Plan & Route| Gemini
+```
 
 ### 1. Eksekusi Otonom Paralel (Parallel Function Calling)
 *Supervisor Node* merutekan permintaan kandidat secara dinamis. Apabila kandidat meminta pencarian lowongan sekaligus evaluasi CV, sistem akan mengeksekusi modul `SearchJobsAgent` dan `ResumeReviewAgent` secara bersamaan, kemudian mensintesis laporan gabungan.
@@ -116,6 +196,69 @@ final_score = (
 
 ### 3. Kepatuhan Privasi (Data Isolation)
 Sebelum diproses oleh model eksternal, komponen PII (Personally Identifiable Information) dimitigasi secara otomatis oleh modul penyaring Regex guna memenuhi standar kepatuhan operasional.
+
+### 4. Skema Basis Data (Entity-Relationship)
+Infrastruktur relasional kami direkayasa untuk menangani entitas dalam skala tinggi (High-Volume) sekaligus memfasilitasi pencarian jarak vektor komputasional menggunakan `pgvector`.
+
+```mermaid
+---
+title: Core Relational Schema (PostgreSQL 16 + pgvector)
+---
+erDiagram
+    USERS ||--o| SEEKERS : "has_profile"
+    USERS ||--o| EMPLOYERS : "has_profile"
+    USERS ||--o{ CHAT_SESSIONS : "owns_history"
+    EMPLOYERS ||--o{ JOBS : "posts"
+    SEEKERS ||--o{ APPLICATIONS : "submits"
+    JOBS ||--o{ APPLICATIONS : "receives"
+    SEEKERS ||--o{ SKILL_GAPS : "analyzed_for"
+
+    USERS {
+        UUID id PK
+        VARCHAR email "Unique Index"
+        VARCHAR password_hash
+        VARCHAR role "Seeker / Employer"
+        TIMESTAMP created_at
+    }
+    SEEKERS {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR full_name
+        JSONB skills "Extracted via LLM"
+        JSONB experience
+        VECTOR_768 embedding "HNSW Indexed"
+    }
+    EMPLOYERS {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR company_name
+        VARCHAR industry
+        VARCHAR size
+    }
+    JOBS {
+        UUID id PK
+        UUID employer_id FK
+        VARCHAR title
+        JSONB required_skills
+        INTEGER salary_max
+        VECTOR_768 embedding "HNSW Indexed"
+    }
+    APPLICATIONS {
+        UUID id PK
+        UUID job_id FK
+        UUID seeker_id FK
+        VARCHAR status "Applied / Shortlisted"
+        FLOAT match_score "Cosine Similarity"
+    }
+    SKILL_GAPS {
+        UUID id PK
+        UUID seeker_id FK
+        UUID target_job_id FK
+        JSONB missing_skills
+        JSONB recommended_courses
+        FLOAT match_percentage
+    }
+```
 
 ---
 
@@ -198,6 +341,7 @@ KerjaCerdas/
 │   ├── BUSINESS_MODEL.md     # Dokumen Detail Keuangan & Arus Kas
 │   ├── ROADMAP_TECH_STACK.md # Roadmap Infrastruktur Skala Korporasi
 │   └── API_SPEC.md           # Spesifikasi API OpenAPI/Swagger
+```
 
 ---
 

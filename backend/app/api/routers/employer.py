@@ -7,13 +7,12 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
-
 from backend.app.api.dependencies import get_current_user, require_employer
-from backend.app.api.models import User
+from backend.app.db.models import User
 from backend.app.db.postgres_store import get_repositories
-from backend.app.db.schemas import Employer, EducationLevel, JobPosting
+from backend.app.db.schemas import EducationLevel, Employer, JobPosting
 from backend.app.services.matching.matcher import SemanticMatcher
+from fastapi import APIRouter, Depends, HTTPException, status
 
 logger = logging.getLogger(__name__)
 
