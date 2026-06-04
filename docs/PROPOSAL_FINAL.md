@@ -25,6 +25,14 @@ Digitalisasi Penciptaan Lapangan Kerja dan Penanggulangan Pengangguran Struktura
 1. **Dari Sisi HRD (B2B):** Proses penyaringan CV yang berbasis *keyword* statis menguras 60% waktu produktif HRD. Hal ini memicu fenomena *Screening Fatigue*, di mana kandidat berkualitas terlewat karena tidak menggunakan kata kunci eksak (Relevance Mismatch).
 2. **Dari Sisi Pencari Kerja (B2C):** Tingkat Pengangguran Terbuka (TPT) generasi muda mencapai 9%. Mayoritas mengalami "kebutaan kompetensi"—mereka mengirim ribuan lamaran tanpa menyadari *skill gap* spesifik yang menahan mereka. 
 
+**Akar Permasalahan (Triple Mismatch):**
+
+| Mismatch | Dampak |
+|---|---|
+| **Structural Mismatch** (Kelebihan pelamar umum vs Kekurangan talenta digital) | Ekspansi industri modern terhambat oleh kelangkaan SDM berkualifikasi. |
+| **Relevance Mismatch** (Pencarian *keyword* yang mengabaikan semantik) | Kandidat berkualitas tidak terdeteksi; kandidat yang kurang tepat masuk daftar pendek (shortlist). |
+| **Trust Mismatch** (CV tak terverifikasi & penipuan lowongan) | Talenta terhambat validasi; pelamar berisiko terkena penipuan (*fraud*). |
+
 **Solusi Terukur:**
 Sistem menggunakan **Dynamic Routing LangGraph** untuk mengkategorikan pelamar. Jika terdeteksi 100% *mismatch*, sistem tidak membuang token LLM untuk *interview generation*, melainkan merutekan kandidat ke *Skill Gap Agent*. Hal ini **menghemat konsumsi token LLM hingga 40% per kandidat**, memastikan *unit economics* tetap rendah sembari memberikan *feedback* instan kepada pelamar.
 
@@ -51,7 +59,17 @@ Daripada sekadar mengkurasi tautan *course online* secara umum, AI kami merancan
 - **Tier 2 (Deep-Linked Certifications):** Sistem menyarankan *modul spesifik* pada platform afiliasi ternama (misal: "Tonton modul 3 di Hacktiv8 untuk menutupi gap SQL Anda"), mencetak *Affiliate Revenue* (Konversi target: 15% dari pengguna *mismatch* per bulan).
 - **Tier 3 (Expert Mentorship Connection):** Platform menjodohkan kandidat dengan mentor profesional terverifikasi untuk sesi konsultasi tatap muka virtual, membangun *Trust* dan retensi pengguna jangka panjang.
 
----
+### 4. Key Differences vs Portal Konvensional
+
+Portal pekerjaan konvensional beroperasi sebagai **mesin pencari berbasis kata kunci (keyword)** yang statis. KerjaCerdas memecahkan masalah ini dengan memahami konteks dan semantik kompetensi.
+
+| Fitur | Portal Konvensional | **KerjaCerdas (Enterprise AI)** |
+|---|---|---|
+| **Mesin Pencocokan** | Filter *Keyword* Kaku | **Gemini Semantic Embeddings (3072-dim)** |
+| **Arsitektur Agen** | Chat Bot Sederhana | **ReAct Multi-Agent Supervisor Swarm** |
+| **Sistem Navigasi UI** | Linear & Searah | **Dual-Track (AI Autopilot & Manual Search)** |
+| **Analisis Celah Keahlian** | Tidak Ada | **Identifikasi spesifik + Rekomendasi program Ed-Tech** |
+| **Monetisasi B2B** | Biaya Berlangganan di Muka | **Hybrid: Pay-to-Unlock (Rp 50rb/10 kandidat) & SaaS Pro** |
 
 ---
 

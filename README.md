@@ -14,44 +14,17 @@
 
 ---
 
-## 📌 Problem We Solve
+## 📌 Platform Overview
 
-Indonesia memiliki **7,86 juta pengangguran terbuka** (BPS, Feb 2025). Di sisi lain, sektor industri mengeluhkan kesulitan mencari talenta yang tepat. Akar permasalahan ini adalah **ketimpangan ganda (Triple Mismatch)**:
+**KerjaCerdas** memecahkan masalah ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja melalui pendekatan AI semantik. Untuk melihat detail latar belakang masalah dan perbedaan dengan portal konvensional, silakan baca [Business Proposal](docs/PROPOSAL_FINAL.md).
 
-| Mismatch | Dampak |
-|---|---|
-| **Structural Mismatch** (Kelebihan pelamar umum vs Kekurangan talenta digital) | Ekspansi industri modern terhambat oleh kelangkaan SDM berkualifikasi. |
-| **Relevance Mismatch** (Pencarian *keyword* yang mengabaikan semantik) | Kandidat berkualitas tidak terdeteksi; kandidat yang kurang tepat masuk daftar pendek (shortlist). |
-| **Trust Mismatch** (CV tak terverifikasi & penipuan lowongan) | Talenta terhambat validasi; pelamar berisiko terkena penipuan (*fraud*). |
+## 🎯 Fitur Utama
 
-Portal pekerjaan konvensional beroperasi sebagai **mesin pencari berbasis kata kunci (keyword)** yang statis. KerjaCerdas memecahkan masalah ini dengan memahami konteks dan semantik kompetensi.
+- **AI Job Matching**: Pencocokan semantik otomatis menggunakan Gemini Embeddings.
+- **Proactive Skill Gap Analyzer**: Analisis kelemahan skill dan rekomendasi *upskilling* spesifik.
+- **Employer Dashboard & Direct Contact**: *Shortlisting* kandidat instan dengan model monetisasi mikro (*Pay-to-Unlock*).
 
----
-
-## ✨ Key Differences
-
-| Fitur | Portal Konvensional | **KerjaCerdas (Enterprise AI)** |
-|---|---|---|
-| **Mesin Pencocokan** | Filter *Keyword* Kaku | **Gemini Semantic Embeddings (3072-dim)** |
-| **Arsitektur Agen** | Chat Bot Sederhana | **ReAct Multi-Agent Supervisor Swarm** |
-| **Sistem Navigasi UI** | Linear & Searah | **Dual-Track (AI Autopilot & Manual Search)** |
-| **Analisis Celah Keahlian** | Tidak Ada | **Identifikasi spesifik + Rekomendasi program Ed-Tech** |
-| **Monetisasi B2B** | Biaya Berlangganan di Muka | **Hybrid: Pay-to-Unlock (Rp 50rb/10 kandidat) & SaaS Pro** |
-
----
-
-## 🎯 Fitur Utama (Live Demo Ready)
-
-### 1. AI Job Matching (Pencocokan Pekerjaan AI)
-Fitur ini mengubah cara kandidat mencari pekerjaan dengan menggantikan sistem pencarian *keyword* manual (seperti mengetik "Python Backend Developer") menjadi pencocokan semantik otomatis. Saat kandidat mengunggah CV PDF, model AI Gemini bertugas membaca dan mengekstrak keahlian, pengalaman, serta pendidikan kandidat secara *real-time*, lalu mengubahnya menjadi "Vektor Semantik" berdimensi tinggi. Vektor ini kemudian dicocokkan dengan seluruh vektor lowongan pekerjaan yang ada di *database* PostgreSQL menggunakan algoritma Cosine Similarity. Hasilnya, kandidat langsung mendapatkan rekomendasi pekerjaan dengan persentase skor kecocokan yang sangat akurat, karena sistem memahami konteks keahlian pelamar—bukan sekadar kemiripan kata.
-
-### 2. Proactive Skill Gap Analyzer (Analisis Celah Keahlian Proaktif)
-Sistem tidak hanya menolak kandidat jika kemampuannya kurang sesuai, tetapi secara proaktif memberi tahu apa kelemahan mereka. Melalui arsitektur *Multi-Agent Swarm* (agen AI otonom dari LangGraph), sistem akan menganalisis kesenjangan (gap) antara spesifikasi lowongan yang dilamar dan keahlian yang tercantum di CV kandidat. Jika kandidat memiliki skor kecocokan rendah (misalnya kurang menguasai "AWS" atau "Google Analytics"), agen AI akan merinci kelemahan tersebut secara interaktif dan langsung memberikan rekomendasi program *upskilling* spesifik (seperti pelatihan dari Prakerja atau platform Ed-Tech) agar kandidat bisa meningkatkan keahliannya sebelum mencoba melamar kembali.
-
-### 3. Employer Dashboard & Direct Contact Unlock (Dasbor Perusahaan & Buka Kontak)
-Modul ini dirancang untuk menyelesaikan masalah kelelahan administratif (*screening fatigue*) bagi HRD serta menawarkan model monetisasi yang bersahabat bagi UMKM. Saat HRD mengetik rancangan lowongan baru, AI memprediksi ketersediaan jumlah talenta yang cocok secara *real-time* dari *Live Pool* sebelum lowongan diterbitkan. Setelah lowongan tayang, agen AI sudah menyortir ratusan pelamar ke dalam daftar pendek (*Shortlist*) Top-5 Kandidat Terbaik lengkap dengan ringkasan alasan kecocokannya. Alih-alih mengharuskan HRD atau UMKM membayar biaya berlangganan mahal di muka, platform ini menggunakan sistem transaksi mikro (*Pay-to-Unlock*): profil asli dan skor kandidat disajikan secara transparan, namun akses email/telepon disensor. Perusahaan hanya perlu membayar biaya mikro (misal Rp 50.000) pada saat mereka memutuskan untuk menghubungi kandidat unggulan tersebut.
-
----
+Detail lengkap mengenai fitur produk dapat dilihat di [Product Features](docs/PRODUCT_FEATURES.md).
 
 ## 🧩 Component Architecture & Business Value
 
