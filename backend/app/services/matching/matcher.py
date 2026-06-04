@@ -270,6 +270,37 @@ class SemanticMatcher:
                                    if r.lower() not in {sk.name.lower() for sk in s.skills}],
             })
         scored.sort(key=lambda x: x["score"], reverse=True)
-        for i, item in enumerate(scored[:top_k], 1):
+        top_candidates = scored[:top_k]
+        for i, item in enumerate(top_candidates, 1):
             item["rank"] = i
-        return scored[:top_k]
+            item["explanation"] = "Cocok secara semantik." # default
+
+        from backend.app.config.settings import settings
+        import os
+        has_gemini = bool(settings.gemini_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+        
+        if has_gemini:
+            try:
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                from langchain_core.messages import HumanMessage
+                llm = ChatGoogleGenerativeAI(model=settings.gemini_chat_model, temperature=0.1)
+                
+                prompt = f"Anda adalah HR Assistant AI untuk platform KerjaCerdas.\nBerikan evaluasi SUPER SINGKAT (maks 1 kalimat, 10-15 kata) untuk masing-masing kandidat berikut ini berdasarkan kriteria loker: {job.title}\n"
+                prompt += f"Skill Wajib Loker: {', '.join(job.required_skills)}\n\n"
+                for c in top_candidates:
+                    prompt += f"ID: {c['seeker_id']}\nSkill Kandidat: {', '.join(c['skills'])}\n"
+                
+                prompt += "\nFormat balasan HARUS (tanpa markdown blok, 1 baris per ID):\n[ID]: [evaluasi 1 kalimat]"
+                
+                response = await llm.ainvoke([HumanMessage(content=prompt)])
+                lines = response.content.split('\n')
+                for c in top_candidates:
+                    for line in lines:
+                        if c['seeker_id'] in line and ':' in line:
+                            parts = line.split(":", 1)
+                            c['explanation'] = parts[1].strip()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("LLM summary generation failed: %s", e)
+
+        return top_candidates

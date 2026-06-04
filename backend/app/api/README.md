@@ -14,7 +14,7 @@ This directory contains the FastAPI-powered backend that orchestrates the AI age
 ## 🤖 AI Orchestration
 The API is built on a **Multi-Agent** architecture:
 1. **Orchestrator**: Routes requests and ensures Protocol compliance.
-2. **Matching Agent**: Interfaces with the **IndoBERT** models for semantic job-skill relevance.
+2. **Matching Agent**: Interfaces with **Semantic Search (pgvector)** and **Google Gemini** for semantic job-skill relevance.
 3. **Skill Gap Agent**: Performs RAG-enhanced analysis using **Google Gemini**.
 4. **Advisor Agent**: Provides conversational career advice in Bahasa Indonesia.
 

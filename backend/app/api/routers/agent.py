@@ -170,55 +170,35 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     jobs = await repos.jobs.list()
 
     # --- Run agent --------------------------------------------------------
-    USE_V2_SWARM = True
-
-    if USE_V2_SWARM:
-        from backend.app.agents.graph.builder_v2 import get_graph_v2
-        app_graph = get_graph_v2()
-        
-        # Build context prompt for ReAct agent
-        skills = [s.name for s in seeker.skills] if seeker.skills else []
-        context = f"[Context System]\nProfil Kandidat:\nNama: {seeker.full_name}\nSkill: {skills}\n"
-        if req.explicit_intent:
-            context += f"\nInstruksi Prioritas (Bypass UI): Kandidat menekan tombol dengan intent '{req.explicit_intent}'. Segera eksekusi alat yang relevan!\n"
-            if req.target_job_id:
-                context += f"Target Job ID: {req.target_job_id}\n"
-        
-        context += f"\n[Pesan User]\n{req.user_message}"
-        
-        state_in = {"messages": [("user", context)]}
-    else:
-        from backend.app.agents.graph.builder import get_graph
-        app_graph = get_graph()
-        state_in = {
-            "user_message": req.user_message,
-            "seeker": seeker,
-            "candidate_jobs": jobs,
-            "target_job_id": req.target_job_id,
-            "explicit_intent": req.explicit_intent,
-        }
+    from backend.app.agents.graph.builder import get_graph
+    app_graph = get_graph()
+    
+    # Build context prompt for ReAct agent
+    skills = [s.name for s in seeker.skills] if seeker.skills else []
+    context = f"[Context System]\nProfil Kandidat:\nNama: {seeker.full_name}\nSkill: {skills}\n"
+    if req.explicit_intent:
+        context += f"\nInstruksi Prioritas (Bypass UI): Kandidat menekan tombol dengan intent '{req.explicit_intent}'. Segera eksekusi alat yang relevan!\n"
+        if req.target_job_id:
+            context += f"Target Job ID: {req.target_job_id}\n"
+    
+    context += f"\n<user_input>\n{req.user_message}\n</user_input>"
+    
+    state_in = {"messages": [("user", context)]}
     config = {
         "configurable": {"thread_id": req.session_id or seeker.id},
         "recursion_limit": 5,
     }
     out = await app_graph.ainvoke(state_in, config=config)
 
-    if USE_V2_SWARM:
-        final_response = out["messages"][-1].content
-        # V2 Swarm doesn't natively return structured objects, so we calculate the baseline matches 
-        # using the semantic matcher to ensure the UI job cards never break.
-        from backend.app.services.matching.matcher import SemanticMatcher
-        matcher = SemanticMatcher()
-        raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs, filters=req.filters)
-        missing_skills = []
-        matching_skills = []
-        recommended_courses = []
-    else:
-        raw_matches = out.get("matches", [])
-        final_response = out.get("final_response", "")
-        missing_skills = out.get("missing_skills", [])
-        matching_skills = out.get("matching_skills", [])
-        recommended_courses = out.get("recommended_courses", [])
+    final_response = out["messages"][-1].content
+    # V2 Swarm doesn't natively return structured objects, so we calculate the baseline matches 
+    # using the semantic matcher to ensure the UI job cards never break.
+    from backend.app.services.matching.matcher import SemanticMatcher
+    matcher = SemanticMatcher()
+    raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs, filters=req.filters)
+    missing_skills = []
+    matching_skills = []
+    recommended_courses = []
 
     # --- Enrich matches with job metadata --------------------------------
     seeker_skill_names = [s.name for s in (seeker.skills or [])]

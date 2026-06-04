@@ -534,7 +534,7 @@ COURSES = [
 #  Seed
 # ─────────────────────────────────────────────────────────────────────────────
 
-DEFAULT_PWD = "$2b$12$demoDemoDemoDemoDemoDe.uM5RyP4OkmdRY3hCmF5wxJ2sLb7gqXa"  # bcrypt of "demo"
+DEFAULT_PWD = "$2b$12$mgn8EsuPZveDhiTXdBaxNOIYdVshCsNOdG6K9uSOl1sKehYp/.Cp6"  # bcrypt of "demo"
 
 
 async def seed(clear: bool) -> None:

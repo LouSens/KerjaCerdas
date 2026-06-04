@@ -79,11 +79,6 @@ async def interview_prep_tool(job_title: str, seeker_skills: list[str] = None, r
     
     Gunakan tool ini jika kandidat akan menghadapi interview atau minta tips wawancara.
     """
-    if seeker_skills and required_skills:
-        seeker_lower = [s.lower() for s in seeker_skills]
-        missing = [req for req in required_skills if req.lower() not in seeker_lower]
-        if len(missing) == len(required_skills) and len(required_skills) > 0:
-            return "DYNAMIC ROUTING TRIGGERED: Kandidat tidak memiliki SATU PUN skill wajib untuk posisi ini. Simulasi interview DITOLAK untuk menghemat penggunaan token. Arahkan kandidat untuk melakukan Analisa Skill Gap terlebih dahulu."
 
     title = job_title.lower()
     if "developer" in title or "engineer" in title:
