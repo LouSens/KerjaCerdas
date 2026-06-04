@@ -62,6 +62,7 @@ class EnrichedMatch(BaseModel):
     region_match: bool
     salary_in_range: bool
     rank: int
+    band: str = "stretch"  # headline for the seeker card; UI never renders score/rank
     explanation: str = ""
     # Enriched job metadata
     title: str = ""
@@ -132,6 +133,7 @@ async def _enrich_matches(
             region_match=m.region_match,
             salary_in_range=m.salary_in_range,
             rank=m.rank,
+            band=m.band,
             explanation=m.explanation,
             # metadata
             title=job.title,

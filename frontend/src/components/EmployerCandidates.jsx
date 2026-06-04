@@ -1,20 +1,31 @@
 /**
- * EmployerCandidates — Top-5 AI-ranked candidates per job.
- * Matches design: rank stickers, ScoreDonut, AI reasoning panel, encrypted-trust filters.
+ * EmployerCandidates — candidates grouped into confidence bands per job.
+ *
+ * Decision-support, not decider: the band (Strong / Possible / Stretch) is the
+ * headline. There is deliberately NO rank number and NO precise match score on
+ * the employer card — both invite anchoring on a "winner" and silently ghosting
+ * everyone below. The raw score stays an internal engine output. Each card
+ * instead shows a grounded Matched / Missing skill breakdown so the recruiter
+ * reads every profile on its merits and makes the call.
  */
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { fetchCandidatesForJob } from '../services/api'
-import { KC, BrutalCard, RankSticker, ScoreDonut, Tag, BrutalChip } from './_design'
+import { KC, BrutalCard, Tag, BrutalChip, BandLegend, BAND_META, BAND_ORDER } from './_design'
 
-const BANDS = [
-    { key: 'strong', label: 'Strong fit', color: KC.lime },
-    { key: 'possible', label: 'Possible fit', color: KC.yellow },
-    { key: 'stretch', label: 'Stretch', color: KC.cyan },
-]
 // Use the server-assigned band; fall back to thresholds on the 0–100 score
 // (mirrors the backend's 0.65 / 0.45 cutoffs) so this view works standalone.
 const bandOf = (c) => c.band || (c.score >= 65 ? 'strong' : c.score >= 45 ? 'possible' : 'stretch')
+
+// Recruiter-driven, reversible filters on structured fields. AND-combined.
+// These narrow attention — they never auto-reject anyone; clear to see all.
+const CHIP_FILTERS = [
+    { key: 'verifiedKtp', label: '✓ Verified KTP', test: c => !!c.verified },
+    { key: 'ijazah', label: '✓ Ijazah verified', test: c => !!c.ijazahVerified },
+    { key: 'exp5', label: '> 5 thn exp', test: c => (parseInt(String(c.exp).replace(/\D/g, '')) || 0) > 5 },
+    { key: 'jakarta', label: 'Jakarta', test: c => /jakarta/i.test(c.location || '') },
+    { key: 'remote', label: 'Remote ok', test: c => !!c.remote },
+]
 
 const DEMO_CANDIDATES = [
     { name: 'Rina Pertiwi', band: 'strong', verified: true, score: 94, title: 'Senior Backend Engineer · 6 thn exp', location: 'Jakarta', exp: '6 thn', edu: 'S1 ITB', prev: 'Bukalapak', skills: ['Go', 'PostgreSQL', 'gRPC', 'Kafka', 'K8s'], gap: [], ai: 'Stack 100% overlap. Pernah handle 100K RPS di Bukalapak payment.' },
@@ -30,7 +41,7 @@ export default function EmployerCandidates() {
     const [loading, setLoading] = useState(false)
     const [selectedJobId, setSelectedJobId] = useState(null)
     const [usedDemo, setUsedDemo] = useState(false)
-    const [filter, setFilter] = useState('all')
+    const [activeFilters, setActiveFilters] = useState(new Set())
 
     useEffect(() => { refreshEmployerJobs() }, []) // eslint-disable-line react-hooks/exhaustive-deps
     useEffect(() => { if (employerJobs.length && !selectedJobId) setSelectedJobId(employerJobs[0].id) }, [employerJobs]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -47,6 +58,8 @@ export default function EmployerCandidates() {
                     setCandidates(data.candidates.map(c => ({
                         name: c.full_name || 'Kandidat',
                         verified: c.verified ?? false,
+                        ijazahVerified: c.ijazah_verified ?? c.verified ?? false,
+                        remote: c.open_to_remote ?? c.remote ?? false,
                         band: c.band,
                         score: Math.round((c.score ?? c.overall_score ?? 0) > 1 ? (c.score ?? c.overall_score ?? 0) : (c.score ?? c.overall_score ?? 0) * 100),
                         title: c.headline || '—',
@@ -70,7 +83,14 @@ export default function EmployerCandidates() {
     const jobTitle = selectedJob?.title || 'Senior Backend Engineer'
     const totalApplicants = selectedJob?.application_count ?? 84
 
-    const filtered = filter === 'verified' ? candidates.filter(c => c.verified) : candidates
+    const toggleFilter = (key) => setActiveFilters(prev => {
+        const next = new Set(prev)
+        next.has(key) ? next.delete(key) : next.add(key)
+        return next
+    })
+    const filtered = activeFilters.size === 0
+        ? candidates
+        : candidates.filter(c => [...activeFilters].every(k => CHIP_FILTERS.find(f => f.key === k).test(c)))
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -91,14 +111,19 @@ export default function EmployerCandidates() {
                 </div>
             </header>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <BrutalChip active={filter === 'all'} onClick={() => setFilter('all')}>All ({candidates.length})</BrutalChip>
-                <BrutalChip active={filter === 'verified'} onClick={() => setFilter('verified')}>✓ Verified KTP</BrutalChip>
-                <BrutalChip>✓ Ijazah verified</BrutalChip>
-                <BrutalChip>{'> 5 thn exp'}</BrutalChip>
-                <BrutalChip>Jakarta</BrutalChip>
-                <BrutalChip>Remote ok</BrutalChip>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <BrutalChip active={activeFilters.size === 0} onClick={() => setActiveFilters(new Set())}>All ({candidates.length})</BrutalChip>
+                {CHIP_FILTERS.map(f => (
+                    <BrutalChip key={f.key} active={activeFilters.has(f.key)} onClick={() => toggleFilter(f.key)}>{f.label}</BrutalChip>
+                ))}
+                {activeFilters.size > 0 && (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: KC.mute, marginLeft: 4 }}>
+                        {filtered.length} dari {candidates.length} kandidat
+                    </span>
+                )}
             </div>
+
+            <BandLegend side="employer" />
 
             {loading && <BrutalCard color="#fff" padding={32} style={{ textAlign: 'center' }}>
                 <p style={{ fontFamily: 'JetBrains Mono, monospace', color: KC.orange, fontWeight: 700 }}>Gemini reranking kandidat…</p>
@@ -106,19 +131,23 @@ export default function EmployerCandidates() {
 
             {!loading && (() => {
                 let r = 0
-                const groups = BANDS
-                    .map(b => ({ ...b, items: filtered.filter(c => bandOf(c) === b.key) }))
+                const groups = BAND_ORDER
+                    .map(key => ({ ...BAND_META[key], items: filtered.filter(c => bandOf(c) === key) }))
                     .filter(g => g.items.length)
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
                         {groups.map(g => (
                             <div key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <span style={{ width: 14, height: 14, background: g.color, border: `2px solid ${KC.ink}`, borderRadius: 4, boxShadow: `1.5px 1.5px 0 ${KC.ink}` }} />
-                                    <h2 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>{g.label}</h2>
-                                    <Tag color={g.color} size="sm">{g.items.length}</Tag>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <span style={{ width: 14, height: 14, background: g.color, border: `2px solid ${KC.ink}`, borderRadius: 4, boxShadow: `1.5px 1.5px 0 ${KC.ink}` }} />
+                                        <h2 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>{g.label}</h2>
+                                        <Tag color={g.color} size="sm">{g.items.length}</Tag>
+                                    </div>
+                                    {/* Employer-side blurb: how to read this band as decision support. */}
+                                    <p style={{ fontSize: 12, fontWeight: 600, color: KC.mute, margin: '0 0 0 24px', lineHeight: 1.5, maxWidth: 720 }}>{g.employer}</p>
                                 </div>
-                                {g.items.map(c => { r += 1; return <CandidateCard key={r} candidate={c} rank={r} band={g.key} bandColor={g.color} /> })}
+                                {g.items.map(c => { r += 1; return <CandidateCard key={r} candidate={c} idx={r} band={g.key} bandColor={g.color} bandLabel={g.label} /> })}
                             </div>
                         ))}
                     </div>
@@ -132,43 +161,55 @@ export default function EmployerCandidates() {
     )
 }
 
-function CandidateCard({ candidate: c, rank, band, bandColor }) {
+function CandidateCard({ candidate: c, idx, band, bandColor, bandLabel }) {
     const [unlocked, setUnlocked] = useState(false)
-    const accent = c.score >= 90 ? KC.orange : c.score >= 85 ? KC.yellow : c.score >= 80 ? KC.cyan : KC.lime
     const avatarColors = [KC.cyan, KC.yellow, KC.lime, KC.pink, KC.orange]
-    const aColor = avatarColors[(rank - 1) % avatarColors.length]
+    const aColor = avatarColors[(idx - 1) % avatarColors.length]
     const initials = c.name.split(' ').map(n => n[0]).slice(0, 2).join('')
-    
+    const matched = c.skills || []
+    const gap = c.gap || []
+
     return (
         <BrutalCard color="#fff" padding={20} style={{ position: 'relative' }}>
-            <RankSticker rank={rank} />
             <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: 16, alignItems: 'flex-start' }}>
                 <div style={{ width: 60, height: 60, background: aColor, border: `2px solid ${KC.ink}`, borderRadius: 12, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 22, color: KC.ink, boxShadow: `2px 2px 0 ${KC.ink}` }}>
                     {initials}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <h3 style={{ fontSize: 18, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: 0 }}>{c.name}</h3>
                         {c.verified && <Tag color={KC.lime} size="sm">✓ VERIFIED</Tag>}
-                        {band && <Tag color={bandColor || KC.cyan} size="sm">{String(band).toUpperCase()}</Tag>}
-                        <div style={{ marginLeft: 'auto' }}><ScoreDonut value={c.score} size={42} color={accent} label="" /></div>
+                        {/* Band is the headline — no rank number, no match percentage. */}
+                        <Tag color={bandColor || KC.cyan} size="md" style={{ marginLeft: 'auto' }}>{bandLabel || String(band)}</Tag>
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: KC.mute, marginBottom: 8 }}>{c.title}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontWeight: 700, color: KC.mute, flexWrap: 'wrap' }}>
                         <span>📍 {c.location}</span><span>⏱ {c.exp}</span><span>🎓 {c.edu}</span><span>💼 {c.prev}</span>
                     </div>
-                    
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
-                        {c.skills.map(s => <Tag key={s} color={KC.lime} size="sm">{s}</Tag>)}
-                        {c.gap.map(s => <Tag key={s} color={KC.orangeSoft} size="sm">{s} (gap)</Tag>)}
+
+                    {/* Grounded Matched / Missing breakdown — from the structured skill
+                        comparison, not the embedding score. */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+                        {matched.length > 0 && (
+                            <div>
+                                <div style={halfLabel}>✓ Cocok dengan kebutuhan</div>
+                                <div style={tagRow}>{matched.map(s => <Tag key={s} color={KC.lime} size="sm">{s}</Tag>)}</div>
+                            </div>
+                        )}
+                        {gap.length > 0 && (
+                            <div>
+                                <div style={halfLabel}>△ Belum terlihat di profil</div>
+                                <div style={tagRow}>{gap.map(s => <Tag key={s} color={KC.orangeSoft} size="sm">{s}</Tag>)}</div>
+                            </div>
+                        )}
                     </div>
-                    
+
                     {c.ai && (
                         <div style={{ marginTop: 12, padding: '10px 12px', background: KC.bone, border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 12, fontWeight: 600, lineHeight: 1.5 }}>
-                            <b>✨ AI Copilot · </b>{c.ai}
+                            <b>🔍 Ringkasan kecocokan · </b>{c.ai}
                         </div>
                     )}
-                    
+
                     <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <button 
                             onClick={() => alert("Membuka PDF Viewer CV Asli... (Simulasi UI AI Copilot Split-Screen)")}
@@ -214,3 +255,6 @@ function CandidateCard({ candidate: c, rank, band, bandColor }) {
 }
 
 const topBtn = (bg, fg = KC.ink) => ({ padding: '8px 14px', background: bg, color: fg, border: `2px solid ${KC.ink}`, borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` })
+
+const halfLabel = { fontSize: 10, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6 }
+const tagRow = { display: 'flex', gap: 6, flexWrap: 'wrap' }

@@ -1,6 +1,14 @@
 import { useEffect } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, FilledStat, ScoreDonut, RankSticker, Tag, DesignStyles } from './_design'
+import { KC, BrutalCard, FilledStat, Tag, DesignStyles, BAND_META } from './_design'
+
+// Server band wins; fall back to the 0.65 / 0.45 cutoffs on the 0–100 score.
+const bandOf = (m) => {
+    if (m.band) return m.band
+    const raw = m.overall_score ?? m.score ?? 0
+    const pct = raw > 1 ? raw : raw * 100
+    return pct >= 65 ? 'strong' : pct >= 45 ? 'possible' : 'stretch'
+}
 
 export default function SeekerDashboard() {
     const { user, matches, navigate, runAgent, agentLoading, seekerId, profile, recommendedCourses, missingSkills, computeProfileCompleteness } = useStore()
@@ -59,7 +67,7 @@ export default function SeekerDashboard() {
                     </div>
                     <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
                         {topMatches.map((m, i) => (
-                            <DashMatchCard key={m.job_id || i} rank={i + 1} match={m} />
+                            <DashMatchCard key={m.job_id || i} match={m} />
                         ))}
                     </div>
                 </div>
@@ -115,21 +123,22 @@ export default function SeekerDashboard() {
     )
 }
 
-function DashMatchCard({ rank, match }) {
+function DashMatchCard({ match }) {
     const navigate = useStore(s => s.navigate)
-    const rawScore = match.overall_score ?? match.score ?? 0.85
-    const score = Math.round(rawScore > 1 ? rawScore : rawScore * 100)
-    const accent = score >= 90 ? KC.orange : score >= 85 ? KC.yellow : score >= 80 ? KC.cyan : KC.lime
+    const band = bandOf(match)
+    const meta = BAND_META[band]
     const company = match.company || 'Company'
     const matchingSkills = match.matching_skills || []
     const missingSkills = match.missing_skills || []
     return (
         <BrutalCard color="#fff" padding={20} style={{ position: 'relative' }}>
-            <RankSticker rank={rank} />
-            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr auto', gap: 16, alignItems: 'flex-start' }}>
-                <ScoreDonut value={score} size={60} color={accent} />
+            {/* Band is the headline — no score donut, no rank sticker. */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'flex-start' }}>
                 <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: KC.mute, marginBottom: 4 }}>{company} ✓</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: KC.mute }}>{company} ✓</span>
+                        <Tag color={meta.color} size="sm" style={{ marginLeft: 'auto' }}>{meta.label}</Tag>
+                    </div>
                     <h3 style={{ fontSize: 18, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.15, margin: 0 }}>
                         {match.title || match.job_title || 'Posisi'}
                     </h3>
@@ -163,7 +172,7 @@ const topBtn = (bg, fg = KC.ink) => ({
 const linkBtn = { background: 'transparent', border: 'none', color: KC.ink, fontWeight: 800, fontSize: 12, textDecoration: 'underline', cursor: 'pointer', padding: 0 }
 
 const DEMO_MATCHES = [
-    { job_id: 'd1', score: 92, title: 'Senior Backend Engineer', company: 'Tokopedia', location: 'Jakarta · Hybrid', salary_range: 'Rp 28-42jt', experience_range: '4-7 thn', matching_skills: ['Go', 'PostgreSQL', 'gRPC'], missing_skills: ['Kafka'], explanation: 'Pengalaman scale 100K RPS-mu match banget sama tim payment.' },
-    { job_id: 'd2', score: 89, title: 'Tech Lead · Payments', company: 'Xendit', location: 'Jakarta · Remote', salary_range: 'Rp 35-50jt', experience_range: '6+ thn', matching_skills: ['Go', 'Node', 'AWS'], missing_skills: ['Kafka', 'Terraform'] },
-    { job_id: 'd3', score: 85, title: 'Staff Engineer', company: 'GoTo Financial', location: 'Jakarta · Hybrid', salary_range: 'Rp 40-60jt', experience_range: '7+ thn', matching_skills: ['Microservices', 'K8s'], missing_skills: ['Redis'] },
+    { job_id: 'd1', band: 'strong', score: 92, title: 'Senior Backend Engineer', company: 'Tokopedia', location: 'Jakarta · Hybrid', salary_range: 'Rp 28-42jt', experience_range: '4-7 thn', matching_skills: ['Go', 'PostgreSQL', 'gRPC'], missing_skills: ['Kafka'], explanation: 'Skill kamu nyambung kuat sama kebutuhan tim payment. Posisi yang pas buat kamu lamar.' },
+    { job_id: 'd2', band: 'strong', score: 89, title: 'Tech Lead · Payments', company: 'Xendit', location: 'Jakarta · Remote', salary_range: 'Rp 35-50jt', experience_range: '6+ thn', matching_skills: ['Go', 'Node', 'AWS'], missing_skills: ['Kafka', 'Terraform'] },
+    { job_id: 'd3', band: 'possible', score: 85, title: 'Staff Engineer', company: 'GoTo Financial', location: 'Jakarta · Hybrid', salary_range: 'Rp 40-60jt', experience_range: '7+ thn', matching_skills: ['Microservices', 'K8s'], missing_skills: ['Redis'] },
 ]

@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, RankSticker, ScoreDonut, Tag, DesignStyles } from './_design'
+import { KC, BrutalCard, Tag, DesignStyles, BandLegend, BAND_META, BAND_ORDER } from './_design'
 import JobDetailModal from './JobDetailModal'
+
+// Server-assigned band wins; fall back to the 0.65 / 0.45 cutoffs on the 0–100
+// score so demo data (and any pre-band payload) still groups sensibly.
+const bandOf = (m) => {
+    if (m.band) return m.band
+    const raw = m.overall_score ?? m.score ?? 0
+    const pct = raw > 1 ? raw : raw * 100
+    return pct >= 65 ? 'strong' : pct >= 45 ? 'possible' : 'stretch'
+}
 
 // ── LinkedIn-style multi-facet filters ─────────────────────────────────────
 // Auto-matching to seeker profile still happens server-side. These filters
@@ -151,13 +160,36 @@ export default function SeekerMatchResults() {
                 </BrutalCard>
             )}
 
-            <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
-                {list.map((m, i) => (
-                    <MatchCard key={m.job_id || i} rank={i + 1} match={m}
-                        saved={isJobSaved(m.job_id || m.id)} onSave={() => toggleSaveJob(m)}
-                        onView={() => setSelectedJob(m)} />
-                ))}
-            </div>
+            <BandLegend side="seeker" />
+
+            {(() => {
+                const groups = BAND_ORDER
+                    .map(key => ({ ...BAND_META[key], items: list.filter(m => bandOf(m) === key) }))
+                    .filter(g => g.items.length)
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
+                        {groups.map(g => (
+                            <div key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <span style={{ width: 14, height: 14, background: g.color, border: `2px solid ${KC.ink}`, borderRadius: 4, boxShadow: `1.5px 1.5px 0 ${KC.ink}` }} />
+                                        <h2 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>{g.label}</h2>
+                                        <Tag color={g.color} size="sm">{g.items.length}</Tag>
+                                    </div>
+                                    <p style={{ fontSize: 12, fontWeight: 600, color: KC.mute, margin: '0 0 0 24px', lineHeight: 1.5 }}>{g.seeker}</p>
+                                </div>
+                                <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    {g.items.map((m, i) => (
+                                        <MatchCard key={m.job_id || `${g.key}-${i}`} match={m} band={g.key} bandColor={g.color} bandLabel={g.label}
+                                            saved={isJobSaved(m.job_id || m.id)} onSave={() => toggleSaveJob(m)}
+                                            onView={() => setSelectedJob(m)} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )
+            })()}
 
             <div style={{ marginTop: 12, padding: 14, background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, textAlign: 'center', fontSize: 13, fontWeight: 700, color: KC.mute }}>
                 Hanya 5 hasil teratas yang ditampilkan. <span style={{ color: KC.ink, textDecoration: 'underline', cursor: 'pointer' }}>Upgrade ke Pro</span> buat akses top-20 + insight mingguan.
@@ -168,23 +200,22 @@ export default function SeekerMatchResults() {
     )
 }
 
-function MatchCard({ rank, match, saved, onSave, onView }) {
-    const rawScore = match.overall_score ?? match.score ?? 0.85
-    const score = Math.round(rawScore > 1 ? rawScore : rawScore * 100)
-    const accent = score >= 90 ? KC.orange : score >= 85 ? KC.yellow : score >= 80 ? KC.cyan : KC.lime
+function MatchCard({ match, band, bandColor, bandLabel, saved, onSave, onView }) {
+    const navigate = useStore(s => s.navigate)
     const company = match.company || 'Company'
     const matchingSkills = match.matching_skills || []
     const missingSkills = match.missing_skills || []
     return (
         <BrutalCard color="#fff" padding={20} style={{ position: 'relative' }}>
-            <RankSticker rank={rank} />
-            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr auto', gap: 16, alignItems: 'flex-start' }}>
-                <ScoreDonut value={score} size={60} color={accent} />
+            {/* No score donut, no rank sticker — the band is the only headline,
+                and we never show how this seeker stacks against rivals. */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'flex-start' }}>
                 <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <div style={{ width: 28, height: 28, background: KC.cyan, border: `1.5px solid ${KC.ink}`, borderRadius: 6, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 12 }}>{company[0]}</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: KC.mute }}>{company}</div>
                         {match.verified && <Tag color={KC.lime} size="sm">✓ Terverifikasi</Tag>}
+                        <Tag color={bandColor || KC.cyan} size="md" style={{ marginLeft: 'auto' }}>{bandLabel || String(band)}</Tag>
                     </div>
                     <h3 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.15, margin: 0 }}>
                         {match.title || match.job_title || 'Posisi'}
@@ -203,6 +234,12 @@ function MatchCard({ rank, match, saved, onSave, onView }) {
                         <div style={{ marginTop: 12, padding: '10px 12px', background: KC.bone, border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 12, fontWeight: 600, lineHeight: 1.5 }}>
                             <b>✨ AI · </b>{match.explanation}
                         </div>
+                    )}
+                    {/* Stretch → the gap becomes a concrete to-do with a hook into Skill-Gap. */}
+                    {band === 'stretch' && missingSkills.length > 0 && (
+                        <button className="kc-btn" onClick={() => navigate('seeker-skill-gap')} style={{ ...topBtn(KC.cyan), marginTop: 12 }}>
+                            Lihat skill yang perlu dilengkapi →
+                        </button>
                     )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -320,9 +357,9 @@ const topBtn = (bg, fg = KC.ink) => ({
 })
 
 const DEMO_MATCHES = [
-    { job_id: 'd1', score: 92, title: 'Senior Backend Engineer', company: 'Tokopedia', location: 'Jakarta · Hybrid', salary_range: 'Rp 28-42jt', experience_range: '4-7 thn', matching_skills: ['Go', 'PostgreSQL', 'gRPC', 'Microservices'], missing_skills: ['Kafka'], explanation: 'Pengalaman scale 100K RPS-mu match banget sama tim payment. Bahasa Go di CV terkonfirmasi dari 3 proyek terakhir.' },
-    { job_id: 'd2', score: 89, title: 'Tech Lead · Payments Infrastructure', company: 'Xendit', location: 'Jakarta · Remote', salary_range: 'Rp 35-50jt', experience_range: '6+ thn', matching_skills: ['Go', 'Node', 'AWS', 'PostgreSQL'], missing_skills: ['Kafka', 'Terraform'], explanation: 'Cocok dari sisi domain fintech & leadership. Stack overlap 85% kecuali Kafka.' },
-    { job_id: 'd3', score: 85, title: 'Staff Engineer', company: 'GoTo Financial', location: 'Jakarta · Hybrid', salary_range: 'Rp 40-60jt', experience_range: '7+ thn', matching_skills: ['Microservices', 'K8s', 'Go'], missing_skills: ['Redis'] },
-    { job_id: 'd4', score: 81, title: 'Backend Lead · Wealth', company: 'Bibit', location: 'Jakarta · Hybrid', salary_range: 'Rp 30-45jt', experience_range: '5+ thn', matching_skills: ['Node', 'TypeScript'], missing_skills: ['Go', 'gRPC'] },
-    { job_id: 'd5', score: 78, title: 'Sr. Software Engineer', company: 'Ruangguru', location: 'Jakarta · Remote', salary_range: 'Rp 25-38jt', experience_range: '4+ thn', matching_skills: ['Node', 'PostgreSQL'], missing_skills: ['Go', 'K8s'] },
+    { job_id: 'd1', band: 'strong', score: 92, title: 'Senior Backend Engineer', company: 'Tokopedia', location: 'Jakarta · Hybrid', salary_range: 'Rp 28-42jt', experience_range: '4-7 thn', matching_skills: ['Go', 'PostgreSQL', 'gRPC', 'Microservices'], missing_skills: ['Kafka'], explanation: 'Skill kamu—Go, PostgreSQL, gRPC—nyambung kuat sama kebutuhan tim payment. Posisi yang pas buat kamu lamar.' },
+    { job_id: 'd2', band: 'strong', score: 89, title: 'Tech Lead · Payments Infrastructure', company: 'Xendit', location: 'Jakarta · Remote', salary_range: 'Rp 35-50jt', experience_range: '6+ thn', matching_skills: ['Go', 'Node', 'AWS', 'PostgreSQL'], missing_skills: ['Kafka', 'Terraform'], explanation: 'Pengalaman fintech & leadership-mu nyambung kuat. Posisi yang pas buat kamu lamar.' },
+    { job_id: 'd3', band: 'possible', score: 85, title: 'Staff Engineer', company: 'GoTo Financial', location: 'Jakarta · Hybrid', salary_range: 'Rp 40-60jt', experience_range: '7+ thn', matching_skills: ['Microservices', 'K8s', 'Go'], missing_skills: ['Redis'], explanation: 'Kamu udah punya pondasi yang cocok lewat Microservices, K8s, Go. Lengkapi Redis biar makin siap.' },
+    { job_id: 'd4', band: 'possible', score: 81, title: 'Backend Lead · Wealth', company: 'Bibit', location: 'Jakarta · Hybrid', salary_range: 'Rp 30-45jt', experience_range: '5+ thn', matching_skills: ['Node', 'TypeScript'], missing_skills: ['Go', 'gRPC'], explanation: 'Kamu udah punya pondasi yang cocok lewat Node, TypeScript. Lengkapi Go, gRPC biar makin siap.' },
+    { job_id: 'd5', band: 'stretch', score: 78, title: 'Sr. Software Engineer', company: 'Ruangguru', location: 'Jakarta · Remote', salary_range: 'Rp 25-38jt', experience_range: '4+ thn', matching_skills: ['Node', 'PostgreSQL'], missing_skills: ['Go', 'K8s'], explanation: 'Lowongan ini sedikit di luar jangkauanmu sekarang—anggap sebagai tujuan. Mulai dari Go, K8s, dan ini jadi target yang realistis.' },
 ]

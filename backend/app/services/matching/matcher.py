@@ -78,37 +78,66 @@ def _build_job_text(j: JobPosting) -> str:
     )
 
 
-def _explain(
-    job: JobPosting,
-    seeker_skill_names: list[str],
-    cos: float,
-    skill_overlap: float,
-    region_ok: bool,
-    salary_ok: bool,
-) -> str:
-    """Human-readable explanation, following prompts/tasks/match_explainer.md rules."""
-    s_lower = {x.lower() for x in seeker_skill_names}
-    matched = [s for s in job.required_skills if s.lower() in s_lower]
-    missing  = [s for s in job.required_skills if s.lower() not in s_lower]
-    
-    sentences = []
-    
-    # 1. Strongest reason
-    if matched:
-        sentences.append(f"Kecocokan tinggi karena kamu menguasai {', '.join(matched[:2])}.")
-    elif region_ok:
-        sentences.append("Lokasi pekerjaan ini sangat sesuai dengan preferensimu.")
-    else:
-        sentences.append("Ada potensi kecocokan berdasarkan pengalamanmu.")
-        
-    # 2. Gentle gap (up to 2 missing)
+def _band_label(score: float, strong_th: float, possible_th: float) -> str:
+    """Map a final score to a confidence band. Single source of truth for the
+    Strong / Possible / Stretch cutoffs — used by both the seeker ranking and
+    the employer `_assign_bands` so the two sides never drift apart."""
+    return (
+        "strong" if score >= strong_th
+        else "possible" if score >= possible_th
+        else "stretch"
+    )
+
+
+def _seeker_summary(band: str, matched: list[str], missing: list[str]) -> str:
+    """Kind, actionable one-line explanation for the seeker's match card.
+
+    The deliberate mirror image of `_candidate_summary`: built from the same
+    skill intersection, but framed as *guidance for the person*, not evidence
+    for a recruiter. It encourages on what fits and turns any gap into a
+    concrete next step — never a score, never a ranking, never sales urgency.
+    Stretch is presented as a reachable goal, with the gap as the first move.
+    """
+    matched_str = ", ".join(matched[:3])
+    missing_str = ", ".join(missing[:2])
+    if band == "strong":
+        if matched:
+            return f"Skill kamu—{matched_str}—nyambung kuat sama kebutuhan tim ini. Posisi yang pas buat kamu lamar."
+        return "Profilmu nyambung kuat sama lowongan ini. Posisi yang pas buat kamu lamar."
+    if band == "possible":
+        base = (f"Kamu udah punya pondasi yang cocok lewat {matched_str}."
+                if matched else "Ada irisan yang cocok antara profilmu dan lowongan ini.")
+        if missing:
+            return f"{base} Lengkapi {missing_str} biar makin siap."
+        return f"{base} Tinggal poles dikit lagi."
+    # stretch — a reach, framed as a goal; the gap is the first step, no hype
     if missing:
-        sentences.append(f"Kamu bisa meningkatkan peluang dengan mempelajari {', '.join(missing[:2])}.")
-        
-    # 3. Action
-    sentences.append("**Aksi:** Kirim lamaranmu sekarang sebelum kuota penuh!")
-    
-    return " ".join(sentences)
+        return (f"Lowongan ini sedikit di luar jangkauanmu sekarang—anggap sebagai tujuan. "
+                f"Mulai dari {missing_str}, dan ini jadi target yang realistis.")
+    return "Lowongan ini sedikit menantang buat profilmu sekarang—jadiin tujuan yang bisa kamu kejar."
+
+
+def _candidate_summary(required: list[str], matched: list[str], missing: list[str]) -> str:
+    """Grounded, neutral Matched/Missing summary for the employer candidate card.
+
+    Derived from the structured skill comparison (set intersection on the
+    required skills vs. the seeker's listed skills) — NOT from the embedding
+    score. That separation is what lets us show it honestly: it states "skills
+    present vs. skills absent", never a hiring verdict or a call to action.
+    """
+    total = len(required)
+    parts: list[str] = []
+    if matched:
+        parts.append(f"Sesuai pada {len(matched)} dari {total} skill wajib: {', '.join(matched[:4])}.")
+    elif total:
+        parts.append("Belum ada skill wajib yang cocok eksplisit; kecocokan berbasis kesamaan profil.")
+    else:
+        parts.append("Lowongan ini tidak mencantumkan skill wajib spesifik.")
+    if missing:
+        parts.append(f"Belum terlihat di profil: {', '.join(missing[:4])}.")
+    elif total:
+        parts.append("Seluruh skill wajib terpenuhi.")
+    return " ".join(parts)
 
 
 def _assign_bands(
@@ -127,12 +156,7 @@ def _assign_bands(
     top-N ranking.
     """
     for c in candidates:
-        s = c["score"]
-        c["band"] = (
-            "strong" if s >= strong_th
-            else "possible" if s >= possible_th
-            else "stretch"
-        )
+        c["band"] = _band_label(c["score"], strong_th, possible_th)
     rng = random.Random(int(hashlib.sha256(job_id.encode()).hexdigest()[:8], 16))
     out: list[dict] = []
     for band in ("strong", "possible", "stretch"):
@@ -214,6 +238,10 @@ class SemanticMatcher:
             cos    = cosine(query_vec, j.embedding or [])
             skill  = _skill_overlap(seeker_skill_names, j.required_skills)
 
+            s_lower = {x.lower() for x in seeker_skill_names}
+            matched = [s for s in j.required_skills if s.lower() in s_lower]
+            missing = [s for s in j.required_skills if s.lower() not in s_lower]
+
             # 1. Base Score (Semantic + Skill Only)
             base_score = 0.60 * max(cos, 0.0) + 0.40 * skill
             
@@ -241,6 +269,11 @@ class SemanticMatcher:
                     exp_boost = 0.10
 
             score = base_score + loc_boost + sal_boost + exp_boost
+            band = _band_label(
+                score,
+                settings.band_strong_threshold,
+                settings.band_possible_threshold,
+            )
 
             scored.append(MatchResult(
                 job_id=j.id,
@@ -251,13 +284,26 @@ class SemanticMatcher:
                 region_match=region_ok,
                 salary_in_range=salary_ok,
                 rank=0,
-                explanation=_explain(j, seeker_skill_names, cos, skill, region_ok, salary_ok),
+                band=band,
+                # Kind, seeker-facing framing — the mirror of the employer's
+                # neutral `_candidate_summary`. No score, no rank, no urgency.
+                explanation=_seeker_summary(band, matched, missing),
             ))
 
+        # Group strong -> possible -> stretch, then shuffle within each band so a
+        # tiny score delta never reads as a strict "you're #4" ranking. Seeded by
+        # the seeker id so ordering is stable per seeker across requests.
         scored.sort(key=lambda m: m.score, reverse=True)
-        for i, m in enumerate(scored[:top_k], start=1):
+        top = scored[:top_k]
+        rng = random.Random(int(hashlib.sha256(seeker.id.encode()).hexdigest()[:8], 16))
+        ordered: list[MatchResult] = []
+        for band in ("strong", "possible", "stretch"):
+            group = [m for m in top if m.band == band]
+            rng.shuffle(group)
+            ordered.extend(group)
+        for i, m in enumerate(ordered, start=1):
             m.rank = i
-        return scored[:top_k]
+        return ordered
 
     async def rank_seekers_for_job(
         self,
@@ -293,16 +339,24 @@ class SemanticMatcher:
                     exp_boost = 0.10
                     
             score = round(0.60 * max(cos, 0.0) + 0.40 * skill + loc_boost + exp_boost, 4)
+            seeker_skill_lower = {sk.name.lower() for sk in s.skills}
+            matched_skills = [r for r in job.required_skills if r.lower() in seeker_skill_lower]
+            missing_skills = [r for r in job.required_skills if r.lower() not in seeker_skill_lower]
             scored.append({
                 "seeker_id":   s.id,
                 "full_name":   s.full_name,
                 "headline":    s.headline,
                 "skills":      [sk.name for sk in s.skills],
+                # Matched = required skills the seeker actually has (the JD ∩ CV
+                # intersection), so the card shows fit, not the full skill dump.
+                "matching_skills": matched_skills,
+                "missing_skills":  missing_skills,
                 "region_code": s.region_code,
+                # `score` stays in the payload as an internal engine output — the
+                # band is the headline; the employer card never paints the number.
                 "score":       score,
                 "skill_overlap": round(skill, 4),
-                "missing_skills": [r for r in job.required_skills
-                                   if r.lower() not in {sk.name.lower() for sk in s.skills}],
+                "explanation": _candidate_summary(job.required_skills, matched_skills, missing_skills),
             })
         scored.sort(key=lambda x: x["score"], reverse=True)
         return _assign_bands(
