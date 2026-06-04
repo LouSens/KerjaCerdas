@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, FilledStat, Tag, DesignStyles, BAND_META } from './_design'
 
@@ -13,9 +13,12 @@ const bandOf = (m) => {
 export default function SeekerDashboard() {
     const { user, matches, navigate, runAgent, agentLoading, seekerId, profile, recommendedCourses, missingSkills, computeProfileCompleteness } = useStore()
 
+    const [selectedJob, setSelectedJob] = useState(null)
+    const hasProfile = Boolean(seekerId || profile?.skills?.length > 0)
+
     useEffect(() => {
-        if (!matches.length && !agentLoading) runAgent({ message: 'show my top matches' })
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+        if (hasProfile && !matches.length && !agentLoading) runAgent({ message: 'show my top matches' })
+    }, [hasProfile]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const topMatches = (matches.length ? matches : DEMO_MATCHES).slice(0, 3)
     const avg = matches.length
@@ -52,25 +55,48 @@ export default function SeekerDashboard() {
                 </div>
             </header>
 
+            {!hasProfile ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', background: '#fff', border: `3px solid ${KC.ink}`, borderRadius: 12, boxShadow: `6px 6px 0 ${KC.ink}` }}>
+                    <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 12 }}>Belum ada data CV</h2>
+                    <p style={{ color: KC.mute, marginBottom: 24, fontSize: 14 }}>Upload CV kamu dalam format PDF agar sistem AI bisa mengekstrak skill dan mencarikan pekerjaan yang cocok.</p>
+                    <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={{ ...topBtn(KC.orange, '#fff'), padding: '12px 24px', fontSize: 16 }}>
+                        Mulai Upload CV →
+                    </button>
+                </div>
+            ) : (
             <div className="kc-grid-4 kc-stagger">
                 <FilledStat label="Match Score Avg" value={`${avg}%`} sub="+4 dari minggu lalu" color={KC.orange} dark onClick={() => navigate('seeker-match')} />
                 <FilledStat label="Top-5 Match Aktif" value={String(Math.min(5, matches.length || 5))} sub="2 baru hari ini" color={KC.cyan} onClick={() => navigate('seeker-match')} />
                 <FilledStat label="Skill Gap" value={String(missingSkills?.length || '—')} sub={missingSkills?.slice(0,2).join(', ') || 'Jalankan match dulu'} color={KC.yellow} onClick={() => navigate('seeker-skill-gap')} />
                 <FilledStat label="Kursus Rekomendasi" value={String(recommendedCourses?.length || '—')} sub="dari Gemini skill gap" color={KC.lime} onClick={() => navigate('seeker-skill-gap')} />
             </div>
+            )}
 
             <div className="kc-grid-main">
-                <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                        <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.6, margin: 0 }}>Top 3 Match Hari Ini</h2>
-                        <button onClick={() => navigate('seeker-match')} style={linkBtn}>Lihat semua 5 →</button>
+                {!hasProfile ? (
+                    <div>
+                        <div style={{ padding: '60px 20px', textAlign: 'center', background: '#fff', border: `3px solid ${KC.ink}`, borderRadius: 12, boxShadow: `6px 6px 0 ${KC.ink}` }}>
+                            <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
+                            <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 12 }}>Belum ada data CV</h2>
+                            <p style={{ color: KC.mute, marginBottom: 24, fontSize: 14 }}>Upload CV kamu dalam format PDF agar AI Gemini bisa mengekstrak skill dan mencarikan pekerjaan yang cocok untukmu.</p>
+                            <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={{ ...topBtn(KC.orange, '#fff'), padding: '12px 24px', fontSize: 16 }}>
+                                Mulai Upload CV →
+                            </button>
+                        </div>
                     </div>
-                    <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
-                        {topMatches.map((m, i) => (
-                            <DashMatchCard key={m.job_id || i} match={m} />
-                        ))}
+                ) : (
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                            <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.6, margin: 0 }}>Top 3 Match Hari Ini</h2>
+                            <button onClick={() => navigate('seeker-match')} style={linkBtn}>Lihat semua 5 →</button>
+                        </div>
+                        <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
+                            {topMatches.map((m, i) => (
+                                <DashMatchCard key={m.job_id || i} match={m} />
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <BrutalCard color="#fff" padding={18}>

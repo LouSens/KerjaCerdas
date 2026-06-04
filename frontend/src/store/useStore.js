@@ -133,7 +133,7 @@ const useStore = create(
                         { role: 'assistant', content: 'Halo! Saya advisor karier KerjaCerdas. Tanya apa saja seputar pekerjaan, skill, atau CV kamu.' },
                     ],
                 })
-                toast('Sampai jumpa lagi', { icon: '👋' })
+                // toast removed as per user request
             },
 
             // ─── Navigation (role-aware) ─────────────────────────────────
@@ -229,7 +229,7 @@ const useStore = create(
                     return res
                 } catch (e) {
                     set({ agentLoading: false, agentError: e.message })
-                    toast.error('Agent gagal — cek backend')
+                    console.error('Agent gagal — cek backend', e)
                 }
             },
 
@@ -415,6 +415,7 @@ const useStore = create(
                 savedJobs: s.savedJobs,
                 sidebarCollapsed: s.sidebarCollapsed,
                 authToken: s.authToken,
+                activeView: s.activeView,
             }),
         }
     )

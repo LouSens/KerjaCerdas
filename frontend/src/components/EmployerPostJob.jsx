@@ -83,7 +83,7 @@ export default function EmployerPostJob() {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
-                    <button style={topBtn('#fff')}>Simpan Draft</button>
+                    <button onClick={() => { }} style={topBtn('#fff')}>Simpan Draft</button>
                     <button onClick={handlePublish} disabled={publishing} style={topBtn(KC.orange, '#fff')}>
                         {publishing ? 'Publishing…' : 'Publish →'}
                     </button>

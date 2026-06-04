@@ -151,10 +151,10 @@ export const createEmployerJob = (data) =>
     })
 
 // ── Employer candidates (reverse-matching) ──────────────────────────────────
-export const fetchCandidatesForJob = (jobId, topK = 5) =>
+export const fetchCandidatesForJob = (jobId, topK = 5, filters = {}) =>
     request(`${API_BASE}/employer/jobs/${jobId}/candidates`, {
         method: 'POST',
-        body: JSON.stringify({ top_k: topK }),
+        body: JSON.stringify({ top_k: topK, filters }),
     })
 
 // ── Verification (mock e-KYC / SIVIL / NPWP) ────────────────────────────────
@@ -186,8 +186,15 @@ export const applyToJob = (jobId, coverLetter = '') =>
 export const fetchApplications = () => request(`${API_BASE}/seeker/applications`)
 
 // ── Jobs search ──────────────────────────────────────────────────────────────
-export const searchJobs = (q = '', offset = 0, limit = 20) =>
-    request(`${API_BASE}/jobs?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`)
+export const searchJobs = (q = '', offset = 0, limit = 20, filters = {}) => {
+    let url = `${API_BASE}/jobs?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`;
+    if (filters.region) url += `&region=${encodeURIComponent(filters.region)}`;
+    if (filters.job_type) url += `&job_type=${encodeURIComponent(filters.job_type)}`;
+    if (filters.experience_min) url += `&experience_min=${filters.experience_min}`;
+    if (filters.salary_min) url += `&salary_min=${filters.salary_min}`;
+    if (filters.remote_allowed !== undefined) url += `&remote_allowed=${filters.remote_allowed}`;
+    return request(url);
+}
 
 // ── Health ──────────────────────────────────────────────────────────────────
 export const healthCheck = () => request('/health')

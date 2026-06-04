@@ -25,6 +25,14 @@ Digitalisasi Penciptaan Lapangan Kerja dan Penanggulangan Pengangguran Struktura
 1. **Dari Sisi HRD (B2B):** Proses penyaringan CV yang berbasis *keyword* statis menguras 60% waktu produktif HRD. Hal ini memicu fenomena *Screening Fatigue*, di mana kandidat berkualitas terlewat karena tidak menggunakan kata kunci eksak (Relevance Mismatch).
 2. **Dari Sisi Pencari Kerja (B2C):** Tingkat Pengangguran Terbuka (TPT) generasi muda mencapai 9%. Mayoritas mengalami "kebutaan kompetensi"—mereka mengirim ribuan lamaran tanpa menyadari *skill gap* spesifik yang menahan mereka. 
 
+**Akar Permasalahan (Triple Mismatch):**
+
+| Mismatch | Dampak |
+|---|---|
+| **Structural Mismatch** (Kelebihan pelamar umum vs Kekurangan talenta digital) | Ekspansi industri modern terhambat oleh kelangkaan SDM berkualifikasi. |
+| **Relevance Mismatch** (Pencarian *keyword* yang mengabaikan semantik) | Kandidat berkualitas tidak terdeteksi; kandidat yang kurang tepat masuk daftar pendek (shortlist). |
+| **Trust Mismatch** (CV tak terverifikasi & penipuan lowongan) | Talenta terhambat validasi; pelamar berisiko terkena penipuan (*fraud*). |
+
 **Solusi Terukur:**
 Sistem menggunakan **Dynamic Routing LangGraph** untuk mengkategorikan pelamar. Jika terdeteksi 100% *mismatch*, sistem tidak membuang token LLM untuk *interview generation*, melainkan merutekan kandidat ke *Skill Gap Agent*. Hal ini **menghemat konsumsi token LLM hingga 40% per kandidat**, memastikan *unit economics* tetap rendah sembari memberikan *feedback* instan kepada pelamar.
 
@@ -51,9 +59,31 @@ Daripada sekadar mengkurasi tautan *course online* secara umum, AI kami merancan
 - **Tier 2 (Deep-Linked Certifications):** Sistem menyarankan *modul spesifik* pada platform afiliasi ternama (misal: "Tonton modul 3 di Hacktiv8 untuk menutupi gap SQL Anda"), mencetak *Affiliate Revenue* (Konversi target: 15% dari pengguna *mismatch* per bulan).
 - **Tier 3 (Expert Mentorship Connection):** Platform menjodohkan kandidat dengan mentor profesional terverifikasi untuk sesi konsultasi tatap muka virtual, membangun *Trust* dan retensi pengguna jangka panjang.
 
+### 4. Key Differences vs Portal Konvensional
+
+Portal pekerjaan konvensional beroperasi sebagai **mesin pencari berbasis kata kunci (keyword)** yang statis. KerjaCerdas memecahkan masalah ini dengan memahami konteks dan semantik kompetensi.
+
+| Fitur | Portal Konvensional | **KerjaCerdas (Enterprise AI)** |
+|---|---|---|
+| **Mesin Pencocokan** | Filter *Keyword* Kaku | **Gemini Semantic Embeddings (3072-dim)** |
+| **Arsitektur Agen** | Chat Bot Sederhana | **ReAct Multi-Agent Supervisor Swarm** |
+| **Sistem Navigasi UI** | Linear & Searah | **Dual-Track (AI Autopilot & Manual Search)** |
+| **Analisis Celah Keahlian** | Tidak Ada | **Identifikasi spesifik + Rekomendasi program Ed-Tech** |
+| **Monetisasi B2B** | Biaya Berlangganan di Muka | **Hybrid: Pay-to-Unlock (Rp 50rb/10 kandidat) & SaaS Pro** |
+
 ---
 
-## D. Ecosystem & Target Market
+## D. Enterprise & MNC Integration Strategy (Headhunter Copilot)
+
+Perusahaan multinasional (MNC) dan agensi *Headhunter* umumnya telah memiliki ekosistem ATS (*Applicant Tracking System*) seperti Workday, SAP SuccessFactors, atau sistem internal (*legacy*). Memaksa mereka untuk bermigrasi sepenuhnya ke platform baru adalah langkah yang membuang waktu, uang, dan tenaga. Oleh karena itu, KerjaCerdas diposisikan sebagai **Nilai Tambah (Value-Add) & Copilot Plugin**, bukan sebagai pengganti (*replacement*):
+
+1. **API-First Architecture:** KerjaCerdas dapat diintegrasikan langsung sebagai modul *Plugin* ke dalam ATS yang sudah ada. Resume pelamar yang masuk ke Workday perusahaan akan ditarik secara otomatis via API, diekstrak semantiknya oleh Gemini, dan dikirim kembali berupa *Scoring Dashboard* langsung ke antarmuka ATS milik klien.
+2. **Headhunter AI Copilot:** Bagi agen pencari kerja (*Headhunter*), platform kami bertindak layaknya *Research Assistant* yang bekerja 24/7. Mereka dapat mengunggah ratusan CV *pool* internal mereka, dan sistem akan mengurutkan kecocokan kandidat terhadap kriteria spesifik klien mereka dalam hitungan menit, meningkatkan *placement rate* tanpa merombak SOP penyaringan mereka.
+3. **Zero Switching Cost:** HRD tidak perlu mengubah cara mereka bekerja. Kami menyisipkan *intelligence layer* di atas infrastruktur yang sudah mereka gunakan.
+
+---
+
+## E. Ecosystem & Target Market
 
 KerjaCerdas mengorkestrasi ekosistem korporat lintas sektor dengan standar *Enterprise-Grade*:
 - **Target Primer (B2B):** 64 Juta entitas UMKM di Indonesia dan *Tech Startups* yang membutuhkan kapabilitas rekrutmen level korporat tanpa harus membayar lisensi ATS jutaan rupiah di muka. 
@@ -62,7 +92,7 @@ KerjaCerdas mengorkestrasi ekosistem korporat lintas sektor dengan standar *Ente
 
 ---
 
-## E. Innovation & Differentiation (Arsitektur LangGraph)
+## F. Innovation & Differentiation (Arsitektur LangGraph)
 
 Inovasi utama KerjaCerdas berpusat pada **Autonomous Supervisor Swarm**. Berbeda dengan *pipeline* linear tradisional, agen AI kami (Berbasis LangGraph) memiliki fungsi *Dynamic Routing*.
 - **Pencegahan Data Sampah (Garbage In, Garbage Out):** Pengisian profil tidak menggunakan ketikan bebas (*free-text*), melainkan melalui *Onboarding Webform* berbasis *Conditional Logic* dengan Taksonomi Skill Terstandar (Berbasis KBJI 2014).
@@ -70,7 +100,7 @@ Inovasi utama KerjaCerdas berpusat pada **Autonomous Supervisor Swarm**. Berbeda
 
 ---
 
-## F. Technical Validation & Security
+## G. Technical Validation & Security
 
 Standar kepatuhan (*Compliance*) korporat adalah prioritas mutlak kami:
 - **Arsitektur:** Menggunakan abstraksi Docker Compose untuk isolasi Frontend (React.js), Backend (FastAPI), dan Database (PostgreSQL dengan pgvector).
@@ -79,7 +109,7 @@ Standar kepatuhan (*Compliance*) korporat adalah prioritas mutlak kami:
 
 ---
 
-## G. Data Acquisition Strategy (Acuan Riwayat Data AI)
+## H. Data Acquisition Strategy (Acuan Riwayat Data AI)
 
 Infrastruktur AI KerjaCerdas membutuhkan pasokan data riwayat lowongan (*historical data*) agar evaluasi kandidat semakin akurat terhadap standar riil. Strategi akuisisi data ini dibangun melalui 3 pilar:
 

@@ -61,10 +61,10 @@ export default function FloatingAdvisor() {
                     {advisorLog.map((m, i) => (
                         <div
                             key={i}
-                            className={`text-xs leading-relaxed whitespace-pre-wrap px-3 py-2 max-w-[85%] border border-kc-dark ${
+                            className={`w-fit rounded-xl text-xs leading-relaxed whitespace-pre-wrap px-3 py-2 max-w-[85%] border-2 border-kc-dark ${
                                 m.role === 'user'
-                                    ? 'ml-auto bg-kc-dark text-white'
-                                    : 'bg-kc-cream text-kc-dark'
+                                    ? 'ml-auto bg-kc-dark text-white rounded-br-sm'
+                                    : 'mr-auto bg-kc-cream text-kc-dark rounded-bl-sm'
                             }`}
                         >
                             {m.content}

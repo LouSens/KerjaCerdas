@@ -1,6 +1,10 @@
+import { useEffect } from 'react'
 import { KC, BrutalCard, Tag, DesignStyles } from './_design'
 
 export default function AboutPage() {
+    useEffect(() => {
+        window.scrollTo(0, 0)
+    }, [])
     return (
         <div style={{ background: KC.bone, color: KC.ink, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
             <DesignStyles />

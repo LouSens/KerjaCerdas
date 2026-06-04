@@ -1,4 +1,4 @@
-﻿# KerjaCerdas — Docker Compose Stack (MVP V2)
+# KerjaCerdas — Docker Compose Stack (MVP V2)
 # Usage: docker-compose up --build (requires Docker Desktop running)
 
 services:

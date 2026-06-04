@@ -1,4 +1,5 @@
 import useStore from '../store/useStore'
+import toast from 'react-hot-toast'
 
 export default function PricingPage() {
     const { openAuthModal } = useStore()
@@ -44,13 +45,13 @@ export default function PricingPage() {
                         onCta={() => openAuthModal('register', 'employer')}
                     />
                     <PricingCard
-                        tier="Enterprise API"
+                        tier="ATS Copilot & API"
                         price="Custom"
                         period="/bulan"
-                        features={['Integrasi ATS Internal', 'AI-as-a-Service', 'Unlimited Scoring', 'SLA 99.9%']}
+                        features={['Plugin ATS (Workday/SAP)', 'Headhunter AI Copilot', 'Unlimited Vector Scoring', 'Dedicated Account Manager']}
                         accent="bg-kc-pink"
-                        cta="Hubungi Sales"
-                        onCta={() => {}}
+                        cta="Hubungi Sales (Coming Soon)"
+                        onCta={() => toast('Fitur Enterprise akan segera hadir!')}
                     />
                 </div>
 
@@ -84,11 +85,10 @@ function PricingCard({ tier, price, period, features, accent, featured, cta, onC
             </ul>
             <button
                 onClick={onCta}
-                className={`mt-4 w-full text-xs font-bold py-2.5 border-2 transition-colors ${
-                    featured
+                className={`mt-4 w-full text-xs font-bold py-2.5 border-2 transition-colors ${featured
                         ? 'bg-kc-orange text-white border-white hover:bg-white hover:text-kc-dark'
                         : 'bg-kc-dark text-white border-kc-dark hover:bg-kc-orange'
-                }`}
+                    }`}
             >
                 {cta}
             </button>

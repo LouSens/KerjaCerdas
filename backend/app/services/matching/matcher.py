@@ -359,9 +359,43 @@ class SemanticMatcher:
                 "explanation": _candidate_summary(job.required_skills, matched_skills, missing_skills),
             })
         scored.sort(key=lambda x: x["score"], reverse=True)
-        return _assign_bands(
+        # Band first: this assigns each candidate a band + rank and shuffles
+        # within band so the recruiter never reads a tiny score delta as a strict
+        # ranking. `explanation` already holds the neutral `_candidate_summary`.
+        top_candidates = _assign_bands(
             scored[:top_k],
             job.id,
             settings.band_strong_threshold,
             settings.band_possible_threshold,
         )
+
+        # When a key is configured, upgrade the evidentiary one-liner with an LLM
+        # eval. Still employer-facing decision support — never the seeker framing.
+        import os
+        has_gemini = bool(settings.gemini_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+
+        if has_gemini:
+            try:
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                from langchain_core.messages import HumanMessage
+                llm = ChatGoogleGenerativeAI(model=settings.gemini_chat_model, temperature=0.1)
+
+                prompt = f"Anda adalah HR Assistant AI untuk platform KerjaCerdas.\nBerikan evaluasi SUPER SINGKAT (maks 1 kalimat, 10-15 kata) untuk masing-masing kandidat berikut ini berdasarkan kriteria loker: {job.title}\n"
+                prompt += f"Skill Wajib Loker: {', '.join(job.required_skills)}\n\n"
+                for c in top_candidates:
+                    prompt += f"ID: {c['seeker_id']}\nSkill Kandidat: {', '.join(c['skills'])}\n"
+
+                prompt += "\nFormat balasan HARUS (tanpa markdown blok, 1 baris per ID):\n[ID]: [evaluasi 1 kalimat]"
+
+                response = await llm.ainvoke([HumanMessage(content=prompt)])
+                lines = response.content.split('\n')
+                for c in top_candidates:
+                    for line in lines:
+                        if c['seeker_id'] in line and ':' in line:
+                            parts = line.split(":", 1)
+                            c['explanation'] = parts[1].strip()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("LLM summary generation failed: %s", e)
+
+        return top_candidates

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Shield, FileText, Eye, Lock, UserCheck, Server, Bell, Mail, Scale, ArrowLeft } from 'lucide-react'
 import useStore from '../store/useStore'
 
@@ -40,7 +41,7 @@ Dengan menggunakan layanan kami, Anda menyetujui praktik yang dijelaskan dalam k
         content: `Data Anda digunakan untuk:
 
 **AI Job Matching:**
-• Menganalisis dan mencocokkan profil pencari kerja dengan lowongan yang tersedia menggunakan algoritma IndoBERT
+• Menganalisis dan mencocokkan profil pencari kerja dengan lowongan yang tersedia menggunakan algoritma Semantic Search (Supabase pgvector) dan LLM Gemini 3.1
 • Memberikan rekomendasi pekerjaan yang dipersonalisasi berdasarkan skill dan preferensi
 • Mengidentifikasi skill gap dan merekomendasikan kursus atau pelatihan
 
@@ -149,13 +150,13 @@ Anda dapat mengatur preferensi cookie melalui pengaturan browser Anda. Menonakti
         title: 'Hubungi Kami',
         content: `Jika Anda memiliki pertanyaan tentang kebijakan privasi ini:
 
-📧 **Email**: privacy@kerjacerdas.id
-📞 **Telepon**: +62 21 8888 9999
-🏢 **Alamat**: Jakarta, Indonesia
+📧 **Email**: [EMAIL_ADDRESS]
+📞 **Telepon**: +62 xxxxxxxxxx
+🏢 **Alamat**: Indonesia
 
 **Data Protection Officer (DPO)**
 Nama: Tim Privasi KerjaCerdas
-Email: dpo@kerjacerdas.id
+Email: [EMAIL_ADDRESS]
 
 Kami berkomitmen untuk merespons permintaan Anda dalam waktu 3×24 jam kerja.
 
@@ -165,6 +166,10 @@ Terakhir diperbarui: 13 Maret 2026`,
 
 export default function PrivacyPolicyPage() {
     const { navigate } = useStore()
+
+    useEffect(() => {
+        window.scrollTo(0, 0)
+    }, [])
 
     return (
         <div className="animate-fade-in">

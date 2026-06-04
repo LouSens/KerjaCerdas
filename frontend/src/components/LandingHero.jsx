@@ -402,30 +402,44 @@ export default function LandingHero() {
             <section className="kc-stage-pad" style={{ position: 'relative', overflow: 'hidden' }}>
                 <div className="kc-hero-grid">
                     <div>
-                        <span className="kc-fade-up"><Tag color={KC.yellow} icon={<I.Sparkle s={12} />}>Smart Job Matching · Bahasa Indonesia</Tag></span>
-                        <h1 className="kc-h1 kc-fade-up d1" style={{ fontWeight: 900, margin: '20px 0 12px' }}>
-                            Kerja yang<br />
-                            <span className="kc-headline-sticker" style={{ background: KC.orange, color: '#fff', padding: '0 14px', boxShadow: `6px 6px 0 ${KC.ink}`, border: `3px solid ${KC.ink}`, marginTop: 6, cursor: 'pointer' }}>Match Akurat.</span><br />
-                            Bukan asal lempar CV.
-                        </h1>
-                        <p className="kc-fade-up d2" style={{ fontSize: 18, lineHeight: 1.55, color: KC.mute, maxWidth: 520, margin: '20px 0 28px' }}>
-                            AI Matching tingkat lanjut dari CV-mu, peta skill gap dengan rekomendasi kursus, dan advisor karier AI 24 jam.
-                            HR langsung dapat top-5 kandidat tiap lowongan — efisien & profesional.
-                        </p>
-                        <div className="kc-fade-up d3" style={{ display: 'flex', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
-                            <BrutalButton variant="primary" size="lg" icon={<I.Arrow s={16} c="#fff" />} onClick={onDaftar}>Cari Kerja Sekarang</BrutalButton>
-                            <BrutalButton variant="secondary" size="lg" icon={<I.Building s={16} />} onClick={onEmployer}>Saya HR / Employer</BrutalButton>
+                    <span className="kc-fade-up"><Tag color={KC.yellow} icon={<I.Sparkle s={12} />}>Smart Job Matching · Bahasa Indonesia</Tag></span>
+                    <h1 className="kc-h1 kc-fade-up d1" style={{ fontWeight: 900, margin: '20px 0 12px' }}>
+                        Kerja yang<br />
+                        <span className="kc-headline-sticker" style={{ background: KC.orange, color: '#fff', padding: '0 14px', boxShadow: `6px 6px 0 ${KC.ink}`, border: `3px solid ${KC.ink}`, marginTop: 6, cursor: 'pointer' }}>Match Akurat.</span><br />
+                        Bukan asal lempar CV.
+                    </h1>
+                    <p className="kc-fade-up d2" style={{ fontSize: 18, lineHeight: 1.55, color: KC.mute, maxWidth: 520, margin: '20px 0 28px' }}>
+                        AI Matching tingkat lanjut dari CV-mu, peta skill gap dengan rekomendasi kursus, dan advisor karier AI 24 jam.
+                        HR langsung dapat top-5 kandidat tiap lowongan — efisien & profesional.
+                    </p>
+                    <div className="kc-fade-up d3" style={{ display: 'flex', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
+                        <BrutalButton variant="primary" size="lg" icon={<I.Arrow s={16} c="#fff" />} onClick={onDaftar}>Cari Kerja Sekarang</BrutalButton>
+                        <BrutalButton variant="secondary" size="lg" icon={<I.Building s={16} />} onClick={onEmployer}>Saya HR / Employer</BrutalButton>
+                    </div>
+                    <div className="kc-fade-up d4" style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 13, fontWeight: 700, color: KC.mute }}>
+                        <div className="kc-avatar-stack" style={{ display: 'flex' }}>
+                            {[KC.cyan, KC.lime, KC.pink, KC.yellow].map((c, i) => (
+                                <div key={i} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: `2px solid ${KC.ink}`, marginLeft: i ? -10 : 0, display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 900 }}>
+                                    {['R', 'A', 'D', 'M'][i]}
+                                </div>
+                            ))}
                         </div>
-                        <div className="kc-fade-up d4" style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 13, fontWeight: 700, color: KC.mute }}>
-                            <div className="kc-avatar-stack" style={{ display: 'flex' }}>
-                                {[KC.cyan, KC.lime, KC.pink, KC.yellow].map((c, i) => (
-                                    <div key={i} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: `2px solid ${KC.ink}`, marginLeft: i ? -10 : 0, display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 900 }}>
-                                        {['R', 'A', 'D', 'M'][i]}
-                                    </div>
-                                ))}
-                            </div>
-                            <span><b style={{ color: KC.ink }}>12.480+</b> pejuang kerja udah dapet match minggu ini</span>
+                        <span><b style={{ color: KC.ink }}>Demo MVP</b> — Mesin pencocokan AI siap diuji coba</span>
+                    </div>
+                    <div className="kc-fade-up d4" style={{ display: 'flex', gap: 24, marginTop: 32, paddingTop: 24, borderTop: `2px dashed ${KC.ash}`, flexWrap: 'wrap' }}>
+                        <div>
+                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.orange, letterSpacing: -1 }}>~80%</div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Target Efisiensi Waktu</div>
                         </div>
+                        <div>
+                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.ink, letterSpacing: -1 }}>Sub-detik</div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Kecepatan Semantic AI</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.ink, letterSpacing: -1 }}>API-Ready</div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Workday / SAP Plugin</div>
+                        </div>
+                    </div>
                     </div>
 
                     {/* Hero card cluster */}
@@ -436,7 +450,7 @@ export default function LandingHero() {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: KC.mute, textTransform: 'uppercase' }}>Best match</div>
                                     <div style={{ fontSize: 17, fontWeight: 900, lineHeight: 1.1, marginTop: 2 }}>Senior Backend Engineer</div>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: KC.mute, marginTop: 2 }}>Tokopedia · Jakarta · Hybrid</div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: KC.mute, marginTop: 2 }}>Startup XYZ · Jakarta · Hybrid</div>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
@@ -484,17 +498,17 @@ export default function LandingHero() {
             <section className="kc-trust-pad" style={{ borderTop: `2px solid ${KC.ink}`, borderBottom: `2px solid ${KC.ink}`, background: '#fff' }}>
                 <div className="kc-trust-strip-static" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, maxWidth: 1440, margin: '0 auto' }}>
                     <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: KC.mute, whiteSpace: 'nowrap' }}>
-                        Dipercaya HR di →
+                        Infrastruktur Siap Untuk Skala →
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 36, flex: 1, justifyContent: 'space-around', opacity: 0.85 }}>
-                        {['Tokopedia', 'GoTo', 'Bukalapak', 'Bibit', 'Xendit', 'Ruangguru', 'Telkomsel'].map(n => (
+                        {['UMKM', 'Corporate', 'MNC', 'Tech Startup', 'Headhunter', 'BUMN', 'Institusi'].map(n => (
                             <div key={n} style={{ fontFamily: MONO, fontSize: 16, fontWeight: 700, letterSpacing: -0.5, color: KC.ink, transition: 'color .2s, transform .2s', cursor: 'default' }} onMouseEnter={e => { e.currentTarget.style.color = KC.orange; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseLeave={e => { e.currentTarget.style.color = KC.ink; e.currentTarget.style.transform = 'none' }}>{n}</div>
                         ))}
                     </div>
                 </div>
                 <div className="kc-trust-strip-marquee">
                     <div className="kc-trust-track">
-                        {[...Array(2)].flatMap((_, k) => ['Tokopedia', 'GoTo', 'Bukalapak', 'Bibit', 'Xendit', 'Ruangguru', 'Telkomsel'].map(n => (
+                        {[...Array(2)].flatMap((_, k) => ['UMKM', 'Corporate', 'MNC', 'Tech Startup', 'Headhunter', 'BUMN', 'Institusi'].map(n => (
                             <div key={`${k}-${n}`} style={{ fontFamily: MONO, fontSize: 14, fontWeight: 700, letterSpacing: -0.5, color: KC.ink, whiteSpace: 'nowrap' }}>{n}</div>
                         )))}
                     </div>
@@ -553,7 +567,7 @@ export default function LandingHero() {
                     <div className="kc-features-grid">
                         <BrutalCard color={KC.orange} padding={28} style={{ gridRow: 'span 2', color: '#fff', display: 'flex', flexDirection: 'column' }}>
                             <Tag color="#fff" ink={KC.ink}>★ matching engine</Tag>
-                            <h3 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -1, lineHeight: 1.05, marginTop: 14 }}>Top-5 job match.<br />Bukan top-500 sampah.</h3>
+                            <h3 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -1, lineHeight: 1.05, marginTop: 14 }}>Top-5 job match.<br />Bukan top-500 CV acak.</h3>
                             <p style={{ fontSize: 14, lineHeight: 1.55, opacity: 0.92, marginTop: 12, marginBottom: 18 }}>
                                 AI Semantic Search + LLM Reranker. Skor dihitung dari skill overlap, level, lokasi, gaji, dan industri.
                                 Setiap match dijelasin: <i>kenapa cocok, apa yang kurang</i>.
@@ -562,18 +576,18 @@ export default function LandingHero() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <ScoreDonut value={89} size={48} color="#fff" textColor="#fff" />
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: 14, fontWeight: 900 }}>Product Designer · Bibit</div>
-                                        <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85 }}>"Pengalaman fintech-mu bikin nilai tinggi di UX research."</div>
+                                        <div style={{ fontSize: 14, fontWeight: 900 }}>Product Designer · Startup X</div>
+                                        <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85 }}>"Pengalaman fintech-mu selaras dengan core product kami."</div>
                                     </div>
                                 </div>
                             </div>
                         </BrutalCard>
 
                         {[
-                            { c: KC.lime, ic: <I.ChartBar s={22} />, tag: 'free', t: 'Skill Gap Coach', d: 'Bandingin profilmu vs JD. AI kasih kursus relevan dari Prakerja, Dicoding, Coursera, RevoU.' },
-                            { c: KC.cyan, ic: <I.Robot s={22} />, tag: '24/7', t: 'Career Gap Advisor', d: 'Habis gap setahun? AI bantu reframe pengalaman, tulis ulang ringkasan CV, simulasi interview.' },
-                            { c: KC.yellow, ic: <I.Briefcase s={22} />, tag: 'HR', t: 'Top-5 Kandidat', d: 'Reverse matching: tiap lowongan tampilin top-5 kandidat semantik. Hemat waktu screening 80%.' },
-                            { c: KC.pink, ic: <I.Shield s={22} />, tag: 'trust', t: 'Verifikasi KTP & Ijazah', d: 'Profil terverifikasi dapet badge. Data terenkripsi — nggak akan kelihatan ke user lain.' },
+                            { c: KC.lime, ic: <I.ChartBar s={22} />, tag: 'free', t: 'Skill Gap Coach', d: 'Bandingin profilmu vs JD. Platform akan merekomendasikan intervensi pelatihan (Micro-learning/Course).' },
+                            { c: KC.cyan, ic: <I.Robot s={22} />, tag: '24/7', t: 'Career Gap Advisor', d: 'Ada kekosongan masa kerja? AI merancang simulasi interview dan menyusun ulang ringkasan kualifikasimu.' },
+                            { c: KC.yellow, ic: <I.Briefcase s={22} />, tag: 'HR & MNC', t: 'ATS Copilot Plugin', d: 'Arsitektur API-first dirancang untuk injeksi langsung ke Workday/SAP guna melakukan parallel scoring otomatis.' },
+                            { c: KC.pink, ic: <I.Shield s={22} />, tag: 'trust', t: 'Verifikasi KTP & Ijazah', d: 'Infrastruktur e-KYC (mockup) untuk mencegah penipuan profil. CV anonim sampai perusahaan melakukan unlock.' },
                         ].map((f, i) => (
                             <BrutalCard key={i} color={f.c} padding={22}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -645,7 +659,7 @@ export default function LandingHero() {
                         {[
                             { name: 'Basic', price: 'Gratis', sub: '', cta: 'Posting Gratis', highlight: false, color: '#fff', perks: ['Pasang lowongan selamanya', 'AI Shortlist (Top 5)', 'Skor Semantik', 'Verifikasi profil dasar'] },
                             { name: 'Pay-per-Unlock', price: '50rb', sub: '/ 10 kandidat', cta: 'Coba Unlock', highlight: true, color: KC.orange, perks: ['Buka kontak asli 10 kandidat', 'Lihat CV PDF lengkap', 'KTP & NPWP Verified', 'Ijazah/SIVIL Verified', 'Bebas penipuan'] },
-                            { name: 'Enterprise API', price: 'Custom', sub: '', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Integrasi ATS internal', 'AI-as-a-Service', 'Unlimited scoring', 'Custom branding', 'SLA 99.9%'] },
+                            { name: 'ATS Copilot & API', price: 'Custom', sub: '', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Plugin ATS (Workday, SAP)', 'Headhunter AI Copilot', 'Unlimited Vector Scoring', 'Dedicated Account Manager', 'SLA 99.9%'] },
                         ].map((p, i) => {
                             const dark = p.color === KC.ink
                             const accent = p.highlight
@@ -682,24 +696,24 @@ export default function LandingHero() {
                 </div>
             </Section>
 
-            {/* ── TESTIMONIALS ── */}
+            {/* ── USE CASES ── */}
             <Section bg={KC.bone}>
                 <div style={{ maxWidth: 1440, margin: '0 auto' }}>
                     <div style={{ marginBottom: 36 }}>
-                        <Tag color={KC.lime}>cerita beneran</Tag>
-                        <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.4, margin: '12px 0 4px' }}>Dari pejuang kerja & bos beneran.</h2>
+                        <Tag color={KC.lime}>use cases</Tag>
+                        <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.4, margin: '12px 0 4px' }}>Simulasi Penggunaan Sistem</h2>
                     </div>
                     <div className="kc-three-col" style={{ gap: 18 }}>
                         {[
-                            { q: 'Dulu apply 80 lowongan, dipanggil 1. Pake KerjaCerdas: 5 apply, 3 interview, 1 offer.', who: 'Rina Pertiwi', role: 'UX Researcher @ Bibit', c: KC.cyan },
-                            { q: 'Hiring frontend dapet 200 lamaran. Top-5 dari sini langsung 2 yang lolos final round. Gila.', who: 'Andika Pratama', role: 'Eng. Manager @ Xendit', c: KC.yellow },
-                            { q: 'Career gap 2 tahun jaga anak. Advisor AI bantu reframe — dapet kerja remote 6 minggu.', who: 'Sari Ningrum', role: 'Project Manager @ remote', c: KC.pink },
+                            { q: 'Sistem dapat menekan kelelahan melamar (Application Fatigue) dengan memproses kecocokan secara otonom sebelum user mengirim CV.', who: 'Skenario Pencari Kerja', role: 'Career Entry / Mid-level', c: KC.cyan },
+                            { q: 'Platform dirancang untuk menyaring (Screening) pelamar yang bervolume tinggi menjadi Top 5 daftar pendek berkualitas secara instan.', who: 'Skenario Rekrutmen', role: 'Tim HR & Headhunter', c: KC.yellow },
+                            { q: 'Integrasi agen AI pembimbing memungkinkan kandidat memetakan kelemahan teknis mereka menjadi kurikulum studi yang terstruktur.', who: 'Skenario Skill Gap', role: 'Pengembangan Talenta', c: KC.pink },
                         ].map((t, i) => (
                             <BrutalCard key={i} color={t.c} padding={24}>
                                 <I.Star s={20} f={KC.ink} />
-                                <p style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.35, margin: '12px 0 18px', letterSpacing: -0.3 }}>"{t.q}"</p>
+                                <p style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.45, margin: '12px 0 18px', letterSpacing: -0.2 }}>{t.q}</p>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', border: `2px solid ${KC.ink}`, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 13 }}>{t.who[0]}</div>
+                                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', border: `2px solid ${KC.ink}`, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 13 }}>{i + 1}</div>
                                     <div>
                                         <div style={{ fontSize: 13, fontWeight: 900 }}>{t.who}</div>
                                         <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>{t.role}</div>

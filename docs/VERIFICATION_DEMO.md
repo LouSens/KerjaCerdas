@@ -47,10 +47,11 @@ Dokumen ini disusun sebagai panduan langkah demi langkah (*step-by-step*) bagi p
 - **Aksi:** Pada lowongan berskor rendah, klik tombol **"🧠 Cek Gap Keahlian"**.
 - **Hasil:** Agen AI merinci kelemahan dan memberikan *micro-learning*.
 > **⚙️ Di Balik Layar (Technical Flow):**
-> 1. **Routing ke LangGraph:** Frontend menembak POST `/agent/invoke` memicu **ReAct Loop** (`create_react_agent`) di `builder_v2.py`.
+> 1. **Routing ke LangGraph:** Frontend menembak POST `/agent/invoke` memicu **ReAct Loop** (`create_react_agent`) di `builder.py`.
 > 2. **Mini-Survey Injection (`seeker_advisor.md`):** Jika *prompt* pengguna terdeteksi terlalu pendek (misal: "gimana ya?"), AI menolak berhalusinasi dan langsung merespons dengan 2 pertanyaan klarifikasi tajam.
-> 3. **Dynamic Routing Token Saver (`superpowers.py`):** Jika pelamar secara absolut tidak memiliki *skill* wajib (mismatch 100%), *tool* simulasi *interview* akan **ditolak panggilannya secara sistem**. Ini adalah mekanisme *circuit breaker* yang menghemat 40% pemborosan token LLM.
-> 4. **Micro-Learning Tier 1:** *Tool* `analyze_skill_gap_tool` mengembalikan JSON internal yang menyertakan modul *micro-project* 15 menit, yang kemudian dirender rapi oleh UI.
+> 3. **Analisis Semantik Gemini:** `nodes.py` > `review_resume` menggunakan `SemanticMatcher` (Gemini 3.1 Flash untuk *embeddings*) membandingkan JSON kandidat dengan JSON *Job*.
+> 4. **Dynamic Routing Token Saver (`superpowers.py`):** Jika pelamar absolut tidak memiliki *skill* wajib (mismatch 100%), *tool* simulasi ditolak sistem. Mekanisme *circuit breaker* menghemat 40% pemborosan token.
+> 5. **Micro-Learning Tier 1:** *Tool* `analyze_skill_gap_tool` mengembalikan JSON internal untuk *micro-project* 15 menit, dirender rapi oleh UI.
 
 ---
 

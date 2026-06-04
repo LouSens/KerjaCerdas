@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import useStore from '../store/useStore'
+import JobDetailModal from './JobDetailModal'
 
 export default function SavedJobsPage() {
     const { savedJobs, toggleSaveJob, navigate } = useStore()
+    const [selectedJob, setSelectedJob] = useState(null)
 
     return (
         <div className="space-y-6">
@@ -33,6 +36,7 @@ export default function SavedJobsPage() {
                                         Disimpan {new Date(job.savedAt).toLocaleDateString('id-ID')}
                                     </p>
                                 )}
+                                <button onClick={() => setSelectedJob(job)} className="mt-2 text-xs font-bold text-kc-dark border-2 border-kc-dark px-3 py-1 hover:bg-kc-dark hover:text-white transition-colors">Lihat Detail →</button>
                             </div>
                             <button
                                 onClick={() => toggleSaveJob(job)}
@@ -44,6 +48,8 @@ export default function SavedJobsPage() {
                     ))}
                 </div>
             )}
+
+            <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
         </div>
     )
 }

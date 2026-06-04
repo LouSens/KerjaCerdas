@@ -12,6 +12,7 @@ Sistem monetisasi KerjaCerdas merombak konvensi portal pekerja konvensional deng
 3. **Ekosistem Afiliasi B2C (3-Tier Personalized Training):**
    - *Tier 2 (Deep-Linked Certifications):* Komisi B2C murni (10% - 15%) ketika *Skill Gap Analyzer* kami berhasil menyalurkan kandidat untuk mengambil modul berbayar dari institusi mitra (Ed-Tech).
    - *Tier 3 (Expert Mentorship):* Potongan biaya layanan (*Service Fee* 20%) dari transaksi sesi konsultasi privat (1-on-1) antara pelamar dengan mentor profesional terverifikasi di platform.
+4. **Enterprise ATS Copilot (API-as-a-Service):** Target korporasi MNC dan Agensi Headhunter. Lisensi biaya kustom berdasarkan kuota API Call / Server SLA untuk menyematkan mesin kecerdasan buatan KerjaCerdas langsung ke dalam infrastruktur ATS (Workday, SAP) milik mereka tanpa biaya migrasi besar-besaran.
 
 > **Catatan Implementasi MVP (Demonstrasi):**
 > Demi kelancaran demonstrasi produk, integrasi *Payment Gateway* dan penagihan *Pay-to-Unlock* di non-aktifkan secara sementara di *frontend*. Semua fitur *Unlock* dan *Training* terbuka secara penuh bagi tim penilai untuk merasakan kapabilitas penuh ekosistem AI tanpa terhalang *paywall*. Integrasi *Payment Gateway* skala korporasi (Midtrans/Xendit) dikunci untuk *roadmap* peluncuran komersial.
