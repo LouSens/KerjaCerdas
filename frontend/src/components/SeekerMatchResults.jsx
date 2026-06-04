@@ -62,12 +62,30 @@ const DEFAULT_FACETS = {
 }
 
 export default function SeekerMatchResults() {
-    const { matches, agentLoading, runAgent, toggleSaveJob, isJobSaved } = useStore()
+    const { matches, agentLoading, runAgent, toggleSaveJob, isJobSaved, seekerId, profile, navigate } = useStore()
     const [facets, setFacets] = useState(DEFAULT_FACETS)
     const [showFilters, setShowFilters] = useState(true)
     const [selectedJob, setSelectedJob] = useState(null)
 
+    const hasProfile = Boolean(seekerId || profile?.skills?.length > 0)
+
     if (agentLoading) return <MatchSkeleton />
+
+    if (!hasProfile) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <DesignStyles />
+                <div style={{ padding: '60px 20px', textAlign: 'center', background: '#fff', border: `3px solid ${KC.ink}`, borderRadius: 12, boxShadow: `6px 6px 0 ${KC.ink}` }}>
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
+                    <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 12 }}>Belum ada data CV</h2>
+                    <p style={{ color: KC.mute, marginBottom: 24, fontSize: 14 }}>Sistem tidak bisa mencarikan lowongan yang pas kalau data profil atau CV kamu masih kosong.</p>
+                    <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={{ padding: '12px 24px', background: KC.orange, color: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 8, fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
+                        Upload CV Sekarang →
+                    </button>
+                </div>
+            </div>
+        )
+    }
 
     const baseList = matches.length ? matches : DEMO_MATCHES
     const activeCount = Object.values(facets).reduce((n, s) => n + s.size, 0)
@@ -160,7 +178,7 @@ export default function SeekerMatchResults() {
             </div>
 
             <div style={{ marginTop: 12, padding: 14, background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, textAlign: 'center', fontSize: 13, fontWeight: 700, color: KC.mute }}>
-                Hanya 5 hasil teratas yang ditampilkan. <span style={{ color: KC.ink, textDecoration: 'underline', cursor: 'pointer' }}>Upgrade ke Pro</span> buat akses top-20 + insight mingguan.
+                Hanya 5 hasil teratas yang ditampilkan. <span onClick={() => useStore.getState().navigate('pricing')} style={{ color: KC.ink, textDecoration: 'underline', cursor: 'pointer' }}>Upgrade ke Pro</span> buat akses top-20 + insight mingguan.
             </div>
 
             <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
@@ -195,8 +213,8 @@ function MatchCard({ rank, match, saved, onSave, onView }) {
                         <span>💼 {match.work_type || 'Full-time'}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
-                        {matchingSkills.slice(0, 4).map(t => <Tag key={t} color={KC.lime} size="sm">{t}</Tag>)}
-                        {missingSkills.slice(0, 2).map(t => <Tag key={t} color={KC.orangeSoft} size="sm">+ {t}</Tag>)}
+                        {matchingSkills.map(s => typeof s === 'string' ? s : s.name || '').slice(0, 4).map(t => <Tag key={t} color={KC.lime} size="sm">{t}</Tag>)}
+                        {missingSkills.map(s => typeof s === 'string' ? s : s.name || '').slice(0, 2).map(t => <Tag key={t} color={KC.orangeSoft} size="sm">+ {t}</Tag>)}
                     </div>
                     {match.explanation && (
                         <div style={{ marginTop: 12, padding: '10px 12px', background: KC.bone, border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 12, fontWeight: 600, lineHeight: 1.5 }}>

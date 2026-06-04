@@ -25,6 +25,7 @@ import SeekerSearch from './components/SeekerSearch'
 
 // Employer views
 import EmployerDashboard from './components/EmployerDashboard'
+import EmployerJobs from './components/EmployerJobs'
 import EmployerPostJob from './components/EmployerPostJob'
 import EmployerCandidates from './components/EmployerCandidates'
 import EmployerVerification from './components/EmployerVerification'
@@ -91,7 +92,7 @@ function AuthedView({ view, userRole, matches }) {
 
     if (userRole === 'employer') {
         if (view === 'employer-dashboard')    return <EmployerDashboard />
-        if (view === 'employer-jobs')         return <EmployerDashboard />
+        if (view === 'employer-jobs')         return <EmployerJobs />
         if (view === 'employer-post-job')     return <EmployerPostJob />
         if (view === 'employer-candidates')   return <EmployerCandidates />
         if (view === 'employer-verification') return <EmployerVerification />
@@ -99,6 +100,15 @@ function AuthedView({ view, userRole, matches }) {
         if (view === 'employer-profile')      return <EmployerProfile />
     }
 
+
+    if (view === 'pricing') return <PricingPage />
+    if (view === 'about') return <AboutPage />
+    if (view === 'privacy') return <PrivacyPolicyPage />
+    if (view === 'home') {
+        if (userRole === 'seeker') return <SeekerDashboard />
+        if (userRole === 'employer') return <EmployerDashboard />
+        return <p className="text-sm text-kc-gray">Silakan buka menu dari sidebar.</p>
+    }
 
     return <p className="text-sm text-kc-gray">Halaman tidak ditemukan untuk peran Anda.</p>
 }

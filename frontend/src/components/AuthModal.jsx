@@ -137,7 +137,7 @@ export default function AuthModal() {
             else if (/invalid email or password/i.test(msg)) setErrors({ password: 'Email atau sandi salah' })
             else if (/inactive/i.test(msg)) setErrors({ email: 'Akun tidak aktif — hubungi support' })
             else setErrors({ submit: msg })
-            toast.error(msg)
+            console.error(msg)
         } finally {
             setLoading(false)
         }
@@ -282,7 +282,7 @@ export default function AuthModal() {
                         </h1>
 
                         <p className="kc-auth-item text-sm md:text-base text-white/70 leading-relaxed max-w-md mb-6">
-                            Match-mu udah ke-update. Cek top-5 baru — ada 2 yang lebih tinggi dari minggu lalu.
+                            Masuk untuk melihat update status lamaran, match baru, dan analisis skill gap.
                         </p>
 
                         {/* Job-title pills (per AuthB design variant) */}
@@ -302,16 +302,15 @@ export default function AuthModal() {
                             ))}
                         </div>
 
-                        {/* Match-baru card */}
-                        <div className="kc-auth-item bg-kc-cream border-2 border-kc-dark rounded-xl p-4 shadow-brutal-sm max-w-md text-kc-dark">
+                        {/* Feature card */}
+                        <div className="kc-auth-item bg-white/5 border-2 border-white/20 backdrop-blur-sm rounded-xl p-4 shadow-[4px_4px_0_rgba(255,255,255,0.1)] max-w-md text-white">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-full border-[3px] border-kc-orange flex items-center justify-center font-black text-sm">93%</div>
+                                <div className="w-12 h-12 rounded-full border-[3px] border-kc-orange flex items-center justify-center font-black text-xl">🚀</div>
                                 <div className="flex-1">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-kc-gray">Match Baru</div>
-                                    <div className="text-sm font-black leading-tight">Senior Backend · Tokopedia</div>
-                                    <div className="text-xs text-kc-gray">Posted 2 jam lalu</div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-kc-gray">Fitur Unggulan</div>
+                                    <div className="text-sm font-black leading-tight">AI CV Parser & Matcher</div>
+                                    <div className="text-xs text-kc-gray">Powered by Gemini</div>
                                 </div>
-                                <span className="bg-kc-lime text-kc-dark text-[9px] font-black px-2 py-1 rounded-full border border-kc-dark">+5%</span>
                             </div>
                         </div>
                     </div>
@@ -461,7 +460,7 @@ export default function AuthModal() {
                                     <input type="checkbox" defaultChecked className="w-3.5 h-3.5 accent-kc-orange" />
                                     Ingat saya
                                 </label>
-                                <a className="font-bold text-kc-dark hover:underline cursor-pointer">Lupa sandi?</a>
+                                <a onClick={() => toast.success("Fitur lupa sandi masih dalam pengembangan.")} className="font-bold text-kc-dark hover:underline cursor-pointer">Lupa sandi?</a>
                             </div>
                         )}
 
@@ -508,11 +507,11 @@ export default function AuthModal() {
                         </div>
 
                         <div className="kc-auth-item grid grid-cols-2 gap-3" hidden={authTab === 'register'} style={{ marginTop: 12 }}>
-                            <button type="button" className="bg-white border-2 border-kc-dark rounded-lg py-2 font-bold text-xs text-kc-dark hover:bg-kc-cream transition-colors flex justify-center items-center gap-2">
+                            <button onClick={() => toast.success("Integrasi Google masih dalam pengembangan.")} type="button" className="bg-white border-2 border-kc-dark rounded-lg py-2 font-bold text-xs text-kc-dark hover:bg-kc-cream transition-colors flex justify-center items-center gap-2">
                                 <svg viewBox="0 0 24 24" width="14" height="14"><path fill="#EA4335" d="M23.49 12.275c0-.812-.07-1.547-.2-2.275H12v4.512h6.438c-.282 1.455-1.121 2.682-2.367 3.513v2.906h3.829c2.235-2.057 3.59-5.1 3.59-8.656z"/><path fill="#34A853" d="M12 24c3.24 0 5.955-1.077 7.942-2.923l-3.83-2.906c-1.075.72-2.453 1.144-4.112 1.144-3.159 0-5.83-2.13-6.786-4.992H1.272v3.011C3.255 21.258 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.214 14.323a6.837 6.837 0 0 1-.365-2.323c0-.81.137-1.595.365-2.323V6.666H1.272A11.956 11.956 0 0 0 0 12c0 1.944.47 3.766 1.272 5.334l3.942-3.011z"/><path fill="#4285F4" d="M12 4.753c1.764 0 3.348.608 4.595 1.796l3.435-3.435C17.95 1.157 15.236 0 12 0 7.31 0 3.255 2.742 1.272 6.666l3.942 3.012c.956-2.862 3.627-4.925 6.786-4.925z"/></svg>
                                 Google
                             </button>
-                            <button type="button" className="bg-white border-2 border-kc-dark rounded-lg py-2 font-bold text-xs text-kc-dark hover:bg-kc-cream transition-colors flex justify-center items-center gap-2">
+                            <button onClick={() => toast.success("Integrasi LinkedIn masih dalam pengembangan.")} type="button" className="bg-white border-2 border-kc-dark rounded-lg py-2 font-bold text-xs text-kc-dark hover:bg-kc-cream transition-colors flex justify-center items-center gap-2">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="#0077b5"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
                                 LinkedIn
                             </button>

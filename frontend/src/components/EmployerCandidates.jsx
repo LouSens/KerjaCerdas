@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
+import toast from 'react-hot-toast'
 import { fetchCandidatesForJob } from '../services/api'
 import { KC, BrutalCard, RankSticker, ScoreDonut, Tag, BrutalChip } from './_design'
 
@@ -20,8 +21,15 @@ export default function EmployerCandidates() {
     const [candidates, setCandidates] = useState([])
     const [loading, setLoading] = useState(false)
     const [selectedJobId, setSelectedJobId] = useState(null)
+    const [cvModalOpen, setCvModalOpen] = useState(null)
     const [usedDemo, setUsedDemo] = useState(false)
-    const [filter, setFilter] = useState('all')
+    const [filter, setFilter] = useState({
+        region: '',
+        experience_min: '',
+        salary_max: '',
+        verified_only: false
+    })
+    const [trigger, setTrigger] = useState(0)
 
     useEffect(() => { refreshEmployerJobs() }, []) // eslint-disable-line react-hooks/exhaustive-deps
     useEffect(() => { if (employerJobs.length && !selectedJobId) setSelectedJobId(employerJobs[0].id) }, [employerJobs]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -32,10 +40,15 @@ export default function EmployerCandidates() {
         ;(async () => {
             setLoading(true)
             try {
-                const data = await fetchCandidatesForJob(selectedJobId, 5)
+                const cleanFilters = {}
+                if (filter.region) cleanFilters.location = filter.region
+                if (filter.experience_min) cleanFilters.experience_min = parseInt(filter.experience_min)
+                if (filter.salary_max) cleanFilters.salary_min = parseInt(filter.salary_max) // using salary_min in matcher to represent target salary
+                
+                const data = await fetchCandidatesForJob(selectedJobId, 5, cleanFilters)
                 if (!alive) return
                 if (data.candidates?.length) {
-                    setCandidates(data.candidates.map(c => ({
+                    let cands = data.candidates.map(c => ({
                         name: c.full_name || 'Kandidat',
                         verified: c.verified ?? false,
                         score: Math.round((c.score ?? c.overall_score ?? 0) > 1 ? (c.score ?? c.overall_score ?? 0) : (c.score ?? c.overall_score ?? 0) * 100),
@@ -47,20 +60,22 @@ export default function EmployerCandidates() {
                         skills: (c.matching_skills || c.skills || []).map(s => typeof s === 'string' ? s : s.name),
                         gap: c.missing_skills || [],
                         ai: c.explanation || c.reasoning || 'AI analisis tersedia.',
-                    })))
+                    }))
+                    
+                    if (filter.verified_only) cands = cands.filter(c => c.verified)
+                    
+                    setCandidates(cands)
                     setUsedDemo(false)
                 } else { setCandidates(DEMO_CANDIDATES); setUsedDemo(true) }
             } catch { setCandidates(DEMO_CANDIDATES); setUsedDemo(true) }
             finally { if (alive) setLoading(false) }
         })()
         return () => { alive = false }
-    }, [selectedJobId])
+    }, [selectedJobId, trigger])
 
     const selectedJob = employerJobs.find(j => j.id === selectedJobId)
     const jobTitle = selectedJob?.title || 'Senior Backend Engineer'
     const totalApplicants = selectedJob?.application_count ?? 84
-
-    const filtered = filter === 'verified' ? candidates.filter(c => c.verified) : candidates
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -77,17 +92,43 @@ export default function EmployerCandidates() {
                         {employerJobs.length === 0 && <option value="">{jobTitle} ({totalApplicants})</option>}
                         {employerJobs.map(j => <option key={j.id} value={j.id}>{j.title} ({j.application_count ?? 0})</option>)}
                     </select>
-                    <button onClick={() => setSelectedJobId(selectedJobId)} style={topBtn(KC.orange, '#fff')}>✨ Re-match AI</button>
+                    <button onClick={() => setTrigger(t => t + 1)} style={topBtn(KC.orange, '#fff')}>✨ Re-match AI</button>
                 </div>
             </header>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <BrutalChip active={filter === 'all'} onClick={() => setFilter('all')}>All ({candidates.length})</BrutalChip>
-                <BrutalChip active={filter === 'verified'} onClick={() => setFilter('verified')}>✓ Verified KTP</BrutalChip>
-                <BrutalChip>✓ Ijazah verified</BrutalChip>
-                <BrutalChip>{'> 5 thn exp'}</BrutalChip>
-                <BrutalChip>Jakarta</BrutalChip>
-                <BrutalChip>Remote ok</BrutalChip>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', padding: 16, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 8, marginBottom: 16 }}>
+                <select 
+                    value={filter.region} onChange={e => setFilter({...filter, region: e.target.value})}
+                    style={{ padding: 8, border: `2px solid ${KC.ink}`, borderRadius: 4, fontWeight: 600 }}>
+                    <option value="">Semua Lokasi</option>
+                    <option value="3171">Jakarta</option>
+                    <option value="3273">Bandung</option>
+                    <option value="3578">Surabaya</option>
+                </select>
+                <select 
+                    value={filter.experience_min} onChange={e => setFilter({...filter, experience_min: e.target.value})}
+                    style={{ padding: 8, border: `2px solid ${KC.ink}`, borderRadius: 4, fontWeight: 600 }}>
+                    <option value="">Pengalaman Min</option>
+                    <option value="0">Fresh Graduate</option>
+                    <option value="2">2+ Tahun</option>
+                    <option value="5">5+ Tahun</option>
+                </select>
+                <input 
+                    type="number"
+                    placeholder="Max Expected Salary"
+                    value={filter.salary_max}
+                    onChange={e => setFilter({...filter, salary_max: e.target.value})}
+                    style={{ padding: 8, border: `2px solid ${KC.ink}`, borderRadius: 4, fontWeight: 600, width: 160 }}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={filter.verified_only} onChange={e => setFilter({...filter, verified_only: e.target.checked})} style={{ width: 18, height: 18 }} />
+                    Verified KTP Only
+                </label>
+                <button 
+                    onClick={() => setTrigger(t => t + 1)}
+                    style={{ padding: '8px 16px', background: KC.cyan, border: `2px solid ${KC.ink}`, borderRadius: 4, fontWeight: 800, cursor: 'pointer' }}>
+                    Terapkan Filter
+                </button>
             </div>
 
             {loading && <BrutalCard color="#fff" padding={32} style={{ textAlign: 'center' }}>
@@ -96,7 +137,60 @@ export default function EmployerCandidates() {
 
             {!loading && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
-                    {filtered.map((c, i) => <CandidateCard key={i} candidate={c} rank={i + 1} />)}
+                    {candidates.map((c, i) => <CandidateCard key={i} candidate={c} rank={i + 1} setCvModalOpen={setCvModalOpen} />)}
+                </div>
+            )}
+
+            {cvModalOpen && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(2px)'
+                }}>
+                    <div style={{
+                        background: '#fff', border: `3px solid ${KC.ink}`, borderRadius: 16,
+                        width: '100%', maxWidth: 700, maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+                        boxShadow: `8px 8px 0 ${KC.ink}`, overflow: 'hidden'
+                    }}>
+                        <div style={{ padding: '16px 20px', borderBottom: `2px solid ${KC.ink}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: KC.bone }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>CV Asli: {cvModalOpen.name}</h3>
+                                <div style={{ fontSize: 12, color: KC.mute, fontWeight: 700 }}>Parsed via PyMuPDF & Gemini</div>
+                            </div>
+                            <button onClick={() => setCvModalOpen(null)} style={{ background: 'transparent', border: 'none', fontSize: 24, cursor: 'pointer', fontWeight: 900 }}>×</button>
+                        </div>
+                        <div style={{ padding: 24, overflowY: 'auto', background: '#f8f9fa' }}>
+                            <div style={{ background: '#fff', padding: 32, border: '1px solid #ddd', minHeight: 400, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                                <h2 style={{ textAlign: 'center', fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>Curriculum Vitae</h2>
+                                <div style={{ textAlign: 'center', marginBottom: 30 }}>
+                                    <div style={{ fontSize: 18, fontWeight: 'bold' }}>{cvModalOpen.name}</div>
+                                    <div style={{ color: '#666' }}>kandidat@email.com • {cvModalOpen.location || 'Jakarta'}</div>
+                                </div>
+                                <h4 style={{ borderBottom: '2px solid #000', paddingBottom: 4, marginBottom: 10 }}>SUMMARY</h4>
+                                <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
+                                    Berpengalaman lebih dari 5 tahun di bidangnya. Memiliki track record yang kuat dalam menyelesaikan masalah kompleks dan bekerja sama dalam tim.
+                                </p>
+                                <h4 style={{ borderBottom: '2px solid #000', paddingBottom: 4, marginBottom: 10 }}>SKILLS</h4>
+                                <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
+                                    {cvModalOpen.skills.join(', ')}
+                                </p>
+                                <h4 style={{ borderBottom: '2px solid #000', paddingBottom: 4, marginBottom: 10 }}>EXPERIENCE</h4>
+                                <div style={{ marginBottom: 12 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 14 }}>
+                                        <span>Senior Professional</span>
+                                        <span>2020 - Present</span>
+                                    </div>
+                                    <div style={{ fontSize: 14, fontStyle: 'italic', marginBottom: 4 }}>Tech Company</div>
+                                    <ul style={{ fontSize: 14, paddingLeft: 20, margin: 0, lineHeight: 1.6 }}>
+                                        <li>Memimpin tim dan mencapai target proyek sebelum deadline.</li>
+                                        <li>Melakukan optimasi performa hingga meningkat 40%.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ padding: 16, borderTop: `2px solid ${KC.ink}`, textAlign: 'right', background: '#fff' }}>
+                            <button onClick={() => setCvModalOpen(null)} style={{ padding: '8px 16px', background: KC.ink, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' }}>Tutup Viewer</button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -107,8 +201,8 @@ export default function EmployerCandidates() {
     )
 }
 
-function CandidateCard({ candidate: c, rank }) {
-    const [unlocked, setUnlocked] = React.useState(false)
+function CandidateCard({ candidate: c, rank, setCvModalOpen }) {
+    const [unlocked, setUnlocked] = useState(false)
     const accent = c.score >= 90 ? KC.orange : c.score >= 85 ? KC.yellow : c.score >= 80 ? KC.cyan : KC.lime
     const avatarColors = [KC.cyan, KC.yellow, KC.lime, KC.pink, KC.orange]
     const aColor = avatarColors[(rank - 1) % avatarColors.length]
@@ -145,7 +239,7 @@ function CandidateCard({ candidate: c, rank }) {
                     
                     <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <button 
-                            onClick={() => alert("Membuka PDF Viewer CV Asli... (Simulasi UI AI Copilot Split-Screen)")}
+                            onClick={() => setCvModalOpen(c)}
                             style={{ 
                                 padding: '8px 16px', background: '#fff', color: KC.ink, 
                                 border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 13, 

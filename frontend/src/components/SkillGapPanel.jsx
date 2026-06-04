@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import useStore from '../store/useStore'
+import toast from 'react-hot-toast'
 import { KC, BrutalCard, Tag } from './_design'
 
 export default function SkillGapPanel() {
@@ -23,7 +24,7 @@ export default function SkillGapPanel() {
                         Berdasarkan gap CV-mu dengan top-5 lowongan. Kursus dirank by relevance × harga × waktu.
                     </p>
                 </div>
-                <button style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` }}>
+                <button onClick={() => {}} style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` }}>
                     Target: Senior Backend
                 </button>
             </header>
@@ -76,7 +77,7 @@ export default function SkillGapPanel() {
                         <span>💰 {courses[0]?.price || 'Rp 0 · Prakerja'}</span>
                     </div>
                     <div style={{ marginTop: 'auto', paddingTop: 18 }}>
-                        <button style={{ padding: '12px 20px', background: '#fff', color: KC.ink, border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
+                        <button onClick={() => {}} style={{ padding: '12px 20px', background: '#fff', color: KC.ink, border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
                             Mulai Belajar →
                         </button>
                     </div>
@@ -131,7 +132,7 @@ export default function SkillGapPanel() {
                     </div>
                     <h4 style={{ fontSize: 14, fontWeight: 900, lineHeight: 1.25, margin: '0 0 6px' }}>1-on-1 dengan ex-Tokopedia engineer</h4>
                     <p style={{ fontSize: 11, opacity: 0.7, margin: '0 0 10px', lineHeight: 1.5 }}>Sesi 30 menit review portofolio.</p>
-                    <button style={{ width: '100%', padding: 8, background: KC.orange, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 900, color: '#fff', cursor: 'pointer' }}>Book sesi</button>
+                    <button onClick={() => {}} style={{ width: '100%', padding: 8, background: KC.orange, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 900, color: '#fff', cursor: 'pointer' }}>Book sesi (Coming soon)</button>
                 </BrutalCard>
 
                 <BrutalCard color="#fff" padding={18} style={{ gridColumn: 'span 2' }}>

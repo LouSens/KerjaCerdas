@@ -97,9 +97,9 @@ export default function JobDetailModal({ job, onClose }) {
                         <div style={{ marginBottom: 18 }}>
                             <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 8 }}>Skill yang Dibutuhkan</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {matchingSkills.map(s => <Tag key={s} color={KC.lime} size="sm">{s} ✓</Tag>)}
-                                {missingSkills.map(s => <Tag key={s} color={KC.orangeSoft} size="sm">{s} (gap)</Tag>)}
-                                {requiredSkills.filter(s => !matchingSkills.includes(s) && !missingSkills.includes(s))
+                                {matchingSkills.map(s => typeof s === 'string' ? s : s.name || '').map(s => <Tag key={s} color={KC.lime} size="sm">{s} ✓</Tag>)}
+                                {missingSkills.map(s => typeof s === 'string' ? s : s.name || '').map(s => <Tag key={s} color={KC.orangeSoft} size="sm">{s} (gap)</Tag>)}
+                                {requiredSkills.map(s => typeof s === 'string' ? s : s.name || '').filter(s => !matchingSkills.includes(s) && !missingSkills.includes(s))
                                     .map(s => <Tag key={s} color={KC.ash} size="sm">{s}</Tag>)}
                             </div>
                         </div>
