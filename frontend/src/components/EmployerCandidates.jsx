@@ -60,6 +60,7 @@ export default function EmployerCandidates() {
                 if (!alive) return
                 if (data.candidates?.length) {
                     let cands = data.candidates.map(c => ({
+                        id: c.seeker_id || c.id,
                         name: c.full_name || 'Kandidat',
                         verified: c.verified ?? false,
                         ijazahVerified: c.ijazah_verified ?? c.verified ?? false,
@@ -152,7 +153,6 @@ export default function EmployerCandidates() {
             </BrutalCard>}
 
             {!loading && (() => {
-                let r = 0
                 const groups = BAND_ORDER
                     .map(key => ({ ...BAND_META[key], items: candidates.filter(c => bandOf(c) === key) }))
                     .filter(g => g.items.length)
@@ -169,7 +169,7 @@ export default function EmployerCandidates() {
                                     {/* Employer-side blurb: how to read this band as decision support. */}
                                     <p style={{ fontSize: 12, fontWeight: 600, color: KC.mute, margin: '0 0 0 24px', lineHeight: 1.5, maxWidth: 720 }}>{g.employer}</p>
                                 </div>
-                                {g.items.map(c => { r += 1; return <CandidateCard key={r} candidate={c} idx={r} band={g.key} bandColor={g.color} bandLabel={g.label} setCvModalOpen={setCvModalOpen} /> })}
+                                {g.items.map((c, i) => <CandidateCard key={c.id || `${g.key}-${i}`} candidate={c} idx={i + 1} band={g.key} bandColor={g.color} bandLabel={g.label} setCvModalOpen={setCvModalOpen} />)}
                             </div>
                         ))}
                     </div>

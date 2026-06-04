@@ -25,12 +25,17 @@ async def sync_vacancies() -> dict[str, Any]:
 
     Tolerates an empty/unavailable store by defaulting to no jobs.
     """
+    store_unavailable = False
     try:
         repos = get_repositories()
         jobs = await repos.jobs.list()
     except Exception:  # noqa: BLE001 - store is optional for this mock
         jobs = []
-    return push_vacancies(jobs)
+        store_unavailable = True
+    result = push_vacancies(jobs)
+    if store_unavailable:
+        result["store_unavailable"] = True
+    return result
 
 
 @router.get("/listings")

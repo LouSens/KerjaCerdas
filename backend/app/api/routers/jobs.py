@@ -45,10 +45,9 @@ async def list_jobs(
         ]
     total = len(jobs)
     page = jobs[offset: offset + limit]
-    items = []
-    for j in page:
-        employer = await repos.employers.get(j.employer_id)
-        items.append(j.model_dump() | {"verified": _is_verified(employer)})
+    unique_employer_ids = {j.employer_id for j in page}
+    employers = {eid: await repos.employers.get(eid) for eid in unique_employer_ids}
+    items = [j.model_dump() | {"verified": _is_verified(employers.get(j.employer_id))} for j in page]
     return {"total": total, "offset": offset, "limit": limit, "items": items}
 
 
