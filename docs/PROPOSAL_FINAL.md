@@ -53,7 +53,19 @@ Daripada sekadar mengkurasi tautan *course online* secara umum, AI kami merancan
 
 ---
 
-## D. Ecosystem & Target Market
+---
+
+## D. Enterprise & MNC Integration Strategy (Headhunter Copilot)
+
+Perusahaan multinasional (MNC) dan agensi *Headhunter* umumnya telah memiliki ekosistem ATS (*Applicant Tracking System*) seperti Workday, SAP SuccessFactors, atau sistem internal (*legacy*). Memaksa mereka untuk bermigrasi sepenuhnya ke platform baru adalah langkah yang membuang waktu, uang, dan tenaga. Oleh karena itu, KerjaCerdas diposisikan sebagai **Nilai Tambah (Value-Add) & Copilot Plugin**, bukan sebagai pengganti (*replacement*):
+
+1. **API-First Architecture:** KerjaCerdas dapat diintegrasikan langsung sebagai modul *Plugin* ke dalam ATS yang sudah ada. Resume pelamar yang masuk ke Workday perusahaan akan ditarik secara otomatis via API, diekstrak semantiknya oleh Gemini, dan dikirim kembali berupa *Scoring Dashboard* langsung ke antarmuka ATS milik klien.
+2. **Headhunter AI Copilot:** Bagi agen pencari kerja (*Headhunter*), platform kami bertindak layaknya *Research Assistant* yang bekerja 24/7. Mereka dapat mengunggah ratusan CV *pool* internal mereka, dan sistem akan mengurutkan kecocokan kandidat terhadap kriteria spesifik klien mereka dalam hitungan menit, meningkatkan *placement rate* tanpa merombak SOP penyaringan mereka.
+3. **Zero Switching Cost:** HRD tidak perlu mengubah cara mereka bekerja. Kami menyisipkan *intelligence layer* di atas infrastruktur yang sudah mereka gunakan.
+
+---
+
+## E. Ecosystem & Target Market
 
 KerjaCerdas mengorkestrasi ekosistem korporat lintas sektor dengan standar *Enterprise-Grade*:
 - **Target Primer (B2B):** 64 Juta entitas UMKM di Indonesia dan *Tech Startups* yang membutuhkan kapabilitas rekrutmen level korporat tanpa harus membayar lisensi ATS jutaan rupiah di muka. 
@@ -62,7 +74,7 @@ KerjaCerdas mengorkestrasi ekosistem korporat lintas sektor dengan standar *Ente
 
 ---
 
-## E. Innovation & Differentiation (Arsitektur LangGraph)
+## F. Innovation & Differentiation (Arsitektur LangGraph)
 
 Inovasi utama KerjaCerdas berpusat pada **Autonomous Supervisor Swarm**. Berbeda dengan *pipeline* linear tradisional, agen AI kami (Berbasis LangGraph) memiliki fungsi *Dynamic Routing*.
 - **Pencegahan Data Sampah (Garbage In, Garbage Out):** Pengisian profil tidak menggunakan ketikan bebas (*free-text*), melainkan melalui *Onboarding Webform* berbasis *Conditional Logic* dengan Taksonomi Skill Terstandar (Berbasis KBJI 2014).
@@ -70,7 +82,7 @@ Inovasi utama KerjaCerdas berpusat pada **Autonomous Supervisor Swarm**. Berbeda
 
 ---
 
-## F. Technical Validation & Security
+## G. Technical Validation & Security
 
 Standar kepatuhan (*Compliance*) korporat adalah prioritas mutlak kami:
 - **Arsitektur:** Menggunakan abstraksi Docker Compose untuk isolasi Frontend (React.js), Backend (FastAPI), dan Database (PostgreSQL dengan pgvector).
@@ -79,7 +91,7 @@ Standar kepatuhan (*Compliance*) korporat adalah prioritas mutlak kami:
 
 ---
 
-## G. Data Acquisition Strategy (Acuan Riwayat Data AI)
+## H. Data Acquisition Strategy (Acuan Riwayat Data AI)
 
 Infrastruktur AI KerjaCerdas membutuhkan pasokan data riwayat lowongan (*historical data*) agar evaluasi kandidat semakin akurat terhadap standar riil. Strategi akuisisi data ini dibangun melalui 3 pilar:
 

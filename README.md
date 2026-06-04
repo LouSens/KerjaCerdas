@@ -53,13 +53,79 @@ Modul ini dirancang untuk menyelesaikan masalah kelelahan administratif (*screen
 
 ---
 
-## 📸 Screenshots (Live Demo)
+## 🧩 Component Architecture & Business Value
 
-*Geser ke kanan untuk melihat semua tampilan aplikasi (Horizontal Scroll).*
+Setiap komponen dalam aplikasi ini dirancang tidak hanya untuk fungsi teknis, melainkan untuk memberikan nilai bisnis dan *user experience* terbaik.
 
-| Home | Pricing | About | Login | Register | Seeker Dashboard | Seeker Match | Seeker Profile | Employer Dashboard | Post Job |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| <img src="docs/assets/01-home.png" width="1000"> | <img src="docs/assets/02-pricing.png" width="1000"> | <img src="docs/assets/03-about.png" width="1000"> | <img src="docs/assets/04-login.png" width="1000"> | <img src="docs/assets/05-register.png" width="1000"> | <img src="docs/assets/06-seeker-dashboard.png" width="1000"> | <img src="docs/assets/07-seeker-match.png" width="1000"> | <img src="docs/assets/08-seeker-profile.png" width="1000"> | <img src="docs/assets/09-employer-dashboard.png" width="1000"> | <img src="docs/assets/10-employer-post-job.png" width="1000"> |
+### 💼 Frontend Components (React & Zustand)
+| Komponen UI | Fungsi Teknikal | Dampak Bisnis & UX |
+|---|---|---|
+| **`LandingHero` & `PublicHeader`** | Entry point SPA dengan animasi responsif. | Mengkonversi pengunjung (Lead Gen) melalui CVR (Conversion Rate) yang dioptimasi dan copy yang persuasif. |
+| **`CVUploader`** | Menghandle PDF parsing multipart form data ke backend. | Menghilangkan friksi *data entry* manual. Pengguna cukup *drag-and-drop* dan AI Gemini mengekstrak data JSON dalam detik. |
+| **`SeekerDashboard`** | Mengorkestrasi data profil (score, matches) dari `useStore`. | Memberikan umpan balik instan ke kandidat, membangun retensi *Active Users*. |
+| **`SeekerMatchResults`** | Render array `matches` dari vector search + HNSW *distance*. | Menampilkan justifikasi AI secara *explainable*, membuktikan sistem bukan "kotak hitam". |
+| **`JobDetailModal`** | Komponen modal dinamis untuk detail lowongan dan aksi lamar. | *Micro-interaction* cepat tanpa navigasi halaman meminimalisasi *bounce rate*. |
+| **`SkillGapPanel`** | Membandingkan array `skills` pengguna dengan top lowongan (Set Difference). | Strategi agregasi Ed-Tech: menghubungkan pengguna ke kursus/bootcamp partner (potensi komisi referal/affiliate). |
+| **`FloatingAdvisor`** | Interface chatbot dengan *streaming completion* LangGraph. | Memberikan layanan *career coaching* 24/7 berskala massal dengan *Zero Marginal Cost*. |
+| **`EmployerDashboard`** | Dasbor analitik (metrics) pendaftar per lowongan. | Meminimalisasi beban kognitif HRD dengan *funnel view* pelamar yang jelas. |
+| **`EmployerCandidates`** | Menampilkan hasil sortir (*Shortlist*) `ResumeReviewAgent`. | Mendorong monetisasi *Pay-to-Unlock*; perusahaan melihat "Kualitas" lebih dulu sebelum membayar. |
+| **`PricingPage`** | Konfigurasi limit *tiering* dan *paywall*. | Transparansi harga B2B B2C dengan strategi *freemium* untuk akuisisi awal yang agresif. |
+| **`VerificationDashboard`** | Integrasi API E-KYC / SIVIL Kemdikbud (Mocked). | Solusi krisis *Trust* dengan verifikasi KTP/Ijazah, meningkatkan *Employer Confidence* 300%. |
+
+---
+
+## 📸 UI / UX Prototype Flow (Live Demo)
+
+Kami merancang alur pengguna (*user flow*) layaknya prototipe Figma untuk mendemonstrasikan pengalaman pengguna (UX) yang mulus dan minim friksi.
+
+### 🙎‍♂️ Alur Pencari Kerja (Seeker Flow)
+
+```mermaid
+flowchart LR
+    classDef page fill:#FF5722,stroke:#0B0B0F,stroke-width:2px,color:#fff,font-weight:bold
+    classDef modal fill:#C8F26B,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
+    
+    A[Landing Page]:::page -->|Klik Masuk| B[Auth Modal]:::modal
+    B -->|Login/Register| C[Seeker Dashboard]:::page
+    C -->|Klik 'Lihat Semua 5'| D[Match Results]:::page
+    D -->|Klik 'Lihat'| E[Job Detail Modal]:::modal
+    C -->|Klik Peta Skill Gap| F[Skill Gap Analyzer]:::page
+```
+
+| 1. Landing Page | 2. Login | 3. Daftar Akun | 4. Dasbor Pencari Kerja |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/assets/screenshot_8.jpg" width="250"> | <img src="docs/assets/screenshot_9.jpg" width="250"> | <img src="docs/assets/screenshot_10.jpg" width="250"> | <img src="docs/assets/screenshot_1.jpg" width="250"> |
+
+| 5. Pencarian Lowongan | 6. Upload CV | 7. Top Match Lowongan | 8. Analisis Skill Gap |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/assets/screenshot_2.jpg" width="250"> | <img src="docs/assets/screenshot_3.jpg" width="250"> | <img src="docs/assets/screenshot_4.jpg" width="250"> | <img src="docs/assets/screenshot_5.jpg" width="250"> |
+
+| 9. Verifikasi Identitas | 10. Lowongan Tersimpan |
+|:---:|:---:|
+| <img src="docs/assets/screenshot_7.jpg" width="250"> | <img src="docs/assets/screenshot_6.jpg" width="250"> |
+
+<br>
+
+### 🏢 Alur Perusahaan (Employer Flow)
+
+```mermaid
+flowchart LR
+    classDef page fill:#7AE7F0,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
+    classDef action fill:#FFCB05,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
+    
+    A[HR Login]:::modal --> B[Employer Dashboard]:::page
+    B -->|Klik Pasang Lowongan| C[Post Job Wizard]:::page
+    C -->|AI Rank Candidates| D[Live Candidates Pool]:::page
+    D -->|Teaser Method| E[Unlock Candidate Contact]:::modal
+```
+
+| 1. Autentikasi HRD | 2. Dasbor Perusahaan | 3. Pasang Lowongan |
+|:---:|:---:|:---:|
+| <img src="docs/assets/screenshot_11.jpg" width="300"> | <img src="docs/assets/screenshot_12.jpg" width="300"> | <img src="docs/assets/screenshot_13.jpg" width="300"> |
+
+| 4. Daftar Lowongan | 5. Top Kandidat (Teaser) | 6. Verifikasi Dokumen |
+|:---:|:---:|:---:|
+| <img src="docs/assets/screenshot_16.jpg" width="300"> | <img src="docs/assets/screenshot_15.jpg" width="300"> | <img src="docs/assets/screenshot_14.jpg" width="300"> |
 
 ---
 
@@ -285,7 +351,7 @@ KerjaCerdas/
 │   │   │   └── services/          # Business logic helpers
 │   │   ├── agents/           # Arsitektur Multi-Agent & LLM
 │   │   │   ├── graph/
-│   │   │   │   ├── builder_v2.py  # Konstruktor ReAct Supervisor Swarm
+│   │   │   │   ├── builder.py     # Konstruktor ReAct Supervisor Swarm
 │   │   │   │   └── nodes.py       # Worker Nodes (Search, SkillGap, Advisor)
 │   │   │   ├── tools/
 │   │   │   │   └── superpowers.py # Kumpulan fungsi (tools) untuk Gemini
@@ -294,8 +360,7 @@ KerjaCerdas/
 │   │   ├── services/
 │   │   │   └── matching/          # Core Recommendation Engine
 │   │   │       ├── embeddings/    # Gemini Vector generator
-│   │   │       ├── matcher.py     # Algoritma Cosine Similarity + Heuristik
-│   │   │       └── ranker.py      # Pembobotan skor
+│   │   │       └── matcher.py     # Algoritma Cosine Similarity + Heuristik
 │   │   ├── db/
 │   │   │   ├── postgres_store.py  # Abstraksi Async Session & SQLAlchemy Repository
 │   │   │   ├── models.py          # Definisi Skema Tabel PostgreSQL (pgvector)

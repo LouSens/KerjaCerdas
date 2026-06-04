@@ -12,9 +12,10 @@
 - **Icons**: Lucide React
 
 ## ✨ Key Components
-- **`AuthModal.jsx`**: Seamless login/register experience.
-- **`Footer.jsx`**: Persistent navigation and branding.
-- **`kerjacerdas.jsx`**: The main demo dashboard featuring Job Matching, Skill Gap visualizations, and the AI Advisor chat interface.
+- **`AuthModal.jsx`**: Seamless login/register experience for Seeker & Employer.
+- **`SeekerDashboard.jsx`**: The main demo dashboard featuring Job Matching and Skill Gap visualization.
+- **`EmployerDashboard.jsx`**: Dashboard for HR to post jobs and view AI-ranked candidates.
+- **`FloatingAdvisor.jsx`**: The AI Advisor chat interface.
 
 ## 🛠️ Development Setup
 
