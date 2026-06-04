@@ -372,13 +372,25 @@ class SemanticMatcher:
         # When a key is configured, upgrade the evidentiary one-liner with an LLM
         # eval. Still employer-facing decision support — never the seeker framing.
         import os
-        has_gemini = bool(settings.gemini_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+        # Resolve the key the same way the embedder does. langchain's
+        # ChatGoogleGenerativeAI does NOT read settings.gemini_api_key — it only
+        # picks up GOOGLE_API_KEY/GEMINI_API_KEY from the env or an explicit
+        # api_key param. Pass it explicitly so the LLM summary doesn't fall back.
+        gemini_key = (
+            settings.gemini_api_key
+            or os.environ.get("GEMINI_API_KEY", "")
+            or os.environ.get("GOOGLE_API_KEY", "")
+        )
 
-        if has_gemini:
+        if gemini_key:
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 from langchain_core.messages import HumanMessage
-                llm = ChatGoogleGenerativeAI(model=settings.gemini_chat_model, temperature=0.1)
+                llm = ChatGoogleGenerativeAI(
+                    model=settings.gemini_chat_model,
+                    temperature=0.1,
+                    api_key=gemini_key,
+                )
 
                 prompt = f"Anda adalah HR Assistant AI untuk platform KerjaCerdas.\nBerikan evaluasi SUPER SINGKAT (maks 1 kalimat, 10-15 kata) untuk masing-masing kandidat berikut ini berdasarkan kriteria loker: {job.title}\n"
                 prompt += f"Skill Wajib Loker: {', '.join(job.required_skills)}\n\n"
