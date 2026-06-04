@@ -11,7 +11,9 @@ Weights are read from settings so they can be tuned via .env without a code chan
 """
 from __future__ import annotations
 
+import hashlib
 import math
+import random
 from collections.abc import Iterable
 
 from backend.app.db.schemas import JobPosting, MatchResult, SeekerProfile
@@ -107,6 +109,39 @@ def _explain(
     sentences.append("**Aksi:** Kirim lamaranmu sekarang sebelum kuota penuh!")
     
     return " ".join(sentences)
+
+
+def _assign_bands(
+    candidates: list[dict],
+    job_id: str,
+    strong_th: float,
+    possible_th: float,
+) -> list[dict]:
+    """Bucket ranked candidates into Strong/Possible/Stretch, then shuffle within
+    each band so tiny score deltas don't imply a false hierarchy.
+
+    The shuffle is seeded by a stable hash of the job id: ordering is stable per
+    job across requests, but unbiased across candidates inside the same band.
+    Embodies the product rule "AI orders attention; the human still decides" —
+    the system groups candidates by fit instead of handing back a finalized
+    top-N ranking.
+    """
+    for c in candidates:
+        s = c["score"]
+        c["band"] = (
+            "strong" if s >= strong_th
+            else "possible" if s >= possible_th
+            else "stretch"
+        )
+    rng = random.Random(int(hashlib.sha256(job_id.encode()).hexdigest()[:8], 16))
+    out: list[dict] = []
+    for band in ("strong", "possible", "stretch"):
+        group = [c for c in candidates if c["band"] == band]
+        rng.shuffle(group)
+        out.extend(group)
+    for i, c in enumerate(out, start=1):
+        c["rank"] = i
+    return out
 
 
 # ── Matcher ───────────────────────────────────────────────────────────────────
@@ -270,6 +305,9 @@ class SemanticMatcher:
                                    if r.lower() not in {sk.name.lower() for sk in s.skills}],
             })
         scored.sort(key=lambda x: x["score"], reverse=True)
-        for i, item in enumerate(scored[:top_k], 1):
-            item["rank"] = i
-        return scored[:top_k]
+        return _assign_bands(
+            scored[:top_k],
+            job.id,
+            settings.band_strong_threshold,
+            settings.band_possible_threshold,
+        )

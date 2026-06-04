@@ -183,7 +183,8 @@ function MatchCard({ rank, match, saved, onSave, onView }) {
                 <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                         <div style={{ width: 28, height: 28, background: KC.cyan, border: `1.5px solid ${KC.ink}`, borderRadius: 6, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 12 }}>{company[0]}</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: KC.mute }}>{company} ✓</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: KC.mute }}>{company}</div>
+                        {match.verified && <Tag color={KC.lime} size="sm">✓ Terverifikasi</Tag>}
                     </div>
                     <h3 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.15, margin: 0 }}>
                         {match.title || match.job_title || 'Posisi'}

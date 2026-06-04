@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { searchJobs } from '../services/api'
 import useStore from '../store/useStore'
-import { BrutalCard, KC, topBtn, DesignStyles } from './_design'
+import { BrutalCard, KC, topBtn, Tag, DesignStyles } from './_design'
 
 export default function SeekerSearch() {
     const [query, setQuery] = useState('')
@@ -67,6 +67,7 @@ export default function SeekerSearch() {
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>{job.title}</h3>
                                         <p style={{ margin: '4px 0', fontSize: 14, color: KC.mute }}>{job.location} • {job.job_type}</p>
+                                        {job.verified && <div style={{ marginTop: 4 }}><Tag color={KC.lime} size="sm">✓ Terverifikasi</Tag></div>}
                                     </div>
                                     {aiScore !== null ? (
                                         <div style={{ background: KC.lime, border: `2px solid ${KC.ink}`, padding: '4px 8px', fontWeight: 900, fontSize: 12, boxShadow: `2px 2px 0 ${KC.ink}` }}>
