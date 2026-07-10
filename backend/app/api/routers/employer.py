@@ -245,7 +245,7 @@ async def find_candidates(
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
 
-    top_k = int((body or {}).get("top_k", 10))
+    top_k = int((body or {}).get("top_k", 15))
     filters = (body or {}).get("filters", {})
     seekers = await repos.seekers.list()
     if not seekers:

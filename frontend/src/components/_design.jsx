@@ -1,6 +1,6 @@
 // Shared design primitives for KerjaCerdas — refined neo-brutal.
 // Ported from design canvas (kerjacerdas/project/components.jsx).
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 export const KC = {
     ink: '#0B0B0F', bone: '#FAF8F2', paper: '#FFFFFF', surface: '#F4F1EA',
@@ -8,6 +8,32 @@ export const KC = {
     yellow: '#FFCB05', cyan: '#7AE7F0', pink: '#FFB7D5', lime: '#C8F26B',
     rose: '#FF6F61', mint: '#9BE6C2', mute: '#6B6760', ash: '#E5E0D6',
 }
+
+// ── Band meaning — single source of truth ──────────────────────────────────
+// The matcher groups people/jobs into Strong / Possible / Stretch. Both the
+// employer and seeker views read labels + colors from here so they never drift.
+// The copy is deliberately *asymmetric*: the employer blurb is evidentiary
+// decision-support ("evaluate, don't disqualify"); the seeker blurb is kind
+// guidance ("a goal you can reach"). Neither side sees the other's framing.
+export const BAND_META = {
+    strong: {
+        key: 'strong', label: 'Strong fit', color: KC.lime,
+        employer: 'Memenuhi kriteria utama lowonganmu. Sinyal kecocokan kuat — tetap baca profilnya, keputusan ada di tanganmu.',
+        seeker: 'Skill & pengalamanmu nyambung kuat sama kebutuhan ini. Posisi yang pas buat kamu lamar.',
+    },
+    possible: {
+        key: 'possible', label: 'Possible fit', color: KC.yellow,
+        employer: 'Sebagian kriteria terpenuhi. Ada celah untuk kamu timbang sendiri sebelum memutuskan.',
+        seeker: 'Pondasimu udah cocok. Lengkapi sedikit lagi biar makin siap bersaing.',
+    },
+    stretch: {
+        key: 'stretch', label: 'Stretch', color: KC.cyan,
+        employer: 'Di luar kriteria utama — bisa jadi career switcher atau skill transferable. Tinjau sebagai pertimbangan, bukan diskualifikasi.',
+        seeker: 'Sedikit di luar jangkauanmu sekarang — anggap sebagai tujuan yang bisa kamu kejar.',
+    },
+}
+
+export const BAND_ORDER = ['strong', 'possible', 'stretch']
 
 // Shared button-style factory (also exported for use by other components)
 export const topBtn = (bg, fg = KC.ink) => ({
@@ -37,6 +63,40 @@ export function Tag({ children, color = KC.yellow, ink = KC.ink, size = 'md', ic
             borderRadius: 999, letterSpacing: 0.4, textTransform: 'uppercase',
             ...style,
         }}>{icon}{children}</span>
+    )
+}
+
+/**
+ * Collapsible "Apa arti band ini?" legend. Renders the three bands with the
+ * blurb for the requested `side` ('employer' | 'seeker') straight from
+ * BAND_META, so the explanation can never disagree with the cards above it.
+ */
+export function BandLegend({ side = 'seeker', defaultOpen = false }) {
+    const [open, setOpen] = useState(defaultOpen)
+    return (
+        <BrutalCard color="#fff" padding={14}>
+            <button onClick={() => setOpen(o => !o)} style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'transparent', border: 'none', cursor: 'pointer', padding: 0,
+                fontFamily: 'inherit', fontWeight: 900, fontSize: 14, color: KC.ink,
+            }}>
+                <span>Apa arti band ini?</span>
+                <span style={{ fontSize: 18, lineHeight: 1 }}>{open ? '−' : '+'}</span>
+            </button>
+            {open && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+                    {BAND_ORDER.map(k => {
+                        const b = BAND_META[k]
+                        return (
+                            <div key={k} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                <Tag color={b.color} size="sm" style={{ flexShrink: 0 }}>{b.label}</Tag>
+                                <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.5, color: KC.ink }}>{b[side]}</span>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+        </BrutalCard>
     )
 }
 

@@ -27,19 +27,23 @@ def build_graph_v2(checkpointer=None):
         or os.environ.get("GOOGLE_API_KEY", "")
     )
     
+    # ChatGoogleGenerativeAI won't read settings.gemini_api_key on its own —
+    # pass the resolved key explicitly (mirrors the matcher fix).
     llm = ChatGoogleGenerativeAI(
         model=settings.gemini_chat_model,
         temperature=0.4,
+        api_key=gemini_key,
     )
 
     from backend.app.services.prompt_loader import build_system_prompt
     system_prompt = build_system_prompt(role="supervisor")
 
-    # create_react_agent natively builds a robust ReAct loop with tool calling
+    # create_react_agent natively builds a robust ReAct loop with tool calling.
+    # `state_modifier` was renamed to `prompt` in langgraph >= 1.x.
     compiled_graph = create_react_agent(
         model=llm,
         tools=SUPERPOWER_TOOLS,
-        state_modifier=system_prompt,
+        prompt=system_prompt,
         checkpointer=checkpointer
     )
     

@@ -2,9 +2,15 @@
 from __future__ import annotations
 
 from backend.app.db.postgres_store import get_repositories
+from backend.app.db.schemas import Employer, VerificationStatus
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
+
+
+def _is_verified(employer: Employer | None) -> bool:
+    """A listing is trusted when its posting employer passed verification."""
+    return employer is not None and employer.verified == VerificationStatus.VERIFIED
 
 
 @router.get("")
@@ -38,11 +44,18 @@ async def list_jobs(
             if q_lower in j.title.lower() or q_lower in j.description.lower()
         ]
     total = len(jobs)
-    return {"total": total, "offset": offset, "limit": limit, "items": jobs[offset: offset + limit]}
+    page = jobs[offset: offset + limit]
+    unique_employer_ids = {j.employer_id for j in page}
+    employers = {eid: await repos.employers.get(eid) for eid in unique_employer_ids}
+    items = [j.model_dump() | {"verified": _is_verified(employers.get(j.employer_id))} for j in page]
+    return {"total": total, "offset": offset, "limit": limit, "items": items}
 
 
 @router.get("/{job_id}")
 async def get_job(job_id: str):
     repos = get_repositories()
     j = await repos.jobs.get(job_id)
-    return j or {"error": "not_found"}
+    if not j:
+        return {"error": "not_found"}
+    employer = await repos.employers.get(j.employer_id)
+    return j.model_dump() | {"verified": _is_verified(employer)}

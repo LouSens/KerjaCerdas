@@ -185,6 +185,7 @@ class MatchResult(BaseModel):
     region_match: bool
     salary_in_range: bool
     rank: int
+    band: str = "stretch"  # strong | possible | stretch — the headline, not the number
     explanation: str = ""
 
 

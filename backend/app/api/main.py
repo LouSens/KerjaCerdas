@@ -31,6 +31,7 @@ from backend.app.api.routers.agent import router as agent_router
 from backend.app.api.routers.auth import router as auth_router
 from backend.app.api.routers.employer import router as employer_router  # prefix=/employer
 from backend.app.api.routers.jobs import router as jobs_router
+from backend.app.api.routers.karirhub import router as karirhub_router
 from backend.app.api.routers.seeker import router as seeker_router
 from backend.app.api.routers.uploads import router as uploads_router
 from backend.app.api.routers.verify import router as verify_router
@@ -88,7 +89,7 @@ app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(RequestSizeMiddleware)
 
 for r in (auth_router, seeker_router, employer_router, jobs_router,
-          uploads_router, verify_router, agent_router):
+          uploads_router, verify_router, agent_router, karirhub_router):
     app.include_router(r, prefix="/api/v1")
 
 

@@ -1,14 +1,26 @@
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
-from pgvector.sqlalchemy import Vector
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# pgvector is only available when using PostgreSQL. For SQLite dev mode we fall
+# back to a plain Text column (stores the vector as a serialised string that is
+# never used at query time — embeddings are computed in-process by the matcher).
+try:
+    from pgvector.sqlalchemy import Vector as _Vector  # type: ignore[import-untyped]
+    _VectorCol = lambda: _Vector(768)  # noqa: E731
+except Exception:  # pragma: no cover
+    from sqlalchemy import Text as _Text  # type: ignore[assignment]
+    _VectorCol = lambda: _Text()  # noqa: E731
 
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+def _uid() -> str:
+    return str(uuid4())
 
 class Base(DeclarativeBase):
     pass
@@ -19,8 +31,8 @@ class TimestampedMixin:
 
 class User(Base, TimestampedMixin):
     __tablename__ = "users"
-    
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), default="")
     password_hash: Mapped[str] = mapped_column(String(255))
@@ -39,15 +51,15 @@ class SeekerProfile(Base, TimestampedMixin):
     nik_verified: Mapped[str] = mapped_column(String(20), default="unverified")
     date_of_birth: Mapped[str | None] = mapped_column(String(20), nullable=True)
     region_code: Mapped[str] = mapped_column(String(50))
-    preferred_regions: Mapped[list[Any]] = mapped_column(JSONB, default=list)
-    skills: Mapped[list[Any]] = mapped_column(JSONB, default=list)
-    experience: Mapped[list[Any]] = mapped_column(JSONB, default=list)
-    education: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    preferred_regions: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    skills: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    experience: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    education: Mapped[list[Any]] = mapped_column(JSON, default=list)
     resume_text: Mapped[str] = mapped_column(Text, default="")
     salary_expectation_min: Mapped[int] = mapped_column(Integer, default=0)
     salary_expectation_max: Mapped[int] = mapped_column(Integer, default=0)
     open_to_remote: Mapped[bool] = mapped_column(Boolean, default=True)
-    embedding = mapped_column(Vector(768), nullable=True)
+    embedding = mapped_column(_VectorCol(), nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 class Employer(Base, TimestampedMixin):
@@ -72,9 +84,9 @@ class JobPosting(Base, TimestampedMixin):
     title: Mapped[str] = mapped_column(String(255))
     kbji_code: Mapped[str] = mapped_column(String(50), default="")
     description: Mapped[str] = mapped_column(Text)
-    responsibilities: Mapped[list[Any]] = mapped_column(JSONB, default=list)
-    required_skills: Mapped[list[Any]] = mapped_column(JSONB, default=list)
-    nice_to_have_skills: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    responsibilities: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    required_skills: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    nice_to_have_skills: Mapped[list[Any]] = mapped_column(JSON, default=list)
     education_min: Mapped[str] = mapped_column(String(10), default="S1")
     experience_years_min: Mapped[int] = mapped_column(Integer, default=0)
     region_code: Mapped[str] = mapped_column(String(50))
@@ -82,7 +94,7 @@ class JobPosting(Base, TimestampedMixin):
     salary_min: Mapped[int] = mapped_column(Integer, default=0)
     salary_max: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    embedding = mapped_column(Vector(768), nullable=True)
+    embedding = mapped_column(_VectorCol(), nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 class Application(Base, TimestampedMixin):
@@ -102,7 +114,7 @@ class MatchBundle(Base, TimestampedMixin):
     subject_kind: Mapped[str] = mapped_column(String(20))
     subject_id: Mapped[str] = mapped_column(String(36), index=True)
     top_k: Mapped[int] = mapped_column(Integer)
-    results: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    results: Mapped[list[Any]] = mapped_column(JSON, default=list)
     embedding_model: Mapped[str] = mapped_column(String(100))
 
 class SkillGapResult(Base, TimestampedMixin):
@@ -111,11 +123,11 @@ class SkillGapResult(Base, TimestampedMixin):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     seeker_id: Mapped[str] = mapped_column(String(36), index=True)
     target_job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    missing_skills: Mapped[list[Any]] = mapped_column(JSONB, default=list)
-    matching_skills: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    missing_skills: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    matching_skills: Mapped[list[Any]] = mapped_column(JSON, default=list)
     gap_severity: Mapped[str] = mapped_column(String(20))
     match_percentage: Mapped[float] = mapped_column(Float)
-    recommended_courses: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    recommended_courses: Mapped[list[Any]] = mapped_column(JSON, default=list)
     estimated_readiness_months: Mapped[int] = mapped_column(Integer)
     summary: Mapped[str] = mapped_column(Text)
 
@@ -126,7 +138,7 @@ class ChatSession(Base, TimestampedMixin):
     user_id: Mapped[str] = mapped_column(String(36), index=True)
     seeker_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     title: Mapped[str] = mapped_column(String(255), default="")
-    messages: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    messages: Mapped[list[Any]] = mapped_column(JSON, default=list)
 
 class Course(Base, TimestampedMixin):
     __tablename__ = "courses"
@@ -135,7 +147,7 @@ class Course(Base, TimestampedMixin):
     name: Mapped[str] = mapped_column(String(255))
     provider: Mapped[str] = mapped_column(String(255))
     category: Mapped[str] = mapped_column(String(100))
-    skills_taught: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    skills_taught: Mapped[list[Any]] = mapped_column(JSON, default=list)
     duration: Mapped[str] = mapped_column(String(100))
     cost_idr: Mapped[int] = mapped_column(Integer, default=0)
     is_prakerja: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -168,5 +180,5 @@ class GamificationStats(Base, TimestampedMixin):
     xp: Mapped[int] = mapped_column(Integer, default=0)
     level: Mapped[int] = mapped_column(Integer, default=1)
     streak_days: Mapped[int] = mapped_column(Integer, default=0)
-    badges: Mapped[list[Any]] = mapped_column(JSONB, default=list)
-    quests_completed: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    badges: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    quests_completed: Mapped[list[Any]] = mapped_column(JSON, default=list)

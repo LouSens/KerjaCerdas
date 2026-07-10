@@ -34,9 +34,14 @@ dependencies = [
     "pymupdf4llm>=0.0.17",
     # AI / agents
     "google-genai>=1.0.0",
-    "langgraph>=0.2.50",
-    "langchain-core>=0.3.0",
-    "langchain-google-genai>=2.0.0",
+    # Pin to the 1.2.x line: the 1.0.x window shipped a broken core/prebuilt
+    # combo where langgraph-prebuilt imports `ExecutionInfo` from
+    # `langgraph.runtime` but the matching core release doesn't export it,
+    # 500-ing every agent invocation. Keep prebuilt aligned with core.
+    "langgraph>=1.2.0",
+    "langgraph-prebuilt>=1.1.0",
+    "langchain-core>=1.3.0",
+    "langchain-google-genai>=4.0.0",
 ]
 
 [project.optional-dependencies]

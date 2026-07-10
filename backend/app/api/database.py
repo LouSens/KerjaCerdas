@@ -63,9 +63,12 @@ def _build_engine(database_url: str):
 # Default engine + session (created lazily on first import / startup)
 # ---------------------------------------------------------------------------
 
-_DEFAULT_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
+from backend.app.config.settings import settings
 
-engine = _build_engine(_DEFAULT_DB_URL)
+# Build from settings (reads .env) so the engine is correct even before the
+# startup lifespan calls reconfigure() — and so standalone scripts that import
+# this module pick up the same database (e.g. SQLite in dev).
+engine = _build_engine(settings.effective_database_url)
 async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -114,7 +117,10 @@ async def _migrate_verification_logs_schema(conn) -> None:
 
 async def init_db() -> None:
     """Create all tables. Called once during application startup."""
+    # Import models here so their metadata is registered before create_all.
+    # db/models.py defines its own Base; use that one (it owns the ORM tables).
+    from backend.app.db.models import Base as ModelsBase  # noqa: PLC0415
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(ModelsBase.metadata.create_all)
         await _migrate_verification_logs_schema(conn)
     logger.info("✅ Database tables created / verified")

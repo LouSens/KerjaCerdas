@@ -47,8 +47,9 @@ export default function JobDetailModal({ job, onClose }) {
                     display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
                 }}>
                     <div>
-                        <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.75, marginBottom: 4 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.75, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
                             {job.company || 'Perusahaan'}
+                            {job.verified && <Tag color={KC.lime} size="sm">✓ Terverifikasi</Tag>}
                         </div>
                         <h2 style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.8, margin: 0, lineHeight: 1.15 }}>
                             {job.title || 'Posisi'}
