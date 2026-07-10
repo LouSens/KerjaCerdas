@@ -16,7 +16,7 @@
 
 ## 📌 Platform Overview
 
-**KerjaCerdas** memecahkan masalah ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja melalui pendekatan AI semantik. Untuk melihat detail latar belakang masalah dan perbedaan dengan portal konvensional, silakan baca [Business Proposal](docs/PROPOSAL_FINAL.md).
+**KerjaCerdas** memecahkan masalah ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja melalui pendekatan AI semantik. Untuk melihat detail latar belakang masalah dan perbedaan dengan portal konvensional, silakan baca [Business Proposal](docs/PROPOSAL_2ND.md).
 
 ## 🎯 Fitur Utama
 
@@ -394,7 +394,8 @@ Semua panduan demonstrasi, proposal korporat, dokumen finansial, dan pemetaan ar
 
 | Dokumen | Deskripsi | Tautan |
 |---|---|---|
-| **Business Proposal** | Penjelasan problem, solusi, validasi ekosistem pasar, dan strategi produk terpadu KerjaCerdas. | [PROPOSAL_FINAL.md](docs/PROPOSAL_FINAL.md) |
+| **Proposal 3rd Submission** | Draft proposal kompetisi terbaru — mencerminkan state sistem saat ini dan rencana ke depan. | [PROPOSAL_3RD.md](docs/PROPOSAL_3RD.md) |
+| **Proposal 2nd Submission** | Proposal kompetisi sebelumnya — problem, solusi, validasi pasar, dan strategi produk. | [PROPOSAL_2ND.md](docs/PROPOSAL_2ND.md) |
 | **Panduan Live Demo** | Skrip presentasi rinci (*step-by-step*) simulasi alur pencari kerja dan pewawancara untuk demonstrasi. | [VERIFICATION_DEMO.md](docs/VERIFICATION_DEMO.md) |
 | **Laporan Finansial & Bisnis** | Model keuntungan (Profit Model), proyeksi arus kas, *Unit Economics*, dan *Pro Forma Income Statement*. | [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) |
 | **Roadmap Arsitektur** | Transformasi infrastruktur *Cloud SQL, PostgreSQL pgvector, Vertex AI*, dan arsitektur data pasca-MVP. | [ROADMAP_TECH_STACK.md](docs/ROADMAP_TECH_STACK.md) |
