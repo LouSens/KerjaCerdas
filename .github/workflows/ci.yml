@@ -1,0 +1,254 @@
+name: KerjaCerdas CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 1: Backend — lint + type check + security tests + unit tests
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  backend-tests:
+    name: "Backend: Lint + Type Check + Tests"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kerjacerdas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas_test
+      JWT_SECRET_KEY: ci-test-secret-key-do-not-use-in-production
+      APP_ENV: development
+      GEMINI_API_KEY: ""
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install backend dependencies
+        run: |
+          pip install -e "backend/.[dev]"
+
+      # ── Linting ──────────────────────────────────────────────────────────
+      - name: Lint with ruff
+        run: |
+          ruff check backend/app backend/tests --output-format=github
+
+      - name: Format check with ruff
+        run: |
+          ruff format --check backend/app backend/tests
+
+      # ── Type checking ────────────────────────────────────────────────────
+      - name: Type check with mypy
+        run: |
+          mypy backend/app --ignore-missing-imports
+        continue-on-error: true  # mypy is advisory in CI; failures are warnings
+
+      # ── Unit Tests ───────────────────────────────────────────────────────
+      - name: Run unit tests
+        run: |
+          pytest backend/tests/unit/ -v \
+            --tb=short \
+            --junitxml=reports/backend-unit-test-results.xml \
+            -p no:warnings
+        env:
+          PYTHONDONTWRITEBYTECODE: 1
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: reports/backend-unit-test-results.xml
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 2: Frontend — lint + unit tests (Vitest)
+  # ─────────────────────────────────────────────────────────────────────────
+  frontend-unit-tests:
+    name: "Frontend: Unit Tests (Vitest)"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+        env:
+          CI: true
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 3: Frontend — E2E tests (Playwright)
+  #         Only runs on PRs targeting main, or push to main
+  # ─────────────────────────────────────────────────────────────────────────
+  frontend-e2e-tests:
+    name: "Frontend: E2E Tests (Playwright)"
+    runs-on: ubuntu-latest
+    # Run E2E on PRs to main only (not every feature branch push) to save minutes
+    if: github.event_name == 'pull_request' && github.base_ref == 'main' || github.ref == 'refs/heads/main'
+    needs: [frontend-unit-tests]
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 14
+
+      - name: Upload E2E videos on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-videos
+          path: frontend/test-results/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 4: Security audit
+  # ─────────────────────────────────────────────────────────────────────────
+  security-audit:
+    name: "Security: Dependency Audit"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: npm audit (frontend)
+        run: npm audit --audit-level=high --prefix frontend
+        continue-on-error: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: pip-audit (backend)
+        run: |
+          pip install -e "backend/.[dev]" -q
+          pip-audit --requirement <(pip freeze) --ignore-vuln PYSEC-2022-42969 || true
+        continue-on-error: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 5: Build validation
+  # ─────────────────────────────────────────────────────────────────────────
+  build:
+    name: "Build: Frontend production bundle"
+    runs-on: ubuntu-latest
+    needs: [frontend-unit-tests]
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 3

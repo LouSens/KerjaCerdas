@@ -20,8 +20,11 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+
+from backend.app.api.middleware.rate_limiter import RateLimiterMiddleware
+from backend.app.api.middleware.sanitization import RequestSizeMiddleware
 
 from backend.app.api.database import init_db, reconfigure
 from backend.app.api.routers.agent import router as agent_router
@@ -67,6 +70,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Middleware is applied in LIFO order (last-added = outermost).
+# Execution order: CORSMiddleware → RateLimiterMiddleware → RequestSizeMiddleware → route
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allow_origins,
@@ -74,6 +80,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting — prevents brute-force & DoS
+app.add_middleware(RateLimiterMiddleware)
+
+# Payload size guard — rejects oversized JSON bodies
+app.add_middleware(RequestSizeMiddleware)
 
 for r in (auth_router, seeker_router, employer_router, jobs_router,
           uploads_router, verify_router, agent_router):
@@ -95,6 +107,20 @@ async def log_requests(request: Request, call_next):
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "KerjaCerdas API", "version": app.version, "mode": "demo"}
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next) -> Response:
+    """Attach security-hardening headers to every response."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'none'; frame-ancestors 'none'",
+    )
+    return response
 
 
 @app.get("/")

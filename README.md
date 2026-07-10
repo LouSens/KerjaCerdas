@@ -381,7 +381,9 @@ KerjaCerdas/
 │   ├── VERIFICATION_DEMO.md  # Skenario Demo Produk & Panduan Presentasi
 │   ├── BUSINESS_MODEL.md     # Dokumen Detail Keuangan & Arus Kas
 │   ├── ROADMAP_TECH_STACK.md # Roadmap Infrastruktur Skala Korporasi
-│   └── API_SPEC.md           # Spesifikasi API OpenAPI/Swagger
+│   ├── API_SPEC.md           # Spesifikasi API Lengkap (semua endpoint + schema)
+│   ├── SEQUENCE_DIAGRAMS.md  # 7 Diagram Alur Mermaid (Auth, AI, E-KYC, dll.)
+│   └── PRODUCT_FEATURES.md   # Deskripsi Detail 4 Fitur Utama
 ```
 
 ---
@@ -396,6 +398,8 @@ Semua panduan demonstrasi, proposal korporat, dokumen finansial, dan pemetaan ar
 | **Panduan Live Demo** | Skrip presentasi rinci (*step-by-step*) simulasi alur pencari kerja dan pewawancara untuk demonstrasi. | [VERIFICATION_DEMO.md](docs/VERIFICATION_DEMO.md) |
 | **Laporan Finansial & Bisnis** | Model keuntungan (Profit Model), proyeksi arus kas, *Unit Economics*, dan *Pro Forma Income Statement*. | [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) |
 | **Roadmap Arsitektur** | Transformasi infrastruktur *Cloud SQL, PostgreSQL pgvector, Vertex AI*, dan arsitektur data pasca-MVP. | [ROADMAP_TECH_STACK.md](docs/ROADMAP_TECH_STACK.md) |
+| **Spesifikasi API** | Kontrak lengkap semua endpoint FastAPI: skema request/response, rate limit, middleware, dan error codes. | [API_SPEC.md](docs/API_SPEC.md) |
+| **Diagram Alur (Sequence)** | 7 diagram Mermaid yang mendokumentasikan alur kerja kritis: Auth, AI Agent, CV Upload, E-KYC, dan lainnya. | [SEQUENCE_DIAGRAMS.md](docs/SEQUENCE_DIAGRAMS.md) |
 
 ---
 <div align="center">

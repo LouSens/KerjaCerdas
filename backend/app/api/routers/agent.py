@@ -28,6 +28,8 @@ from backend.app.db.schemas import (
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from backend.app.api.middleware.sanitization import sanitize_text
+
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)
 
@@ -155,6 +157,18 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     """Unified entry point: routes to matcher / skill-gap / advisor based on message intent."""
     repos = get_repositories()
 
+    # --- Sanitize user input BEFORE any LLM injection -------------------
+    safe_message = sanitize_text(
+        req.user_message or "",
+        max_length=2_000,
+        field_name="user_message",
+    )
+    safe_intent = sanitize_text(
+        req.explicit_intent or "",
+        max_length=200,
+        field_name="explicit_intent",
+    ) if req.explicit_intent else None
+
     # --- Resolve seeker (graceful cascade, never 400) ---------------------
     seeker: SeekerProfile | None = req.seeker
 
@@ -176,12 +190,12 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     # Build context prompt for ReAct agent
     skills = [s.name for s in seeker.skills] if seeker.skills else []
     context = f"[Context System]\nProfil Kandidat:\nNama: {seeker.full_name}\nSkill: {skills}\n"
-    if req.explicit_intent:
-        context += f"\nInstruksi Prioritas (Bypass UI): Kandidat menekan tombol dengan intent '{req.explicit_intent}'. Segera eksekusi alat yang relevan!\n"
+    if safe_intent:
+        context += f"\nInstruksi Prioritas (Bypass UI): Kandidat menekan tombol dengan intent '{safe_intent}'. Segera eksekusi alat yang relevan!\n"
         if req.target_job_id:
             context += f"Target Job ID: {req.target_job_id}\n"
     
-    context += f"\n<user_input>\n{req.user_message}\n</user_input>"
+    context += f"\n<user_input>\n{safe_message}\n</user_input>"
     
     state_in = {"messages": [("user", context)]}
     config = {

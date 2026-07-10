@@ -23,5 +23,17 @@ export default defineConfig(({ mode }) => {
                 },
             },
         },
+        // ── Vitest ──────────────────────────────────────────────────────
+        test: {
+            globals: true,
+            environment: 'jsdom',
+            setupFiles: ['./src/tests/setup.js'],
+            include: ['src/tests/**/*.test.{js,jsx,ts,tsx}'],
+            coverage: {
+                reporter: ['text', 'lcov'],
+                include: ['src/**/*.{js,jsx}'],
+                exclude: ['src/tests/**', 'src/main.jsx'],
+            },
+        },
     }
 })
