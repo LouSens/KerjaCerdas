@@ -61,7 +61,7 @@ export default function PricingPage() {
                     <div className="space-y-3">
                         <FaqItem q="Pencari kerja harus bayar?" a="Tidak. Fitur dasar gratis selamanya. Termasuk analisis skill gap dan rekomendasi kursus." />
                         <FaqItem q="Employer benar-benar gratis pasang lowongan?" a="Ya! Pasang lowongan dan lihat AI Shortlist (Skor + Profil Singkat) gratis. Anda baru bayar Rp 50.000 jika ingin membuka akses kontak langsung & CV Full kandidat." />
-                        <FaqItem q="Data saya aman?" a="AES-256 encryption, server Indonesia, UU PDP compliant. Dokumen tidak ditampilkan ke user lain." />
+                        <FaqItem q="Data saya aman?" a="Data Anda dienkripsi dan disimpan dengan aman di server Indonesia. Kami tidak pernah membagikan CV Anda secara publik." />
                     </div>
                 </div>
             </section>

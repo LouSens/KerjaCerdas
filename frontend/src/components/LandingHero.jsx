@@ -779,7 +779,7 @@ export default function LandingHero() {
                             { t: 'Produk', items: ['Cara Kerja', 'Fitur', 'Verifikasi', 'Harga'] },
                             { t: 'Untuk', items: ['Job Seeker', 'Employer / HR', 'Kampus & Lembaga', 'Partner Kursus'] },
                             { t: 'Perusahaan', items: ['Tentang Kami', 'Karier', 'Blog', 'Kontak'] },
-                            { t: 'Legal', items: ['Privasi', 'Syarat', 'UU PDP', 'Status'] },
+                            { t: 'Legal', items: ['Privasi', 'Syarat', 'Keamanan', 'Status'] },
                         ].map(col => (
                             <div key={col.t}>
                                 <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.5, marginBottom: 12 }}>{col.t}</div>
@@ -800,7 +800,7 @@ export default function LandingHero() {
                                             'Kontak': onContactSales,
                                             'Privasi': () => navigate('privacy'),
                                             'Syarat': () => navigate('privacy'),
-                                            'UU PDP': () => navigate('privacy'),
+                                            'Keamanan': () => navigate('privacy'),
                                             'Status': () => window.open('https://status.kerjacerdas.id', '_blank'),
                                         }
                                         const handler = handlers[it] || (() => { })

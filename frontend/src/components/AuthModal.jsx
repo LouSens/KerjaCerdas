@@ -315,18 +315,16 @@ export default function AuthModal() {
                         </div>
                     </div>
 
-                    {/* Compliance & live count footer row */}
-                    <div className="kc-auth-item mt-auto relative z-10 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] font-bold text-white/60">
+                    {/* Trust & benefits footer row */}
+                    <div className="kc-auth-item mt-auto relative z-10 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] font-bold text-white/80">
                         <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-kc-orange animate-pulse" />
-                            12.480 online sekarang
+                            <span className="w-1.5 h-1.5 rounded-full bg-kc-lime" />
+                            Ribuan lowongan aktif
                         </div>
                         <span className="text-white/30">·</span>
-                        <span>87% akurasi</span>
+                        <span>Pencocokan cerdas dengan AI</span>
                         <span className="text-white/30">·</span>
-                        <span>8 dtk avg match</span>
-                        <span className="text-white/30">·</span>
-                        <span>UU PDP compliant</span>
+                        <span>Privasi data Anda terjamin</span>
                     </div>
                   </>
                 )}
