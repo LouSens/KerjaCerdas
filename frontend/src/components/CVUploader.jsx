@@ -12,6 +12,10 @@ export default function CVUploader() {
     const [activeTab, setActiveTab] = useState('upload') // 'upload' | 'manual'
 
     const [manualForm, setManualForm] = useState({
+        full_name: profile?.full_name || '',
+        nik: profile?.nik || '',
+        date_of_birth: profile?.date_of_birth || '',
+        region_code: profile?.region_code || '3171',
         skillInput: '',
         skills: (profile?.skills || []).map(s => s.name || s),
         headline: profile?.headline || '',
@@ -24,6 +28,10 @@ export default function CVUploader() {
         setManualSaving(true)
         try {
             await updateSeekerProfile({
+                full_name: manualForm.full_name,
+                nik: manualForm.nik,
+                date_of_birth: manualForm.date_of_birth,
+                region_code: manualForm.region_code,
                 headline: manualForm.headline,
                 skills: manualForm.skills.map(name => ({ name, level: 'intermediate', years: 0 })),
                 salary_expectation_min: Number(manualForm.salary_expectation_min) || 0,
@@ -96,6 +104,30 @@ export default function CVUploader() {
                 <BrutalCard color="#fff" padding={28}>
                     <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.5, margin: '0 0 20px' }}>Isi Profil Manual</h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Nama Lengkap</label>
+                                <input value={manualForm.full_name} onChange={e => setManualForm(p => ({ ...p, full_name: e.target.value }))}
+                                    placeholder="Contoh: Budi Santoso" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Kode Wilayah / Kota</label>
+                                <input value={manualForm.region_code} onChange={e => setManualForm(p => ({ ...p, region_code: e.target.value }))}
+                                    placeholder="Contoh: 3171" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>NIK (Opsional)</label>
+                                <input value={manualForm.nik} onChange={e => setManualForm(p => ({ ...p, nik: e.target.value }))}
+                                    placeholder="Contoh: 31710..." style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Tanggal Lahir</label>
+                                <input type="date" value={manualForm.date_of_birth} onChange={e => setManualForm(p => ({ ...p, date_of_birth: e.target.value }))}
+                                    style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                        </div>
                         <div>
                             <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Headline / Posisi Saat Ini</label>
                             <input

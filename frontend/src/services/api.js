@@ -6,6 +6,8 @@
  * `request()` helper so error handling is consistent.
  */
 
+import toast from 'react-hot-toast'
+
 const API_BASE = '/api/v1'
 
 export function _authHeader() {
@@ -31,9 +33,13 @@ async function request(path, opts = {}) {
         // Auto-logout on token expiry
         if (res.status === 401) {
             try {
+                toast.error('Sesi Anda telah berakhir, silakan login kembali.')
                 const { default: useStore } = await import('../store/useStore')
                 useStore.getState().logout()
             } catch { /* ignore if store unavailable */ }
+        }
+        if (res.status === 403) {
+            toast.error('Akses ditolak: Anda tidak memiliki izin.')
         }
         // Try to surface FastAPI's `detail` so the UI can show real messages.
         let detail = `${res.status} ${res.statusText}`
