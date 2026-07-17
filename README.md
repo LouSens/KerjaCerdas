@@ -20,11 +20,19 @@
 
 ## 🎯 Fitur Utama
 
-- **AI Job Matching**: Pencocokan semantik otomatis menggunakan Gemini Embeddings.
+- **AI Job Matching**: Pencocokan otomatis menggunakan AI dengan infrastruktur vector search.
 - **Proactive Skill Gap Analyzer**: Analisis kelemahan skill dan rekomendasi *upskilling* spesifik.
-- **Employer Dashboard & Direct Contact**: *Shortlisting* kandidat instan dengan model monetisasi mikro (*Pay-to-Unlock*).
+- **Employer Dashboard & Kanban Pipeline**: *Shortlisting* kandidat instan, manajemen *pipeline* ala Kanban, dengan model monetisasi mikro (*Pay-to-Unlock*).
+- **A/B Testing & Event Tracking**: Analitik *closed-loop* mandiri untuk optimalisasi konversi dan pengalaman pengguna (Onboarding Wizard).
 
 Detail lengkap mengenai fitur produk dapat dilihat di [Product Features](docs/PRODUCT_FEATURES.md).
+
+## 🚀 Pembaruan MVP v0.4.0 (Latest Release)
+Sistem telah berevolusi menjadi arsitektur yang tangguh dan siap pakai untuk uji beta publik, dengan peningkatan berikut:
+- **Performa Backend**: Pemrosesan asinkron untuk ekstraksi CV (<200ms latency), TTL Caching pada korpus pencarian, dan index HNSW pgvector.
+- **Agentic AI & Keamanan**: *Token Efficiency Gate* (mencegah *cost overrun* LLM jika *vector match* terlalu rendah), *Hallucination Guards*, serta filter kata teknis untuk UI yang lebih humanis.
+- **UX & Frontend**: Alur Onboarding Wizard yang ramah, *Empty States* cerdas dengan rekomendasi, *Mobile-First CSS*, dukungan pengeditan profil pasca-unggah PDF, dan sistem Notifikasi Global (Toast) untuk *Error/Auth Session*.
+- **DevOps & CI/CD**: Workflow terotomasi dengan 4 fase pengecekan (Linting, Unit Test, Integrasi Database, Latency Benchmark), serta *Docker Compose* produksi yang dioptimasi.
 
 ## 🧩 Component Architecture & Business Value
 
