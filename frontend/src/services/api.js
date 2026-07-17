@@ -196,5 +196,16 @@ export const searchJobs = (q = '', offset = 0, limit = 20, filters = {}) => {
     return request(url);
 }
 
+// ── Events (fire-and-forget analytics) ────────────────────────────────────
+export const trackEvent = (eventType, extra = {}) =>
+    request(`${API_BASE}/events/track`, {
+        method: 'POST',
+        body: JSON.stringify({ event_type: eventType, ...extra }),
+    }).catch(() => { /* silent — tracking must never break UX */ })
+
+// ── A/B Experiments ─────────────────────────────────────────────────────────
+export const fetchExperimentAssignments = () =>
+    request(`${API_BASE}/experiments/assignments`)
+
 // ── Health ──────────────────────────────────────────────────────────────────
 export const healthCheck = () => request('/health')

@@ -21,6 +21,20 @@ const EMPLOYER_NAV = [
     { id: 'employer-verification', label: 'Verifikasi NPWP', icon: ShieldCheck },
 ]
 
+// Bottom nav shows only the 4 most-used links for mobile
+const SEEKER_MOBILE_NAV = [
+    { id: 'seeker-dashboard', label: 'Home', icon: LayoutDashboard },
+    { id: 'seeker-match', label: 'Match', icon: Search },
+    { id: 'seeker-skill-gap', label: 'Skills', icon: BarChart3 },
+    { id: 'seeker-saved', label: 'Saved', icon: Bookmark },
+]
+
+const EMPLOYER_MOBILE_NAV = [
+    { id: 'employer-dashboard', label: 'Home', icon: LayoutDashboard },
+    { id: 'employer-jobs', label: 'Jobs', icon: Briefcase },
+    { id: 'employer-post-job', label: 'Post', icon: Upload },
+    { id: 'employer-candidates', label: 'Talent', icon: Users },
+]
 
 
 export default function Sidebar() {
@@ -31,7 +45,7 @@ export default function Sidebar() {
     const roleLabel = userRole === 'employer' ? 'Employer / HR' : 'Pencari Kerja'
 
     return (
-        <aside className="fixed left-0 top-0 bottom-0 w-60 bg-kc-dark text-white flex flex-col z-40 border-r-2 border-kc-dark">
+        <aside className="desktop-sidebar fixed left-0 top-0 bottom-0 w-60 bg-kc-dark text-white flex flex-col z-40 border-r-2 border-kc-dark">
             {/* Logo */}
             <div className="px-5 py-5 border-b border-white/10">
                 <div className="flex items-center gap-1">
@@ -104,5 +118,41 @@ export default function Sidebar() {
                 </button>
             </div>
         </aside>
+    )
+}
+
+/** Mobile-only bottom navigation bar */
+export function MobileBottomNav() {
+    const { userRole, activeView, navigate } = useStore()
+    const mobileNav = userRole === 'employer' ? EMPLOYER_MOBILE_NAV : SEEKER_MOBILE_NAV
+
+    return (
+        <nav className="mobile-bottom-nav">
+            {mobileNav.map(item => {
+                const Icon = item.icon
+                const active = activeView === item.id
+                return (
+                    <button
+                        key={item.id}
+                        onClick={() => navigate(item.id)}
+                        style={{
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                            padding: '6px 12px', background: 'transparent', border: 'none', cursor: 'pointer',
+                            color: active ? '#F87239' : 'rgba(255,255,255,0.5)',
+                            transition: 'color .15s',
+                        }}
+                    >
+                        <Icon size={20} />
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.2 }}>{item.label}</span>
+                        {active && (
+                            <span style={{
+                                width: 4, height: 4, borderRadius: '50%', background: '#F87239',
+                                marginTop: -2,
+                            }} />
+                        )}
+                    </button>
+                )
+            })}
+        </nav>
     )
 }

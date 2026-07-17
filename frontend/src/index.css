@@ -232,4 +232,47 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* ─── Mobile Bottom Navigation ─────────────────────────────────────── */
+  .mobile-bottom-nav {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .mobile-bottom-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: #1a1a1a;
+      border-top: 2px solid #fff3;
+      padding: 8px 0 env(safe-area-inset-bottom, 8px);
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    /* Hide desktop sidebar on mobile */
+    .desktop-sidebar {
+      display: none !important;
+    }
+
+    /* Full-width main on mobile */
+    .mobile-main {
+      margin-left: 0 !important;
+      padding-bottom: 80px !important;
+    }
+
+    /* Stack grids on mobile */
+    .kc-grid-4 {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .kc-grid-3 {
+      grid-template-columns: 1fr !important;
+    }
+    .kc-grid-main {
+      grid-template-columns: 1fr !important;
+    }
+  }
 }
