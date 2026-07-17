@@ -37,8 +37,8 @@ This document tracks the execution of the `MVP_IMPROVEMENT_ROADMAP.md` implement
 - [ ] **Real-time Score Preview:** Client-side estimation for skill additions.
 
 ### 2. Backend & Database
-- [ ] **Alembic Setup:** Initialize Alembic for database migrations.
-- [ ] **pgvector Index Tuning:** Add explicit SQL script/migration for HNSW index with optimized parameters.
+- [x] **Alembic Setup:** Initialize Alembic for database migrations.
+- [x] **pgvector Index Tuning:** Add explicit SQL script/migration for HNSW index with optimized parameters.
 - [ ] **Expanded Seed Data:** Create a script to generate 200+ mock jobs and 100+ mock seekers.
 
 ### 3. Business & Integrations
