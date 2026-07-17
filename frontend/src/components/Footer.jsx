@@ -14,7 +14,7 @@ export default function Footer() {
                             <span className="font-black text-base text-kc-orange">cerdas</span>
                         </div>
                         <p className="text-xs text-white/50 leading-relaxed">
-                            AI-powered job matching platform untuk Indonesia. Powered by Gemini.
+                            AI-powered job matching platform untuk Indonesia. Membantu karir Anda berkembang.
                         </p>
                     </div>
 

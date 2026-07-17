@@ -100,13 +100,13 @@ export default function OnboardingWizard({ onClose }) {
                                 Halo, {user?.name || 'Pejuang'}!
                             </h2>
                             <p style={{ fontSize: 14, color: KC.mute, lineHeight: 1.6, margin: '0 0 20px' }}>
-                                KerjaCerdas pakai AI Gemini buat nyari pekerjaan yang beneran cocok sama skill kamu —
+                                KerjaCerdas pakai teknologi AI canggih buat nyari pekerjaan yang beneran cocok sama skill kamu —
                                 bukan sekadar keyword match. Tiga langkah cepat dan kamu udah bisa lihat hasilnya.
                             </p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
                                 {[
-                                    ['📄', 'Upload CV PDF', 'Gemini parse skill & pengalaman otomatis'],
-                                    ['🤖', 'AI Matching', 'Vector embedding nyari top-5 pekerjaan terbaik untukmu'],
+                                    ['📄', 'Upload CV PDF', 'AI analisis skill & pengalaman otomatis'],
+                                    ['🤖', 'AI Matching', 'AI mencocokkan profilmu dengan lowongan terbaik'],
                                     ['🛡️', 'Verifikasi (opsional)', 'Badge terverifikasi buat tampil lebih kredibel di HR'],
                                 ].map(([icon, title, desc]) => (
                                     <div key={title} style={{
@@ -140,7 +140,7 @@ export default function OnboardingWizard({ onClose }) {
                                     <div style={{ fontSize: 40, marginBottom: 12 }}>📄</div>
                                     <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 8px' }}>Upload CV-mu</h2>
                                     <p style={{ fontSize: 13, color: KC.mute, margin: '0 0 20px', lineHeight: 1.6 }}>
-                                        Format PDF. Gemini akan mengekstrak skill, pengalaman, dan ekspektasi gaji secara otomatis.
+                                        Format PDF. AI akan mengenali skill, pengalaman, dan ekspektasi gaji secara otomatis.
                                     </p>
                                     <label style={{
                                         display: 'block', padding: '32px 24px', textAlign: 'center',
@@ -201,12 +201,11 @@ export default function OnboardingWizard({ onClose }) {
                             <div style={{ fontSize: 40, marginBottom: 12 }}>🚀</div>
                             <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 8px' }}>Jalankan Match Pertamamu!</h2>
                             <p style={{ fontSize: 13, color: KC.mute, margin: '0 0 20px', lineHeight: 1.6 }}>
-                                Gemini sekarang siap membandingkan profilmu dengan ribuan lowongan. Proses ini sekitar 8 detik.
+                                AI sekarang siap membandingkan profilmu dengan ribuan lowongan. Proses ini sekitar 8 detik.
                             </p>
                             <BrutalCard color={KC.lime} padding={16}>
                                 <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.5 }}>
-                                    🎯 <b>CV kamu sudah diparse.</b> Gemini akan embed profilmu ke vector space
-                                    dan mencari top-5 lowongan paling kompatibel berdasarkan skill, lokasi, dan gaji.
+                                    🎯 <b>CV kamu sudah dianalisis.</b> AI akan mencarikan lowongan yang paling cocok dengan skill, lokasi, dan ekspektasimu.
                                 </div>
                             </BrutalCard>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20, gap: 12 }}>

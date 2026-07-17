@@ -224,7 +224,7 @@ export default function AuthModal() {
                         </h1>
 
                         <p className="kc-auth-item text-sm md:text-base text-kc-gray leading-relaxed max-w-md mb-6">
-                            Bikin akun, upload CV, dan biar AI Gemini bandingin sama 12.000+ lowongan terverifikasi. Top-5 keluar dalam 8 detik.
+                            Bikin akun, upload CV, dan biar AI membandingkan dengan 12.000+ lowongan terverifikasi. Top-5 keluar dalam 8 detik.
                         </p>
 
                         {/* Stats Row */}
@@ -309,7 +309,7 @@ export default function AuthModal() {
                                 <div className="flex-1">
                                     <div className="text-[10px] font-black uppercase tracking-widest text-kc-gray">Fitur Unggulan</div>
                                     <div className="text-sm font-black leading-tight">AI CV Parser & Matcher</div>
-                                    <div className="text-xs text-kc-gray">Powered by Gemini</div>
+                                    <div className="text-xs text-kc-gray">Pencocokan Cerdas</div>
                                 </div>
                             </div>
                         </div>

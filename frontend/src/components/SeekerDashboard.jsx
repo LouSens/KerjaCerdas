@@ -43,7 +43,7 @@ export default function SeekerDashboard() {
                         Halo, {user.name || 'Pejuang'} 👋
                     </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        {matches.length} match · {matches.length ? 'fresh dari Gemini' : 'klik refresh buat ngitung ulang'}
+                        {matches.length} match · {matches.length ? 'baru diperbarui' : 'klik refresh buat ngitung ulang'}
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -68,7 +68,7 @@ export default function SeekerDashboard() {
                 <FilledStat label="Match Score Avg" value={`${avg}%`} sub="+4 dari minggu lalu" color={KC.orange} dark onClick={() => navigate('seeker-match')} />
                 <FilledStat label="Top-5 Match Aktif" value={String(Math.min(5, matches.length || 5))} sub="2 baru hari ini" color={KC.cyan} onClick={() => navigate('seeker-match')} />
                 <FilledStat label="Skill Gap" value={String(missingSkills?.length || '—')} sub={missingSkills?.slice(0,2).join(', ') || 'Jalankan match dulu'} color={KC.yellow} onClick={() => navigate('seeker-skill-gap')} />
-                <FilledStat label="Kursus Rekomendasi" value={String(recommendedCourses?.length || '—')} sub="dari Gemini skill gap" color={KC.lime} onClick={() => navigate('seeker-skill-gap')} />
+                <FilledStat label="Kursus Rekomendasi" value={String(recommendedCourses?.length || '—')} sub="dari analisis skill gap" color={KC.lime} onClick={() => navigate('seeker-skill-gap')} />
             </div>
             )}
 
@@ -78,7 +78,7 @@ export default function SeekerDashboard() {
                         <div style={{ padding: '60px 20px', textAlign: 'center', background: '#fff', border: `3px solid ${KC.ink}`, borderRadius: 12, boxShadow: `6px 6px 0 ${KC.ink}` }}>
                             <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
                             <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 12 }}>Belum ada data CV</h2>
-                            <p style={{ color: KC.mute, marginBottom: 24, fontSize: 14 }}>Upload CV kamu dalam format PDF agar AI Gemini bisa mengekstrak skill dan mencarikan pekerjaan yang cocok untukmu.</p>
+                            <p style={{ color: KC.mute, marginBottom: 24, fontSize: 14 }}>Upload CV kamu dalam format PDF agar AI kami bisa mengenali skill dan mencarikan pekerjaan yang cocok untukmu.</p>
                             <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={{ ...topBtn(KC.orange, '#fff'), padding: '12px 24px', fontSize: 16 }}>
                                 Mulai Upload CV →
                             </button>
@@ -128,7 +128,7 @@ export default function SeekerDashboard() {
                         <BrutalCard color={KC.orange} padding={18} style={{ color: '#fff' }}>
                             <div style={{ fontSize: 22 }}>📄</div>
                             <h3 style={{ fontSize: 16, fontWeight: 900, margin: '8px 0 6px' }}>Upload CV biar AI bisa matching</h3>
-                            <p style={{ fontSize: 12, opacity: 0.92, lineHeight: 1.5, margin: 0 }}>Drop PDF, Gemini parse otomatis: skill, experience, preferensi gaji.</p>
+                            <p style={{ fontSize: 12, opacity: 0.92, lineHeight: 1.5, margin: 0 }}>Drop PDF, AI kenali otomatis: skill, experience, preferensi gaji.</p>
                             <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={{ marginTop: 12, width: '100%', padding: '10px', background: '#fff', color: KC.ink, border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
                                 Upload CV →
                             </button>

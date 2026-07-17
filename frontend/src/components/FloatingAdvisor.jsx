@@ -53,7 +53,7 @@ export default function FloatingAdvisor() {
                     </div>
                     <div className="flex-1">
                         <p className="text-sm font-bold text-kc-dark leading-tight">Career Advisor</p>
-                        <p className="text-[10px] font-mono text-kc-gray leading-tight">Powered by Gemini</p>
+                        <p className="text-[10px] font-mono text-kc-gray leading-tight">Asisten Cerdas Anda</p>
                     </div>
                 </header>
 

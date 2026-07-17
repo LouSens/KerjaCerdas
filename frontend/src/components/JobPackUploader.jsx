@@ -12,7 +12,7 @@ export default function JobPackUploader() {
             </span>
             <h3 className="text-base font-bold">Upload Job Pack (PDF)</h3>
             <p className="text-sm text-surface-600 mb-4 max-w-md mx-auto">
-                PDF berisi satu atau banyak job description. Gemini akan memecah, mengisi skill wajib, gaji, lokasi, dan langsung mempublikasikan.
+                PDF berisi satu atau banyak job description. AI akan memecah, melengkapi persyaratan skill, gaji, lokasi, dan langsung mempublikasikan.
             </p>
             <input ref={inputRef} type="file" accept="application/pdf" className="hidden"
                 onChange={(e) => uploadJobPack(e.target.files?.[0])} />

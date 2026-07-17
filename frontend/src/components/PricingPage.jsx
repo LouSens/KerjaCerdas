@@ -48,7 +48,7 @@ export default function PricingPage() {
                         tier="ATS Copilot & API"
                         price="Custom"
                         period="/bulan"
-                        features={['Plugin ATS (Workday/SAP)', 'Headhunter AI Copilot', 'Unlimited Vector Scoring', 'Dedicated Account Manager']}
+                        features={['Plugin ATS (Workday/SAP)', 'Headhunter AI Copilot', 'Unlimited AI Matching', 'Dedicated Account Manager']}
                         accent="bg-kc-pink"
                         cta="Hubungi Sales (Coming Soon)"
                         onCta={() => toast('Fitur Enterprise akan segera hadir!')}

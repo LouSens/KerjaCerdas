@@ -86,7 +86,7 @@ export default function AboutPage() {
                         </h2>
                         <p style={{ fontSize: 15, opacity: 0.75, lineHeight: 1.6, maxWidth: 460 }}>
                             MVP hari ini sudah punya matching, skill gap, advisor, verifikasi, dan dashboard 2-sisi.
-                            Plan investor-ready: Supabase + pgvector, multi-region inference, ATS integration, mobile PWA.
+                            Skalabilitas tinggi dengan standar keamanan data tingkat lanjut dan arsitektur kelas enterprise.
                         </p>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

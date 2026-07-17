@@ -187,7 +187,7 @@ export default function EmployerCandidates() {
                         <div style={{ padding: '16px 20px', borderBottom: `2px solid ${KC.ink}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: KC.bone }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>CV Asli: {cvModalOpen.name}</h3>
-                                <div style={{ fontSize: 12, color: KC.mute, fontWeight: 700 }}>Parsed via PyMuPDF & Gemini</div>
+                                <div style={{ fontSize: 12, color: KC.mute, fontWeight: 700 }}>Dianalisis secara akurat oleh AI</div>
                             </div>
                             <button onClick={() => setCvModalOpen(null)} style={{ background: 'transparent', border: 'none', fontSize: 24, cursor: 'pointer', fontWeight: 900 }}>×</button>
                         </div>
@@ -262,7 +262,7 @@ function CandidateCard({ candidate: c, idx, band, bandColor, bandLabel, setCvMod
                     </div>
 
                     {/* Grounded Matched / Missing breakdown — from the structured skill
-                        comparison, not the embedding score. */}
+                        comparison, not the AI semantic score. */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                         {matched.length > 0 && (
                             <div>
