@@ -145,7 +145,9 @@ export default function EmployerPostJob() {
                                 {(useStore.getState().user.name || 'X')[0]}
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.6 }}>{useStore.getState().user.name || 'PT Anda'} ✓</div>
+                                <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                                    {((useStore.getState().user?.name || '').length === 36 && (useStore.getState().user?.name || '').includes('-')) ? 'Perusahaan Mitra' : (useStore.getState().user?.name || 'PT Anda')} ✓
+                                </div>
                                 <h3 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>{form.title || 'Judul Posisi'}</h3>
                             </div>
                         </div>

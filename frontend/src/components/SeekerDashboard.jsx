@@ -153,7 +153,8 @@ function DashMatchCard({ match }) {
     const navigate = useStore(s => s.navigate)
     const band = bandOf(match)
     const meta = BAND_META[band]
-    const company = match.company || 'Company'
+    const companyRaw = match.company || 'Company'
+    const company = (companyRaw.length === 36 && companyRaw.includes('-')) ? 'Perusahaan Mitra' : companyRaw
     const matchingSkills = match.matching_skills || []
     const missingSkills = match.missing_skills || []
     return (

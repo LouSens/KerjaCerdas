@@ -68,7 +68,7 @@ export function VerificationScreen({ role, docsSpec }) {
                     </p>
                 </div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: KC.lime, border: `2px solid ${KC.ink}`, borderRadius: 999, fontSize: 12, fontWeight: 800, boxShadow: `2px 2px 0 ${KC.ink}` }}>
-                    🛡 AES-256 encrypted
+                    🛡 Aman & Terlindungi
                 </div>
             </header>
 
@@ -80,14 +80,14 @@ export function VerificationScreen({ role, docsSpec }) {
                             Dokumen-mu pribadi banget. Kami juga tau itu.
                         </h3>
                         <p style={{ fontSize: 13, opacity: 0.75, lineHeight: 1.6, maxWidth: 540, margin: 0 }}>
-                            Setelah verifikasi sukses, file dokumen kami simpan terenkripsi AES-256, server di Indonesia.
+                            Setelah verifikasi sukses, file dokumen kami simpan dan enkripsi dengan standar keamanan tinggi.
                             <b style={{ color: '#fff' }}> Nggak ditampilin ke user lain — bahkan HR / kandidat.</b> Yang kelihatan cuma badge <Tag color={KC.lime} size="sm">✓ VERIFIED</Tag>.
                         </p>
                     </div>
                     {[
-                        { l: 'AES-256', d: 'at rest' },
-                        { l: 'IDN', d: 'data center' },
-                        { l: 'UU PDP', d: 'compliant' },
+                        { l: 'Privasi', d: 'terjaga' },
+                        { l: 'Aman', d: 'terlindungi' },
+                        { l: 'Resmi', d: 'terpercaya' },
                     ].map(s => (
                         <div key={s.l} style={{ textAlign: 'center', padding: '14px 18px', background: '#1a1a20', border: `2px solid ${KC.orange}`, borderRadius: 10, minWidth: 100 }}>
                             <div style={{ fontSize: 18, fontWeight: 900, color: KC.orange }}>{s.l}</div>
@@ -116,7 +116,7 @@ export function VerificationScreen({ role, docsSpec }) {
                                     </div>
                                     <p style={{ fontSize: 12, color: KC.mute, margin: '4px 0 0' }}>{d.desc}</p>
                                 </div>
-                                <div style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: KC.mute }}>{d.when}</div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: KC.mute }}>{d.when}</div>
                                 <button onClick={() => isVerified ? null : handleVerify(d.id)} disabled={busy === d.id}
                                     style={{ padding: '8px 14px', background: isVerified ? '#fff' : KC.orange, color: isVerified ? KC.ink : '#fff', border: `2px solid ${KC.ink}`, borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` }}>
                                     {busy === d.id ? 'Proses…' : isVerified ? 'Detail' : 'Upload →'}
@@ -124,8 +124,8 @@ export function VerificationScreen({ role, docsSpec }) {
                             </div>
                             {isVerified && (
                                 <div style={{ marginTop: 12, padding: '10px 12px', background: KC.bone, border: `1.5px dashed ${KC.ink}`, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, fontWeight: 700, color: KC.mute }}>
-                                    🔒 <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                                        file_id: {d.file_id || 'doc_3f8a··········e91c'} · status: encrypted · not_visible_to_other_users
+                                    🔒 <span>
+                                        Dokumen terverifikasi. Privasi kamu 100% terjaga.
                                     </span>
                                     <button onClick={() => handleDelete(d.id)} style={{ marginLeft: 'auto', padding: '4px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
                                         Hapus dokumen

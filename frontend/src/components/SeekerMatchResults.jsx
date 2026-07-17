@@ -71,7 +71,7 @@ const DEFAULT_FACETS = {
 }
 
 export default function SeekerMatchResults() {
-    const { matches, agentLoading, runAgent, toggleSaveJob, isJobSaved, seekerId, profile, navigate } = useStore()
+    const { matches, agentLoading, runAgent, toggleSaveJob, isJobSaved, seekerId, profile, navigate, trackEvent } = useStore()
     const [facets, setFacets] = useState(DEFAULT_FACETS)
     const [showFilters, setShowFilters] = useState(true)
     const [selectedJob, setSelectedJob] = useState(null)
@@ -87,10 +87,66 @@ export default function SeekerMatchResults() {
                 <div style={{ padding: '60px 20px', textAlign: 'center', background: '#fff', border: `3px solid ${KC.ink}`, borderRadius: 12, boxShadow: `6px 6px 0 ${KC.ink}` }}>
                     <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
                     <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 12 }}>Belum ada data CV</h2>
-                    <p style={{ color: KC.mute, marginBottom: 24, fontSize: 14 }}>Sistem tidak bisa mencarikan lowongan yang pas kalau data profil atau CV kamu masih kosong.</p>
-                    <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={{ padding: '12px 24px', background: KC.orange, color: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 8, fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
-                        Upload CV Sekarang →
-                    </button>
+                    <p style={{ color: KC.mute, marginBottom: 24, fontSize: 14, maxWidth: 360, margin: '0 auto 24px' }}>Sistem tidak bisa mencarikan lowongan yang pas kalau data profil atau CV kamu masih kosong.</p>
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={{ padding: '12px 24px', background: KC.orange, color: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 8, fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
+                            Upload CV Sekarang →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Empty state when we have a profile but no matches yet
+    if (!agentLoading && matches.length === 0) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <DesignStyles />
+                <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
+                    <div>
+                        <h1 className="kc-h1" style={{ animation: 'kc-fade-up .5s ease both' }}>Top 5 Match Untukmu</h1>
+                        <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>Belum ada match — jalankan AI dulu</p>
+                    </div>
+                </header>
+                <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
+                    padding: '60px 32px', textAlign: 'center',
+                    background: '#fff', border: `3px solid ${KC.ink}`, borderRadius: 16,
+                    boxShadow: `6px 6px 0 ${KC.ink}`, animation: 'kc-fade-up .4s ease',
+                }}>
+                    <div style={{ fontSize: 64, lineHeight: 1 }}>🤖</div>
+                    <div>
+                        <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 10px' }}>Match kamu belum dijalankan</h2>
+                        <p style={{ fontSize: 14, color: KC.mute, lineHeight: 1.6, maxWidth: 400, margin: '0 auto 24px' }}>
+                            CV sudah terdeteksi. Klik tombol di bawah dan AI akan mencari top-5 lowongan
+                            paling cocok dengan profilmu dalam ~8 detik.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                        <button className="kc-btn" onClick={() => runAgent({ explicitIntent: 'match_jobs' })} style={{
+                            padding: '14px 28px', background: KC.orange, color: '#fff',
+                            border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 15, fontWeight: 900,
+                            cursor: 'pointer', boxShadow: `4px 4px 0 ${KC.ink}`,
+                        }}>
+                            🚀 Jalankan AI Match →
+                        </button>
+                        <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={{
+                            padding: '14px 24px', background: '#fff', color: KC.ink,
+                            border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 15, fontWeight: 800,
+                            cursor: 'pointer', boxShadow: `4px 4px 0 ${KC.ink}`,
+                        }}>
+                            📄 Update CV
+                        </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 20, marginTop: 8 }}>
+                        {[['~8s', 'Waktu proses'], ['5', 'Top matches'], ['12.480+', 'Lowongan aktif']].map(([val, label]) => (
+                            <div key={label} style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: 20, fontWeight: 900 }}>{val}</div>
+                                <div style={{ fontSize: 11, color: KC.mute, fontWeight: 700 }}>{label}</div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         )
@@ -100,8 +156,8 @@ export default function SeekerMatchResults() {
     const activeCount = Object.values(facets).reduce((n, s) => n + s.size, 0)
     const list = (activeCount === 0
         ? baseList
-        : baseList.filter(m => Object.entries(facets).every(([k, sel]) => {
-            if (sel.size === 0) return true
+        : baseList.filter(m => Object.entries(facets).some(([k, sel]) => {
+            if (sel.size === 0) return false
             return [...sel].some(v => FACETS[k].match(m, v))
         }))
     ).slice(0, 5)
@@ -125,7 +181,7 @@ export default function SeekerMatchResults() {
                 <div>
                     <h1 className="kc-h1" style={{ animation: 'kc-fade-up .5s ease both' }}>Top 5 Match Untukmu</h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Auto-matched ke profilmu pakai Gemini · filter di bawah cuma narrow hasil
+                        Dicocokkan otomatis oleh AI · gunakan filter untuk menyaring hasil
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -200,7 +256,10 @@ export default function SeekerMatchResults() {
                                     {g.items.map((m, i) => (
                                         <MatchCard key={m.job_id || `${g.key}-${i}`} match={m} band={g.key} bandColor={g.color} bandLabel={g.label}
                                             saved={isJobSaved(m.job_id || m.id)} onSave={() => toggleSaveJob(m)}
-                                            onView={() => setSelectedJob(m)} />
+                                            onView={() => {
+                                                trackEvent?.('job_viewed', { job_id: m.job_id, band: g.key })
+                                                setSelectedJob(m)
+                                            }} />
                                     ))}
                                 </div>
                             </div>
@@ -220,7 +279,8 @@ export default function SeekerMatchResults() {
 
 function MatchCard({ match, band, bandColor, bandLabel, saved, onSave, onView }) {
     const navigate = useStore(s => s.navigate)
-    const company = match.company || 'Company'
+    const companyRaw = match.company || 'Company'
+    const company = (companyRaw.length === 36 && companyRaw.includes('-')) ? 'Perusahaan Mitra' : companyRaw
     const matchingSkills = match.matching_skills || []
     const missingSkills = match.missing_skills || []
     return (
@@ -279,10 +339,10 @@ function MatchSkeleton() {
     }, [])
 
     const stageDefs = [
-        { l: 'Parse CV', dur: '1.2s' },
-        { l: 'Embed profil', dur: '2.4s' },
-        { l: 'Vector search', dur: '~3s' },
-        { l: 'LLM rerank', dur: 'queue' },
+        { l: 'Membaca CV', dur: 'Selesai' },
+        { l: 'Mengenali Profil', dur: 'Selesai' },
+        { l: 'Mencari Kecocokan', dur: 'Proses…' },
+        { l: 'Pilih Terbaik', dur: 'Antre' },
     ]
 
     return (
@@ -291,7 +351,7 @@ function MatchSkeleton() {
             <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
                 <div>
                     <h1 className="kc-h1" style={{ animation: 'kc-fade-up .5s ease both' }}>AI lagi nyari yang cocok…</h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>Gemini embed CV-mu, bandingin sama 12.480 lowongan aktif</p>
+                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>AI sedang mencocokkan profilmu dengan puluhan ribu lowongan aktif</p>
                 </div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: KC.lime, border: `2px solid ${KC.ink}`, borderRadius: 999, fontSize: 12, fontWeight: 800, boxShadow: `2px 2px 0 ${KC.ink}` }}>
                     <span className="kc-ping" /> ESTIMASI 8 DETIK
@@ -311,7 +371,7 @@ function MatchSkeleton() {
                                     {!ok && !loading && <div style={{ width: 22, height: 22, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 6 }} />}
                                     <div style={{ fontSize: 13, fontWeight: 900 }}>{st.l}</div>
                                 </div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: KC.mute, marginTop: 6, fontFamily: 'JetBrains Mono, monospace' }}>{st.dur}</div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: KC.mute, marginTop: 6 }}>{st.dur}</div>
                             </div>
                         )
                     })}

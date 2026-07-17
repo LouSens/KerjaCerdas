@@ -22,6 +22,9 @@ export default function JobDetailModal({ job, onClose }) {
         onClose()
     }
 
+    const companyRaw = job.company || 'Perusahaan'
+    const company = (companyRaw.length === 36 && companyRaw.includes('-')) ? 'Perusahaan Mitra' : companyRaw
+
     return (
         <div
             onClick={onClose}
@@ -48,7 +51,7 @@ export default function JobDetailModal({ job, onClose }) {
                 }}>
                     <div>
                         <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.75, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {job.company || 'Perusahaan'}
+                            {company}
                             {job.verified && <Tag color={KC.lime} size="sm">✓ Terverifikasi</Tag>}
                         </div>
                         <h2 style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.8, margin: 0, lineHeight: 1.15 }}>

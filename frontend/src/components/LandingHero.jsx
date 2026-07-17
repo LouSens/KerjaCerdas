@@ -375,9 +375,9 @@ export default function LandingHero() {
     }
 
     const HOW_SEEKER = [
-        { n: '01', t: 'Upload CV atau isi profil', d: 'Drop PDF, CV diparse otomatis oleh AI. Atau isi webform pendek — 3 menit selesai.', c: KC.cyan, ic: <I.User s={22} /> },
-        { n: '02', t: 'AI cari yang cocok', d: 'Embedding semantik bandingin profilmu dengan ribuan lowongan. Output: top-5 paling pas.', c: KC.yellow, ic: <I.Sparkle s={22} /> },
-        { n: '03', t: 'Tutup gap, lamar, kerja', d: 'Skill gap advisor kasih kursus Prakerja/Dicoding/Coursera. Apply 1-klik.', c: KC.lime, ic: <I.Bolt s={22} /> },
+        { n: '01', t: 'Upload CV atau isi profil', d: 'Upload PDF, CV dibaca otomatis oleh AI. Atau isi webform pendek — 3 menit selesai.', c: KC.cyan, ic: <I.User s={22} /> },
+        { n: '02', t: 'AI cari yang cocok', d: 'AI membandingkan profilmu dengan ribuan lowongan secara akurat. Output: top-5 paling pas.', c: KC.yellow, ic: <I.Sparkle s={22} /> },
+        { n: '03', t: 'Tutup gap, lamar, kerja', d: 'Skill gap advisor kasih rekomendasi kursus terbaik. Apply 1-klik.', c: KC.lime, ic: <I.Bolt s={22} /> },
     ]
     const HOW_EMPLOYER = [
         { n: '01', t: 'Pasang lowongan', d: 'Tulis JD singkat. AI bantu nyaranin skill, level, dan estimasi gaji wajar.', c: KC.cyan, ic: <I.Briefcase s={22} /> },
@@ -388,8 +388,8 @@ export default function LandingHero() {
 
     const FAQS = [
         { q: 'Beneran gratis buat job seeker?', a: 'Iya. Semua fitur — matching, skill gap, advisor, verifikasi — gratis selamanya. Kami profit dari sisi employer.' },
-        { q: 'Data KTP dan ijazah saya aman?', a: 'Disimpan terenkripsi AES-256, server di Indonesia, hanya dipakai sekali untuk verifikasi. Setelahnya cuma kelihatan badge ✓ Verified.' },
-        { q: 'Bagaimana AI menentukan match?', a: 'AI semantic search membandingkan semantik profil & job description, lalu rerank otomatis pakai skill, lokasi, gaji, dan industri.' },
+        { q: 'Data KTP dan ijazah saya aman?', a: 'Disimpan dengan standar keamanan tinggi, server di Indonesia, hanya dipakai sekali untuk verifikasi. Setelahnya cuma kelihatan badge ✓ Verified.' },
+        { q: 'Bagaimana AI menentukan match?', a: 'AI membaca detail profil & job description, lalu mencocokkan otomatis berdasarkan skill, lokasi, gaji, dan industri.' },
         { q: 'Bisa cancel langganan kapan aja?', a: 'Bisa. Tier Growth & Scale: monthly, cancel anytime, no pertanyaan. Sisa hari aktif sampai akhir periode.' },
     ]
 
@@ -432,12 +432,12 @@ export default function LandingHero() {
                             <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Target Efisiensi Waktu</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.ink, letterSpacing: -1 }}>Sub-detik</div>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Kecepatan Semantic AI</div>
+                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.ink, letterSpacing: -1 }}>Sangat Cepat</div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Kecepatan Pencocokan AI</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.ink, letterSpacing: -1 }}>API-Ready</div>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Workday / SAP Plugin</div>
+                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.ink, letterSpacing: -1 }}>Siap Integrasi</div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Dapat Terhubung Sistem HR</div>
                         </div>
                     </div>
                     </div>
@@ -471,7 +471,7 @@ export default function LandingHero() {
                                 </div>
                                 <div>
                                     <div style={{ fontSize: 13, fontWeight: 900 }}>CV_RinaP.pdf</div>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: KC.ink, opacity: 0.7 }}>Parsed · 14 skills extracted</div>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: KC.ink, opacity: 0.7 }}>Selesai · 14 skill ditemukan</div>
                                 </div>
                             </div>
                         </BrutalCard>
@@ -562,14 +562,14 @@ export default function LandingHero() {
                     <div style={{ marginBottom: 36 }}>
                         <Tag color={KC.cyan}>fitur inti</Tag>
                         <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.4, margin: '12px 0 4px' }}>Empat senjata utama.</h2>
-                        <p style={{ fontSize: 16, color: KC.mute, maxWidth: 540 }}>Semua berjalan di atas teknologi AI mutakhir. Logging audit-friendly buat compliance.</p>
+                        <p style={{ fontSize: 16, color: KC.mute, maxWidth: 540 }}>Semua berjalan di atas teknologi AI mutakhir yang menjamin privasi dan keamanan data Anda.</p>
                     </div>
                     <div className="kc-features-grid">
                         <BrutalCard color={KC.orange} padding={28} style={{ gridRow: 'span 2', color: '#fff', display: 'flex', flexDirection: 'column' }}>
                             <Tag color="#fff" ink={KC.ink}>★ matching engine</Tag>
                             <h3 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -1, lineHeight: 1.05, marginTop: 14 }}>Top-5 job match.<br />Bukan top-500 CV acak.</h3>
                             <p style={{ fontSize: 14, lineHeight: 1.55, opacity: 0.92, marginTop: 12, marginBottom: 18 }}>
-                                AI Semantic Search + LLM Reranker. Skor dihitung dari skill overlap, level, lokasi, gaji, dan industri.
+                                Menggunakan teknologi AI cerdas. Skor dihitung dari kecocokan skill, level, lokasi, gaji, dan industri.
                                 Setiap match dijelasin: <i>kenapa cocok, apa yang kurang</i>.
                             </p>
                             <div style={{ background: 'rgba(0,0,0,0.5)', border: '2px solid #fff', borderRadius: 10, padding: 14, marginTop: 'auto' }}>
@@ -586,7 +586,7 @@ export default function LandingHero() {
                         {[
                             { c: KC.lime, ic: <I.ChartBar s={22} />, tag: 'free', t: 'Skill Gap Coach', d: 'Bandingin profilmu vs JD. Platform akan merekomendasikan intervensi pelatihan (Micro-learning/Course).' },
                             { c: KC.cyan, ic: <I.Robot s={22} />, tag: '24/7', t: 'Career Gap Advisor', d: 'Ada kekosongan masa kerja? AI merancang simulasi interview dan menyusun ulang ringkasan kualifikasimu.' },
-                            { c: KC.yellow, ic: <I.Briefcase s={22} />, tag: 'HR & MNC', t: 'ATS Copilot Plugin', d: 'Arsitektur API-first dirancang untuk injeksi langsung ke Workday/SAP guna melakukan parallel scoring otomatis.' },
+                            { c: KC.yellow, ic: <I.Briefcase s={22} />, tag: 'HR & MNC', t: 'Integrasi Sistem HR', d: 'Dirancang untuk dapat terhubung langsung ke sistem HR perusahaan seperti Workday/SAP untuk kemudahan proses rekrutmen.' },
                             { c: KC.pink, ic: <I.Shield s={22} />, tag: 'trust', t: 'Verifikasi KTP & Ijazah', d: 'Infrastruktur e-KYC (mockup) untuk mencegah penipuan profil. CV anonim sampai perusahaan melakukan unlock.' },
                         ].map((f, i) => (
                             <BrutalCard key={i} color={f.c} padding={22}>
@@ -611,13 +611,13 @@ export default function LandingHero() {
                             Data terenkripsi.<br />Hanya buat verifikasi.
                         </h2>
                         <p style={{ fontSize: 16, color: '#fff', opacity: 0.75, lineHeight: 1.6, maxWidth: 520 }}>
-                            KTP, ijazah, dan NPWP <b>nggak pernah</b> ditampilin ke user lain — bahkan HR. Kami pakai cuma sekali buat verifikasi identitas, lalu disimpan terenkripsi AES-256 di server Indonesia.
+                            KTP, ijazah, dan NPWP <b>nggak pernah</b> ditampilin ke user lain — bahkan HR. Kami pakai cuma sekali buat verifikasi identitas, lalu disimpan dengan aman di server Indonesia.
                             Setelah verifikasi sukses, akunmu dapet badge <span style={{ background: KC.lime, color: KC.ink, padding: '1px 8px', borderRadius: 4, fontWeight: 900, fontSize: 13 }}>✓ VERIFIED</span> — itu doang yang publik.
                         </p>
                         <div style={{ display: 'flex', gap: 24, marginTop: 28, fontSize: 13, fontWeight: 700, flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><I.Check s={16} c={KC.lime} /> AES-256 at rest</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><I.Check s={16} c={KC.lime} /> Standar Keamanan Tinggi</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><I.Check s={16} c={KC.lime} /> Server di Indonesia</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><I.Check s={16} c={KC.lime} /> UU PDP compliant</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><I.Check s={16} c={KC.lime} /> Resmi & Terpercaya</div>
                         </div>
                     </div>
 
@@ -630,8 +630,8 @@ export default function LandingHero() {
                                 <div style={{ width: 44, height: 44, background: b.c, border: '2px solid #fff', borderRadius: 10, display: 'grid', placeItems: 'center', marginBottom: 12 }}>{b.icon}</div>
                                 <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', opacity: 0.6 }}>{b.who}</div>
                                 <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4 }}>{b.what}</div>
-                                <div style={{ fontSize: 11, fontFamily: MONO, marginTop: 10, padding: '6px 8px', background: 'rgba(0,0,0,0.5)', borderRadius: 6, color: KC.lime }}>
-                                    status: encrypted
+                                <div style={{ fontSize: 11, marginTop: 10, padding: '6px 8px', background: 'rgba(0,0,0,0.5)', borderRadius: 6, color: KC.lime, fontWeight: 700 }}>
+                                    status: aman
                                 </div>
                             </div>
                         ))}
@@ -657,9 +657,9 @@ export default function LandingHero() {
                     </div>
                     <div className="kc-pricing-grid">
                         {[
-                            { name: 'Basic', price: 'Gratis', sub: '', cta: 'Posting Gratis', highlight: false, color: '#fff', perks: ['Pasang lowongan selamanya', 'AI Shortlist (Top 5)', 'Skor Semantik', 'Verifikasi profil dasar'] },
+                            { name: 'Basic', price: 'Gratis', sub: '', cta: 'Posting Gratis', highlight: false, color: '#fff', perks: ['Pasang lowongan selamanya', 'AI Shortlist (Top 5)', 'Penilaian Kecerdasan AI', 'Verifikasi profil dasar'] },
                             { name: 'Pay-per-Unlock', price: '50rb', sub: '/ 10 kandidat', cta: 'Coba Unlock', highlight: true, color: KC.orange, perks: ['Buka kontak asli 10 kandidat', 'Lihat CV PDF lengkap', 'KTP & NPWP Verified', 'Ijazah/SIVIL Verified', 'Bebas penipuan'] },
-                            { name: 'ATS Copilot & API', price: 'Custom', sub: '', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Plugin ATS (Workday, SAP)', 'Headhunter AI Copilot', 'Unlimited Vector Scoring', 'Dedicated Account Manager', 'SLA 99.9%'] },
+                            { name: 'Enterprise', price: 'Custom', sub: '', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Terintegrasi Sistem HR (Workday, SAP)', 'Asisten AI untuk Headhunter', 'Pencarian AI Tanpa Batas', 'Dedicated Account Manager', 'SLA 99.9%'] },
                         ].map((p, i) => {
                             const dark = p.color === KC.ink
                             const accent = p.highlight

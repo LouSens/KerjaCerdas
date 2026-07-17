@@ -45,9 +45,9 @@ export default function AboutPage() {
                 <div style={{ maxWidth: 1100, margin: '0 auto' }}>
                     <div className="kc-stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 18 }}>
                         <Block accent={KC.pink}   label="Masalah" title="Job portal cuma keyword match." body="Indonesia punya 7 juta pengangguran dan 12 juta underemployed. HR kelelahan scroll 500 lamaran. Pencari kerja apply 80x cuma dipanggil 1." />
-                        <Block accent={KC.lime}   label="Solusi" title="Embedding semantik + LLM rerank." body="CV & job desc di-embed pakai Gemini Embedding 2. Cosine similarity + LLM rerank top-K. Hasil: match yang beneran relevan, bukan asal cocok kata." />
+                        <Block accent={KC.lime}   label="Solusi" title="Pencocokan Cerdas." body="Sistem kami membaca maksud asli dari CV & lowongan kerja. Hasilnya: kecocokan yang benar-benar relevan dengan pengalamanmu, bukan cuma asal tebak kata kunci." />
                         <Block accent={KC.cyan}   label="Diferensiasi" title="Bukan papan lowongan, AI advisor aktif." body="Deteksi skill gap, rekomendasi kursus dari Prakerja/Dicoding/Coursera, interview prep, dan reverse-matching 2 arah (seeker ↔ HR)." />
-                        <Block accent={KC.yellow} label="Teknologi" title="Gemini 3.1 + LangGraph + FastAPI." body="Gemini 3.1 Flash Lite buat chat/parsing. Gemini Embedding 2 buat vector search. LangGraph stateful agent. FastAPI + React. Supabase + pgvector di prod." />
+                        <Block accent={KC.yellow} label="Teknologi" title="Teknologi AI Mutakhir." body="Menggunakan sistem AI terbaru untuk asisten karir cerdas, pencarian super cepat, dan antarmuka interaktif. Data tersimpan aman dan terintegrasi dengan mulus." />
                     </div>
                 </div>
             </section>
@@ -91,13 +91,13 @@ export default function AboutPage() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         {[
-                            { phase: 'Now', desc: 'MVP w/ Gemini 3.1', c: KC.orange },
-                            { phase: 'Q3 26', desc: 'Supabase + pgvector', c: KC.cyan },
-                            { phase: 'Q4 26', desc: 'iOS/Android PWA', c: KC.lime },
-                            { phase: '2027', desc: 'ATS integration', c: KC.yellow },
+                            { phase: 'Sekarang', desc: 'Sistem Match AI Cerdas', c: KC.orange },
+                            { phase: 'Q3 26', desc: 'Fitur Perusahaan Lengkap', c: KC.cyan },
+                            { phase: 'Q4 26', desc: 'Aplikasi Mobile (PWA)', c: KC.lime },
+                            { phase: '2027', desc: 'Integrasi Sistem HR', c: KC.yellow },
                         ].map((p, i) => (
                             <div key={i} className="kc-card" style={{ background: '#1a1a20', border: `2px solid ${p.c}`, borderRadius: 12, padding: 16 }}>
-                                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 800, color: p.c, letterSpacing: 0.6, textTransform: 'uppercase' }}>{p.phase}</div>
+                                <div style={{ fontSize: 11, fontWeight: 800, color: p.c, letterSpacing: 0.6, textTransform: 'uppercase' }}>{p.phase}</div>
                                 <div style={{ fontSize: 14, fontWeight: 900, marginTop: 6 }}>{p.desc}</div>
                             </div>
                         ))}
