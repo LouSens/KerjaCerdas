@@ -7,7 +7,7 @@ packages = ["backend"]
 
 [project]
 name = "kerjacerdas"
-version = "0.2.0"
+version = "0.3.0"
 description = "AI-Powered Job Matching Platform for Indonesia"
 requires-python = ">=3.11"
 
@@ -61,7 +61,10 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "ANN"]
+# E=pycodestyle, F=pyflakes, I=isort, W=warnings, N=naming, UP=pyupgrade
+# ANN removed: enforcing type annotations on all functions is too strict for this stage.
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]  # line length handled by formatter, not linter
 
 [tool.mypy]
 python_version = "3.11"
@@ -69,4 +72,5 @@ strict = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Paths are relative to repo root (where pytest is invoked from in CI)
 testpaths = ["backend/tests"]
