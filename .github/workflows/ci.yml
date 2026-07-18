@@ -69,15 +69,18 @@ jobs:
         run: pip install -e "backend/.[dev]"
 
       - name: Run unit tests with coverage
-        # Run from repo root so paths in pyproject.toml and imports resolve correctly.
+        # Run from backend/ so pytest rootdir matches where pyproject.toml lives.
+        # testpaths is intentionally absent from pyproject.toml — path is passed explicitly.
         run: |
-          python -m pytest backend/tests/unit/ -v \
-            --cov=backend/app \
+          cd backend
+          python -m pytest tests/unit/ -v \
+            --cov=app \
             --cov-report=term-missing \
             --cov-fail-under=30 \
             -x
         # Coverage target is 30% — realistic for unit-only tests without a live DB.
         # Raise gradually as integration mocks are added.
+
 
   # ── Gate 3: Integration Tests (with Postgres) ──────────────────────────────
   test-integration:
