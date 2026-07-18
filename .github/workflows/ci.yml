@@ -1,4 +1,4 @@
-name: CI/CD Pipeline — KerjaCerdas
+name: CI Pipeline — KerjaCerdas
 
 on:
   push:
@@ -141,40 +141,3 @@ jobs:
       - name: Run matching benchmark
         run: python backend/scripts/benchmark_matching.py || true
 
-  # ── Deploy: Staging (only on merge to main) ───────────────────────────────
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [quality, test-unit]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: staging
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy API to Railway
-        if: ${{ secrets.RAILWAY_TOKEN != '' }}
-        run: |
-          npm install -g @railway/cli
-          railway up --service api --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Deploy Frontend to Vercel
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-
-      - name: Smoke test (health check)
-        if: ${{ env.STAGING_URL != '' }}
-        run: |
-          echo "Waiting 45s for deploy to stabilise..."
-          sleep 45
-          curl -f "${{ vars.STAGING_URL }}/health" || exit 1
-          curl -f "${{ vars.STAGING_URL }}/health/detailed" || echo "Detailed health check failed — check logs"
-        env:
-          STAGING_URL: ${{ vars.STAGING_URL }}
