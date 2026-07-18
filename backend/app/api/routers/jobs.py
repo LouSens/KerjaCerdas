@@ -35,8 +35,9 @@ def _is_employer_verified(employer) -> bool:
     """Return True if the employer has completed verification."""
     if employer is None:
         return False
-    status = getattr(employer, "verified", "unverified")
-    return str(status).lower() == "verified"
+    from backend.app.db.schemas import VerificationStatus
+    status = getattr(employer, "verified", None)
+    return status == VerificationStatus.VERIFIED
 
 
 @router.get("")

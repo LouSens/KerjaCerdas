@@ -399,12 +399,19 @@ class SemanticMatcher:
                 prompt += "\nFormat balasan HARUS (tanpa markdown blok, 1 baris per ID):\n[ID]: [evaluasi 1 kalimat]"
 
                 response = await llm.ainvoke([HumanMessage(content=prompt)])
-                lines = response.content.split('\n')
+                # response.content may be a list of parts (Gemini streaming) or a plain str.
+                raw_content = response.content
+                if isinstance(raw_content, list):
+                    raw_content = " ".join(
+                        p if isinstance(p, str) else p.get("text", "") for p in raw_content
+                    )
+                lines = raw_content.split('\n')
                 for c in top_candidates:
                     for line in lines:
                         if c['seeker_id'] in line and ':' in line:
                             parts = line.split(":", 1)
                             c['explanation'] = parts[1].strip()
+
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning("LLM summary generation failed: %s", e)
