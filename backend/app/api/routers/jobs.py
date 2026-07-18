@@ -7,10 +7,35 @@ from fastapi import APIRouter
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
+# ── In-memory job cache (TTL = 5 minutes) ─────────────────────────────────────
+# Avoids re-querying all jobs from DB on every /agent/invoke and /jobs request.
+# Cache is invalidated when a new job is created via POST /employer/jobs.
+_jobs_cache: list | None = None
+_jobs_cache_ts: float = 0.0
+_JOBS_CACHE_TTL = 300  # seconds
 
-def _is_verified(employer: Employer | None) -> bool:
-    """A listing is trusted when its posting employer passed verification."""
-    return employer is not None and employer.verified == VerificationStatus.VERIFIED
+
+async def _get_jobs(repos) -> list:
+    """Return cached job list, refreshing if stale."""
+    global _jobs_cache, _jobs_cache_ts
+    if _jobs_cache is None or time.time() - _jobs_cache_ts > _JOBS_CACHE_TTL:
+        _jobs_cache = await repos.jobs.list()
+        _jobs_cache_ts = time.time()
+    return _jobs_cache
+
+
+def invalidate_jobs_cache() -> None:
+    """Call this whenever a job is created or updated."""
+    global _jobs_cache
+    _jobs_cache = None
+
+
+def _is_employer_verified(employer) -> bool:
+    """Return True if the employer has completed verification."""
+    if employer is None:
+        return False
+    status = getattr(employer, "verified", "unverified")
+    return str(status).lower() == "verified"
 
 
 @router.get("")
@@ -24,9 +49,10 @@ async def list_jobs(
     remote_allowed: bool | None = None,
     salary_min: int | None = None,
 ):
-    """Return paginated, optionally filtered job listings."""
+    """Return paginated, optionally filtered job listings with verified flag."""
     repos = get_repositories()
-    jobs = await repos.jobs.list()
+    jobs = await _get_jobs(repos)
+
     if region:
         jobs = [j for j in jobs if j.region_code == region]
     if job_type:
@@ -43,12 +69,20 @@ async def list_jobs(
             j for j in jobs
             if q_lower in j.title.lower() or q_lower in j.description.lower()
         ]
-    total = len(jobs)
-    page = jobs[offset: offset + limit]
-    unique_employer_ids = {j.employer_id for j in page}
-    employers = {eid: await repos.employers.get(eid) for eid in unique_employer_ids}
-    items = [j.model_dump() | {"verified": _is_verified(employers.get(j.employer_id))} for j in page]
-    return {"total": total, "offset": offset, "limit": limit, "items": items}
+
+    # Enrich with verified flag (batch employer lookup)
+    employer_cache: dict[str, bool] = {}
+    result_items = []
+    for j in jobs[offset: offset + limit]:
+        emp_id = j.employer_id
+        if emp_id not in employer_cache:
+            emp = await repos.employers.get(emp_id)
+            employer_cache[emp_id] = _is_employer_verified(emp)
+        item = j.model_dump() if hasattr(j, "model_dump") else dict(j)
+        item["verified"] = employer_cache[emp_id]
+        result_items.append(item)
+
+    return {"total": len(jobs), "offset": offset, "limit": limit, "items": result_items}
 
 
 @router.get("/{job_id}")

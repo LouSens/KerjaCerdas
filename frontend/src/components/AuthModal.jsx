@@ -224,7 +224,7 @@ export default function AuthModal() {
                         </h1>
 
                         <p className="kc-auth-item text-sm md:text-base text-kc-gray leading-relaxed max-w-md mb-6">
-                            Bikin akun, upload CV, dan biar AI Gemini bandingin sama 12.000+ lowongan terverifikasi. Top-5 keluar dalam 8 detik.
+                            Bikin akun, upload CV, dan biar AI membandingkan dengan 12.000+ lowongan terverifikasi. Top-5 keluar dalam 8 detik.
                         </p>
 
                         {/* Stats Row */}
@@ -309,24 +309,22 @@ export default function AuthModal() {
                                 <div className="flex-1">
                                     <div className="text-[10px] font-black uppercase tracking-widest text-kc-gray">Fitur Unggulan</div>
                                     <div className="text-sm font-black leading-tight">AI CV Parser & Matcher</div>
-                                    <div className="text-xs text-kc-gray">Powered by Gemini</div>
+                                    <div className="text-xs text-kc-gray">Pencocokan Cerdas</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Compliance & live count footer row */}
-                    <div className="kc-auth-item mt-auto relative z-10 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] font-bold text-white/60">
+                    {/* Trust & benefits footer row */}
+                    <div className="kc-auth-item mt-auto relative z-10 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] font-bold text-white/80">
                         <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-kc-orange animate-pulse" />
-                            12.480 online sekarang
+                            <span className="w-1.5 h-1.5 rounded-full bg-kc-lime" />
+                            Ribuan lowongan aktif
                         </div>
                         <span className="text-white/30">·</span>
-                        <span>87% akurasi</span>
+                        <span>Pencocokan cerdas dengan AI</span>
                         <span className="text-white/30">·</span>
-                        <span>8 dtk avg match</span>
-                        <span className="text-white/30">·</span>
-                        <span>UU PDP compliant</span>
+                        <span>Privasi data Anda terjamin</span>
                     </div>
                   </>
                 )}

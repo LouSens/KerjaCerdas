@@ -126,9 +126,11 @@ sequenceDiagram
     AG->>DB: Resolve seeker profile (by seeker_id or inline)
     AG->>DB: Load all job postings
     AG->>LG: ainvoke({messages: [("user", sanitized_context)]})
-    LG->>LG: ReAct agent: route intent → tool call
+    LG->>LG: ReAct agent: route intent → tool call (e.g. SemanticMatcher)
+    LG->>LG: Token Efficiency Gate: Check if top_cosine < 0.10. If yes, skip LLM.
     LG-->>AG: {messages: [...], intent, matches}
-    AG->>AG: Enrich matches with job metadata + employer names
+    AG->>AG: Hallucination Guard: Verify match job_ids exist in DB. Drop invalid.
+    AG->>AG: Enrich valid matches with job metadata + employer names
     AG-->>F: 200 AgentInvokeResponse
     F-->>S: Render job cards + AI response
 ```

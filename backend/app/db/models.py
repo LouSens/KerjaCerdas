@@ -182,3 +182,25 @@ class GamificationStats(Base, TimestampedMixin):
     streak_days: Mapped[int] = mapped_column(Integer, default=0)
     badges: Mapped[list[Any]] = mapped_column(JSON, default=list)
     quests_completed: Mapped[list[Any]] = mapped_column(JSON, default=list)
+
+
+class Event(Base):
+    """Analytics event table — foundation of the feedback loop data moat.
+
+    Each user interaction (job_viewed, apply_clicked, band_clicked, etc.) is
+    stored here for funnel analysis, A/B testing result measurement, and
+    eventual model fine-tuning. No PII is stored — user_id is a UUID reference.
+    """
+    __tablename__ = "events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    user_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    session_id: Mapped[str] = mapped_column(String(100), default="", index=True)
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    band: Mapped[str | None] = mapped_column(String(10), nullable=True)  # strong/possible/stretch
+    ab_variant: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, index=True
+    )

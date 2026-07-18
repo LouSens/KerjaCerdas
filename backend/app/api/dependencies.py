@@ -81,3 +81,31 @@ async def require_seeker(current_user: User = Depends(get_current_user)) -> User
         )
     return current_user
 
+
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login", auto_error=False
+)
+
+
+async def get_current_user_optional(
+    token: str | None = Depends(oauth2_scheme_optional),
+    db: AsyncSession = Depends(get_session),
+) -> User | None:
+    """Like get_current_user but returns None instead of raising 401.
+
+    Used by endpoints that serve both authenticated and anonymous users
+    (e.g. /events/track where anonymous events are still valuable).
+    """
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        if not payload:
+            return None
+        user_id: str | None = payload.get("sub")
+        if not user_id:
+            return None
+        result = await db.execute(select(User).where(User.id == user_id))
+        return result.scalar_one_or_none()
+    except Exception:  # noqa: BLE001
+        return None

@@ -90,6 +90,12 @@ class AgentInvokeResponse(BaseModel):
     matching_skills: list[str] = []
     recommended_courses: list[CourseRecommendation] = []
     seeker_id: str | None = None   # echo back so frontend can cache it
+    # Observability fields (used by monitoring + A/B analysis)
+    fallback_used: bool = False             # True when seeker_id was stale or absent
+    band_distribution: dict = {}            # {"strong": n, "possible": n, "stretch": n}
+    routing_confidence: float = 1.0         # 1.0 = explicit intent; 0.7 = inferred
+    hallucinated_ids_removed: int = 0       # count of invalid job_ids stripped post-LLM
+    early_exit: bool = False                # True when token gate fired (all-stretch corpus)
 
 
 async def _enrich_matches(
@@ -157,6 +163,8 @@ async def _enrich_matches(
 @router.post("/invoke", response_model=AgentInvokeResponse)
 async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     """Unified entry point: routes to matcher / skill-gap / advisor based on message intent."""
+    import time
+    _start = time.time()
     repos = get_repositories()
 
     # --- Sanitize user input BEFORE any LLM injection -------------------
@@ -173,17 +181,51 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
 
     # --- Resolve seeker (graceful cascade, never 400) ---------------------
     seeker: SeekerProfile | None = req.seeker
+    fallback_used = False
 
     if seeker is None and req.seeker_id:
         seeker = await repos.seekers.get(req.seeker_id)
         if seeker is None:
             logger.warning("seeker_id %s not found (stale?), using inline/anon.", req.seeker_id)
+            fallback_used = True
 
     if seeker is None:
         seeker = _ANONYMOUS_SEEKER
+        fallback_used = True
 
     # --- Load jobs -------------------------------------------------------
     jobs = await repos.jobs.list()
+    valid_job_ids = {j.id for j in jobs}
+
+    # --- Pre-rank to detect all-stretch corpus (token efficiency gate) ---
+    from backend.app.services.matching.matcher import SemanticMatcher
+    matcher = SemanticMatcher()
+    raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs, filters=req.filters)
+
+    # Token efficiency gate: if ALL matches are well below threshold, skip LLM
+    from backend.app.config.settings import settings as _s
+    max_score = max((m.score for m in raw_matches), default=0.0)
+    early_exit = max_score < 0.10
+
+    if early_exit:
+        logger.info("token_gate_fired max_score=%.3f seeker=%s", max_score, seeker.id)
+        seeker_skill_names = [s.name for s in (seeker.skills or [])]
+        enriched = await _enrich_matches(raw_matches, jobs, seeker_skill_names)
+        band_dist = _band_distribution(enriched)
+        return AgentInvokeResponse(
+            intent="job_search",
+            final_response=(
+                "Belum ada lowongan yang cukup relevan dengan profilmu saat ini. "
+                "Coba tambahkan lebih banyak skill di profil, atau upload CV agar AI bisa "
+                "mengenali pengalamanmu lebih baik."
+            ),
+            matches=enriched,
+            seeker_id=seeker.id if seeker is not _ANONYMOUS_SEEKER else None,
+            fallback_used=fallback_used,
+            band_distribution=band_dist,
+            routing_confidence=1.0,
+            early_exit=True,
+        )
 
     # --- Run agent --------------------------------------------------------
     from backend.app.agents.graph.builder import get_graph
@@ -192,7 +234,9 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     # Build context prompt for ReAct agent
     skills = [s.name for s in seeker.skills] if seeker.skills else []
     context = f"[Context System]\nProfil Kandidat:\nNama: {seeker.full_name}\nSkill: {skills}\n"
+    routing_confidence = 0.7  # inferred from message
     if safe_intent:
+        routing_confidence = 1.0  # explicit intent from UI button
         context += f"\nInstruksi Prioritas (Bypass UI): Kandidat menekan tombol dengan intent '{safe_intent}'. Segera eksekusi alat yang relevan!\n"
         if req.target_job_id:
             context += f"Target Job ID: {req.target_job_id}\n"
@@ -207,18 +251,20 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     out = await app_graph.ainvoke(state_in, config=config)
 
     final_response = out["messages"][-1].content
-    # V2 Swarm doesn't natively return structured objects, so we calculate the baseline matches 
-    # using the semantic matcher to ensure the UI job cards never break.
-    from backend.app.services.matching.matcher import SemanticMatcher
-    matcher = SemanticMatcher()
-    raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs, filters=req.filters)
-    missing_skills = []
-    matching_skills = []
-    recommended_courses = []
 
     # --- Enrich matches with job metadata --------------------------------
     seeker_skill_names = [s.name for s in (seeker.skills or [])]
     enriched = await _enrich_matches(raw_matches, jobs, seeker_skill_names)
+
+    # --- Hallucination guard: strip job_ids that don't exist in DB ------
+    pre_count = len(enriched)
+    enriched = [m for m in enriched if m.job_id in valid_job_ids]
+    hallucinated_removed = pre_count - len(enriched)
+    if hallucinated_removed:
+        logger.warning(
+            "hallucination_guard removed=%d seeker=%s",
+            hallucinated_removed, seeker.id,
+        )
 
     # --- Enrich company names from employer profiles ---------------------
     employer_cache: dict[str, str] = {}
@@ -229,6 +275,13 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
             employer_cache[emp_id] = emp.company_name if emp else emp_id
         em.company = employer_cache[emp_id]
 
+    band_dist = _band_distribution(enriched)
+    latency_ms = int((time.time() - _start) * 1000)
+    logger.info(
+        "agent_invoke seeker=%s intent=%s bands=%s latency_ms=%d fallback=%s",
+        seeker.id, out.get("intent", "match_jobs"), band_dist, latency_ms, fallback_used,
+    )
+
     return AgentInvokeResponse(
         intent=out.get("intent", "match_jobs"),
         final_response=final_response,
@@ -237,4 +290,19 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
         matching_skills=out.get("matching_skills", []),
         recommended_courses=out.get("recommended_courses", []),
         seeker_id=seeker.id if seeker is not _ANONYMOUS_SEEKER else None,
+        fallback_used=fallback_used,
+        band_distribution=band_dist,
+        routing_confidence=routing_confidence,
+        hallucinated_ids_removed=hallucinated_removed,
+        early_exit=False,
     )
+
+
+def _band_distribution(matches: list[EnrichedMatch]) -> dict:
+    """Compute the count per band from a list of enriched matches."""
+    dist: dict[str, int] = {"strong": 0, "possible": 0, "stretch": 0}
+    for m in matches:
+        key = getattr(m, "band", "stretch") or "stretch"
+        dist[key] = dist.get(key, 0) + 1
+    return dist
+

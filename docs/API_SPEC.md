@@ -77,6 +77,48 @@ System liveness check.
 
 ---
 
+## Analytics & A/B Testing Router — `/api/v1/experiments` & `/api/v1/events`
+
+### `GET /api/v1/experiments/assignments`
+
+Fetches active A/B testing variations for the user. Uses stateless hashing on the user ID or session ID to determine the bucket.
+
+**Query Parameters:**
+- `session_id` (string, optional)
+
+**Response `200`:**
+```json
+{
+  "onboarding_flow": "variant_a",
+  "match_algo": "control"
+}
+```
+
+### `POST /api/v1/events/track`
+
+Records a closed-loop analytics event (e.g. `job_viewed`, `onboarding_started`).
+
+**Request Body:**
+```json
+{
+  "event_name": "job_viewed",
+  "session_id": "ab123",
+  "ab_variant": "variant_a",
+  "metadata": {
+    "job_id": "xxx-yyy-zzz"
+  }
+}
+```
+
+**Response `202`:**
+```json
+{
+  "status": "recorded"
+}
+```
+
+---
+
 ## Auth Router — `/api/v1/auth`
 
 Rate limited: **10 req / 60 s per IP**.

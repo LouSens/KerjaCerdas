@@ -12,6 +12,10 @@ export default function CVUploader() {
     const [activeTab, setActiveTab] = useState('upload') // 'upload' | 'manual'
 
     const [manualForm, setManualForm] = useState({
+        full_name: profile?.full_name || '',
+        nik: profile?.nik || '',
+        date_of_birth: profile?.date_of_birth || '',
+        region_code: profile?.region_code || '3171',
         skillInput: '',
         skills: (profile?.skills || []).map(s => s.name || s),
         headline: profile?.headline || '',
@@ -24,6 +28,10 @@ export default function CVUploader() {
         setManualSaving(true)
         try {
             await updateSeekerProfile({
+                full_name: manualForm.full_name,
+                nik: manualForm.nik,
+                date_of_birth: manualForm.date_of_birth,
+                region_code: manualForm.region_code,
                 headline: manualForm.headline,
                 skills: manualForm.skills.map(name => ({ name, level: 'intermediate', years: 0 })),
                 salary_expectation_min: Number(manualForm.salary_expectation_min) || 0,
@@ -72,11 +80,11 @@ export default function CVUploader() {
                         Upload CV
                     </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Drop PDF, Gemini parse otomatis. Skill, pengalaman, dan preferensi gaji terdeteksi dalam 8 detik.
+                        Upload sekali, AI kami langsung kenali skill, pengalaman, dan ekspektasi gajimu.
                     </p>
                 </div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: KC.lime, border: `2px solid ${KC.ink}`, borderRadius: 999, fontSize: 12, fontWeight: 800, boxShadow: `2px 2px 0 ${KC.ink}` }}>
-                    🤖 Powered by Gemini 3.1 Flash Lite
+                    🤖 Didukung AI
                 </div>
             </header>
 
@@ -96,6 +104,30 @@ export default function CVUploader() {
                 <BrutalCard color="#fff" padding={28}>
                     <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.5, margin: '0 0 20px' }}>Isi Profil Manual</h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Nama Lengkap</label>
+                                <input value={manualForm.full_name} onChange={e => setManualForm(p => ({ ...p, full_name: e.target.value }))}
+                                    placeholder="Contoh: Budi Santoso" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Kode Wilayah / Kota</label>
+                                <input value={manualForm.region_code} onChange={e => setManualForm(p => ({ ...p, region_code: e.target.value }))}
+                                    placeholder="Contoh: 3171" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>NIK (Opsional)</label>
+                                <input value={manualForm.nik} onChange={e => setManualForm(p => ({ ...p, nik: e.target.value }))}
+                                    placeholder="Contoh: 31710..." style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Tanggal Lahir</label>
+                                <input type="date" value={manualForm.date_of_birth} onChange={e => setManualForm(p => ({ ...p, date_of_birth: e.target.value }))}
+                                    style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            </div>
+                        </div>
                         <div>
                             <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Headline / Posisi Saat Ini</label>
                             <input
@@ -170,12 +202,12 @@ export default function CVUploader() {
                         {cvUploading ? (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                 <div className="kc-spin" style={{ width: 48, height: 48, borderWidth: 5 }} />
-                                <Tag color={KC.yellow}>Parsing dengan Gemini</Tag>
+                                <Tag color={KC.yellow}>Sedang dianalisis…</Tag>
                                 <p style={{ fontSize: 14, fontWeight: 800, color: KC.ink, margin: 0 }}>
-                                    AI lagi ekstrak skill, experience, education…
+                                    AI kami sedang membaca CV dan mengenali profilmu
                                 </p>
-                                <p style={{ fontSize: 12, color: KC.mute, margin: 0, fontFamily: 'JetBrains Mono, monospace' }}>
-                                    {fileMeta ? `${fileMeta.name} · ${(fileMeta.size / 1024).toFixed(1)} KB` : '~ 8 detik'}
+                                <p style={{ fontSize: 12, color: KC.mute, margin: 0 }}>
+                                    {fileMeta ? fileMeta.name : 'Sebentar lagi selesai…'}
                                 </p>
                             </div>
                         ) : (
@@ -212,19 +244,18 @@ export default function CVUploader() {
                     {/* Pipeline strip below dropzone */}
                     <div style={{ padding: '20px 24px', background: KC.bone }}>
                         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 12 }}>
-                            Yang AI lakuin
+                            Apa yang terjadi setelah kamu upload
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 10 }}>
                             {[
-                                { icon: '🔍', label: 'Parse layout', sub: '1.2s' },
-                                { icon: '🧠', label: 'Extract skill', sub: '2.4s' },
-                                { icon: '📊', label: 'Score sections', sub: '1.8s' },
-                                { icon: '💾', label: 'Save & embed', sub: '2.6s' },
+                                { icon: '🔍', label: 'Baca dokumen' },
+                                { icon: '🧠', label: 'Kenali skill' },
+                                { icon: '📊', label: 'Analisis profil' },
+                                { icon: '✅', label: 'Siap dicocokkan' },
                             ].map((s, i) => (
                                 <div key={i} className="kc-card" style={{ padding: 12, background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 10 }}>
                                     <div style={{ fontSize: 18 }}>{s.icon}</div>
                                     <div style={{ fontSize: 12, fontWeight: 900, marginTop: 4 }}>{s.label}</div>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: KC.mute, fontFamily: 'JetBrains Mono, monospace', marginTop: 2 }}>{s.sub}</div>
                                 </div>
                             ))}
                         </div>
@@ -235,17 +266,14 @@ export default function CVUploader() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {seekerId ? (
                         <BrutalCard color={KC.lime} padding={18}>
-                            <Tag color={KC.ink} ink="#fff" size="sm">✓ CV TERINDEKS</Tag>
+                            <Tag color={KC.ink} ink="#fff" size="sm">✓ CV Berhasil Dianalisis</Tag>
                             <h3 style={{ fontSize: 16, fontWeight: 900, margin: '10px 0 4px', letterSpacing: -0.4 }}>
-                                Profil-mu siap di-match
+                                Profilmu sudah siap!
                             </h3>
-                            <p style={{ fontSize: 11, fontWeight: 700, color: KC.ink, opacity: 0.75, margin: 0, fontFamily: 'JetBrains Mono, monospace' }}>
-                                seeker_id: {String(seekerId).slice(0, 8)}…
-                            </p>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>
-                                <Mini label="skill" value={skillsCount} />
-                                <Mini label="exp" value={expCount} />
-                                <Mini label="edu" value={eduCount} />
+                                <Mini label="Keahlian" value={skillsCount} />
+                                <Mini label="Pengalaman" value={expCount} />
+                                <Mini label="Pendidikan" value={eduCount} />
                             </div>
                             <button className="kc-btn" onClick={() => navigate('seeker-match')} style={{
                                 marginTop: 14, width: '100%', padding: '10px', background: KC.ink, color: '#fff',
@@ -268,16 +296,16 @@ export default function CVUploader() {
                     )}
 
                     <BrutalCard color="#fff" padding={18}>
-                        <Tag color={KC.cyan} size="sm">tips</Tag>
+                        <Tag color={KC.cyan} size="sm">Tips</Tag>
                         <h3 style={{ fontSize: 14, fontWeight: 900, margin: '10px 0 10px' }}>
-                            Biar parse-nya akurat
+                            Supaya hasilnya lebih akurat
                         </h3>
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {[
-                                'Pakai PDF text-based (bukan scan/foto).',
-                                'Tulis skill dalam satu section yang jelas.',
-                                'Cantumin tahun pengalaman per role.',
-                                'Sebutin lokasi & ekspektasi gaji kalau ada.',
+                                'Gunakan file PDF (bukan foto atau scan gambar).',
+                                'Cantumkan skill dan keahlian secara lengkap.',
+                                'Sertakan lama pengalaman di setiap posisi.',
+                                'Tambahkan kota domisili dan ekspektasi gaji jika ada.',
                             ].map((t, i) => (
                                 <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, fontWeight: 600, color: KC.ink, lineHeight: 1.5 }}>
                                     <span style={{ width: 18, height: 18, borderRadius: 5, background: KC.lime, border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', fontSize: 11, flexShrink: 0 }}>✓</span>
@@ -291,9 +319,9 @@ export default function CVUploader() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span style={{ fontSize: 22 }}>🔒</span>
                             <div>
-                                <div style={{ fontSize: 12, fontWeight: 800 }}>CV-mu privasi total</div>
-                                <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, fontFamily: 'JetBrains Mono, monospace', marginTop: 2 }}>
-                                    AES-256 · UU PDP · not_visible_to_employers
+                                <div style={{ fontSize: 12, fontWeight: 800 }}>CV-mu aman & terlindungi</div>
+                                <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>
+                                    Data kamu tidak dibagikan ke perusahaan manapun tanpa izinmu
                                 </div>
                             </div>
                         </div>

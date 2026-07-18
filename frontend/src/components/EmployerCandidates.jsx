@@ -148,9 +148,7 @@ export default function EmployerCandidates() {
 
             <BandLegend side="employer" />
 
-            {loading && <BrutalCard color="#fff" padding={32} style={{ textAlign: 'center' }}>
-                <p style={{ fontFamily: 'JetBrains Mono, monospace', color: KC.orange, fontWeight: 700 }}>Gemini reranking kandidat…</p>
-            </BrutalCard>}
+            {loading && <CandidateSkeleton />}
 
             {!loading && (() => {
                 const groups = BAND_ORDER
@@ -189,7 +187,7 @@ export default function EmployerCandidates() {
                         <div style={{ padding: '16px 20px', borderBottom: `2px solid ${KC.ink}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: KC.bone }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>CV Asli: {cvModalOpen.name}</h3>
-                                <div style={{ fontSize: 12, color: KC.mute, fontWeight: 700 }}>Parsed via PyMuPDF & Gemini</div>
+                                <div style={{ fontSize: 12, color: KC.mute, fontWeight: 700 }}>Dianalisis secara akurat oleh AI</div>
                             </div>
                             <button onClick={() => setCvModalOpen(null)} style={{ background: 'transparent', border: 'none', fontSize: 24, cursor: 'pointer', fontWeight: 900 }}>×</button>
                         </div>
@@ -238,6 +236,7 @@ export default function EmployerCandidates() {
 
 function CandidateCard({ candidate: c, idx, band, bandColor, bandLabel, setCvModalOpen }) {
     const [unlocked, setUnlocked] = useState(false)
+    const [status, setStatus] = useState('Baru') // Baru, Wawancara, Tolak, Hire
     const avatarColors = [KC.cyan, KC.yellow, KC.lime, KC.pink, KC.orange]
     const aColor = avatarColors[(idx - 1) % avatarColors.length]
     const initials = c.name.split(' ').map(n => n[0]).slice(0, 2).join('')
@@ -263,7 +262,7 @@ function CandidateCard({ candidate: c, idx, band, bandColor, bandLabel, setCvMod
                     </div>
 
                     {/* Grounded Matched / Missing breakdown — from the structured skill
-                        comparison, not the embedding score. */}
+                        comparison, not the AI semantic score. */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                         {matched.length > 0 && (
                             <div>
@@ -322,6 +321,27 @@ function CandidateCard({ candidate: c, idx, band, bandColor, bandLabel, setCvMod
                                 📞 Unlock Kontak
                             </a>
                         )}
+
+                        {/* Kanban Pipeline Status Picker */}
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 12, fontWeight: 800, color: KC.mute }}>Tahap:</span>
+                            <select 
+                                value={status}
+                                onChange={e => {
+                                    setStatus(e.target.value)
+                                    toast.success(`Kandidat dipindah ke tahap: ${e.target.value}`)
+                                }}
+                                style={{
+                                    padding: '6px 12px', background: status === 'Baru' ? KC.bone : status === 'Wawancara' ? KC.cyan : status === 'Hire' ? KC.lime : '#ffccd5',
+                                    border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer', outline: 'none'
+                                }}
+                            >
+                                <option value="Baru">1. Review</option>
+                                <option value="Wawancara">2. Wawancara</option>
+                                <option value="Hire">3. Direkrut (Hire)</option>
+                                <option value="Tolak">Tolak / Archive</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -333,3 +353,60 @@ const topBtn = (bg, fg = KC.ink) => ({ padding: '8px 14px', background: bg, colo
 
 const halfLabel = { fontSize: 10, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6 }
 const tagRow = { display: 'flex', gap: 6, flexWrap: 'wrap' }
+
+function CandidateSkeleton() {
+    const [stageIdx, setStageIdx] = useState(0)
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setStageIdx(prev => (prev < 3 ? prev + 1 : prev))
+        }, 1200)
+        return () => clearInterval(timer)
+    }, [])
+
+    const stageDefs = [
+        { l: 'Membaca kriteria lowongan', dur: '1.2s' },
+        { l: 'Mencari dari ribuan talent', dur: '1.2s' },
+        { l: 'AI menganalisis skill gap', dur: '1.2s' },
+        { l: 'Menyusun ranking kandidat', dur: '1.2s' },
+    ]
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <BrutalCard color="#fff" padding={20}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
+                    {stageDefs.map((st, i) => {
+                        const ok = i < stageIdx, active = i === stageIdx
+                        const bg = ok ? KC.lime : active ? KC.yellow : KC.bone
+                        return (
+                            <div key={i} className="kc-card" style={{ padding: 14, background: bg, border: `2px solid ${KC.ink}`, borderRadius: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {ok && <div style={{ width: 22, height: 22, background: KC.ink, color: '#fff', borderRadius: 6, display: 'grid', placeItems: 'center', fontWeight: 900 }}>✓</div>}
+                                    {active && <div className="kc-spin" />}
+                                    {!ok && !active && <div style={{ width: 22, height: 22, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 6 }} />}
+                                    <div style={{ fontSize: 13, fontWeight: 900 }}>{st.l}</div>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </BrutalCard>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[1, 2, 3].map(i => (
+                    <BrutalCard key={i} color="#fff" padding={20}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 100px', gap: 16, alignItems: 'center' }}>
+                            <div className="kc-shim" style={{ width: 60, height: 60, borderRadius: 12 }} />
+                            <div>
+                                <div className="kc-shim" style={{ width: 120, height: 14, borderRadius: 6, marginBottom: 10 }} />
+                                <div className="kc-shim" style={{ width: '60%', height: 22, borderRadius: 6, marginBottom: 12 }} />
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {[50, 70, 60].map((w, j) => <div key={j} className="kc-shim" style={{ width: w, height: 12, borderRadius: 999 }} />)}
+                                </div>
+                            </div>
+                            <div className="kc-shim" style={{ width: 90, height: 38, borderRadius: 8 }} />
+                        </div>
+                    </BrutalCard>
+                ))}
+            </div>
+        </div>
+    )
+}

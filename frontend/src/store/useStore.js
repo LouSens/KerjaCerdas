@@ -30,6 +30,8 @@ import {
     applyToJob,
     fetchEmployerProfile,
     updateEmployerProfile,
+    trackEvent,
+    fetchExperimentAssignments,
 } from '../services/api'
 
 const PUBLIC_VIEWS = new Set(['home', 'pricing', 'about', 'privacy'])
@@ -93,6 +95,8 @@ const useStore = create(
                     store.refreshEmployerJobs()
                     store.loadEmployerProfile()
                 }
+                // Fetch A/B experiment assignments for this user
+                store.loadExperiments()
                 return res
             },
 
@@ -115,6 +119,8 @@ const useStore = create(
                     get().refreshEmployerJobs()
                     get().loadEmployerProfile()
                 }
+                // Fetch A/B experiment assignments for this user
+                get().loadExperiments()
                 return res
             },
 
@@ -129,6 +135,7 @@ const useStore = create(
                     matches: [],
                     authToken: null,
                     savedJobs: [],
+                    experiments: {},
                     advisorLog: [
                         { role: 'assistant', content: 'Halo! Saya advisor karier KerjaCerdas. Tanya apa saja seputar pekerjaan, skill, atau CV kamu.' },
                     ],
@@ -393,7 +400,32 @@ const useStore = create(
             },
 
 
-            // ─── API health ──────────────────────────────────────────────
+            // ─ A/B Experiments ──────────────────────────────────────────
+            // Keyed by experiment name, value is the assigned variant string.
+            experiments: {},
+            loadExperiments: async () => {
+                try {
+                    const data = await fetchExperimentAssignments()
+                    set({ experiments: data || {} })
+                } catch {
+                    // Non-critical — app works without A/B data
+                }
+            },
+            getExperiment: (name) => get().experiments[name] ?? null,
+
+            // ─ Event Tracking ──────────────────────────────────────────
+            // Fire-and-forget analytics. Called by components on key actions.
+            trackEvent: (eventType, extra = {}) => {
+                const { user, experiments } = get()
+                const abVariant = experiments[extra.experiment] ?? null
+                trackEvent(eventType, {
+                    session_id: user?.id || 'anonymous',
+                    ab_variant: abVariant,
+                    ...extra,
+                })
+            },
+
+            // ─ API health ──────────────────────────────────────────
             apiStatus: 'unknown',
             checkApi: async () => {
                 try { await healthCheck(); set({ apiStatus: 'connected' }) }

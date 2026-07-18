@@ -33,7 +33,7 @@ export default function SkillGapPanel() {
             <BrutalCard color={KC.ink} padding={20} style={{ color: '#fff' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: `1fr repeat(${gaps.length}, auto)`, gap: 24, alignItems: 'center' }}>
                     <div>
-                        <Tag color={KC.orange} ink="#fff">analisis Gemini</Tag>
+                        <Tag color={KC.orange} ink="#fff">Analisis AI</Tag>
                         <h3 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.6, margin: '10px 0 4px' }}>
                             Tutup {gaps.length} skill ini → match-mu naik dari 87% → 96%
                         </h3>
@@ -146,7 +146,7 @@ export default function SkillGapPanel() {
                             { w: 'W6', t: 'Redis', c: KC.pink },
                         ].map((s, i) => (
                             <div key={i} style={{ flex: 1, padding: '10px 6px', background: s.c, border: `1.5px solid ${KC.ink}`, marginLeft: i ? -1 : 0, textAlign: 'center' }}>
-                                <div style={{ fontSize: 10, fontWeight: 900, fontFamily: 'JetBrains Mono, monospace' }}>{s.w}</div>
+                                <div style={{ fontSize: 10, fontWeight: 900 }}>{s.w}</div>
                                 <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2 }}>{s.t}</div>
                             </div>
                         ))}

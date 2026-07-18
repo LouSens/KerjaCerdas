@@ -20,7 +20,7 @@ from backend.app.db.schemas import (
     Skill,
 )
 from backend.app.services.matching.matcher import SemanticMatcher
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +45,14 @@ async def get_profile(current_user: User = Depends(get_current_user)):
 @router.post("/profile", status_code=status.HTTP_201_CREATED)
 async def create_or_update_profile(
     data: dict,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
 ):
-    """Create or overwrite the seeker profile for the logged-in user."""
+    """Create or overwrite the seeker profile for the logged-in user.
+
+    Embedding runs in the background so the response is returned immediately
+    (< 200ms) instead of blocking on the Gemini API call (1–3s).
+    """
     repos = get_repositories()
     existing = await repos.seekers.find(lambda s: s.user_id == current_user.id)
 
@@ -83,10 +88,20 @@ async def create_or_update_profile(
             salary_expectation_max=data.get("salary_expectation_max", 0),
         )
 
-    # Re-embed whenever profile changes
-    matcher = SemanticMatcher()
-    await matcher.embed_seeker(profile)
+    # Persist profile immediately so profile is available to other endpoints
     await repos.seekers.upsert(profile)
+
+    # Schedule embedding in the background — response is returned before this runs
+    async def _embed_and_save(p: SeekerProfile) -> None:
+        try:
+            matcher = SemanticMatcher()
+            await matcher.embed_seeker(p)
+            await repos.seekers.upsert(p)
+            logger.info("Background embed complete for seeker %s", p.id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Background embed failed for seeker %s: %s", p.id, exc)
+
+    background_tasks.add_task(_embed_and_save, profile)
 
     # Ensure gamification record exists
     gam_list = await repos.gamification.find(lambda g: g.seeker_id == profile.id)
@@ -98,8 +113,8 @@ async def create_or_update_profile(
             gam.xp += 100
         await repos.gamification.upsert(gam)
 
-    logger.info("Profile upserted for user %s → seeker %s", current_user.email, profile.id)
-    return {"seeker_id": profile.id, "skills_count": len(profile.skills)}
+    logger.info("Profile upserted for user %s → seeker %s (embedding queued)", current_user.email, profile.id)
+    return {"seeker_id": profile.id, "skills_count": len(profile.skills), "embedding_status": "queued"}
 
 
 # ── Gamification ──────────────────────────────────────────────────────────────

@@ -30,6 +30,8 @@ from backend.app.api.database import init_db, reconfigure
 from backend.app.api.routers.agent import router as agent_router
 from backend.app.api.routers.auth import router as auth_router
 from backend.app.api.routers.employer import router as employer_router  # prefix=/employer
+from backend.app.api.routers.events import router as events_router
+from backend.app.api.routers.experiments import router as experiments_router
 from backend.app.api.routers.jobs import router as jobs_router
 from backend.app.api.routers.karirhub import router as karirhub_router
 from backend.app.api.routers.seeker import router as seeker_router
@@ -37,9 +39,10 @@ from backend.app.api.routers.uploads import router as uploads_router
 from backend.app.api.routers.verify import router as verify_router
 from backend.app.api.services.auth_service import configure as configure_auth
 from backend.app.config.settings import settings
+from backend.app.config.logging import configure_logging, get_logger
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
-logger = logging.getLogger(__name__)
+configure_logging(level="INFO")
+logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -89,7 +92,8 @@ app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(RequestSizeMiddleware)
 
 for r in (auth_router, seeker_router, employer_router, jobs_router,
-          uploads_router, verify_router, agent_router, karirhub_router):
+          uploads_router, verify_router, agent_router, karirhub_router,
+          events_router, experiments_router):
     app.include_router(r, prefix="/api/v1")
 
 
@@ -108,6 +112,42 @@ async def log_requests(request: Request, call_next):
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "KerjaCerdas API", "version": app.version, "mode": "demo"}
+
+
+@app.get("/health/detailed")
+async def health_detailed():
+    """Deep health check: verifies DB connectivity and Gemini API reachability."""
+    from sqlalchemy import text as sa_text
+    from backend.app.db.session import async_session
+    checks: dict[str, str] = {}
+
+    # Database ping
+    try:
+        async with async_session() as session:
+            await session.execute(sa_text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        checks["database"] = f"error: {exc!s:.120}"
+
+    # Gemini API key presence (we don't call the API to avoid cost/latency)
+    import os
+    has_key = bool(
+        settings.gemini_api_key
+        or os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+    )
+    checks["gemini_key_configured"] = "ok" if has_key else "missing"
+
+    overall = "healthy" if all(v == "ok" for v in checks.values()) else "degraded"
+    return {
+        "status": overall,
+        "version": app.version,
+        "checks": checks,
+        "band_thresholds": {
+            "strong": settings.band_strong_threshold,
+            "possible": settings.band_possible_threshold,
+        },
+    }
 
 
 @app.middleware("http")

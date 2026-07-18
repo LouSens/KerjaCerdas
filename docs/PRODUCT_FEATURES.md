@@ -42,7 +42,7 @@ Jika kandidat memiliki skor kecocokan rendah (misalnya kurang menguasai "AWS" at
 
 Modul ini dirancang untuk menyelesaikan masalah kelelahan administratif (*screening fatigue*) bagi HRD serta menawarkan model monetisasi yang bersahabat bagi UMKM. Saat HRD mengetik rancangan lowongan baru, AI memprediksi ketersediaan jumlah talenta yang cocok secara *real-time* dari *Live Pool* sebelum lowongan diterbitkan.
 
-Setelah lowongan tayang, agen AI sudah menyortir ratusan pelamar ke dalam daftar pendek (*Shortlist*) Top-5 Kandidat Terbaik lengkap dengan ringkasan alasan kecocokannya. Alih-alih mengharuskan HRD atau UMKM membayar biaya berlangganan mahal di muka, platform ini menggunakan sistem transaksi mikro (**Pay-to-Unlock**): profil asli dan skor kandidat disajikan secara transparan, namun akses email/telepon disensor. Perusahaan hanya perlu membayar biaya mikro (misal Rp 50.000) pada saat mereka memutuskan untuk menghubungi kandidat unggulan tersebut.
+Setelah lowongan tayang, agen AI sudah menyortir ratusan pelamar ke dalam daftar pendek (*Shortlist*) Top-5 Kandidat Terbaik lengkap dengan ringkasan alasan kecocokannya. Fitur **Kanban Pipeline** memungkinkan HRD memindahkan status kandidat (*Review*, *Wawancara*, *Hire*) dengan antarmuka yang sangat ramah pengguna. Alih-alih mengharuskan HRD atau UMKM membayar biaya berlangganan mahal di muka, platform ini menggunakan sistem transaksi mikro (**Pay-to-Unlock**): profil asli dan skor kandidat disajikan secara transparan, namun akses email/telepon disensor. Perusahaan hanya perlu membayar biaya mikro (misal Rp 50.000) pada saat mereka memutuskan untuk menghubungi kandidat unggulan tersebut.
 
 **Komponen terkait:** `EmployerDashboard`, `EmployerCandidates`, `EmployerPostJob`, `PricingPage`
 **API:** `POST /api/v1/employer/jobs`, `GET /api/v1/employer/jobs/{id}/candidates`, `POST /api/v1/employer/jobs/{id}/unlock/{seeker_id}`
@@ -63,3 +63,15 @@ Setelah verifikasi berhasil, profil kandidat mendapatkan **lencana terverifikasi
 
 **Komponen terkait:** `VerificationDashboard`
 **API:** `POST /api/v1/verify/identity`, `POST /api/v1/verify/education`, `POST /api/v1/verify/npwp`, `GET /api/v1/verify/documents`
+
+---
+
+## 5. Data-Driven UX & Closed-Loop Analytics (A/B Testing & Event Tracking)
+
+Sistem ini didesain tidak hanya untuk fungsionalitas, tetapi juga untuk optimalisasi konversi dan pengalaman pengguna menggunakan metrik nyata. Platform dilengkapi dengan:
+- **Onboarding Wizard**: Alur interaktif ramah pengguna bagi kandidat baru (Welcome ➔ Upload CV ➔ Jalankan Match) yang didorong oleh *Stateless Feature Flagging* (A/B Testing) guna mengukur tingkat retensi.
+- **Event Tracking Terintegrasi**: Setiap aksi kritis (seperti melihat lowongan, mengubah profil, melamar) dicatat secara *closed-loop* ke dalam basis data analitik. Data ini akan membentuk *moat* organik untuk melatih ulang AI (*fine-tuning*) berdasarkan *historical hires*, menjadikan algoritma pencocokan semakin presisi tanpa bantuan manual.
+- **Progressive UI & Error Handling**: *Skeleton loader* transisional yang mensimulasikan langkah AI (misal: "Menganalisis skill gap..."), serta penanganan kesalahan dengan sistem Notifikasi Global (Toast) untuk sesi *Auth*, mencegah kebingungan teknis pada pengguna non-IT.
+
+**Komponen terkait:** `OnboardingWizard`, `useStore` (Zustand), `api.js` (Interceptors)
+**API:** `GET /api/v1/experiments/assignments`, `POST /api/v1/events/track`
