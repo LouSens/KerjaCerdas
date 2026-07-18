@@ -68,11 +68,20 @@ async def run_async_migrations() -> None:
     """
 
     import os
+    import urllib.parse
     section = config.get_section(config.config_ini_section, {})
-    section["sqlalchemy.url"] = os.environ.get(
-        "DATABASE_URL", 
+    db_url = os.environ.get(
+        "DATABASE_URL",
         "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
     )
+    # Normalize: asyncpg driver is required for async alembic
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Strip sslmode — asyncpg uses ssl= connect_arg, not a URL param
+    parsed = urllib.parse.urlparse(db_url)
+    qs = {k: v for k, v in urllib.parse.parse_qsl(parsed.query) if k != "sslmode"}
+    db_url = urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(qs)))
+    section["sqlalchemy.url"] = db_url
 
     connectable = async_engine_from_config(
         section,

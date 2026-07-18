@@ -39,6 +39,13 @@ def _build_engine(database_url: str):
     if database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+    # asyncpg doesn't accept sslmode as a URL query param — strip it
+    if "postgresql+asyncpg" in database_url and "sslmode" in database_url:
+        import urllib.parse
+        parsed = urllib.parse.urlparse(database_url)
+        qs = {k: v for k, v in urllib.parse.parse_qsl(parsed.query) if k != "sslmode"}
+        database_url = urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(qs)))
+
     # SQLite needs special handling for async + foreign keys
     is_sqlite = "sqlite" in database_url
     connect_args = {"check_same_thread": False} if is_sqlite else {}

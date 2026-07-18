@@ -75,9 +75,15 @@ app = FastAPI(
 # Middleware is applied in LIFO order (last-added = outermost).
 # Execution order: CORSMiddleware → RateLimiterMiddleware → RequestSizeMiddleware → route
 
+_cors_origins = list(settings.cors_allow_origins)
+_replit_dev = os.environ.get("REPLIT_DEV_DOMAIN")
+if _replit_dev:
+    _cors_origins.append(f"https://{_replit_dev}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_allow_origins,
+    allow_origins=_cors_origins,
+    allow_origin_regex=r"https://.*\.replit\.dev",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
