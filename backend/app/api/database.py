@@ -14,6 +14,8 @@ from sqlalchemy import event, inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
+from backend.app.config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,8 +64,6 @@ def _build_engine(database_url: str):
 # ---------------------------------------------------------------------------
 # Default engine + session (created lazily on first import / startup)
 # ---------------------------------------------------------------------------
-
-from backend.app.config.settings import settings
 
 # Build from settings (reads .env) so the engine is correct even before the
 # startup lifespan calls reconfigure() — and so standalone scripts that import

@@ -24,7 +24,7 @@ TEST_CASES_FILE = EVALS_DIR / "test_cases.jsonl"
 
 async def run_evaluation():
     logger.info("=== 🚀 Starting KerjaCerdas Evals Framework ===")
-    
+
     if not TEST_CASES_FILE.exists():
         logger.error(f"Test cases file not found at {TEST_CASES_FILE}")
         return
@@ -41,12 +41,12 @@ async def run_evaluation():
     for i, case in enumerate(cases, 1):
         test_input = case.get("input", "")
         expected_intent = case.get("expected_intent", "")
-        
+
         logger.info(f"Test [{i}/{len(cases)}]: '{test_input}'")
-        
+
         # 1. Setup mock state
         state = AgentState(user_message=test_input, intent="", candidate_jobs=[])
-        
+
         # 2. Run the actual agent router logic
         try:
             result = await route_intent(state)
@@ -71,10 +71,10 @@ async def run_evaluation():
     logger.info(f"Total Tests : {len(cases)}")
     logger.info(f"Passed      : {passed_count}")
     logger.info(f"Failed      : {failed_count}")
-    
+
     accuracy = (passed_count / len(cases)) * 100 if cases else 0
     logger.info(f"Accuracy    : {accuracy:.1f}%")
-    
+
     if accuracy >= 80:
         logger.info("✅ Regression Test passed. The Agent is stable and ready for production deployment.")
     else:

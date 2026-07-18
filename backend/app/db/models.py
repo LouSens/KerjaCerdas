@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # pgvector is only available when using PostgreSQL. For SQLite dev mode we fall
@@ -42,7 +42,7 @@ class User(Base, TimestampedMixin):
 
 class SeekerProfile(Base, TimestampedMixin):
     __tablename__ = "seekers"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     full_name: Mapped[str] = mapped_column(String(255))
@@ -64,7 +64,7 @@ class SeekerProfile(Base, TimestampedMixin):
 
 class Employer(Base, TimestampedMixin):
     __tablename__ = "employers"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     company_name: Mapped[str] = mapped_column(String(255))
@@ -78,7 +78,7 @@ class Employer(Base, TimestampedMixin):
 
 class JobPosting(Base, TimestampedMixin):
     __tablename__ = "jobs"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     employer_id: Mapped[str] = mapped_column(String(36), ForeignKey("employers.id"), index=True)
     title: Mapped[str] = mapped_column(String(255))
@@ -99,7 +99,7 @@ class JobPosting(Base, TimestampedMixin):
 
 class Application(Base, TimestampedMixin):
     __tablename__ = "applications"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     job_id: Mapped[str] = mapped_column(String(36), index=True)
     seeker_id: Mapped[str] = mapped_column(String(36), index=True)
@@ -109,7 +109,7 @@ class Application(Base, TimestampedMixin):
 
 class MatchBundle(Base, TimestampedMixin):
     __tablename__ = "matches"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     subject_kind: Mapped[str] = mapped_column(String(20))
     subject_id: Mapped[str] = mapped_column(String(36), index=True)
@@ -119,7 +119,7 @@ class MatchBundle(Base, TimestampedMixin):
 
 class SkillGapResult(Base, TimestampedMixin):
     __tablename__ = "skill_gaps"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     seeker_id: Mapped[str] = mapped_column(String(36), index=True)
     target_job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
@@ -133,7 +133,7 @@ class SkillGapResult(Base, TimestampedMixin):
 
 class ChatSession(Base, TimestampedMixin):
     __tablename__ = "conversations"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), index=True)
     seeker_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
@@ -142,7 +142,7 @@ class ChatSession(Base, TimestampedMixin):
 
 class Course(Base, TimestampedMixin):
     __tablename__ = "courses"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
     provider: Mapped[str] = mapped_column(String(255))
@@ -157,7 +157,7 @@ class Course(Base, TimestampedMixin):
 
 class AIPerformanceLog(Base, TimestampedMixin):
     __tablename__ = "ai_logs"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     request_id: Mapped[str] = mapped_column(String(100))
     user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
@@ -174,7 +174,7 @@ class AIPerformanceLog(Base, TimestampedMixin):
 
 class GamificationStats(Base, TimestampedMixin):
     __tablename__ = "gamification"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     seeker_id: Mapped[str] = mapped_column(String(36), index=True)
     xp: Mapped[int] = mapped_column(Integer, default=0)

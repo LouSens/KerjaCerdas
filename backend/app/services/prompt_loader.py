@@ -30,10 +30,10 @@ def build_system_prompt(role: str, task: str | None = None) -> str:
     ]
     if task:
         parts += ["\n---\n", _read(f"tasks/{task}.md")]
-        
+
     # Inject Agentic System Rules from policies
     policies_dir = Path(__file__).resolve().parent.parent / "prompts" / "policies"
-    
+
     def _read_agent_rule(filename: str) -> str:
         path = policies_dir / filename
         return path.read_text(encoding="utf-8") if path.exists() else ""

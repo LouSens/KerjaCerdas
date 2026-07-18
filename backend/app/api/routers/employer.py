@@ -253,7 +253,7 @@ async def find_candidates(
 
     matcher = SemanticMatcher()
     ranked = await matcher.rank_seekers_for_job(job, seekers, top_k=top_k, filters=filters)
-    
+
     # Redact full_name (Teaser Method / LinkedIn Style)
     for c in ranked:
         seeker = next((s for s in seekers if s.id == c["seeker_id"]), None)
@@ -269,5 +269,5 @@ async def find_candidates(
             c["full_name"] = f"Someone in region {seeker.region_code}"
         else:
             c["full_name"] = "Hidden Candidate"
-            
+
     return {"job_id": job_id, "total": len(ranked), "candidates": ranked}

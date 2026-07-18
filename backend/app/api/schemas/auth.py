@@ -12,9 +12,8 @@ from __future__ import annotations
 
 import re
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
-
 from backend.app.api.middleware.sanitization import SanitizedStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserRegisterRequest(BaseModel):

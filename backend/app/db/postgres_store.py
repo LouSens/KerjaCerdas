@@ -48,7 +48,7 @@ class PostgresRepository(Generic[TSchema, TModel]):
             obj = result.scalar_one_or_none()
             if not obj:
                 return None
-            
+
             # Convert dicts from JSONB to lists if needed, but Pydantic handles validation
             # Convert ORM model to dict, then to Pydantic Schema
             data = {c.name: getattr(obj, c.name) for c in self.model.__table__.columns}
@@ -61,7 +61,7 @@ class PostgresRepository(Generic[TSchema, TModel]):
             stmt = select(self.model).where(self.model.id == oid)
             result = await session.execute(stmt)
             existing = result.scalar_one_or_none()
-            
+
             data = obj.model_dump()
             if existing:
                 for k, v in data.items():
@@ -69,7 +69,7 @@ class PostgresRepository(Generic[TSchema, TModel]):
             else:
                 new_obj = self.model(**data)
                 session.add(new_obj)
-            
+
             await session.commit()
             return obj
 
@@ -91,7 +91,7 @@ class PostgresRepository(Generic[TSchema, TModel]):
                 stmt = stmt.limit(limit)
             result = await session.execute(stmt)
             objs = result.scalars().all()
-            
+
             out = []
             for obj in objs:
                 data = {c.name: getattr(obj, c.name) for c in self.model.__table__.columns}

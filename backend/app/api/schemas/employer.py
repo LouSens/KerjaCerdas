@@ -57,7 +57,7 @@ class JobPostingResponse(BaseModel):
     applicants: int
     posted_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 

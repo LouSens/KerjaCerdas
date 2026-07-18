@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 
+from backend.app.api.middleware.sanitization import sanitize_text
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     CourseRecommendation,
@@ -27,8 +28,6 @@ from backend.app.db.schemas import (
 )
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
-
-from backend.app.api.middleware.sanitization import sanitize_text
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)
@@ -203,7 +202,6 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs, filters=req.filters)
 
     # Token efficiency gate: if ALL matches are well below threshold, skip LLM
-    from backend.app.config.settings import settings as _s
     max_score = max((m.score for m in raw_matches), default=0.0)
     early_exit = max_score < 0.10
 
@@ -230,7 +228,7 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     # --- Run agent --------------------------------------------------------
     from backend.app.agents.graph.builder import get_graph
     app_graph = get_graph()
-    
+
     # Build context prompt for ReAct agent
     skills = [s.name for s in seeker.skills] if seeker.skills else []
     context = f"[Context System]\nProfil Kandidat:\nNama: {seeker.full_name}\nSkill: {skills}\n"
@@ -240,9 +238,9 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
         context += f"\nInstruksi Prioritas (Bypass UI): Kandidat menekan tombol dengan intent '{safe_intent}'. Segera eksekusi alat yang relevan!\n"
         if req.target_job_id:
             context += f"Target Job ID: {req.target_job_id}\n"
-    
+
     context += f"\n<user_input>\n{safe_message}\n</user_input>"
-    
+
     state_in = {"messages": [("user", context)]}
     config = {
         "configurable": {"thread_id": req.session_id or seeker.id},

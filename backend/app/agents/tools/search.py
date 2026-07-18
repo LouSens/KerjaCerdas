@@ -8,7 +8,7 @@ from langchain_core.tools import tool
 @tool
 def search_job_market_trends(query: str) -> str:
     """Search macro job market trends from BPS / external APIs.
-    
+
     Args:
         query: The job title or skill to search trends for.
     """

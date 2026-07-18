@@ -1,8 +1,9 @@
 """Consolidated public + admin /jobs surface."""
 from __future__ import annotations
 
+import time
+
 from backend.app.db.postgres_store import get_repositories
-from backend.app.db.schemas import Employer, VerificationStatus
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -92,4 +93,4 @@ async def get_job(job_id: str):
     if not j:
         return {"error": "not_found"}
     employer = await repos.employers.get(j.employer_id)
-    return j.model_dump() | {"verified": _is_verified(employer)}
+    return j.model_dump() | {"verified": _is_employer_verified(employer)}

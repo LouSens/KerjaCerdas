@@ -34,7 +34,7 @@ class SeekerProfileResponse(SeekerProfileCreate):
     user_id: str
     created_at: datetime
     updated_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -49,5 +49,5 @@ class BookmarkResponse(BaseModel):
     job_id: str
     user_id: str
     saved_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)

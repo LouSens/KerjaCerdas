@@ -228,7 +228,6 @@ class SemanticMatcher:
             _build_seeker_text(seeker), task_type="RETRIEVAL_QUERY"
         )
         seeker_skill_names = [s.name for s in seeker.skills]
-        years_exp = _experience_years(seeker)
 
         scored: list[MatchResult] = []
         for j in jobs:
@@ -244,7 +243,7 @@ class SemanticMatcher:
 
             # 1. Base Score (Semantic + Skill Only)
             base_score = 0.60 * max(cos, 0.0) + 0.40 * skill
-            
+
             # 2. Hybrid AI Boosts (Only applied if user actively sets filters)
             loc_boost = 0.0
             region_ok = False
@@ -326,18 +325,18 @@ class SemanticMatcher:
         for s in seekers:
             cos   = cosine(query_vec, s.embedding or [])
             skill = _skill_overlap([sk.name for sk in s.skills], job.required_skills)
-            
+
             # Hybrid AI Boost based on filters
             loc_boost = 0.0
             if filters.get("location") and filters["location"].lower() == (s.region_code or "").lower():
                 loc_boost = 0.15
-                
+
             exp_boost = 0.0
             if filters.get("experience_min"):
                 years_exp = _experience_years(s)
                 if years_exp >= int(filters["experience_min"]):
                     exp_boost = 0.10
-                    
+
             score = round(0.60 * max(cos, 0.0) + 0.40 * skill + loc_boost + exp_boost, 4)
             seeker_skill_lower = {sk.name.lower() for sk in s.skills}
             matched_skills = [r for r in job.required_skills if r.lower() in seeker_skill_lower]
@@ -384,8 +383,8 @@ class SemanticMatcher:
 
         if gemini_key:
             try:
-                from langchain_google_genai import ChatGoogleGenerativeAI
                 from langchain_core.messages import HumanMessage
+                from langchain_google_genai import ChatGoogleGenerativeAI
                 llm = ChatGoogleGenerativeAI(
                     model=settings.gemini_chat_model,
                     temperature=0.1,

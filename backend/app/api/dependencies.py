@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from backend.app.api.database import get_session
-from backend.app.db.models import User
 from backend.app.api.services.auth_service import decode_access_token
+from backend.app.db.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ async def get_current_user(
 ) -> User:
     """
     Validate JWT token and return the current User object.
-    
+
     Raises 401 Unauthorized if token is missing, invalid, or user not found.
     """
     credentials_exception = HTTPException(
@@ -38,7 +38,7 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     payload = decode_access_token(token)
     if not payload:
         raise credentials_exception
@@ -50,11 +50,11 @@ async def get_current_user(
     # Query the user from database
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if user is None:
         logger.warning(f"Valid token but user {user_id} not found in DB")
         raise credentials_exception
-        
+
     if not user.is_active:
         logger.warning(f"Inactive user {user_id} attempted access")
         raise HTTPException(status_code=400, detail="Inactive user account")
@@ -66,7 +66,7 @@ async def require_employer(current_user: User = Depends(get_current_user)) -> Us
     """Dependency that ensures the user is an employer."""
     if current_user.role != "employer":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Employer access required"
         )
     return current_user

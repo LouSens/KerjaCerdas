@@ -8,13 +8,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
-
 from backend.app.db.postgres_store import get_repositories
 from backend.app.services.integrations.karirhub import (
     pull_verified_listings,
     push_vacancies,
 )
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/karirhub", tags=["karirhub"])
 

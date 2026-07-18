@@ -10,13 +10,13 @@ store so the user can post jobs immediately without a separate onboarding step.
 import logging
 
 from backend.app.api.database import get_session
-from backend.app.db.models import User
 from backend.app.api.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
 from backend.app.api.services.auth_service import (
     create_access_token,
     hash_password,
     verify_password,
 )
+from backend.app.db.models import User
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import Employer, UserRole
 from backend.app.db.schemas import User as JsonUser
@@ -61,7 +61,7 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email already exists"
         )
-    
+
     logger.info(f"New user registered: {new_user.email} as {new_user.role}")
 
     # Auto-create domain profile in JSON store ---------------------------------
@@ -124,13 +124,13 @@ async def login_user(request: UserLoginRequest, db: AsyncSession = Depends(get_s
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
-    
+
     if not verify_password(request.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

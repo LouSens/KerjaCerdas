@@ -9,13 +9,13 @@ logger = logging.getLogger(__name__)
 
 class AgentMemoryManager:
     """Handles persistence of agent state."""
-    
+
     def __init__(self, checkpointer_type: str = "memory"):
         self.checkpointer_type = checkpointer_type
-        
+
     def get_checkpointer(self):
         """Returns the appropriate LangGraph checkpointer based on config.
-        
+
         MVP uses MemorySaver. Production uses AsyncPostgresSaver to persist
         state across distributed server restarts.
         """

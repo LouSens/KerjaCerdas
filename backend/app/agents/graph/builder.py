@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.graph.graph import CompiledGraph
 from langgraph.prebuilt import create_react_agent
 
 from backend.app.agents.tools.superpowers import SUPERPOWER_TOOLS
@@ -16,7 +17,7 @@ from backend.app.config.settings import settings
 
 def build_graph_v2(checkpointer=None):
     from backend.app.agents.memory.manager import AgentMemoryManager
-    
+
     if checkpointer is None:
         mem_mgr = AgentMemoryManager(checkpointer_type="memory")
         checkpointer = mem_mgr.get_checkpointer()
@@ -26,7 +27,7 @@ def build_graph_v2(checkpointer=None):
         or os.environ.get("GEMINI_API_KEY", "")
         or os.environ.get("GOOGLE_API_KEY", "")
     )
-    
+
     # ChatGoogleGenerativeAI won't read settings.gemini_api_key on its own —
     # pass the resolved key explicitly (mirrors the matcher fix).
     llm = ChatGoogleGenerativeAI(
@@ -46,7 +47,7 @@ def build_graph_v2(checkpointer=None):
         prompt=system_prompt,
         checkpointer=checkpointer
     )
-    
+
     return compiled_graph
 
 _graph_v2 = None

@@ -12,21 +12,14 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends
-
 from backend.app.api.dependencies import get_current_user_optional
 from backend.app.db.models import Event
 from backend.app.db.session import async_session
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/events", tags=["events"])
 logger = logging.getLogger(__name__)
-
-
-class EventPayload:
-    """Validated event payload (plain class for speed — no full Pydantic overhead)."""
-
-
-from pydantic import BaseModel
 
 
 class TrackEventRequest(BaseModel):

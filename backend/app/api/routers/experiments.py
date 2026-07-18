@@ -18,9 +18,8 @@ from __future__ import annotations
 
 import hashlib
 
-from fastapi import APIRouter, Depends
-
 from backend.app.api.dependencies import get_current_user
+from fastapi import APIRouter, Depends
 
 router = APIRouter(prefix="/experiments", tags=["experiments"])
 
