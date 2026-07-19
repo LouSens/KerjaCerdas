@@ -119,7 +119,21 @@ class TestJobsEndpoint:
 
 
 class TestIdentityVerificationEndpoint:
-    """Test mock identity verification endpoint."""
+    """Test mock identity verification endpoint (requires authentication)."""
+
+    @pytest.fixture(autouse=True)
+    def _authenticated_user(self):
+        """Override auth dependency so verify endpoints see a logged-in user."""
+        from types import SimpleNamespace
+
+        from backend.app.api.dependencies import get_current_user
+
+        fake_user = SimpleNamespace(
+            id="test-user-id", email="test@example.com", role="seeker", is_active=True
+        )
+        app.dependency_overrides[get_current_user] = lambda: fake_user
+        yield
+        app.dependency_overrides.pop(get_current_user, None)
 
     def test_verify_identity_returns_verified_for_valid_demo_nik(self, client: TestClient) -> None:
         """Valid demo NIK should verify successfully."""

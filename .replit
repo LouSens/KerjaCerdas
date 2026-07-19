@@ -66,3 +66,12 @@ externalPort = 80
 
 [userenv.shared]
 SEED_DEFAULT_PASSWORD = "unified-bruising-supplier-prior-untaxed-mutilator"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 240000
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["bash", "-c", "python -m alembic --config backend/alembic.ini upgrade head && uvicorn backend.app.api.main:app --host 0.0.0.0 --port 5000"]
+build = ["bash", "-c", "pip install -e backend/ && cd frontend && npm ci && npm run build"]

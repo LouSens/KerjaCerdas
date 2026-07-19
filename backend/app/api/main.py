@@ -6,6 +6,7 @@ or                 `uvicorn backend.app.api.main:app --reload`
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import secrets
 import time
 import uuid
@@ -173,15 +174,41 @@ async def security_headers(request: Request, call_next) -> Response:
     """Attach security-hardening headers to every response."""
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault(
-        "Content-Security-Policy",
-        "default-src 'none'; frame-ancestors 'none'",
-    )
+    if request.url.path.startswith("/api/"):
+        # Strict headers for API responses only; the SPA needs scripts/styles.
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'",
+        )
     return response
 
 
-@app.get("/")
-async def root():
-    return {"service": "KerjaCerdas API", "docs": "/docs", "health": "/health"}
+# In production, serve the built frontend (frontend/dist) from this server.
+# In development the Vite dev server handles the frontend, so the mount is skipped.
+# Gated on an explicit production signal (REPLIT_DEPLOYMENT is set in Replit
+# deployments; SERVE_FRONTEND=1 can force it elsewhere) so a stale dist build
+# never hijacks routing in the dev workspace.
+_FRONTEND_DIST = Path(__file__).resolve().parents[3] / "frontend" / "dist"
+_SERVE_FRONTEND = bool(
+    os.environ.get("REPLIT_DEPLOYMENT") or os.environ.get("SERVE_FRONTEND")
+)
+
+if _SERVE_FRONTEND and _FRONTEND_DIST.is_dir():
+    from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/assets", StaticFiles(directory=_FRONTEND_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        candidate = (_FRONTEND_DIST / full_path).resolve()
+        if full_path and candidate.is_file() and candidate.is_relative_to(_FRONTEND_DIST):
+            return FileResponse(candidate)
+        return FileResponse(_FRONTEND_DIST / "index.html")
+else:
+
+    @app.get("/")
+    async def root():
+        return {"service": "KerjaCerdas API", "docs": "/docs", "health": "/health"}
