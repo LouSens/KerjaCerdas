@@ -62,7 +62,7 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
             detail="User with this email already exists"
         )
 
-    logger.info(f"New user registered: {new_user.email} as {new_user.role}")
+    logger.info("New user registered: user_id=%s role=%s", new_user.id, new_user.role)
 
     # Auto-create domain profile in JSON store ---------------------------------
     repos = get_repositories()
@@ -88,7 +88,7 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
         existing_emp = await repos.employers.find(lambda e: e.user_id == new_user.id)
         if not existing_emp:
             await repos.employers.upsert(employer)
-            logger.info("Auto-created employer profile for %s", new_user.email)
+            logger.info("Auto-created employer profile for user_id=%s", new_user.id)
 
     # Generate token immediately after registration
     token = create_access_token(
@@ -136,7 +136,7 @@ async def login_user(request: UserLoginRequest, db: AsyncSession = Depends(get_s
             detail="User account is inactive"
         )
 
-    logger.info(f"User logged in: {user.email}")
+    logger.info("User logged in: user_id=%s", user.id)
 
     token = create_access_token(
         user_id=user.id,

@@ -69,7 +69,7 @@ async def update_employer_profile(
             setattr(employer, k, v)
 
     await repos.employers.upsert(employer)
-    logger.info("Employer profile updated for user %s", current_user.email)
+    logger.info("Employer profile updated for user_id=%s", current_user.id)
     return {"employer_id": employer.id, "company_name": employer.company_name}
 
 
@@ -108,7 +108,7 @@ async def create_job(body: dict, current_user: User = Depends(get_current_user))
     matcher = SemanticMatcher()
     await matcher.embed_job(job)
     await repos.jobs.upsert(job)
-    logger.info("Job created: %s by %s", job.id, current_user.email)
+    logger.info("Job created: %s by user_id=%s", job.id, current_user.id)
     return {"job_id": job.id, "title": job.title}
 
 

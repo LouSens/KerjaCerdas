@@ -87,8 +87,8 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             if len(dq) >= max_req:
                 retry_after = int(window - (now - dq[0])) + 1
                 logger.warning(
-                    "Rate limit exceeded: ip=%s path=%s count=%d limit=%d",
-                    ip, path, len(dq), max_req,
+                    "Rate limit exceeded: path=%s count=%d limit=%d",
+                    path, len(dq), max_req,
                 )
                 return Response(
                     content='{"detail":"Too many requests. Please slow down."}',

@@ -113,7 +113,7 @@ async def create_or_update_profile(
             gam.xp += 100
         await repos.gamification.upsert(gam)
 
-    logger.info("Profile upserted for user %s → seeker %s (embedding queued)", current_user.email, profile.id)
+    logger.info("Profile upserted for user_id=%s → seeker %s (embedding queued)", current_user.id, profile.id)
     return {"seeker_id": profile.id, "skills_count": len(profile.skills), "embedding_status": "queued"}
 
 
