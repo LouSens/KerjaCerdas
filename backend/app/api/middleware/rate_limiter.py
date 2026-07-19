@@ -40,11 +40,19 @@ _DEFAULT_LIMIT = (60, 60)  # 60 req / 60 s
 
 
 def _get_client_ip(request: Request) -> str:
-    """Extract real client IP, honouring X-Forwarded-For behind a proxy."""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        # Take the left-most (client) address
-        return forwarded.split(",")[0].strip()
+    """Extract the client IP from the transport layer.
+
+    X-Forwarded-For is intentionally ignored: it is a request header that any
+    client can set to an arbitrary value, which would allow trivial rate-limit
+    bypass (rotating the header on each request makes every request appear to
+    come from a distinct IP).  In a direct-to-internet deployment the real
+    peer address reported by the TCP stack is the only trustworthy source.
+
+    If this service is ever placed behind a trusted reverse proxy (nginx,
+    Caddy, AWS ALB, …), configure the proxy to *overwrite* (not append)
+    a custom trusted header and read only that header here — do not blindly
+    trust the client-supplied X-Forwarded-For.
+    """
     return request.client.host if request.client else "unknown"
 
 
