@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="KerjaCerdas API",
     description="AI-powered job-matching platform for Indonesia",
-    version="0.3.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
 

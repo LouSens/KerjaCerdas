@@ -29,7 +29,7 @@ class TestHealthCheck:
         data = response.json()
         assert data["status"] == "healthy"
         assert data["service"] == "KerjaCerdas API"
-        assert data["version"] == "0.3.0"
+        assert data["version"] == "1.0.0"
 
 
 class TestMatchEndpoint:

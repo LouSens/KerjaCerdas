@@ -1,6 +1,6 @@
 # PROPOSAL 3RD SUBMISSION — KERJACERDAS
 
-> **Status:** Draft aktif — mencerminkan state sistem saat ini (MVP v0.4.0). Perbarui dokumen ini setiap ada perubahan fitur, keputusan produk, atau hasil pengujian baru. Bagian yang masih perlu dilengkapi ditandai `[TODO]`.
+> **Status:** Draft aktif — mencerminkan state sistem saat ini (MVP v1.0.0). Perbarui dokumen ini setiap ada perubahan fitur, keputusan produk, atau hasil pengujian baru. Bagian yang masih perlu dilengkapi ditandai `[TODO]`.
 
 ---
 
@@ -30,7 +30,7 @@ KerjaCerdas adalah platform karier berbasis AI yang menjembatani ketimpangan str
 
 Sistem bekerja dengan mengonversi CV dan lowongan menjadi representasi vektor semantik menggunakan Gemini Embeddings, lalu mencocokkannya melalui algoritma Hybrid Ranking (cosine similarity + skill overlap + lokasi + gaji). Autonomous Multi-Agent Swarm berbasis LangGraph kemudian menganalisis celah keahlian, merekomendasikan jalur upskilling, dan memberikan panduan karier personal. HRD melihat kandidat teratas dalam hitungan menit melalui model Direct Contact Unlock.
 
-**Status saat ini:** MVP v0.4.0 fungsional penuh — dapat dijalankan via Docker dengan performa tinggi (<200ms API latency), mencakup infrastruktur CI/CD otomatis, A/B testing, Onboarding Wizard, Kanban Pipeline untuk Employer, dan caching berlapis. Target: pengurangan waktu screening hingga 90% dengan biaya akses mulai Rp 50.000.
+**Status saat ini:** MVP v1.0.0 fungsional penuh — dapat dijalankan via Docker dengan performa tinggi (<200ms API latency), mencakup infrastruktur CI/CD otomatis, A/B testing, Onboarding Wizard, Kanban Pipeline untuk Employer, dan caching berlapis. Target: pengurangan waktu screening hingga 90% dengan biaya akses mulai Rp 50.000.
 
 ---
 
@@ -48,7 +48,7 @@ Sejak 2nd submission, terdapat lima perubahan signifikan berdasarkan hasil pengu
 
 5. **Unit Testing** — `test_security.py` ditambahkan untuk validasi sanitasi dan keamanan token. *Alasan: quality gate sebelum demo.*
 
-**Tambahan perubahan menuju MVP v0.4.0 (Tahap 3):**
+**Tambahan perubahan menuju MVP v1.0.0 (Tahap 3):**
 6. **Agentic AI & Keamanan** — Implementasi *Token Efficiency Gate* dan *Hallucination Guard* untuk menghemat biaya API dan menghilangkan respons halusinasi, serta pembersihan jargon teknis (*Gemini, Vector*) pada antarmuka.
 7. **Performa & Infrastruktur Backend** — Pemrosesan *asynchronous embedding* (menurunkan latensi dari ~3 detik ke <200ms), In-Memory Caching (TTL) untuk pencarian lowongan, dan optimasi *pgvector HNSW index* melalui Alembic migrations.
 8. **Product & UX Frontend** — Alur *Onboarding Wizard* (Welcome ➔ Upload CV ➔ Match) terintegrasi A/B testing, dukungan revisi manual profil CV, sistem Notifikasi Global, serta *Mobile-First CSS Audit*.
@@ -148,7 +148,7 @@ Payment gateway nyata (Midtrans/Xendit), E-KYC dengan API pemerintah asli (Dukca
 
 ## Innovation Level (Maksimal 50 kata)
 
-**Level: Functional Prototype — Advanced MVP (v0.3.0)**
+**Level: Functional Prototype — Advanced MVP (v1.0.0)**
 
 Bukti: Platform berjalan end-to-end via Docker; 7 router API aktif; Hybrid Ranking Algorithm tervalidasi dengan 5 komponen skor; Multi-Agent Swarm (LangGraph + 4 tools) berfungsi; middleware keamanan berlapis aktif; 21 lowongan + 20 kandidat Indonesia sebagai demo data real.
 

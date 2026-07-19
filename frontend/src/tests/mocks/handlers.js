@@ -41,7 +41,7 @@ export const handlers = [
 
     // ── Health ────────────────────────────────────────────────────────────
     http.get('/health', () =>
-        HttpResponse.json({ status: 'healthy', service: 'KerjaCerdas API', version: '0.3.0' }),
+        HttpResponse.json({ status: 'healthy', service: 'KerjaCerdas API', version: '1.0.0' }),
     ),
 
     // ── Jobs ──────────────────────────────────────────────────────────────
