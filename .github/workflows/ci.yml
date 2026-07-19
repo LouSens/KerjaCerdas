@@ -1,25 +1,36 @@
-name: CI Pipeline — KerjaCerdas
+﻿# ─────────────────────────────────────────────────────────────────────────────
+# CI Pipeline — KerjaCerdas
+#
+# Triggers : every push to `main` and every Pull Request targeting `main`
+# Skips    : tag pushes (release.yml handles those)
+# ─────────────────────────────────────────────────────────────────────────────
+name: CI
 
 on:
   push:
     branches: [main]
+    tags-ignore: ["**"]   # release.yml handles tag pushes
   pull_request:
     branches: [main]
 
 env:
   PYTHON_VERSION: "3.11"
-  NODE_VERSION: "22"    # LTS; was 20 (deprecated on ubuntu-latest runners)
+  NODE_VERSION: "22"
+
+# Cancel in-flight runs for the same branch/PR to save runner minutes
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # ── Gate 1: Code Quality ──────────────────────────────────────────────────
-  quality:
-    name: Code Quality Gate
+  # ── Gate 1: Backend Code Quality ─────────────────────────────────────────────
+  quality-backend:
+    name: "Backend · Lint & Audit"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -28,11 +39,19 @@ jobs:
         run: pip install -e "backend/.[dev]"
 
       - name: Ruff lint
-        # Defers to pyproject.toml: select=["E","F","I","W"], ignore=["E501"]
         run: ruff check backend/app/
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: pip-audit (dependency CVE scan)
+        run: pip-audit --requirement <(pip freeze) --skip-editable
+
+  # ── Gate 2: Frontend Code Quality ────────────────────────────────────────────
+  quality-frontend:
+    name: "Frontend · Lint & Build"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -41,56 +60,63 @@ jobs:
       - name: Install frontend deps
         run: cd frontend && npm ci
 
-      - name: Frontend lint (ESLint)
+      - name: ESLint
         run: cd frontend && npm run lint --if-present || true
 
-  # ── Gate 2: Backend Unit Tests ─────────────────────────────────────────────
+      - name: Vite build check (validates all imports and bundling)
+        run: cd frontend && npm run build
+        env:
+          VITE_API_URL: http://localhost:8000
+
+  # ── Gate 3: Backend Unit Tests ────────────────────────────────────────────────
   test-unit:
-    name: Unit Test Gate
+    name: "Backend · Unit Tests"
     runs-on: ubuntu-latest
-    needs: quality
+    needs: [quality-backend]
     env:
       DEMO_MODE: "true"
-      GEMINI_API_KEY: ""           # HashEmbedder fallback; no real key needed
-      # SQLite in-process: avoids needing a Postgres service for pure unit tests.
+      GEMINI_API_KEY: ""
       DATABASE_URL: "sqlite+aiosqlite:///./test.db"
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
       - name: Install backend (dev)
-        # Includes: pytest, pytest-asyncio, pytest-cov, httpx, aiosqlite, ruff
         run: pip install -e "backend/.[dev]"
 
       - name: Run unit tests with coverage
-        # Run from backend/ so pytest rootdir = backend/ (where pyproject.toml lives).
-        # Path tests/unit/ is relative to that rootdir. No testpaths in pyproject.toml.
         run: |
           cd backend
           python -m pytest tests/unit/ -v \
             --cov=app \
             --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
             --cov-fail-under=30 \
-            -x
-        # 30% is achievable with pure-unit tests and no DB.
-        # Raise toward 60%+ once integration mocks / conftest fixtures are added.
+            -x --timeout=60
 
-  # ── Gate 3: Integration Tests (with Postgres + pgvector) ──────────────────
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend/coverage.xml
+          retention-days: 7
+
+  # ── Gate 4: Integration Tests (pgvector + Alembic migration) ─────────────────
   test-integration:
-    name: Integration Test Gate
+    name: "Backend · Integration Tests"
     runs-on: ubuntu-latest
     needs: test-unit
-    continue-on-error: true     # non-blocking until integration tests are written
+    continue-on-error: true
     services:
       postgres:
         image: pgvector/pgvector:pg16
         env:
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: testpass
           POSTGRES_DB: kerjacerdas_test
         options: >-
@@ -103,13 +129,11 @@ jobs:
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:testpass@localhost:5432/kerjacerdas_test
       DEMO_MODE: "false"
-      GEMINI_API_KEY: ""
-
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || '' }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -117,42 +141,38 @@ jobs:
       - name: Install backend (dev)
         run: pip install -e "backend/.[dev]"
 
+      - name: Run Alembic migrations against test DB
+        run: python -m alembic -c backend/alembic.ini upgrade head
+
       - name: Run integration tests
-        # Run from backend/ to match rootdir. Exit 5 (no tests) is OK for now.
         run: |
           cd backend
-          python -m pytest tests/integration/ -v -x --timeout=30; EC=$?
+          python -m pytest tests/integration/ -v -x --timeout=60; EC=$?
           if [ $EC -eq 5 ]; then
-            echo "No integration tests collected yet — skipping (exit 5 is OK)"
+            echo "::notice::No integration tests collected yet — exit 5 is OK"
             exit 0
           fi
           exit $EC
 
-  # ── Gate 4: Latency Benchmark (non-blocking, informational) ───────────────
+  # ── Gate 5: Latency Benchmark (informational only) ───────────────────────────
   perf-benchmark:
-    name: Latency Benchmark
+    name: "Backend · Latency Benchmark"
     runs-on: ubuntu-latest
     needs: test-unit
-    continue-on-error: true   # warning only; never blocks the pipeline
+    continue-on-error: true
     env:
       DEMO_MODE: "true"
-      GEMINI_API_KEY: ""        # Uses HashEmbedder fallback; prints NOT-VALID banner
-
+      GEMINI_API_KEY: ""
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      - name: Install backend
-        # Only core deps needed for the benchmark script
+      - name: Install backend (core only)
         run: pip install -e "backend/."
 
       - name: Run matching benchmark
-        # Must run as a module from repo root so backend.* imports resolve.
-        # HashEmbedder is used (no API key) — benchmark prints a NOT-VALID banner
-        # but still completes and shows keyword vs. semantic score distribution.
         run: python -m backend.scripts.benchmark_matching --manual-seconds-per-cv 30
