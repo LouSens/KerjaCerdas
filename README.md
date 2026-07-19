@@ -1,14 +1,17 @@
 <div align="center">
 
+<img src="docs/assets/logo.png" alt="KerjaCerdas Logo" width="180" />
+
 # KerjaCerdas
 **Autonomous Recruitment Platform powered by Semantic Matching & Multi-Agent Swarm**
 
-[![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
-[![Frontend: React 18](https://img.shields.io/badge/Frontend-React%2018-61DAFB?style=flat-square&logo=react)](https://react.dev)
-[![AI: Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4?style=flat-square&logo=googlegemini)](https://ai.google.dev)
-[![Database: PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%20pgvector-336791?style=flat-square&logo=postgresql)](https://postgresql.org)
-[![Database: Supabase](https://img.shields.io/badge/Cloud-Supabase-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com)
-[![Deploy: Docker](https://img.shields.io/badge/Deploy-Docker-2496ED?style=flat-square&logo=docker)](https://docker.com)
+[![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Frontend: React 18](https://img.shields.io/badge/Frontend-React%2018-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![AI: Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev)
+[![Agents: LangGraph](https://img.shields.io/badge/Agents-LangGraph-1C3C3C?style=flat-square&logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
+[![Database: PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%20pgvector-336791?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Cloud: Supabase](https://img.shields.io/badge/Cloud-Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
+[![Deploy: Docker](https://img.shields.io/badge/Deploy-Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docker.com)
 
 *An enterprise-grade talent matching infrastructure utilizing high-dimensional vector search and ReAct-based autonomous agents to streamline recruitment pipelines.*
 
@@ -30,7 +33,7 @@
 
 Detail lengkap mengenai fitur produk dapat dilihat di [Product Features](docs/PRODUCT_FEATURES.md).
 
-## 🚀 Pembaruan MVP v0.4.0 (Latest Release)
+## 🚀 Pembaruan MVP v1.0.0 (Latest Release)
 Sistem telah berevolusi menjadi arsitektur yang tangguh dan siap pakai untuk uji beta publik, dengan peningkatan berikut:
 - **Performa Backend**: Pemrosesan asinkron untuk ekstraksi CV (<200ms latency), TTL Caching pada korpus pencarian, dan index HNSW pgvector.
 - **Agentic AI & Keamanan**: *Token Efficiency Gate* (mencegah *cost overrun* LLM jika *vector match* terlalu rendah), *Hallucination Guards*, serta filter kata teknis untuk UI yang lebih humanis.
