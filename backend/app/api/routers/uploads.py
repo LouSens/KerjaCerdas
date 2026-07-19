@@ -4,6 +4,8 @@ Files are parsed by Gemini and merged into the user's profile / posting list.
 """
 from __future__ import annotations
 
+from backend.app.api.dependencies import require_employer, require_seeker
+from backend.app.db.models import User
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     Education,
@@ -15,7 +17,7 @@ from backend.app.db.schemas import (
 )
 from backend.app.services.matching.matcher import SemanticMatcher
 from backend.app.services.pdf_parser import parse_cv, parse_job_pack
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
@@ -55,7 +57,10 @@ def _to_education(d: dict) -> Education:
 
 
 @router.post("/cv")
-async def upload_cv(user_id: str = Form(...), file: UploadFile = File(...)) -> dict:
+async def upload_cv(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_seeker),
+) -> dict:
     if file.content_type not in ("application/pdf", "application/octet-stream"):
         raise HTTPException(400, "Only PDF accepted")
     blob = await file.read()
@@ -65,7 +70,8 @@ async def upload_cv(user_id: str = Form(...), file: UploadFile = File(...)) -> d
     parsed = await parse_cv(blob)
     repos = get_repositories()
 
-    # Find or create a seeker profile for this user.
+    # Find or create a seeker profile for the authenticated user.
+    user_id = current_user.id
     existing = await repos.seekers.find(lambda s: s.user_id == user_id)
     seeker = existing[0] if existing else SeekerProfile(
         user_id=user_id, full_name=parsed.get("full_name", "Pengguna"),
@@ -100,8 +106,8 @@ async def upload_cv(user_id: str = Form(...), file: UploadFile = File(...)) -> d
 
 @router.post("/job-pack")
 async def upload_job_pack(
-    user_id: str = Form(...),
     file: UploadFile = File(...),
+    current_user: User = Depends(require_employer),
 ) -> dict:
     if file.content_type not in ("application/pdf", "application/octet-stream"):
         raise HTTPException(400, "Only PDF accepted")
@@ -113,8 +119,8 @@ async def upload_job_pack(
     postings = parsed.get("postings", [])
     repos = get_repositories()
 
-    # Resolve the employer for this user.
-    employer_match = await repos.employers.find(lambda e: e.user_id == user_id)
+    # Resolve the employer profile for the authenticated user.
+    employer_match = await repos.employers.find(lambda e: e.user_id == current_user.id)
     if not employer_match:
         raise HTTPException(400, "No employer profile for this user")
     employer = employer_match[0]

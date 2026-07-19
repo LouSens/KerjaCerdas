@@ -19,14 +19,16 @@ from __future__ import annotations
 
 import logging
 
+from backend.app.api.dependencies import get_current_user
 from backend.app.api.middleware.sanitization import sanitize_text
+from backend.app.db.models import User
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     CourseRecommendation,
     MatchResult,
     SeekerProfile,
 )
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -160,7 +162,10 @@ async def _enrich_matches(
 
 
 @router.post("/invoke", response_model=AgentInvokeResponse)
-async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
+async def invoke_agent(
+    req: AgentInvokeRequest,
+    current_user: User = Depends(get_current_user),
+) -> AgentInvokeResponse:
     """Unified entry point: routes to matcher / skill-gap / advisor based on message intent."""
     import time
     _start = time.time()
@@ -179,18 +184,34 @@ async def invoke_agent(req: AgentInvokeRequest) -> AgentInvokeResponse:
     ) if req.explicit_intent else None
 
     # --- Resolve seeker (graceful cascade, never 400) ---------------------
-    seeker: SeekerProfile | None = req.seeker
+    # Inline seeker override is only honoured when it belongs to the authenticated user.
+    seeker: SeekerProfile | None = None
+    if req.seeker is not None and req.seeker.user_id == current_user.id:
+        seeker = req.seeker
     fallback_used = False
 
     if seeker is None and req.seeker_id:
-        seeker = await repos.seekers.get(req.seeker_id)
-        if seeker is None:
-            logger.warning("seeker_id %s not found (stale?), using inline/anon.", req.seeker_id)
+        candidate = await repos.seekers.get(req.seeker_id)
+        if candidate is not None and candidate.user_id == current_user.id:
+            seeker = candidate
+        else:
+            if candidate is not None:
+                logger.warning(
+                    "seeker_id %s does not belong to user %s — ignoring.",
+                    req.seeker_id, current_user.id,
+                )
+            else:
+                logger.warning("seeker_id %s not found (stale?), using owned profile.", req.seeker_id)
             fallback_used = True
 
+    # Fall back to the seeker profile owned by the authenticated user (if any).
     if seeker is None:
-        seeker = _ANONYMOUS_SEEKER
-        fallback_used = True
+        owned = await repos.seekers.find(lambda s: s.user_id == current_user.id)
+        if owned:
+            seeker = owned[0]
+        else:
+            seeker = _ANONYMOUS_SEEKER
+            fallback_used = True
 
     # --- Load jobs -------------------------------------------------------
     jobs = await repos.jobs.list()

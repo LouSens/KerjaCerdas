@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import uuid
 
+from backend.app.api.dependencies import get_current_user
 from backend.app.api.services.identity_verifier import MockIdentityVerificationService
-from fastapi import APIRouter
+from backend.app.db.models import User
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/verify", tags=["verify"])
@@ -14,7 +16,7 @@ router = APIRouter(prefix="/verify", tags=["verify"])
 # Demo-grade: in production this would query an audit-logged KMS-backed table.
 
 @router.get("/documents")
-async def list_documents() -> dict:
+async def list_documents(current_user: User = Depends(get_current_user)) -> dict:
     """Return the current user's verified documents with masked file_ids.
 
     The file_id is masked (`doc_3f8a··········e91c`) and the underlying
@@ -37,7 +39,7 @@ class EkycReq(BaseModel):
 
 
 @router.post("/identity")
-async def verify_identity(req: EkycReq) -> dict:
+async def verify_identity(req: EkycReq, current_user: User = Depends(get_current_user)) -> dict:
     r = MockIdentityVerificationService.verify_identity(nik=req.nik, full_name=req.full_name)
     return {
         "request_id": str(uuid.uuid4()),
@@ -56,7 +58,7 @@ class SivilReq(BaseModel):
 
 
 @router.post("/education")
-async def verify_education(req: SivilReq) -> dict:
+async def verify_education(req: SivilReq, current_user: User = Depends(get_current_user)) -> dict:
     ok = bool(req.ijazah_number) and req.ijazah_number != "0000"
     return {
         "request_id": str(uuid.uuid4()),
@@ -75,7 +77,7 @@ class NpwpReq(BaseModel):
 
 
 @router.post("/npwp")
-async def verify_npwp(req: NpwpReq) -> dict:
+async def verify_npwp(req: NpwpReq, current_user: User = Depends(get_current_user)) -> dict:
     """Mock DJP Online NPWP verification for employers."""
     # Valid NPWP: exactly 15 numeric digits (after stripping dots/dashes)
     clean = req.npwp.replace(".", "").replace("-", "")
