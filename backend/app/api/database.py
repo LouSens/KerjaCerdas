@@ -120,7 +120,15 @@ async def init_db() -> None:
     # Import models here so their metadata is registered before create_all.
     # db/models.py defines its own Base; use that one (it owns the ORM tables).
     from backend.app.db.models import Base as ModelsBase  # noqa: PLC0415
+
+    is_sqlite = str(engine.url).startswith("sqlite")
     async with engine.begin() as conn:
+        # pgvector: activate the extension before create_all attempts to
+        # define VECTOR columns. Mirrors what the Alembic initial migration
+        # already does (see alembic/versions/5a748883f1d9_initial_schema.py).
+        # Skipped for SQLite (unit tests / demo mode) which has no extensions.
+        if not is_sqlite:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(ModelsBase.metadata.create_all)
         await _migrate_verification_logs_schema(conn)
     logger.info("✅ Database tables created / verified")
