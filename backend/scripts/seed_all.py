@@ -30,6 +30,7 @@ from backend.app.db.schemas import (
 )
 from backend.app.db.session import async_session as async_session_factory
 from backend.app.services.matching.matcher import SemanticMatcher
+from backend.scripts.auth_utils import seed_auth_user as _seed_auth_user
 from sqlalchemy.future import select
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -534,9 +535,6 @@ COURSES = [
 #  Seed
 # ─────────────────────────────────────────────────────────────────────────────
 
-DEFAULT_PWD = "$2b$12$mgn8EsuPZveDhiTXdBaxNOIYdVshCsNOdG6K9uSOl1sKehYp/.Cp6"  # bcrypt of "demo"
-
-
 async def seed(clear: bool) -> None:
     # await init_db()  # handled by alembic now
 
@@ -544,23 +542,6 @@ async def seed(clear: bool) -> None:
         async with async_session_factory() as session:
             # We don't drop tables, just rely on alembic or a fresh db.
             pass
-
-    # Helper to seed users into SQLAlchemy (the auth DB)
-    async def _seed_auth_user(email: str, name: str, role: str) -> SqlUser:
-        async with async_session_factory() as session:
-            stmt = select(SqlUser).where(SqlUser.email == email)
-            result = await session.execute(stmt)
-            u = result.scalar_one_or_none()
-            if not u:
-                import uuid
-                u = SqlUser(id=str(uuid.uuid4()), email=email, password_hash=DEFAULT_PWD, role=role)
-                session.add(u)
-            else:
-                u.role = role
-                u.password_hash = DEFAULT_PWD
-            await session.commit()
-            await session.refresh(u)
-            return u
 
     repos = get_repositories()
     matcher = SemanticMatcher()

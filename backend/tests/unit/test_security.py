@@ -336,3 +336,138 @@ class TestJWTAuth:
         from backend.app.api.services.auth_service import hash_password, verify_password
         hashed = hash_password("CorrectHorse1")
         assert not verify_password("WrongPassword1", hashed)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. Seed Auth Utils — hardened credential seeding
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestSeedAuthUtils:
+    """Tests for backend.scripts.auth_utils — no hardcoded credentials."""
+
+    def test_get_seed_password_hash_raises_when_env_unset(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """_get_seed_password_hash must raise RuntimeError when env var is absent."""
+        monkeypatch.delenv("SEED_DEFAULT_PASSWORD", raising=False)
+        from backend.scripts import auth_utils
+        with pytest.raises(RuntimeError, match="SEED_DEFAULT_PASSWORD"):
+            auth_utils._get_seed_password_hash()
+
+    def test_get_seed_password_hash_raises_when_env_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An empty string env var must also be rejected."""
+        monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "   ")
+        from backend.scripts import auth_utils
+        with pytest.raises(RuntimeError, match="SEED_DEFAULT_PASSWORD"):
+            auth_utils._get_seed_password_hash()
+
+    def test_get_seed_password_hash_returns_valid_bcrypt(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A set env var must produce a valid bcrypt hash that verifies correctly."""
+        import bcrypt
+        monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "TestSeedPass1!")
+        from backend.scripts import auth_utils
+        hashed = auth_utils._get_seed_password_hash()
+        assert hashed.startswith("$2b$")
+        assert bcrypt.checkpw(b"TestSeedPass1!", hashed.encode())
+
+    def test_no_hardcoded_hash_in_auth_utils(self) -> None:
+        """auth_utils.py must not contain the previously hardcoded bcrypt hash."""
+        import inspect
+        from backend.scripts import auth_utils
+        src = inspect.getsource(auth_utils)
+        assert "$2b$12$demoDemoDemoDemoDemoDe" not in src
+        assert "$2b$12$mgn8EsuPZveDhiTXdBaxNO" not in src
+
+    def test_no_hardcoded_hash_in_seed_all(self) -> None:
+        """seed_all.py must not contain any hardcoded bcrypt hash."""
+        import inspect
+        from backend.scripts import seed_all
+        src = inspect.getsource(seed_all)
+        assert "$2b$12$" not in src
+
+    @pytest.mark.asyncio
+    async def test_seed_auth_user_new_user_sets_password(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """seed_auth_user creates a new user with a hashed password from env var."""
+        import bcrypt
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "SeedTestPass99!")
+
+        mock_user = None  # will be set inside the factory
+
+        class FakeSession:
+            async def execute(self, stmt):
+                result = MagicMock()
+                result.scalar_one_or_none.return_value = None  # user does not exist
+                return result
+
+            def add(self, obj):
+                nonlocal mock_user
+                mock_user = obj
+
+            async def commit(self):
+                pass
+
+            async def refresh(self, obj):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+        # async_session_factory() must return an async context manager directly
+        def fake_session_factory():
+            return FakeSession()
+
+        with patch("backend.scripts.auth_utils.async_session_factory", new=fake_session_factory):
+            from backend.scripts.auth_utils import seed_auth_user
+            result = await seed_auth_user("new@example.com", "New User", "seeker")
+
+        assert mock_user is not None
+        assert mock_user.email == "new@example.com"
+        assert mock_user.role == "seeker"
+        assert bcrypt.checkpw(b"SeedTestPass99!", mock_user.password_hash.encode())
+
+    @pytest.mark.asyncio
+    async def test_seed_auth_user_existing_user_does_not_overwrite_password(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """seed_auth_user must NOT overwrite the password of an existing user."""
+        monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "SeedTestPass99!")
+
+        original_hash = "$2b$12$existingHashThatMustNotBeOverwritten_____"
+
+        from unittest.mock import MagicMock, patch
+
+        existing_user = MagicMock()
+        existing_user.password_hash = original_hash
+        existing_user.role = "seeker"
+
+        class FakeSession:
+            async def execute(self, stmt):
+                result = MagicMock()
+                result.scalar_one_or_none.return_value = existing_user
+                return result
+
+            async def commit(self):
+                pass
+
+            async def refresh(self, obj):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+        def fake_session_factory():
+            return FakeSession()
+
+        with patch("backend.scripts.auth_utils.async_session_factory", new=fake_session_factory):
+            from backend.scripts.auth_utils import seed_auth_user
+            result = await seed_auth_user("existing@example.com", "Existing User", "employer")
+
+        # Role updated, password left intact
+        assert existing_user.role == "employer"
+        assert existing_user.password_hash == original_hash
