@@ -23,7 +23,23 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from backend.app.api.database import init_db, reconfigure
+from backend.app.api.middleware.rate_limiter import RateLimiterMiddleware
+from backend.app.api.middleware.sanitization import RequestSizeMiddleware
+from backend.app.api.routers.agent import router as agent_router
+from backend.app.api.routers.auth import router as auth_router
+from backend.app.api.routers.employer import router as employer_router  # prefix=/employer
+from backend.app.api.routers.events import router as events_router
+from backend.app.api.routers.experiments import router as experiments_router
+from backend.app.api.routers.jobs import router as jobs_router
+from backend.app.api.routers.karirhub import router as karirhub_router
+from backend.app.api.routers.seeker import router as seeker_router
+from backend.app.api.routers.uploads import router as uploads_router
+from backend.app.api.routers.verify import router as verify_router
+from backend.app.api.services.auth_service import configure as configure_auth
 from backend.app.api.services.auth_service import decode_access_token as _decode_token
+from backend.app.config.logging import configure_logging, get_logger
+from backend.app.config.settings import settings
 
 _bearer = HTTPBearer(auto_error=True)
 
@@ -41,22 +57,6 @@ async def _require_authenticated(
         )
     return payload
 
-from backend.app.api.database import init_db, reconfigure
-from backend.app.api.middleware.rate_limiter import RateLimiterMiddleware
-from backend.app.api.middleware.sanitization import RequestSizeMiddleware
-from backend.app.api.routers.agent import router as agent_router
-from backend.app.api.routers.auth import router as auth_router
-from backend.app.api.routers.employer import router as employer_router  # prefix=/employer
-from backend.app.api.routers.events import router as events_router
-from backend.app.api.routers.experiments import router as experiments_router
-from backend.app.api.routers.jobs import router as jobs_router
-from backend.app.api.routers.karirhub import router as karirhub_router
-from backend.app.api.routers.seeker import router as seeker_router
-from backend.app.api.routers.uploads import router as uploads_router
-from backend.app.api.routers.verify import router as verify_router
-from backend.app.api.services.auth_service import configure as configure_auth
-from backend.app.config.logging import configure_logging, get_logger
-from backend.app.config.settings import settings
 
 configure_logging(level="INFO")
 logger = get_logger(__name__)
