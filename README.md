@@ -5,13 +5,13 @@
 # KerjaCerdas
 **Autonomous Recruitment Platform powered by Semantic Matching & Multi-Agent Swarm**
 
-[![Backend: FastAPI](https://img.shields.io/static/v1?label=Backend&message=FastAPI&color=009688&style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Frontend: React](https://img.shields.io/static/v1?label=Frontend&message=React%2018&color=20232A&style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev)
-[![AI: Google Gemini](https://img.shields.io/static/v1?label=AI&message=Google%20Gemini&color=4285F4&style=flat-square&logo=google&logoColor=white)](https://ai.google.dev)
-[![Agents: LangGraph](https://img.shields.io/static/v1?label=Agents&message=LangGraph&color=1C3C3C&style=flat-square)](https://langchain-ai.github.io/langgraph/)
-[![Database: PostgreSQL](https://img.shields.io/static/v1?label=Database&message=PostgreSQL%20pgvector&color=336791&style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
-[![Cloud: Supabase](https://img.shields.io/static/v1?label=Cloud&message=Supabase&color=3ECF8E&style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
-[![Deploy: Docker](https://img.shields.io/static/v1?label=Deploy&message=Docker&color=2496ED&style=flat-square&logo=docker&logoColor=white)](https://docker.com)
+[![Backend: FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Frontend: React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev)
+[![AI: Google Gemini](https://shields.io)](https://ai.google.dev)
+[![Agents: LangGraph](https://shields.io)](https://langchain-ai.github.io/langgraph/)
+[![Database: PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Cloud: Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![Deploy: Docker](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 
 *An enterprise-grade talent matching infrastructure utilizing high-dimensional vector search and ReAct-based autonomous agents to streamline recruitment pipelines.*
 
