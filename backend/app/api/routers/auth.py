@@ -95,7 +95,6 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
         user_id=new_user.id,
         role=new_user.role,
         name=new_user.name,
-        email=new_user.email
     )
 
     return TokenResponse(
@@ -143,7 +142,6 @@ async def login_user(request: UserLoginRequest, db: AsyncSession = Depends(get_s
         user_id=user.id,
         role=user.role,
         name=user.name,
-        email=user.email
     )
 
     return TokenResponse(

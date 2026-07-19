@@ -79,7 +79,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 #  JWT Tokens
 # ──────────────────────────────────────────────────────────────────────────────
 
-def create_access_token(user_id: str, role: str, name: str, email: str) -> str:
+def create_access_token(user_id: str, role: str, name: str) -> str:
     """
     Create a signed JWT access token.
 
@@ -87,7 +87,6 @@ def create_access_token(user_id: str, role: str, name: str, email: str) -> str:
         user_id: User UUID.
         role: User role ('seeker' or 'employer').
         name: User display name.
-        email: User email.
 
     Returns:
         Encoded JWT string.
@@ -97,7 +96,6 @@ def create_access_token(user_id: str, role: str, name: str, email: str) -> str:
         "sub": user_id,
         "role": role,
         "name": name,
-        "email": email,
         "exp": expire,
         "iat": datetime.now(UTC),
     }

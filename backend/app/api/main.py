@@ -19,8 +19,27 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from backend.app.api.services.auth_service import decode_access_token as _decode_token
+
+_bearer = HTTPBearer(auto_error=True)
+
+
+async def _require_authenticated(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+):
+    """Dependency that requires a valid JWT; used to gate internal endpoints."""
+    payload = _decode_token(credentials.credentials)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return payload
 
 from backend.app.api.database import init_db, reconfigure
 from backend.app.api.middleware.rate_limiter import RateLimiterMiddleware
@@ -119,8 +138,8 @@ async def health_check():
 
 
 @app.get("/health/detailed")
-async def health_detailed():
-    """Deep health check: verifies DB connectivity and Gemini API reachability."""
+async def health_detailed(current_user=Depends(_require_authenticated)):
+    """Deep health check: verifies DB connectivity and Gemini API reachability. Requires authentication."""
     from sqlalchemy import text as sa_text
 
     from backend.app.db.session import async_session
@@ -131,11 +150,10 @@ async def health_detailed():
         async with async_session() as session:
             await session.execute(sa_text("SELECT 1"))
         checks["database"] = "ok"
-    except Exception as exc:  # noqa: BLE001
-        checks["database"] = f"error: {exc!s:.120}"
+    except Exception:  # noqa: BLE001
+        checks["database"] = "error"
 
     # Gemini API key presence (we don't call the API to avoid cost/latency)
-    import os
     has_key = bool(
         settings.gemini_api_key
         or os.environ.get("GEMINI_API_KEY")
@@ -146,12 +164,7 @@ async def health_detailed():
     overall = "healthy" if all(v == "ok" for v in checks.values()) else "degraded"
     return {
         "status": overall,
-        "version": app.version,
         "checks": checks,
-        "band_thresholds": {
-            "strong": settings.band_strong_threshold,
-            "possible": settings.band_possible_threshold,
-        },
     }
 
 
