@@ -164,6 +164,22 @@ Untuk menghapus kontainer dan menghapus basis data (reset total), gunakan:
 docker compose down -v
 ```
 
+### Langkah 6 — Deployment ke VPS (Produksi)
+Proyek ini menggunakan **GitHub Actions** (`release.yml`) untuk membangun (build) dan mempublikasikan image Docker ke GitHub Container Registry (`ghcr.io`) secara otomatis saat Anda membuat Rilis (Release) dengan *git tag* (contoh: `v1.0.0`).
+
+**Langkah-langkah di server VPS:**
+1. Clone repositori ke server VPS Anda.
+2. Buat file `.env` (lihat bagian `VPS Production Deployment` di `.env.example`).
+3. Setel `IMAGE_TAG` ke versi rilis yang ingin digunakan (contoh: `v1.0.0`) atau `latest`.
+4. Jalankan perintah berikut untuk mengunduh dan menyalakan kontainer:
+   ```bash
+   docker-compose -f docker-compose.prod.yml pull
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
+
+> **Catatan Pengembangan di Masa Depan (Future Improvement):**  
+> Proses ini dapat diotomatisasi 100% menggunakan aksi `appleboy/ssh-action` di dalam `release.yml`. Ketika kunci SSH VPS sudah tersedia, tambahkan *step* deployment otomatis sehingga server VPS langsung menarik (pull) image baru tanpa perlu intervensi manual (login SSH) setiap kali ada rilis versi baru.
+
 ---
 
 ## 🧠 Arsitektur Sistem Inti
