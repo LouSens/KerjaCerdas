@@ -17,8 +17,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/kerjacerdas-backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/kerjacerdas-frontend
+  BACKEND_IMAGE: ghcr.io/lousens/kerjacerdas-backend
+  FRONTEND_IMAGE: ghcr.io/lousens/kerjacerdas-frontend
   PYTHON_VERSION: "3.11"
 
 jobs:
@@ -130,8 +130,8 @@ jobs:
             Pull the production images for this release:
 
             ```bash
-            docker pull ghcr.io/${{ github.repository_owner }}/kerjacerdas-backend:${{ github.ref_name }}
-            docker pull ghcr.io/${{ github.repository_owner }}/kerjacerdas-frontend:${{ github.ref_name }}
+            docker pull ghcr.io/lousens/kerjacerdas-backend:${{ github.ref_name }}
+            docker pull ghcr.io/lousens/kerjacerdas-frontend:${{ github.ref_name }}
             ```
 
             ## Deploy
