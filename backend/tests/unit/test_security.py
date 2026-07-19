@@ -284,7 +284,7 @@ class TestJWTAuth:
     def test_create_and_decode_token(self) -> None:
         from backend.app.api.services.auth_service import create_access_token, decode_access_token
         token = create_access_token(
-            user_id="user-123", role="seeker", name="Budi", email="budi@test.com"
+            user_id="user-123", role="seeker", name="Budi"
         )
         payload = decode_access_token(token)
         assert payload is not None
@@ -319,7 +319,7 @@ class TestJWTAuth:
     def test_tampered_token_returns_none(self) -> None:
         """Mutating the token payload should make it invalid."""
         from backend.app.api.services.auth_service import create_access_token, decode_access_token
-        token = create_access_token("u1", "seeker", "Name", "n@e.com")
+        token = create_access_token("u1", "seeker", "Name")
         # Flip a character in the signature part
         parts = token.split(".")
         tampered = ".".join(parts[:-1]) + "." + parts[-1][:-5] + "XXXXX"
