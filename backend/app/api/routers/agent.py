@@ -28,7 +28,7 @@ from backend.app.db.schemas import (
     MatchResult,
     SeekerProfile,
 )
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/agent", tags=["agent"])

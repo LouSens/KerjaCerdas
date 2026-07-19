@@ -17,7 +17,7 @@ from backend.app.db.schemas import (
 )
 from backend.app.services.matching.matcher import SemanticMatcher
 from backend.app.services.pdf_parser import parse_cv, parse_job_pack
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
