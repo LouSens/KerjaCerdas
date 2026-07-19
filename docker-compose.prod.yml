@@ -1,40 +1,32 @@
 # KerjaCerdas — Docker Compose Production Stack
-# Usage: docker-compose -f docker-compose.prod.yml up -d
 #
-# All secrets come from environment variables or a .env file — nothing
-# is hard-coded here. To generate a secure JWT secret:
-#   openssl rand -hex 32
+# Images are published to GitHub Container Registry (ghcr.io) by the
+# automated release workflow. Pull a specific version by setting IMAGE_TAG:
+#
+#   IMAGE_TAG=v1.2.3 docker-compose -f docker-compose.prod.yml up -d
+#
+# Or use `latest` (default) for the most recent release:
+#
+#   docker-compose -f docker-compose.prod.yml pull && docker-compose -f docker-compose.prod.yml up -d
+#
+# Required secrets in .env:
+#   DATABASE_URL   — Supabase pooler connection string
+#   GEMINI_API_KEY — Google Gemini API key
+#   JWT_SECRET_KEY — Random 32-byte hex: openssl rand -hex 32
+#   PROD_API_URL   — Public URL of the API (e.g. http://YOUR_VPS_IP:8000)
+#   CORS_ALLOW_ORIGINS — JSON array of allowed origins (e.g. '["https://yourdomain.com"]')
 
 services:
-  db:
-    image: pgvector/pgvector:pg16
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      POSTGRES_DB: ${POSTGRES_DB:-kerjacerdas}
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set}/kerjacerdas-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       APP_ENV: production
       DEMO_MODE: "false"
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-kerjacerdas}
+      # This DATABASE_URL must point to your Supabase pooler URL
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY must be set}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-["http://localhost:3000"]}
@@ -43,9 +35,6 @@ services:
       BAND_POSSIBLE_THRESHOLD: ${BAND_POSSIBLE_THRESHOLD:-0.45}
     env_file:
       - .env
-    depends_on:
-      db:
-        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -57,16 +46,12 @@ services:
       retries: 3
 
   frontend:
-    build:
-      context: ./frontend
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set}/kerjacerdas-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://api:8000}
+      VITE_API_URL: ${PROD_API_URL:-http://localhost:8000}
     depends_on:
       api:
         condition: service_healthy
-
-volumes:
-  pgdata:
