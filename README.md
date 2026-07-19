@@ -1,11 +1,9 @@
 <div align="center">
 
-<img src="frontend/public/vite.svg" alt="KerjaCerdas Logo" width="120" height="120">
-
 # KerjaCerdas
 **Autonomous Recruitment Platform powered by Semantic Matching & Multi-Agent Swarm**
 
-[![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com) [![Frontend: React 18](https://img.shields.io/badge/Frontend-React_18-61DAFB?style=flat-square&logo=react)](https://react.dev) [![AI: Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-4285F4?style=flat-square&logo=google)](https://ai.google.dev) [![Agents: LangGraph](https://img.shields.io/badge/Agents-LangGraph-FF6F00?style=flat-square)](https://langchain-ai.github.io/langgraph/) [![Tooling: Vite](https://img.shields.io/badge/Tooling-Vite-646CFF?style=flat-square&logo=vite)](https://vitejs.dev) 
+[![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com) [![Frontend: React 18](https://img.shields.io/badge/Frontend-React_18-61DAFB?style=flat-square&logo=react)](https://react.dev) [![AI: Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-4285F4?style=flat-square&logo=google)](https://ai.google.dev) [![Database: PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL_pgvector-336791?style=flat-square&logo=postgresql)](https://postgresql.org) [![Database: Supabase](https://img.shields.io/badge/Cloud-Supabase-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com) [![Deploy: Docker](https://img.shields.io/badge/Deploy-Docker-2496ED?style=flat-square&logo=docker)](https://docker.com)
 
 *An enterprise-grade talent matching infrastructure utilizing high-dimensional vector search and ReAct-based autonomous agents to streamline recruitment pipelines.*
 
