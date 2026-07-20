@@ -15,6 +15,7 @@ Usage:
 
 ANTIGRAVITY PROTOCOL: RULE-SECURITY-02 — All LLM inputs MUST be sanitized.
 """
+
 from __future__ import annotations
 
 import html
@@ -41,11 +42,11 @@ _INJECTION_PATTERNS: list[re.Pattern] = [
     re.compile(r"ignore\s+(all\s+)?previous\s+instructions?", re.I),
     re.compile(r"(system|assistant|user)\s*:\s*", re.I),
     re.compile(r"<\s*(?:script|iframe|object|embed|form|link|meta|style)", re.I),
-    re.compile(r"\\u003c|\\u003e|%3C|%3E", re.I),   # encoded < >
+    re.compile(r"\\u003c|\\u003e|%3C|%3E", re.I),  # encoded < >
     re.compile(r"jailbreak", re.I),
     re.compile(r"DAN\s*mode", re.I),
     re.compile(r"(pretend|act)\s+as\s+(if\s+you\s+are|a\s+)", re.I),
-    re.compile(r"(\r?\n){5,}"),                       # large blank-line bombs
+    re.compile(r"(\r?\n){5,}"),  # large blank-line bombs
     re.compile(r"reveal\s+(your\s+)?(system\s+)?prompt", re.I),
     re.compile(r"(base64|hex)\s*decode", re.I),
 ]
@@ -60,6 +61,7 @@ _SAFE_FILENAME = re.compile(r"[^a-zA-Z0-9._\-\s]")
 # ──────────────────────────────────────────────────────────────────────────────
 #  Core sanitization helpers
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def sanitize_text(
     text: str,
@@ -132,6 +134,7 @@ SanitizedStr = Annotated[str, AfterValidator(_pydantic_sanitize)]
 #  Request size guard middleware
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class RequestSizeMiddleware(BaseHTTPMiddleware):
     """
     Reject requests whose Content-Length exceeds MAX_BODY_BYTES (10 MB).
@@ -151,7 +154,8 @@ class RequestSizeMiddleware(BaseHTTPMiddleware):
         if content_length and int(content_length) > self.max_bytes:
             logger.warning(
                 "Request body too large: %s bytes from %s",
-                content_length, request.client,
+                content_length,
+                request.client,
             )
             return Response(
                 content='{"detail":"Request payload too large."}',

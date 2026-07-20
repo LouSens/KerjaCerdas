@@ -11,6 +11,7 @@ To avoid that, ``async_session`` now delegates to the one factory configured in
 ``backend.app.api.database`` (which ``reconfigure()`` updates at startup, and
 which is built from settings on import for standalone scripts).
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator

@@ -3,6 +3,7 @@
 Run locally with:  `python -m backend.app`   (uses backend/app/__main__.py)
 or                 `uvicorn backend.app.api.main:app --reload`
 """
+
 from __future__ import annotations
 
 import os
@@ -15,6 +16,7 @@ from pathlib import Path
 # Make outbound HTTPS work on conda/Windows where the system CA store is empty.
 try:
     import certifi as _certifi
+
     os.environ.setdefault("SSL_CERT_FILE", _certifi.where())
     os.environ.setdefault("REQUESTS_CA_BUNDLE", _certifi.where())
 except ImportError:
@@ -62,10 +64,15 @@ async def _require_authenticated(
 configure_logging(level="INFO")
 logger = get_logger(__name__)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("KerjaCerdas API starting up | env=%s | embed=%s | chat=%s",
-                settings.app_env, settings.gemini_embed_model, settings.gemini_chat_model)
+    logger.info(
+        "KerjaCerdas API starting up | env=%s | embed=%s | chat=%s",
+        settings.app_env,
+        settings.gemini_embed_model,
+        settings.gemini_chat_model,
+    )
     reconfigure(settings.effective_database_url)
     await init_db()
 
@@ -76,13 +83,8 @@ async def lifespan(app: FastAPI):
         logger.warning("JWT_SECRET_KEY missing — using ephemeral dev secret")
     configure_auth(secret_key=jwt_secret, expire_minutes=settings.jwt_access_token_expire_minutes)
 
-
-
     yield
     logger.info("KerjaCerdas API shutting down")
-
-
-
 
 
 app = FastAPI(
@@ -115,9 +117,18 @@ app.add_middleware(RateLimiterMiddleware)
 # Payload size guard — rejects oversized JSON bodies
 app.add_middleware(RequestSizeMiddleware)
 
-for r in (auth_router, seeker_router, employer_router, jobs_router,
-          uploads_router, verify_router, agent_router, karirhub_router,
-          events_router, experiments_router):
+for r in (
+    auth_router,
+    seeker_router,
+    employer_router,
+    jobs_router,
+    uploads_router,
+    verify_router,
+    agent_router,
+    karirhub_router,
+    events_router,
+    experiments_router,
+):
     app.include_router(r, prefix="/api/v1")
 
 
@@ -127,15 +138,26 @@ async def log_requests(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
     duration_ms = int((time.time() - start) * 1000)
-    logger.info("[%s] %s %s -> %d (%dms)",
-                request_id, request.method, request.url.path, response.status_code, duration_ms)
+    logger.info(
+        "[%s] %s %s -> %d (%dms)",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
     response.headers["X-Request-ID"] = request_id
     return response
 
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "KerjaCerdas API", "version": app.version, "mode": "demo"}
+    return {
+        "status": "healthy",
+        "service": "KerjaCerdas API",
+        "version": app.version,
+        "mode": "demo",
+    }
 
 
 @app.get("/health/detailed")
@@ -144,6 +166,7 @@ async def health_detailed(current_user=Depends(_require_authenticated)):
     from sqlalchemy import text as sa_text
 
     from backend.app.db.session import async_session
+
     checks: dict[str, str] = {}
 
     # Database ping
@@ -191,9 +214,7 @@ async def security_headers(request: Request, call_next) -> Response:
 # deployments; SERVE_FRONTEND=1 can force it elsewhere) so a stale dist build
 # never hijacks routing in the dev workspace.
 _FRONTEND_DIST = Path(__file__).resolve().parents[3] / "frontend" / "dist"
-_SERVE_FRONTEND = bool(
-    os.environ.get("REPLIT_DEPLOYMENT") or os.environ.get("SERVE_FRONTEND")
-)
+_SERVE_FRONTEND = bool(os.environ.get("REPLIT_DEPLOYMENT") or os.environ.get("SERVE_FRONTEND"))
 
 if _SERVE_FRONTEND and _FRONTEND_DIST.is_dir():
     from fastapi.responses import FileResponse

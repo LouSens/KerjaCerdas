@@ -4,6 +4,7 @@ The repo's `backend/app/prompts/` tree is the authoritative source of how
 the AI behaves. This loader composes the right prompt per task and caches
 the assembled string in-memory.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache

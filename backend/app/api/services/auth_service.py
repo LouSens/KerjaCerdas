@@ -5,6 +5,7 @@ JWT token management and password hashing via bcrypt.
 
 ANTIGRAVITY PROTOCOL: RULE-01 — No hardcoded secrets.
 """
+
 from __future__ import annotations
 
 import logging
@@ -48,6 +49,7 @@ def configure(secret_key: str, expire_minutes: int = 60 * 24) -> None:
 #  Password Hashing
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def hash_password(plain: str) -> str:
     """
     Hash a plaintext password with bcrypt.
@@ -78,6 +80,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 # ──────────────────────────────────────────────────────────────────────────────
 #  JWT Tokens
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def create_access_token(user_id: str, role: str, name: str) -> str:
     """

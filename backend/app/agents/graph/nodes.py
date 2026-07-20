@@ -10,6 +10,7 @@ Data flow through the graph (nodes share AgentState keys):
   advisor     → reads matches + missing_skills + recommended_courses for full context
   compose     → formats final_response from all of the above
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,8 +25,8 @@ logger = logging.getLogger(__name__)
 # ── 1. Router ─────────────────────────────────────────────────────────────────
 
 _MATCH_RE = re.compile(r"(cari|rekomend|cocok|match|lowongan|pekerjaan|kerja)", re.I)
-_GAP_RE   = re.compile(r"(skill|gap|kurang|belajar|kursus|upskill|tingkat)", re.I)
-_ADV_RE   = re.compile(r"(saran|tips|karier|gaji|negosiasi|interview|cv|resume)", re.I)
+_GAP_RE = re.compile(r"(skill|gap|kurang|belajar|kursus|upskill|tingkat)", re.I)
+_ADV_RE = re.compile(r"(saran|tips|karier|gaji|negosiasi|interview|cv|resume)", re.I)
 
 
 async def route_intent(state: AgentState) -> dict:
@@ -72,12 +73,14 @@ async def route_intent(state: AgentState) -> dict:
                 "'match_jobs' (cari/rekomendasi pekerjaan), "
                 "'skill_gap' (analisis skill gap, kursus, belajar), "
                 "'advise' (saran karier, gaji, interview, CV). "
-                "Balas HANYA dengan JSON: {\"intent\": \"<value>\", \"reasoning\": \"<1 kalimat>\"}"
+                'Balas HANYA dengan JSON: {"intent": "<value>", "reasoning": "<1 kalimat>"}'
             )
-            resp = await llm.ainvoke([
-                SystemMessage(content=sys),
-                HumanMessage(content=msg),
-            ])
+            resp = await llm.ainvoke(
+                [
+                    SystemMessage(content=sys),
+                    HumanMessage(content=msg),
+                ]
+            )
             raw = resp.content.strip()
             if raw.startswith("```"):
                 raw = re.sub(r"```[a-z]*\n?", "", raw).rstrip("`").strip()
@@ -103,6 +106,7 @@ async def route_intent(state: AgentState) -> dict:
 
 # ── 2. Matcher ────────────────────────────────────────────────────────────────
 
+
 async def run_matcher(state: AgentState) -> dict:
     """Embed seeker + cosine-rank all candidate jobs.
 
@@ -116,20 +120,21 @@ async def run_matcher(state: AgentState) -> dict:
     intent path.
     """
     from backend.app.services.matching.matcher import SemanticMatcher
+
     matcher = SemanticMatcher()
-    seeker  = state["seeker"]
-    jobs    = state.get("candidate_jobs", [])
+    seeker = state["seeker"]
+    jobs = state.get("candidate_jobs", [])
     matches = await matcher.rank_jobs_for_seeker(seeker, jobs)
 
     # Pre-compute skill overlap vs top match so downstream nodes don't repeat this
     matching_skills: list[str] = []
-    missing_skills:  list[str] = []
+    missing_skills: list[str] = []
     if matches and jobs:
         job_index = {j.id: j for j in jobs}
         top_job = job_index.get(matches[0].job_id)
         if top_job:
             seeker_lower = {s.name.lower(): s.name for s in (seeker.skills or [])}
-            for req in (top_job.required_skills or []):
+            for req in top_job.required_skills or []:
                 if req.lower() in seeker_lower:
                     matching_skills.append(seeker_lower[req.lower()])
                 else:
@@ -143,6 +148,7 @@ async def run_matcher(state: AgentState) -> dict:
 
 
 # ── 3. Skill-gap ──────────────────────────────────────────────────────────────
+
 
 async def run_skill_gap(state: AgentState) -> dict:
     """Compute detailed skill gap between seeker and target job.
@@ -174,9 +180,9 @@ async def run_skill_gap(state: AgentState) -> dict:
     # Case-preserving comparison
     seeker_lower = {s.name.lower(): s.name for s in (seeker.skills or [])}
     matching_skills: list[str] = []
-    missing_skills:  list[str] = []
+    missing_skills: list[str] = []
 
-    for req in (target.required_skills or []):
+    for req in target.required_skills or []:
         if req.lower() in seeker_lower:
             matching_skills.append(seeker_lower[req.lower()])
         else:
@@ -201,9 +207,11 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
     if not missing:
         return []
 
-    gemini_key = (settings.gemini_api_key
-                  or os.environ.get("GEMINI_API_KEY", "")
-                  or os.environ.get("GOOGLE_API_KEY", ""))
+    gemini_key = (
+        settings.gemini_api_key
+        or os.environ.get("GEMINI_API_KEY", "")
+        or os.environ.get("GOOGLE_API_KEY", "")
+    )
     if gemini_key:
         try:
             from langchain_core.messages import HumanMessage, SystemMessage
@@ -216,17 +224,23 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
                 temperature=settings.skill_gap_temperature,
             )
             sys = build_system_prompt(role="seeker_advisor", task="skill_gap")
-            payload = json.dumps({
-                "missing_skills": missing,
-                "target_job": getattr(job, "title", ""),
-            })
-            resp = await llm.ainvoke([
-                SystemMessage(content=sys),
-                HumanMessage(content=(
-                    f"Rekomendasikan kursus spesifik untuk gap ini:\n{payload}\n"
-                    "Kembalikan JSON: {\"recommended_courses\": [{\"name\":...,\"provider\":...,\"duration\":...}]}"
-                )),
-            ])
+            payload = json.dumps(
+                {
+                    "missing_skills": missing,
+                    "target_job": getattr(job, "title", ""),
+                }
+            )
+            resp = await llm.ainvoke(
+                [
+                    SystemMessage(content=sys),
+                    HumanMessage(
+                        content=(
+                            f"Rekomendasikan kursus spesifik untuk gap ini:\n{payload}\n"
+                            'Kembalikan JSON: {"recommended_courses": [{"name":...,"provider":...,"duration":...}]}'
+                        )
+                    ),
+                ]
+            )
             raw = resp.content.strip()
             # Strip markdown code fences if present
             if raw.startswith("```"):
@@ -254,6 +268,7 @@ async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
     """Match missing skills against the courses seeded into data/courses/*.json."""
     try:
         from backend.app.db.postgres_store import get_repositories
+
         repos = get_repositories()
         all_courses = await repos.courses.list()
         missing_lower = {s.lower() for s in missing}
@@ -263,11 +278,13 @@ async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
             taught = {t.lower() for t in (getattr(course, "skills_taught", None) or [])}
             if taught & missing_lower and course.name not in seen:
                 seen.add(course.name)
-                results.append(CourseRecommendation(
-                    name=course.name,
-                    provider=getattr(course, "provider", ""),
-                    duration=getattr(course, "duration", ""),
-                ))
+                results.append(
+                    CourseRecommendation(
+                        name=course.name,
+                        provider=getattr(course, "provider", ""),
+                        duration=getattr(course, "duration", ""),
+                    )
+                )
         return results[:5]  # cap at 5 recommendations
     except Exception as exc:
         logger.debug("Course store lookup failed: %s", exc)
@@ -275,43 +292,43 @@ async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
 
 
 _COURSE_CATALOG: dict[str, tuple[str, str, str]] = {
-    "python":             ("Python untuk Data Science",          "Dicoding",                     "1 bulan"),
-    "sql":                ("SQL untuk Analisis Data",            "Dicoding",                     "1 bulan"),
-    "javascript":         ("Belajar Dasar JavaScript",           "Dicoding",                     "1 bulan"),
-    "react":              ("Kelas Pengembangan Web React",       "Dicoding",                     "2 bulan"),
-    "docker":             ("Docker & Container Fundamentals",    "Hacktiv8",                     "3 minggu"),
-    "kubernetes":         ("Kubernetes for Developers",          "Coursera ID",                  "2 bulan"),
-    "go":                 ("Go Programming Language",            "Udemy",                        "1 bulan"),
-    "machine learning":   ("Machine Learning Specialization",    "Coursera ID",                  "3 bulan"),
-    "pytorch":            ("Deep Learning with PyTorch",         "Coursera ID",                  "3 bulan"),
-    "tensorflow":         ("TensorFlow Developer Certificate",   "Coursera ID",                  "3 bulan"),
-    "tableau":            ("Visualisasi Data Tableau",           "Skill Academy",                "3 minggu"),
-    "power bi":           ("Power BI untuk Bisnis",              "MySkill",                      "1 bulan"),
-    "figma":              ("UI Design with Figma",               "Binar Academy",                "2 bulan"),
-    "flutter":            ("Flutter App Development",            "Dicoding",                     "2 bulan"),
-    "kotlin":             ("Android Dev with Kotlin",            "Binar Academy",                "3 bulan"),
-    "spark":              ("Big Data with Apache Spark",         "Purwadhika",                   "6 minggu"),
-    "kafka":              ("Streaming Data with Kafka",          "Udemy",                        "3 minggu"),
-    "airflow":            ("Data Pipeline with Airflow",         "Purwadhika",                   "4 minggu"),
-    "sap":                ("SAP for Supply Chain",               "Pintaria",                     "6 bulan"),
-    "bahasa inggris":     ("English for Careers",                "Cakap",                        "3 bulan"),
-    "akuntansi":          ("Akuntansi Praktis UMKM",             "Arkademi",                     "2 bulan"),
-    "excel":              ("Excel & Power BI Bisnis",            "MySkill",                      "1 bulan"),
-    "digital marketing":  ("Digital Marketing Bersertifikat",    "Skill Academy",                "1 bulan"),
-    "aws":                ("AWS Cloud Practitioner",             "Coursera ID",                  "2 bulan"),
-    "grpc":               ("gRPC — Build Modern APIs",           "Udemy",                        "2 minggu"),
-    "fastapi":            ("FastAPI — Building APIs with Python","Udemy",                        "3 minggu"),
-    "statistics":         ("Statistics for Data Science",        "Coursera ID",                  "2 bulan"),
-    "statistika":         ("Statistika untuk Analisis Data",     "Dicoding",                     "1 bulan"),
-    "android":            ("Android Development with Kotlin",    "Dicoding",                     "2 bulan"),
-    "ios":                ("iOS Development with Swift",         "Apple Developer Academy ID",   "9 bulan"),
-    "terraform":          ("Infrastructure as Code — Terraform", "Coursera ID",                  "1 bulan"),
-    "linux":              ("Linux Fundamentals",                 "Dicoding",                     "3 minggu"),
-    "design system":      ("Design System Mastery",              "Binar Academy",                "1 bulan"),
-    "user research":      ("User Research & UX Methods",         "Coursera ID",                  "6 minggu"),
-    "supply chain":       ("Supply Chain Management",            "Coursera ID",                  "2 bulan"),
-    "bahasa indonesia":   ("Bahasa Indonesia Profesional",       "Cakap",                        "1 bulan"),
-    "komunikasi":         ("Komunikasi Profesional di Tempat Kerja", "Skill Academy",            "3 minggu"),
+    "python": ("Python untuk Data Science", "Dicoding", "1 bulan"),
+    "sql": ("SQL untuk Analisis Data", "Dicoding", "1 bulan"),
+    "javascript": ("Belajar Dasar JavaScript", "Dicoding", "1 bulan"),
+    "react": ("Kelas Pengembangan Web React", "Dicoding", "2 bulan"),
+    "docker": ("Docker & Container Fundamentals", "Hacktiv8", "3 minggu"),
+    "kubernetes": ("Kubernetes for Developers", "Coursera ID", "2 bulan"),
+    "go": ("Go Programming Language", "Udemy", "1 bulan"),
+    "machine learning": ("Machine Learning Specialization", "Coursera ID", "3 bulan"),
+    "pytorch": ("Deep Learning with PyTorch", "Coursera ID", "3 bulan"),
+    "tensorflow": ("TensorFlow Developer Certificate", "Coursera ID", "3 bulan"),
+    "tableau": ("Visualisasi Data Tableau", "Skill Academy", "3 minggu"),
+    "power bi": ("Power BI untuk Bisnis", "MySkill", "1 bulan"),
+    "figma": ("UI Design with Figma", "Binar Academy", "2 bulan"),
+    "flutter": ("Flutter App Development", "Dicoding", "2 bulan"),
+    "kotlin": ("Android Dev with Kotlin", "Binar Academy", "3 bulan"),
+    "spark": ("Big Data with Apache Spark", "Purwadhika", "6 minggu"),
+    "kafka": ("Streaming Data with Kafka", "Udemy", "3 minggu"),
+    "airflow": ("Data Pipeline with Airflow", "Purwadhika", "4 minggu"),
+    "sap": ("SAP for Supply Chain", "Pintaria", "6 bulan"),
+    "bahasa inggris": ("English for Careers", "Cakap", "3 bulan"),
+    "akuntansi": ("Akuntansi Praktis UMKM", "Arkademi", "2 bulan"),
+    "excel": ("Excel & Power BI Bisnis", "MySkill", "1 bulan"),
+    "digital marketing": ("Digital Marketing Bersertifikat", "Skill Academy", "1 bulan"),
+    "aws": ("AWS Cloud Practitioner", "Coursera ID", "2 bulan"),
+    "grpc": ("gRPC — Build Modern APIs", "Udemy", "2 minggu"),
+    "fastapi": ("FastAPI — Building APIs with Python", "Udemy", "3 minggu"),
+    "statistics": ("Statistics for Data Science", "Coursera ID", "2 bulan"),
+    "statistika": ("Statistika untuk Analisis Data", "Dicoding", "1 bulan"),
+    "android": ("Android Development with Kotlin", "Dicoding", "2 bulan"),
+    "ios": ("iOS Development with Swift", "Apple Developer Academy ID", "9 bulan"),
+    "terraform": ("Infrastructure as Code — Terraform", "Coursera ID", "1 bulan"),
+    "linux": ("Linux Fundamentals", "Dicoding", "3 minggu"),
+    "design system": ("Design System Mastery", "Binar Academy", "1 bulan"),
+    "user research": ("User Research & UX Methods", "Coursera ID", "6 minggu"),
+    "supply chain": ("Supply Chain Management", "Coursera ID", "2 bulan"),
+    "bahasa indonesia": ("Bahasa Indonesia Profesional", "Cakap", "1 bulan"),
+    "komunikasi": ("Komunikasi Profesional di Tempat Kerja", "Skill Academy", "3 minggu"),
 }
 
 
@@ -323,13 +340,17 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
         entry = _COURSE_CATALOG.get(skill.lower())
         if entry and entry[0] not in seen:
             seen.add(entry[0])
-            results.append(CourseRecommendation(name=entry[0], provider=entry[1], duration=entry[2]))
+            results.append(
+                CourseRecommendation(name=entry[0], provider=entry[1], duration=entry[2])
+            )
     if not results:
-        results.append(CourseRecommendation(
-            name="Bangkit Academy — Tech Generalist Path",
-            provider="Bangkit (Kominfo + GoTo + Traveloka)",
-            duration="6 bulan",
-        ))
+        results.append(
+            CourseRecommendation(
+                name="Bangkit Academy — Tech Generalist Path",
+                provider="Bangkit (Kominfo + GoTo + Traveloka)",
+                duration="6 bulan",
+            )
+        )
     return results[:5]
 
 
@@ -356,9 +377,11 @@ async def run_advisor(state: AgentState) -> dict:
     from backend.app.config.settings import settings
 
     msg = state.get("user_message", "")
-    gemini_key = (settings.gemini_api_key
-                  or os.environ.get("GEMINI_API_KEY", "")
-                  or os.environ.get("GOOGLE_API_KEY", ""))
+    gemini_key = (
+        settings.gemini_api_key
+        or os.environ.get("GEMINI_API_KEY", "")
+        or os.environ.get("GOOGLE_API_KEY", "")
+    )
     if not gemini_key:
         return {"advisor_response": _build_fallback(state)}
 
@@ -375,10 +398,12 @@ async def run_advisor(state: AgentState) -> dict:
         sys_prompt = build_system_prompt(role="seeker_advisor")
         # Build rich context from all prior nodes
         context = _build_rich_context(state)
-        resp = await llm.ainvoke([
-            SystemMessage(content=sys_prompt),
-            HumanMessage(content=f"{context}\n\nPertanyaan: {msg}"),
-        ])
+        resp = await llm.ainvoke(
+            [
+                SystemMessage(content=sys_prompt),
+                HumanMessage(content=f"{context}\n\nPertanyaan: {msg}"),
+            ]
+        )
         return {"advisor_response": resp.content}
 
     except Exception as exc:
@@ -402,8 +427,9 @@ def _build_rich_context(state: AgentState) -> str:
     matches = state.get("matches") or []
     if matches:
         top3 = matches[:3]
-        job_lines = [f"  #{m.rank} job_id={m.job_id[:8]} skor={m.score:.0%} — {m.explanation}"
-                     for m in top3]
+        job_lines = [
+            f"  #{m.rank} job_id={m.job_id[:8]} skor={m.score:.0%} — {m.explanation}" for m in top3
+        ]
         lines.append("Top match:\n" + "\n".join(job_lines))
 
     missing = state.get("missing_skills") or []
@@ -434,13 +460,13 @@ def _build_fallback(state: AgentState) -> str:
     if matches:
         top = matches[0]
         return (
-            f"Rekomendasi teratas: job #{top.job_id[:8]}… "
-            f"(skor {top.score:.0%}). {top.explanation}"
+            f"Rekomendasi teratas: job #{top.job_id[:8]}… (skor {top.score:.0%}). {top.explanation}"
         )
     return _FALLBACK_ADVICE
 
 
 # ── 5. Compose ────────────────────────────────────────────────────────────────
+
 
 async def compose_response(state: AgentState) -> dict:
     """Format the final human-readable response from all node outputs."""
@@ -454,17 +480,21 @@ async def compose_response(state: AgentState) -> dict:
             lines = [f"Top {min(len(matches), 5)} rekomendasi lowongan:"]
             for m in matches[:5]:
                 expl = m.explanation or ""
-                lines.append(f"  {m.rank}. Job {m.job_id[:8]}… — {m.score:.0%}{' — ' + expl if expl else ''}")
+                lines.append(
+                    f"  {m.rank}. Job {m.job_id[:8]}… — {m.score:.0%}{' — ' + expl if expl else ''}"
+                )
             # Append quick skill gap hint if we computed it
             missing = state.get("missing_skills", [])
             if missing:
-                lines.append(f"\nUntuk job teratas, skill yang perlu ditingkatkan: {', '.join(missing[:3])}.")
+                lines.append(
+                    f"\nUntuk job teratas, skill yang perlu ditingkatkan: {', '.join(missing[:3])}."
+                )
             text = "\n".join(lines)
 
     elif intent == "skill_gap":
-        missing  = state.get("missing_skills", [])
+        missing = state.get("missing_skills", [])
         matching = state.get("matching_skills", [])
-        courses  = state.get("recommended_courses", [])
+        courses = state.get("recommended_courses", [])
         if not missing and not matching:
             text = "Jalankan Job Matching terlebih dahulu agar analisis skill gap punya target."
         elif not missing:

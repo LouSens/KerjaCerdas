@@ -5,6 +5,7 @@ profiles created here are immediately visible to the matching engine.
 Auth still goes through JWT (auth.py / SQLAlchemy User), but all seeker
 data lives in data/seekers/ and data/applications/.
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,12 +34,15 @@ router = APIRouter(
 
 # ── Profile ───────────────────────────────────────────────────────────────────
 
+
 @router.get("/profile")
 async def get_profile(current_user: User = Depends(get_current_user)):
     repos = get_repositories()
     profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
     if not profiles:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile belum dibuat. Upload CV atau isi manual.")
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Profile belum dibuat. Upload CV atau isi manual."
+        )
     return profiles[0]
 
 
@@ -69,9 +73,16 @@ async def create_or_update_profile(
 
     if existing:
         profile = existing[0]
-        for field in ("full_name", "headline", "region_code", "preferred_regions",
-                      "salary_expectation_min", "salary_expectation_max",
-                      "resume_text", "open_to_remote"):
+        for field in (
+            "full_name",
+            "headline",
+            "region_code",
+            "preferred_regions",
+            "salary_expectation_min",
+            "salary_expectation_max",
+            "resume_text",
+            "open_to_remote",
+        ):
             if field in data:
                 setattr(profile, field, data[field])
         if skills:
@@ -113,11 +124,20 @@ async def create_or_update_profile(
             gam.xp += 100
         await repos.gamification.upsert(gam)
 
-    logger.info("Profile upserted for user_id=%s → seeker %s (embedding queued)", current_user.id, profile.id)
-    return {"seeker_id": profile.id, "skills_count": len(profile.skills), "embedding_status": "queued"}
+    logger.info(
+        "Profile upserted for user_id=%s → seeker %s (embedding queued)",
+        current_user.id,
+        profile.id,
+    )
+    return {
+        "seeker_id": profile.id,
+        "skills_count": len(profile.skills),
+        "embedding_status": "queued",
+    }
 
 
 # ── Gamification ──────────────────────────────────────────────────────────────
+
 
 @router.get("/gamification")
 async def get_gamification(current_user: User = Depends(get_current_user)):
@@ -139,6 +159,7 @@ async def get_gamification(current_user: User = Depends(get_current_user)):
 
 
 # ── Bookmarks (saved jobs) ────────────────────────────────────────────────────
+
 
 @router.post("/bookmarks", status_code=status.HTTP_201_CREATED)
 async def save_job(
@@ -172,7 +193,9 @@ async def unsave_job(job_id: str, current_user: User = Depends(get_current_user)
     seeker_id = profiles[0].id if profiles else current_user.id
 
     apps = await repos.applications.find(
-        lambda a: a.job_id == job_id and a.seeker_id == seeker_id and a.status == ApplicationStatus.SAVED
+        lambda a: (
+            a.job_id == job_id and a.seeker_id == seeker_id and a.status == ApplicationStatus.SAVED
+        )
     )
     for a in apps:
         await repos.applications.delete(a.id)
@@ -187,21 +210,25 @@ async def list_bookmarks(current_user: User = Depends(get_current_user)):
     if not profiles:
         return []
     seeker_id = profiles[0].id
-    apps = await repos.applications.find(lambda a: a.seeker_id == seeker_id and a.status == ApplicationStatus.SAVED)
+    apps = await repos.applications.find(
+        lambda a: a.seeker_id == seeker_id and a.status == ApplicationStatus.SAVED
+    )
     # Enrich with job titles
     result = []
     for app in apps:
         job = await repos.jobs.get(app.job_id)
         # Resolve employer name
         emp = await repos.employers.get(job.employer_id) if job else None
-        result.append({
-            'application_id': app.id,
-            'job_id': app.job_id,
-            'title': job.title if job else '—',
-            'company': emp.company_name if emp else (job.employer_id if job else '—'),
-            'status': app.status,
-            'saved_at': app.created_at.isoformat(),
-        })
+        result.append(
+            {
+                "application_id": app.id,
+                "job_id": app.job_id,
+                "title": job.title if job else "—",
+                "company": emp.company_name if emp else (job.employer_id if job else "—"),
+                "status": app.status,
+                "saved_at": app.created_at.isoformat(),
+            }
+        )
     return result
 
 
@@ -256,7 +283,12 @@ async def apply_to_job(
         await repos.gamification.upsert(gam)
 
     logger.info("Application created: seeker %s → job %s", seeker_id, job_id)
-    return {"application_id": app.id, "job_id": job_id, "status": app.status, "already_applied": False}
+    return {
+        "application_id": app.id,
+        "job_id": job_id,
+        "status": app.status,
+        "already_applied": False,
+    }
 
 
 @router.get("/applications")
@@ -275,12 +307,14 @@ async def list_applications(current_user: User = Depends(get_current_user)):
     for app in apps:
         job = await repos.jobs.get(app.job_id)
         emp = await repos.employers.get(job.employer_id) if job else None
-        result.append({
-            "application_id": app.id,
-            "job_id": app.job_id,
-            "title": job.title if job else "—",
-            "company": emp.company_name if emp else "—",
-            "status": app.status,
-            "applied_at": app.created_at.isoformat(),
-        })
+        result.append(
+            {
+                "application_id": app.id,
+                "job_id": app.job_id,
+                "title": job.title if job else "—",
+                "company": emp.company_name if emp else "—",
+                "status": app.status,
+                "applied_at": app.created_at.isoformat(),
+            }
+        )
     return result

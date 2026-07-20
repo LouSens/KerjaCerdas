@@ -15,6 +15,7 @@ MatchResult enrichment:
   metadata (title, company, salary, location) so the frontend can render
   complete job cards from a single API call.
 """
+
 from __future__ import annotations
 
 import logging
@@ -50,7 +51,9 @@ class AgentInvokeRequest(BaseModel):
     target_job_id: str | None = None
     explicit_intent: str | None = None
     session_id: str | None = Field(default=None, description="thread id for memory")
-    filters: dict | None = Field(default_factory=dict, description="Active UI filters like location, salary")
+    filters: dict | None = Field(
+        default_factory=dict, description="Active UI filters like location, salary"
+    )
 
 
 class EnrichedMatch(BaseModel):
@@ -90,13 +93,13 @@ class AgentInvokeResponse(BaseModel):
     missing_skills: list[str] = []
     matching_skills: list[str] = []
     recommended_courses: list[CourseRecommendation] = []
-    seeker_id: str | None = None   # echo back so frontend can cache it
+    seeker_id: str | None = None  # echo back so frontend can cache it
     # Observability fields (used by monitoring + A/B analysis)
-    fallback_used: bool = False             # True when seeker_id was stale or absent
-    band_distribution: dict = {}            # {"strong": n, "possible": n, "stretch": n}
-    routing_confidence: float = 1.0         # 1.0 = explicit intent; 0.7 = inferred
-    hallucinated_ids_removed: int = 0       # count of invalid job_ids stripped post-LLM
-    early_exit: bool = False                # True when token gate fired (all-stretch corpus)
+    fallback_used: bool = False  # True when seeker_id was stale or absent
+    band_distribution: dict = {}  # {"strong": n, "possible": n, "stretch": n}
+    routing_confidence: float = 1.0  # 1.0 = explicit intent; 0.7 = inferred
+    hallucinated_ids_removed: int = 0  # count of invalid job_ids stripped post-LLM
+    early_exit: bool = False  # True when token gate fired (all-stretch corpus)
 
 
 async def _enrich_matches(
@@ -132,31 +135,35 @@ async def _enrich_matches(
         if job.remote_allowed:
             location += " · Remote OK"
 
-        enriched.append(EnrichedMatch(
-            # scores
-            job_id=m.job_id,
-            seeker_id=m.seeker_id,
-            score=m.score,
-            cosine=m.cosine,
-            skill_overlap=m.skill_overlap,
-            region_match=m.region_match,
-            salary_in_range=m.salary_in_range,
-            rank=m.rank,
-            band=m.band,
-            explanation=m.explanation,
-            # metadata
-            title=job.title,
-            company=str(job.employer_id),  # employer_id as placeholder; enriched further if needed
-            location=location,
-            salary_range=salary_str,
-            salary_min=job.salary_min,
-            salary_max=job.salary_max,
-            remote_allowed=job.remote_allowed,
-            required_skills=list(job.required_skills),
-            matching_skills=matching,
-            missing_skills=missing,
-            experience_years_min=job.experience_years_min,
-        ))
+        enriched.append(
+            EnrichedMatch(
+                # scores
+                job_id=m.job_id,
+                seeker_id=m.seeker_id,
+                score=m.score,
+                cosine=m.cosine,
+                skill_overlap=m.skill_overlap,
+                region_match=m.region_match,
+                salary_in_range=m.salary_in_range,
+                rank=m.rank,
+                band=m.band,
+                explanation=m.explanation,
+                # metadata
+                title=job.title,
+                company=str(
+                    job.employer_id
+                ),  # employer_id as placeholder; enriched further if needed
+                location=location,
+                salary_range=salary_str,
+                salary_min=job.salary_min,
+                salary_max=job.salary_max,
+                remote_allowed=job.remote_allowed,
+                required_skills=list(job.required_skills),
+                matching_skills=matching,
+                missing_skills=missing,
+                experience_years_min=job.experience_years_min,
+            )
+        )
 
     return enriched
 
@@ -168,6 +175,7 @@ async def invoke_agent(
 ) -> AgentInvokeResponse:
     """Unified entry point: routes to matcher / skill-gap / advisor based on message intent."""
     import time
+
     _start = time.time()
     repos = get_repositories()
 
@@ -177,11 +185,15 @@ async def invoke_agent(
         max_length=2_000,
         field_name="user_message",
     )
-    safe_intent = sanitize_text(
-        req.explicit_intent or "",
-        max_length=200,
-        field_name="explicit_intent",
-    ) if req.explicit_intent else None
+    safe_intent = (
+        sanitize_text(
+            req.explicit_intent or "",
+            max_length=200,
+            field_name="explicit_intent",
+        )
+        if req.explicit_intent
+        else None
+    )
 
     # --- Resolve seeker (graceful cascade, never 400) ---------------------
     # Inline seeker override is only honoured when it belongs to the authenticated user.
@@ -198,10 +210,13 @@ async def invoke_agent(
             if candidate is not None:
                 logger.warning(
                     "seeker_id %s does not belong to user %s — ignoring.",
-                    req.seeker_id, current_user.id,
+                    req.seeker_id,
+                    current_user.id,
                 )
             else:
-                logger.warning("seeker_id %s not found (stale?), using owned profile.", req.seeker_id)
+                logger.warning(
+                    "seeker_id %s not found (stale?), using owned profile.", req.seeker_id
+                )
             fallback_used = True
 
     # Fall back to the seeker profile owned by the authenticated user (if any).
@@ -219,6 +234,7 @@ async def invoke_agent(
 
     # --- Pre-rank to detect all-stretch corpus (token efficiency gate) ---
     from backend.app.services.matching.matcher import SemanticMatcher
+
     matcher = SemanticMatcher()
     raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs, filters=req.filters)
 
@@ -248,6 +264,7 @@ async def invoke_agent(
 
     # --- Run agent --------------------------------------------------------
     from backend.app.agents.graph.builder import get_graph
+
     app_graph = get_graph()
 
     # Build context prompt for ReAct agent
@@ -282,7 +299,8 @@ async def invoke_agent(
     if hallucinated_removed:
         logger.warning(
             "hallucination_guard removed=%d seeker=%s",
-            hallucinated_removed, seeker.id,
+            hallucinated_removed,
+            seeker.id,
         )
 
     # --- Enrich company names from employer profiles ---------------------
@@ -298,7 +316,11 @@ async def invoke_agent(
     latency_ms = int((time.time() - _start) * 1000)
     logger.info(
         "agent_invoke seeker=%s intent=%s bands=%s latency_ms=%d fallback=%s",
-        seeker.id, out.get("intent", "match_jobs"), band_dist, latency_ms, fallback_used,
+        seeker.id,
+        out.get("intent", "match_jobs"),
+        band_dist,
+        latency_ms,
+        fallback_used,
     )
 
     return AgentInvokeResponse(
@@ -324,4 +346,3 @@ def _band_distribution(matches: list[EnrichedMatch]) -> dict:
         key = getattr(m, "band", "stretch") or "stretch"
         dist[key] = dist.get(key, 0) + 1
     return dist
-

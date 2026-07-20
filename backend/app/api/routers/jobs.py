@@ -1,4 +1,5 @@
 """Consolidated public + admin /jobs surface."""
+
 from __future__ import annotations
 
 import time
@@ -36,6 +37,7 @@ def _is_employer_verified(employer) -> bool:
     if employer is None:
         return False
     from backend.app.db.schemas import VerificationStatus
+
     status = getattr(employer, "verified", None)
     return status == VerificationStatus.VERIFIED
 
@@ -67,15 +69,12 @@ async def list_jobs(
         jobs = [j for j in jobs if (j.salary_min or 0) >= salary_min]
     if q:
         q_lower = q.lower()
-        jobs = [
-            j for j in jobs
-            if q_lower in j.title.lower() or q_lower in j.description.lower()
-        ]
+        jobs = [j for j in jobs if q_lower in j.title.lower() or q_lower in j.description.lower()]
 
     # Enrich with verified flag (batch employer lookup)
     employer_cache: dict[str, bool] = {}
     result_items = []
-    for j in jobs[offset: offset + limit]:
+    for j in jobs[offset : offset + limit]:
         emp_id = j.employer_id
         if emp_id not in employer_cache:
             emp = await repos.employers.get(emp_id)

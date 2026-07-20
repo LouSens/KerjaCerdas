@@ -4,6 +4,7 @@ Endpoints (registered under /api/v1):
   POST /karirhub/sync      feed active vacancies to the national system (mock)
   GET  /karirhub/listings  pull verified national listings (mock)
 """
+
 from __future__ import annotations
 
 from typing import Any

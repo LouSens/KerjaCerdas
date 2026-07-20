@@ -6,6 +6,7 @@ Two entry points:
 
 Both go through `gemini_chat` so every call is logged for admin review.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,16 +29,22 @@ def _client():
     import os
 
     from google import genai
-    project = (settings.vertex_ai_project
-               or os.environ.get("VERTEX_AI_PROJECT", "")
-               or os.environ.get("GOOGLE_CLOUD_PROJECT", ""))
+
+    project = (
+        settings.vertex_ai_project
+        or os.environ.get("VERTEX_AI_PROJECT", "")
+        or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    )
     if project:
-        location = (settings.vertex_ai_location
-                    or os.environ.get("VERTEX_AI_LOCATION", "us-central1"))
+        location = settings.vertex_ai_location or os.environ.get(
+            "VERTEX_AI_LOCATION", "us-central1"
+        )
         return genai.Client(vertexai=True, project=project, location=location)
-    key = (settings.gemini_api_key
-           or os.environ.get("GEMINI_API_KEY", "")
-           or os.environ.get("GOOGLE_API_KEY", ""))
+    key = (
+        settings.gemini_api_key
+        or os.environ.get("GEMINI_API_KEY", "")
+        or os.environ.get("GOOGLE_API_KEY", "")
+    )
     if not key:
         raise _NoKey("Neither GEMINI_API_KEY nor VERTEX_AI_PROJECT configured")
     return genai.Client(api_key=key)
@@ -50,6 +57,7 @@ def _pdf_to_text(pdf_bytes: bytes, max_chars: int = 8000) -> str:
     """
     try:
         import fitz  # PyMuPDF
+
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
             out: list[str] = []
             for page in doc:
@@ -65,20 +73,77 @@ def _pdf_to_text(pdf_bytes: bytes, max_chars: int = 8000) -> str:
 
 _SKILL_VOCAB = {
     # programming
-    "python", "java", "javascript", "typescript", "go", "golang", "rust", "c++", "c#",
-    "php", "ruby", "kotlin", "swift", "scala", "r",
+    "python",
+    "java",
+    "javascript",
+    "typescript",
+    "go",
+    "golang",
+    "rust",
+    "c++",
+    "c#",
+    "php",
+    "ruby",
+    "kotlin",
+    "swift",
+    "scala",
+    "r",
     # web/fe
-    "react", "next.js", "nextjs", "vue", "angular", "svelte", "tailwind", "node", "nodejs",
+    "react",
+    "next.js",
+    "nextjs",
+    "vue",
+    "angular",
+    "svelte",
+    "tailwind",
+    "node",
+    "nodejs",
     # backend / infra
-    "fastapi", "django", "flask", "spring", "spring boot", "express", "graphql", "grpc",
-    "rest", "microservices", "kafka", "rabbitmq", "redis", "elasticsearch",
+    "fastapi",
+    "django",
+    "flask",
+    "spring",
+    "spring boot",
+    "express",
+    "graphql",
+    "grpc",
+    "rest",
+    "microservices",
+    "kafka",
+    "rabbitmq",
+    "redis",
+    "elasticsearch",
     # cloud
-    "aws", "gcp", "azure", "docker", "kubernetes", "k8s", "terraform", "ansible",
+    "aws",
+    "gcp",
+    "azure",
+    "docker",
+    "kubernetes",
+    "k8s",
+    "terraform",
+    "ansible",
     # data
-    "postgresql", "postgres", "mysql", "mongodb", "bigquery", "snowflake", "spark",
-    "pandas", "numpy", "scikit-learn", "tensorflow", "pytorch", "langchain", "langgraph",
+    "postgresql",
+    "postgres",
+    "mysql",
+    "mongodb",
+    "bigquery",
+    "snowflake",
+    "spark",
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "tensorflow",
+    "pytorch",
+    "langchain",
+    "langgraph",
     # design / pm
-    "figma", "sketch", "jira", "scrum", "agile", "product management",
+    "figma",
+    "sketch",
+    "jira",
+    "scrum",
+    "agile",
+    "product management",
 }
 
 
@@ -96,13 +161,19 @@ def _fallback_extract(pdf_bytes: bytes) -> dict[str, Any]:
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     # Heuristic: name is the first non-empty line that's not an email/phone
     name = next(
-        (ln for ln in lines[:6]
-         if "@" not in ln and not re.search(r"\d{4,}", ln) and 2 <= len(ln.split()) <= 6),
+        (
+            ln
+            for ln in lines[:6]
+            if "@" not in ln and not re.search(r"\d{4,}", ln) and 2 <= len(ln.split()) <= 6
+        ),
         "Pengguna",
     )
     headline = next(
-        (ln for ln in lines[1:8]
-         if 4 <= len(ln) <= 80 and not re.search(r"\d{4}", ln) and ln != name),
+        (
+            ln
+            for ln in lines[1:8]
+            if 4 <= len(ln) <= 80 and not re.search(r"\d{4}", ln) and ln != name
+        ),
         "",
     )
 
@@ -111,9 +182,15 @@ def _fallback_extract(pdf_bytes: bytes) -> dict[str, Any]:
     # Education year — last 4-digit year in the doc that's a plausible grad year
     years = [int(y) for y in re.findall(r"(19[89]\d|20[0-3]\d)", text)]
     grad_year = max(years) if years else 0
-    degree = "S2" if "magister" in text_low or "master" in text_low else \
-             "S1" if "sarjana" in text_low or "bachelor" in text_low or "s1 " in text_low else \
-             "D3" if "diploma" in text_low else "S1"
+    degree = (
+        "S2"
+        if "magister" in text_low or "master" in text_low
+        else "S1"
+        if "sarjana" in text_low or "bachelor" in text_low or "s1 " in text_low
+        else "D3"
+        if "diploma" in text_low
+        else "S1"
+    )
 
     # Strip PII from resume_text for storage
     redacted = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "[email]", text)
@@ -126,8 +203,9 @@ def _fallback_extract(pdf_bytes: bytes) -> dict[str, Any]:
         "region_code": "3171" if "jakarta" in text_low else "",
         "skills": [{"name": s, "level": "intermediate", "years": 0} for s in skills[:25]],
         "experience": [],
-        "education": [{"institution": "", "degree": degree, "major": "",
-                       "graduation_year": grad_year or 2024}],
+        "education": [
+            {"institution": "", "degree": degree, "major": "", "graduation_year": grad_year or 2024}
+        ],
         "salary_expectation_min": 0,
         "salary_expectation_max": 0,
         "resume_text": redacted[:1000],
@@ -158,12 +236,12 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
 
     def _sync():
         from google.genai import types
+
         resp = client.models.generate_content(
             model=settings.gemini_chat_model,
             contents=[
                 types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
-                "Ekstrak data terstruktur sesuai schema di task prompt. "
-                "Kembalikan JSON saja.",
+                "Ekstrak data terstruktur sesuai schema di task prompt. Kembalikan JSON saja.",
             ],
             config=types.GenerateContentConfig(
                 system_instruction=system,
@@ -186,7 +264,9 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
         return stub
 
     try:
-        return _validate_cv_schema(_extract_json(raw)) if task == "cv_parser" else _extract_json(raw)
+        return (
+            _validate_cv_schema(_extract_json(raw)) if task == "cv_parser" else _extract_json(raw)
+        )
     except Exception as e:
         logger.error("Gemini returned non-JSON (task=%s): %s", task, e)
         if task == "cv_parser":
@@ -201,25 +281,34 @@ def _validate_cv_schema(d: dict[str, Any]) -> dict[str, Any]:
         "headline": str(d.get("headline") or "").strip(),
         "region_code": str(d.get("region_code") or "").strip(),
         "skills": [
-            {"name": str(s.get("name", "")).strip(),
-             "level": s.get("level", "intermediate"),
-             "years": float(s.get("years") or 0)}
-            for s in (d.get("skills") or []) if isinstance(s, dict) and s.get("name")
+            {
+                "name": str(s.get("name", "")).strip(),
+                "level": s.get("level", "intermediate"),
+                "years": float(s.get("years") or 0),
+            }
+            for s in (d.get("skills") or [])
+            if isinstance(s, dict) and s.get("name")
         ],
         "experience": [
-            {"company": str(x.get("company", "")).strip(),
-             "title": str(x.get("title", "")).strip(),
-             "start_date": x.get("start_date") or "2024-01",
-             "end_date": x.get("end_date"),
-             "description": str(x.get("description", "")).strip()}
-            for x in (d.get("experience") or []) if isinstance(x, dict)
+            {
+                "company": str(x.get("company", "")).strip(),
+                "title": str(x.get("title", "")).strip(),
+                "start_date": x.get("start_date") or "2024-01",
+                "end_date": x.get("end_date"),
+                "description": str(x.get("description", "")).strip(),
+            }
+            for x in (d.get("experience") or [])
+            if isinstance(x, dict)
         ],
         "education": [
-            {"institution": str(e.get("institution", "")).strip(),
-             "degree": (e.get("degree") or "S1").upper(),
-             "major": str(e.get("major", "")).strip(),
-             "graduation_year": int(e.get("graduation_year") or 2024)}
-            for e in (d.get("education") or []) if isinstance(e, dict)
+            {
+                "institution": str(e.get("institution", "")).strip(),
+                "degree": (e.get("degree") or "S1").upper(),
+                "major": str(e.get("major", "")).strip(),
+                "graduation_year": int(e.get("graduation_year") or 2024),
+            }
+            for e in (d.get("education") or [])
+            if isinstance(e, dict)
         ],
         "salary_expectation_min": int(d.get("salary_expectation_min") or 0),
         "salary_expectation_max": int(d.get("salary_expectation_max") or 0),
@@ -237,6 +326,7 @@ async def parse_job_pack(pdf_bytes: bytes) -> dict[str, Any]:
 
 # ── Offline stubs so dev mode (no key) still produces something usable ────────
 
+
 def _offline_stub(task: str) -> dict[str, Any]:
     if task == "cv_parser":
         return {
@@ -249,8 +339,12 @@ def _offline_stub(task: str) -> dict[str, Any]:
             ],
             "experience": [],
             "education": [
-                {"institution": "Universitas Demo", "degree": "S1",
-                 "major": "Teknik Informatika", "graduation_year": 2024}
+                {
+                    "institution": "Universitas Demo",
+                    "degree": "S1",
+                    "major": "Teknik Informatika",
+                    "graduation_year": 2024,
+                }
             ],
             "salary_expectation_min": 5_000_000,
             "salary_expectation_max": 9_000_000,
@@ -259,20 +353,22 @@ def _offline_stub(task: str) -> dict[str, Any]:
         }
     if task == "job_parser":
         return {
-            "postings": [{
-                "title": "Junior Software Engineer",
-                "description": "[offline-stub] posting demo.",
-                "responsibilities": ["Develop features", "Write tests"],
-                "required_skills": ["Python", "Git"],
-                "nice_to_have_skills": ["Docker"],
-                "education_min": "S1",
-                "experience_years_min": 0,
-                "region_code": "3171",
-                "remote_allowed": True,
-                "salary_min": 7_000_000,
-                "salary_max": 12_000_000,
-                "kbji_code": "",
-                "_offline": True,
-            }]
+            "postings": [
+                {
+                    "title": "Junior Software Engineer",
+                    "description": "[offline-stub] posting demo.",
+                    "responsibilities": ["Develop features", "Write tests"],
+                    "required_skills": ["Python", "Git"],
+                    "nice_to_have_skills": ["Docker"],
+                    "education_min": "S1",
+                    "experience_years_min": 0,
+                    "region_code": "3171",
+                    "remote_allowed": True,
+                    "salary_min": 7_000_000,
+                    "salary_max": 12_000_000,
+                    "kbji_code": "",
+                    "_offline": True,
+                }
+            ]
         }
     return {}

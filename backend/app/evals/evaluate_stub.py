@@ -6,6 +6,7 @@ and evaluates if the intent and keywords match our expectations.
 
 Run locally: python -m backend.app.evals.evaluate_stub
 """
+
 import asyncio
 import json
 import logging
@@ -62,7 +63,9 @@ async def run_evaluation():
             logger.info(f"  ✅ PASS (Intent: {actual_intent}) | Reason: {reasoning}")
             passed_count += 1
         else:
-            logger.warning(f"  ❌ FAIL | Expected: {expected_intent}, Got: {actual_intent} | Reason: {reasoning}")
+            logger.warning(
+                f"  ❌ FAIL | Expected: {expected_intent}, Got: {actual_intent} | Reason: {reasoning}"
+            )
             failed_count += 1
 
     # Print Summary
@@ -76,9 +79,14 @@ async def run_evaluation():
     logger.info(f"Accuracy    : {accuracy:.1f}%")
 
     if accuracy >= 80:
-        logger.info("✅ Regression Test passed. The Agent is stable and ready for production deployment.")
+        logger.info(
+            "✅ Regression Test passed. The Agent is stable and ready for production deployment."
+        )
     else:
-        logger.warning("⚠️ Regression Test failed. Please tune the prompt engineering in `prompts/`.")
+        logger.warning(
+            "⚠️ Regression Test failed. Please tune the prompt engineering in `prompts/`."
+        )
+
 
 if __name__ == "__main__":
     asyncio.run(run_evaluation())

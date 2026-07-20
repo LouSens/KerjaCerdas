@@ -10,24 +10,32 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 # never used at query time — embeddings are computed in-process by the matcher).
 try:
     from pgvector.sqlalchemy import Vector as _Vector  # type: ignore[import-untyped]
+
     _VectorCol = lambda: _Vector(768)  # noqa: E731
 except Exception:  # pragma: no cover
     from sqlalchemy import Text as _Text  # type: ignore[assignment]
+
     _VectorCol = lambda: _Text()  # noqa: E731
 
 
 def _now() -> datetime:
     return datetime.now(UTC)
 
+
 def _uid() -> str:
     return str(uuid4())
+
 
 class Base(DeclarativeBase):
     pass
 
+
 class TimestampedMixin:
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+
 
 class User(Base, TimestampedMixin):
     __tablename__ = "users"
@@ -39,6 +47,7 @@ class User(Base, TimestampedMixin):
     role: Mapped[str] = mapped_column(String(20))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
 
 class SeekerProfile(Base, TimestampedMixin):
     __tablename__ = "seekers"
@@ -62,6 +71,7 @@ class SeekerProfile(Base, TimestampedMixin):
     embedding = mapped_column(_VectorCol(), nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
+
 class Employer(Base, TimestampedMixin):
     __tablename__ = "employers"
 
@@ -75,6 +85,7 @@ class Employer(Base, TimestampedMixin):
     website: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str] = mapped_column(Text, default="")
     verified: Mapped[str] = mapped_column(String(20), default="unverified")
+
 
 class JobPosting(Base, TimestampedMixin):
     __tablename__ = "jobs"
@@ -97,6 +108,7 @@ class JobPosting(Base, TimestampedMixin):
     embedding = mapped_column(_VectorCol(), nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
+
 class Application(Base, TimestampedMixin):
     __tablename__ = "applications"
 
@@ -107,6 +119,7 @@ class Application(Base, TimestampedMixin):
     cover_letter: Mapped[str] = mapped_column(Text, default="")
     match_score: Mapped[float] = mapped_column(Float, default=0.0)
 
+
 class MatchBundle(Base, TimestampedMixin):
     __tablename__ = "matches"
 
@@ -116,6 +129,7 @@ class MatchBundle(Base, TimestampedMixin):
     top_k: Mapped[int] = mapped_column(Integer)
     results: Mapped[list[Any]] = mapped_column(JSON, default=list)
     embedding_model: Mapped[str] = mapped_column(String(100))
+
 
 class SkillGapResult(Base, TimestampedMixin):
     __tablename__ = "skill_gaps"
@@ -131,6 +145,7 @@ class SkillGapResult(Base, TimestampedMixin):
     estimated_readiness_months: Mapped[int] = mapped_column(Integer)
     summary: Mapped[str] = mapped_column(Text)
 
+
 class ChatSession(Base, TimestampedMixin):
     __tablename__ = "conversations"
 
@@ -139,6 +154,7 @@ class ChatSession(Base, TimestampedMixin):
     seeker_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     title: Mapped[str] = mapped_column(String(255), default="")
     messages: Mapped[list[Any]] = mapped_column(JSON, default=list)
+
 
 class Course(Base, TimestampedMixin):
     __tablename__ = "courses"
@@ -154,6 +170,7 @@ class Course(Base, TimestampedMixin):
     level: Mapped[str] = mapped_column(String(50), default="beginner")
     url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str] = mapped_column(Text, default="")
+
 
 class AIPerformanceLog(Base, TimestampedMixin):
     __tablename__ = "ai_logs"
@@ -171,6 +188,7 @@ class AIPerformanceLog(Base, TimestampedMixin):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     flagged: Mapped[bool] = mapped_column(Boolean, default=False)
     rating: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
 
 class GamificationStats(Base, TimestampedMixin):
     __tablename__ = "gamification"
@@ -191,6 +209,7 @@ class Event(Base):
     stored here for funnel analysis, A/B testing result measurement, and
     eventual model fine-tuning. No PII is stored — user_id is a UUID reference.
     """
+
     __tablename__ = "events"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
@@ -201,6 +220,4 @@ class Event(Base):
     band: Mapped[str | None] = mapped_column(String(10), nullable=True)  # strong/possible/stretch
     ab_variant: Mapped[str | None] = mapped_column(String(30), nullable=True)
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_now, index=True
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)

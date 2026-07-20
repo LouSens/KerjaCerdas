@@ -3,6 +3,7 @@ KerjaCerdas — Employer Schemas
 ==============================
 Pydantic schemas for Employer actions (Job Postings, Candidate Search).
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -12,6 +13,7 @@ from pydantic import BaseModel, Field
 
 class JobPostingCreate(BaseModel):
     """Payload for an employer creating a new job posting."""
+
     title: str = Field(..., max_length=255)
     company: str = Field(..., max_length=255)
     description: str
@@ -26,6 +28,7 @@ class JobPostingCreate(BaseModel):
 
 class JobPostingUpdate(BaseModel):
     """Payload for updating an existing job posting."""
+
     title: str | None = None
     company: str | None = None
     description: str | None = None
@@ -41,6 +44,7 @@ class JobPostingUpdate(BaseModel):
 
 class JobPostingResponse(BaseModel):
     """Response representing a single job posting."""
+
     id: str  # Kept as str to match frontend expectation
     title: str
     company: str
@@ -64,6 +68,7 @@ class JobPostingResponse(BaseModel):
 
 class JobPostingListResponse(BaseModel):
     """Response for a list of job postings."""
+
     jobs: list[JobPostingResponse]
     total: int
 
@@ -71,6 +76,7 @@ class JobPostingListResponse(BaseModel):
 # Optional: Re-use matching Schemas for candidate search
 class SearchCandidateRequest(BaseModel):
     """Payload for employer searching candidates using AI."""
+
     required_skills: list[str]
     region_code: str | None = None
     top_k: int = 10

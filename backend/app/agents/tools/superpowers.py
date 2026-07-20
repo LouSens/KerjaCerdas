@@ -3,6 +3,7 @@
 These tools are bound to the Gemini LLM allowing it to autonomously search jobs,
 analyze gaps, prep for interviews, and review resumes.
 """
+
 from __future__ import annotations
 
 import json
@@ -41,7 +42,9 @@ async def search_jobs_tool(keyword: str, location: str = "") -> str:
             "id": j.id,
             "title": j.title,
             "company": j.employer_id,
-            "salary": f"Rp {j.salary_min // 1_000_000}-{j.salary_max // 1_000_000}jt" if j.salary_min else "Competitive",
+            "salary": f"Rp {j.salary_min // 1_000_000}-{j.salary_max // 1_000_000}jt"
+            if j.salary_min
+            else "Competitive",
         }
         for j in results[:5]
     ]
@@ -49,7 +52,9 @@ async def search_jobs_tool(keyword: str, location: str = "") -> str:
 
 
 @tool
-async def analyze_skill_gap_tool(seeker_skills: list[str], target_job_requirements: list[str]) -> str:
+async def analyze_skill_gap_tool(
+    seeker_skills: list[str], target_job_requirements: list[str]
+) -> str:
     """Analisis kelemahan (skill gap) antara skill kandidat dengan syarat lowongan kerja.
 
     Gunakan tool ini jika kandidat bertanya "Apa yang kurang dari saya untuk pekerjaan ini?".
@@ -64,25 +69,35 @@ async def analyze_skill_gap_tool(seeker_skills: list[str], target_job_requiremen
         if skill_lower in ["sql", "mysql", "postgresql"]:
             free_sources.append(f"{m}: W3Schools SQL Tutorial (Gratis)")
         elif skill_lower in ["python", "javascript", "react", "html", "css", "php", "go"]:
-            free_sources.append(f"{m}: Channel YouTube Web Programming Unpas / Programmer Zaman Now (Gratis)")
+            free_sources.append(
+                f"{m}: Channel YouTube Web Programming Unpas / Programmer Zaman Now (Gratis)"
+            )
         elif skill_lower in ["excel", "data analysis", "power bi", "tableau"]:
-            free_sources.append(f"{m}: Channel YouTube Ignasius Ryan / MySkill Free Series (Gratis)")
+            free_sources.append(
+                f"{m}: Channel YouTube Ignasius Ryan / MySkill Free Series (Gratis)"
+            )
         elif skill_lower in ["digital marketing", "seo", "sem"]:
             free_sources.append(f"{m}: Google Digital Garage (Gratis + Sertifikat)")
         else:
-            free_sources.append(f"{m}: Cari playlist '{m} tutorial bahasa indonesia' di YouTube (Gratis)")
+            free_sources.append(
+                f"{m}: Cari playlist '{m} tutorial bahasa indonesia' di YouTube (Gratis)"
+            )
 
-    return json.dumps({
-        "matching_skills": matching,
-        "missing_skills": missing,
-        "micro_learning_tier1": "Mulai pelajari dasar-dasarnya hari ini melalui sumber gratis berikut:",
-        "free_resources": free_sources,
-        "recommendation": "Setelah Anda paham dasarnya dan membuat mini-project, pertimbangkan mengambil kursus bersertifikat berbayar untuk memperkuat CV Anda."
-    })
+    return json.dumps(
+        {
+            "matching_skills": matching,
+            "missing_skills": missing,
+            "micro_learning_tier1": "Mulai pelajari dasar-dasarnya hari ini melalui sumber gratis berikut:",
+            "free_resources": free_sources,
+            "recommendation": "Setelah Anda paham dasarnya dan membuat mini-project, pertimbangkan mengambil kursus bersertifikat berbayar untuk memperkuat CV Anda.",
+        }
+    )
 
 
 @tool
-async def interview_prep_tool(job_title: str, seeker_skills: list[str] = None, required_skills: list[str] = None) -> str:
+async def interview_prep_tool(
+    job_title: str, seeker_skills: list[str] = None, required_skills: list[str] = None
+) -> str:
     """Hasilkan pertanyaan simulasi wawancara (Mock Interview) untuk posisi tertentu.
 
     Gunakan tool ini jika kandidat akan menghadapi interview atau minta tips wawancara.
@@ -108,7 +123,9 @@ async def resume_review_tool(resume_text: str) -> str:
 
     issues = []
     if "achieve" not in resume_text.lower() and "meningkatkan" not in resume_text.lower():
-        issues.append("- Kurang metrik keberhasilan (Gunakan angka seperti 'Meningkatkan efisiensi 20%').")
+        issues.append(
+            "- Kurang metrik keberhasilan (Gunakan angka seperti 'Meningkatkan efisiensi 20%')."
+        )
     if "pengalaman" not in resume_text.lower() and "experience" not in resume_text.lower():
         issues.append("- Format pengalaman kerja tidak terstruktur dengan jelas.")
 
@@ -117,5 +134,11 @@ async def resume_review_tool(resume_text: str) -> str:
 
     return "Kritik ATS Ditemukan:\n" + "\n".join(issues)
 
+
 # List of all tools to bind to the Supervisor
-SUPERPOWER_TOOLS = [search_jobs_tool, analyze_skill_gap_tool, interview_prep_tool, resume_review_tool]
+SUPERPOWER_TOOLS = [
+    search_jobs_tool,
+    analyze_skill_gap_tool,
+    interview_prep_tool,
+    resume_review_tool,
+]

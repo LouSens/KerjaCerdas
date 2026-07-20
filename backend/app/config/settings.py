@@ -4,6 +4,7 @@ KerjaCerdas — application settings.
 Every tunable value lives here and is readable from .env.
 No model name, weight, or timeout should be hard-coded anywhere else.
 """
+
 from __future__ import annotations
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,7 +15,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore",       # ignore unknown keys in .env
+        extra="ignore",  # ignore unknown keys in .env
     )
 
     # ── Application ──────────────────────────────────────────────────────
@@ -59,8 +60,6 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
-
-
 
     # ── Matching tuning ──────────────────────────────────────────────────
     matching_top_k: int = 10

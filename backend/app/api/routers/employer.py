@@ -3,6 +3,7 @@
 Uses JSON store (same layer as uploads/agent), so postings created here are
 immediately visible to the semantic matcher.
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,6 +26,7 @@ router = APIRouter(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 async def _get_employer(user_id: str) -> Employer | None:
     repos = get_repositories()
     results = await repos.employers.find(lambda e: e.user_id == user_id)
@@ -32,6 +34,7 @@ async def _get_employer(user_id: str) -> Employer | None:
 
 
 # ── Employer Profile ──────────────────────────────────────────────────────────────────────────
+
 
 @router.get("/profile")
 async def get_employer_profile(current_user: User = Depends(get_current_user)):
@@ -62,8 +65,7 @@ async def update_employer_profile(
             region_code=body.get("region_code", "3171"),
         )
 
-    editable = {"company_name", "npwp", "industry", "size",
-                "region_code", "website", "description"}
+    editable = {"company_name", "npwp", "industry", "size", "region_code", "website", "description"}
     for k, v in body.items():
         if k in editable:
             setattr(employer, k, v)
@@ -74,6 +76,7 @@ async def update_employer_profile(
 
 
 # ── Jobs CRUD ─────────────────────────────────────────────────────────────────
+
 
 @router.post("/jobs", status_code=status.HTTP_201_CREATED)
 async def create_job(body: dict, current_user: User = Depends(get_current_user)):
@@ -133,9 +136,7 @@ async def list_my_jobs(current_user: User = Depends(get_current_user)):
 
 
 @router.patch("/jobs/{job_id}")
-async def update_job(
-    job_id: str, body: dict, current_user: User = Depends(get_current_user)
-):
+async def update_job(job_id: str, body: dict, current_user: User = Depends(get_current_user)):
     repos = get_repositories()
     job = await repos.jobs.get(job_id)
     if not job:
@@ -145,9 +146,18 @@ async def update_job(
     if not employer or job.employer_id != employer.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan milik Anda")
 
-    editable = {"title", "description", "required_skills", "nice_to_have_skills",
-                "responsibilities", "salary_min", "salary_max",
-                "experience_years_min", "remote_allowed", "is_active"}
+    editable = {
+        "title",
+        "description",
+        "required_skills",
+        "nice_to_have_skills",
+        "responsibilities",
+        "salary_min",
+        "salary_max",
+        "experience_years_min",
+        "remote_allowed",
+        "is_active",
+    }
     for k, v in body.items():
         if k in editable:
             setattr(job, k, v)
@@ -176,6 +186,7 @@ async def delete_job(job_id: str, current_user: User = Depends(get_current_user)
 
 # ── AI pool estimation (live preview while drafting a job) ────────────────────
 
+
 class JobEstimateRequest(dict):
     pass
 
@@ -198,12 +209,16 @@ async def estimate_job_pool(body: dict):
 
     scored = []
     for s in seekers:
-        seeker_skills = {sk.name.lower() for sk in getattr(s, "skills", []) if getattr(sk, "name", None)}
+        seeker_skills = {
+            sk.name.lower() for sk in getattr(s, "skills", []) if getattr(sk, "name", None)
+        }
         if req_skills:
             overlap = len(req_skills & seeker_skills) / max(1, len(req_skills))
         else:
             overlap = 0.6
-        loc_bonus = 0.15 if location and location in (getattr(s, "region_code", "") or "").lower() else 0
+        loc_bonus = (
+            0.15 if location and location in (getattr(s, "region_code", "") or "").lower() else 0
+        )
         scored.append(min(1.0, overlap + loc_bonus))
 
     above_80 = sum(1 for v in scored if v >= 0.8)
@@ -233,6 +248,7 @@ async def estimate_job_pool(body: dict):
 
 # ── Candidate search (REAL reverse-matching, no mocks) ────────────────────────
 
+
 @router.post("/jobs/{job_id}/candidates")
 async def find_candidates(
     job_id: str,
@@ -257,13 +273,31 @@ async def find_candidates(
     # Redact full_name (Teaser Method / LinkedIn Style)
     for c in ranked:
         seeker = next((s for s in seekers if s.id == c["seeker_id"]), None)
-        if seeker and seeker.experience and isinstance(seeker.experience[0], dict) and seeker.experience[0].get("company"):
+        if (
+            seeker
+            and seeker.experience
+            and isinstance(seeker.experience[0], dict)
+            and seeker.experience[0].get("company")
+        ):
             c["full_name"] = f"Someone at {seeker.experience[0]['company']}"
-        elif seeker and getattr(seeker, 'experience', []) and hasattr(seeker.experience[0], 'company'):
+        elif (
+            seeker
+            and getattr(seeker, "experience", [])
+            and hasattr(seeker.experience[0], "company")
+        ):
             c["full_name"] = f"Someone at {seeker.experience[0].company}"
-        elif seeker and seeker.education and isinstance(seeker.education[0], dict) and seeker.education[0].get("institution"):
+        elif (
+            seeker
+            and seeker.education
+            and isinstance(seeker.education[0], dict)
+            and seeker.education[0].get("institution")
+        ):
             c["full_name"] = f"Someone from {seeker.education[0]['institution']}"
-        elif seeker and getattr(seeker, 'education', []) and hasattr(seeker.education[0], 'institution'):
+        elif (
+            seeker
+            and getattr(seeker, "education", [])
+            and hasattr(seeker.education[0], "institution")
+        ):
             c["full_name"] = f"Someone from {seeker.education[0].institution}"
         elif seeker and seeker.region_code:
             c["full_name"] = f"Someone in region {seeker.region_code}"

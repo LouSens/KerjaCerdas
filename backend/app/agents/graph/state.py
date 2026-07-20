@@ -1,4 +1,5 @@
 """LangGraph state object for the KerjaCerdas job-matching agent."""
+
 from __future__ import annotations
 
 from typing import Annotated, Literal, TypedDict

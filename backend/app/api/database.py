@@ -6,6 +6,7 @@ Supports fallback to SQLite for demo/development mode.
 
 ANTIGRAVITY PROTOCOL §7: Database = PostgreSQL 15 with pgvector.
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,12 +22,14 @@ logger = logging.getLogger(__name__)
 
 class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
+
     pass
 
 
 # ---------------------------------------------------------------------------
 # Engine factory — production uses asyncpg, dev/demo uses aiosqlite
 # ---------------------------------------------------------------------------
+
 
 def _build_engine(database_url: str):
     """
@@ -42,6 +45,7 @@ def _build_engine(database_url: str):
     # asyncpg doesn't accept sslmode as a URL query param — strip it
     if "postgresql+asyncpg" in database_url and "sslmode" in database_url:
         import urllib.parse
+
         parsed = urllib.parse.urlparse(database_url)
         qs = {k: v for k, v in urllib.parse.parse_qsl(parsed.query) if k != "sslmode"}
         database_url = urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(qs)))
@@ -58,6 +62,7 @@ def _build_engine(database_url: str):
     )
 
     if is_sqlite:
+
         @event.listens_for(engine.sync_engine, "connect")
         def _enable_fk(dbapi_conn, _):
             """Enable foreign key support for SQLite."""
@@ -89,7 +94,9 @@ def reconfigure(database_url: str) -> None:
     global engine, async_session_factory
     engine = _build_engine(database_url)
     async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    logger.info(f"Database engine reconfigured → {database_url.split('@')[-1] if '@' in database_url else database_url}")
+    logger.info(
+        f"Database engine reconfigured → {database_url.split('@')[-1] if '@' in database_url else database_url}"
+    )
 
 
 async def get_session():
@@ -114,10 +121,7 @@ async def _migrate_verification_logs_schema(conn) -> None:
     column_names = await conn.run_sync(_get_table_columns, "verification_logs")
     if "zk_commitment" in column_names and "verification_hash" not in column_names:
         await conn.execute(
-            text(
-                "ALTER TABLE verification_logs "
-                "RENAME COLUMN zk_commitment TO verification_hash"
-            )
+            text("ALTER TABLE verification_logs RENAME COLUMN zk_commitment TO verification_hash")
         )
         logger.info("Migrated verification_logs.zk_commitment to verification_hash")
 

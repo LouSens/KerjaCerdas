@@ -1,4 +1,5 @@
 """Run the API with `python -m backend.app`."""
+
 from __future__ import annotations
 
 import os
@@ -9,6 +10,7 @@ import os
 # network module loads.
 try:
     import certifi
+
     os.environ.setdefault("SSL_CERT_FILE", certifi.where())
     os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
 except ImportError:

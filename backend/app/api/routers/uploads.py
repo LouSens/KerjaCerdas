@@ -2,6 +2,7 @@
 
 Files are parsed by Gemini and merged into the user's profile / posting list.
 """
+
 from __future__ import annotations
 
 from backend.app.api.dependencies import require_employer, require_seeker
@@ -65,7 +66,7 @@ async def upload_cv(
         raise HTTPException(400, "Only PDF accepted")
     blob = await file.read()
     if len(blob) > MAX_PDF_BYTES:
-        raise HTTPException(413, f"PDF too large (>{MAX_PDF_BYTES // (1024*1024)} MB)")
+        raise HTTPException(413, f"PDF too large (>{MAX_PDF_BYTES // (1024 * 1024)} MB)")
 
     parsed = await parse_cv(blob)
     repos = get_repositories()
@@ -73,9 +74,14 @@ async def upload_cv(
     # Find or create a seeker profile for the authenticated user.
     user_id = current_user.id
     existing = await repos.seekers.find(lambda s: s.user_id == user_id)
-    seeker = existing[0] if existing else SeekerProfile(
-        user_id=user_id, full_name=parsed.get("full_name", "Pengguna"),
-        region_code=parsed.get("region_code") or "3171",
+    seeker = (
+        existing[0]
+        if existing
+        else SeekerProfile(
+            user_id=user_id,
+            full_name=parsed.get("full_name", "Pengguna"),
+            region_code=parsed.get("region_code") or "3171",
+        )
     )
 
     seeker.full_name = parsed.get("full_name") or seeker.full_name

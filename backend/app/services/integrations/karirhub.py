@@ -13,6 +13,7 @@ distribution channel + a source of verified supply:
   • pull_verified_listings(...) — pull verified national listings IN (returns a
                                   small canned set, each flagged verified + sourced).
 """
+
 from __future__ import annotations
 
 from typing import Any

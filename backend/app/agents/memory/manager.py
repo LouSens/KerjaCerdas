@@ -3,9 +3,11 @@
 This module provides an abstraction over Short-term (Conversation buffer via LangGraph PostgresSaver)
 and Long-term memory (Semantic search via pgvector).
 """
+
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class AgentMemoryManager:
     """Handles persistence of agent state."""
@@ -23,8 +25,11 @@ class AgentMemoryManager:
             # Deferred import to prevent breaking MVP if asyncpg is not installed
             # from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
             logger.info("Using AsyncPostgresSaver for persistent state management.")
-            raise NotImplementedError("PostgresSaver requires connection pool config in production.")
+            raise NotImplementedError(
+                "PostgresSaver requires connection pool config in production."
+            )
         else:
             from langgraph.checkpoint.memory import MemorySaver
+
             logger.info("Using in-memory MemorySaver for demo environment.")
             return MemorySaver()

@@ -3,6 +3,7 @@
 This replaces the static router with a true Autonomous Multi-Agent Swarm (ReAct)
 powered by Gemini. It can call tools in parallel and reason about complex tasks.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,20 +38,20 @@ def build_graph_v2(checkpointer=None):
     )
 
     from backend.app.services.prompt_loader import build_system_prompt
+
     system_prompt = build_system_prompt(role="supervisor")
 
     # create_react_agent natively builds a robust ReAct loop with tool calling.
     # `state_modifier` was renamed to `prompt` in langgraph >= 1.x.
     compiled_graph = create_react_agent(
-        model=llm,
-        tools=SUPERPOWER_TOOLS,
-        prompt=system_prompt,
-        checkpointer=checkpointer
+        model=llm, tools=SUPERPOWER_TOOLS, prompt=system_prompt, checkpointer=checkpointer
     )
 
     return compiled_graph
 
+
 _graph_v2 = None
+
 
 def get_graph() -> CompiledGraph:
     global _graph_v2

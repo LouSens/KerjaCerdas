@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+
+echo "→ ruff check backend/app/"
+ruff check backend/app/
+
+echo "→ ruff format --check backend/app/"
+ruff format --check backend/app/

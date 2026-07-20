@@ -2,6 +2,7 @@
 
 Tools defined here can be bound to the LLM for function calling (Tool Usage).
 """
+
 from langchain_core.tools import tool
 
 

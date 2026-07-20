@@ -14,6 +14,7 @@ Both sides MUST use the same model for cosine scores to be meaningful.
 When Gemini is unavailable (no key / SSL / quota) the service silently
 degrades to a deterministic hash embedder so the platform never crashes.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -37,6 +38,7 @@ _FALLBACK_DIM = 768
 
 def _get_settings():
     from backend.app.config.settings import settings
+
     return settings
 
 
@@ -53,11 +55,12 @@ class GeminiEmbedder:
             or os.environ.get("GOOGLE_API_KEY", "")
         )
         self._vertex_project: str = (
-            s.vertex_ai_project or os.environ.get("VERTEX_AI_PROJECT", "")
+            s.vertex_ai_project
+            or os.environ.get("VERTEX_AI_PROJECT", "")
             or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
         )
-        self._vertex_location: str = (
-            s.vertex_ai_location or os.environ.get("VERTEX_AI_LOCATION", "us-central1")
+        self._vertex_location: str = s.vertex_ai_location or os.environ.get(
+            "VERTEX_AI_LOCATION", "us-central1"
         )
         self._client = None
         self._broken = False  # latched True on first network/SSL failure
@@ -66,6 +69,7 @@ class GeminiEmbedder:
         if self._client is not None:
             return self._client
         from google import genai
+
         # Prefer Vertex AI when project is set — uses Application Default
         # Credentials (gcloud auth application-default login OR a service
         # account JSON pointed to by GOOGLE_APPLICATION_CREDENTIALS).
@@ -77,7 +81,9 @@ class GeminiEmbedder:
             )
             return self._client
         if not self._api_key:
-            raise RuntimeError("No Gemini auth configured (set GEMINI_API_KEY or VERTEX_AI_PROJECT)")
+            raise RuntimeError(
+                "No Gemini auth configured (set GEMINI_API_KEY or VERTEX_AI_PROJECT)"
+            )
         self._client = genai.Client(api_key=self._api_key)
         return self._client
 
@@ -97,6 +103,7 @@ class GeminiEmbedder:
 
         def _sync():
             from google.genai import types
+
             cfg_kwargs: dict = {"task_type": task_type}
             # Gemini Embedding 2 supports Matryoshka truncation via output_dimensionality
             if self.dim and self.dim != 3072:
@@ -154,12 +161,13 @@ def _hash_fallback() -> HashEmbedder:
 def get_embedder() -> GeminiEmbedder | HashEmbedder:
     s = _get_settings()
     has_api_key = bool(
-        s.gemini_api_key
-        or os.environ.get("GEMINI_API_KEY")
-        or os.environ.get("GOOGLE_API_KEY")
+        s.gemini_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     )
-    has_vertex = bool(s.vertex_ai_project or os.environ.get("VERTEX_AI_PROJECT")
-                      or os.environ.get("GOOGLE_CLOUD_PROJECT"))
+    has_vertex = bool(
+        s.vertex_ai_project
+        or os.environ.get("VERTEX_AI_PROJECT")
+        or os.environ.get("GOOGLE_CLOUD_PROJECT")
+    )
     if has_api_key or has_vertex:
         logger.debug("Using GeminiEmbedder model=%s (vertex=%s)", s.gemini_embed_model, has_vertex)
         return GeminiEmbedder()

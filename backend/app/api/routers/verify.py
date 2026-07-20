@@ -1,4 +1,5 @@
 """Mock e-KYC + SIVIL diploma verification."""
+
 from __future__ import annotations
 
 import uuid
@@ -14,6 +15,7 @@ router = APIRouter(prefix="/verify", tags=["verify"])
 
 # ── Document registry (encrypted file_id surfaced only to the owner) ─────────
 # Demo-grade: in production this would query an audit-logged KMS-backed table.
+
 
 @router.get("/documents")
 async def list_documents(current_user: User = Depends(get_current_user)) -> dict:
@@ -47,7 +49,9 @@ async def verify_identity(req: EkycReq, current_user: User = Depends(get_current
         "match_percentage": r["match_score"],
         "verification_hash": r.get("verification_hash"),
         "pii_redacted": r.get("pii_redacted", True),
-        "message": "Identitas terverifikasi (mode demo)." if r["is_valid"] else "Verifikasi identitas gagal.",
+        "message": "Identitas terverifikasi (mode demo)."
+        if r["is_valid"]
+        else "Verifikasi identitas gagal.",
     }
 
 
@@ -65,9 +69,14 @@ async def verify_education(req: SivilReq, current_user: User = Depends(get_curre
         "status": "VERIFIED" if ok else "NOT_FOUND",
         "message": "Ijazah terverifikasi di SIVIL." if ok else "Ijazah tidak ditemukan.",
         "verified_data": {
-            "university": req.university_name, "major": req.major,
-            "graduation_year": "2023", "degree": "S1", "status": "Lulus",
-        } if ok else None,
+            "university": req.university_name,
+            "major": req.major,
+            "graduation_year": "2023",
+            "degree": "S1",
+            "status": "Lulus",
+        }
+        if ok
+        else None,
     }
 
 
@@ -85,12 +94,15 @@ async def verify_npwp(req: NpwpReq, current_user: User = Depends(get_current_use
     return {
         "request_id": str(uuid.uuid4()),
         "status": "VERIFIED" if ok else "NOT_FOUND",
-        "message": "NPWP terverifikasi di DJP Online (mode demo)." if ok else "NPWP tidak ditemukan.",
+        "message": "NPWP terverifikasi di DJP Online (mode demo)."
+        if ok
+        else "NPWP tidak ditemukan.",
         "verified_data": {
             "npwp": req.npwp,
             "company_name": req.company_name or "Perusahaan",
             "status": "AKTIF",
             "valid_until": "2027-12-31",
-        } if ok else None,
+        }
+        if ok
+        else None,
     }
-

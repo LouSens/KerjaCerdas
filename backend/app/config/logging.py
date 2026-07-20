@@ -13,6 +13,7 @@ Usage
     log = get_logger(__name__)    # use anywhere instead of logging.getLogger
     log.info("request handled", method="GET", path="/health", latency_ms=12)
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,6 +22,7 @@ import sys
 
 try:
     import structlog  # type: ignore[import-untyped]
+
     _HAS_STRUCTLOG = True
 except ImportError:  # pragma: no cover
     _HAS_STRUCTLOG = False
@@ -38,7 +40,9 @@ def configure_logging(level: str = "INFO") -> None:
 
     # ── stdlib root logger ──────────────────────────────────────────────────
     logging.basicConfig(
-        format="%(message)s" if _HAS_STRUCTLOG else "%(asctime)s %(levelname)s %(name)s — %(message)s",
+        format="%(message)s"
+        if _HAS_STRUCTLOG
+        else "%(asctime)s %(levelname)s %(name)s — %(message)s",
         stream=sys.stdout,
         level=log_level,
         force=True,
@@ -68,7 +72,8 @@ def configure_logging(level: str = "INFO") -> None:
         renderer = structlog.dev.ConsoleRenderer(colors=True)
 
     structlog.configure(
-        processors=shared_processors + [
+        processors=shared_processors
+        + [
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
         logger_factory=structlog.stdlib.LoggerFactory(),
@@ -81,7 +86,9 @@ def configure_logging(level: str = "INFO") -> None:
         processors=[
             structlog.stdlib.ExtraAdder(),
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-        ] + shared_processors + [renderer],
+        ]
+        + shared_processors
+        + [renderer],
     )
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)

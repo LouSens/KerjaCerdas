@@ -12,6 +12,7 @@ In production, replace the in-memory store with Redis (see redis_rate_limiter.py
 
 ANTIGRAVITY PROTOCOL: RULE-SECURITY-01 — All mutating endpoints are rate-limited.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -96,7 +97,9 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
                 retry_after = int(window - (now - dq[0])) + 1
                 logger.warning(
                     "Rate limit exceeded: path=%s count=%d limit=%d",
-                    path, len(dq), max_req,
+                    path,
+                    len(dq),
+                    max_req,
                 )
                 return Response(
                     content='{"detail":"Too many requests. Please slow down."}',

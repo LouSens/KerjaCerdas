@@ -4,6 +4,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 class MockIdentityVerificationService:
     """
     Simulates identity verification for demo use.
@@ -40,5 +41,5 @@ class MockIdentityVerificationService:
             "is_valid": is_valid,
             "match_score": match_score,
             "verification_hash": verification_hash,
-            "pii_redacted": True
+            "pii_redacted": True,
         }

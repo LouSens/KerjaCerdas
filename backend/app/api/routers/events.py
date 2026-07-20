@@ -8,6 +8,7 @@ POST /api/v1/events/track
 Designed to be fire-and-forget from the frontend: if the write fails silently
 the UX is never interrupted. No PII is stored — only UUID user_id references.
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,12 +24,12 @@ logger = logging.getLogger(__name__)
 
 
 class TrackEventRequest(BaseModel):
-    event_type: str                  # job_viewed | apply_clicked | band_clicked | ...
+    event_type: str  # job_viewed | apply_clicked | band_clicked | ...
     job_id: str | None = None
-    band: str | None = None          # strong | possible | stretch
-    ab_variant: str | None = None    # which A/B variant was active
+    band: str | None = None  # strong | possible | stretch
+    ab_variant: str | None = None  # which A/B variant was active
     session_id: str = ""
-    payload: dict | None = None      # arbitrary extra context
+    payload: dict | None = None  # arbitrary extra context
 
 
 @router.post("/track", status_code=202)

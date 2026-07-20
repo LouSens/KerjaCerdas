@@ -14,6 +14,7 @@ To run a new experiment:
   4. Track interactions via POST /events/track with `ab_variant` populated.
   5. Query the events table for result analysis.
 """
+
 from __future__ import annotations
 
 import hashlib

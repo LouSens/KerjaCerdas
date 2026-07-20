@@ -7,6 +7,7 @@ ANTIGRAVITY PROTOCOL: Password must be hashed before DB insert.
 On employer registration, an Employer profile is auto-created in the JSON
 store so the user can post jobs immediately without a separate onboarding step.
 """
+
 import logging
 
 from backend.app.api.database import get_session
@@ -58,8 +59,7 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
     except IntegrityError:
         await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exists"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User with this email already exists"
         )
 
     logger.info("New user registered: user_id=%s role=%s", new_user.id, new_user.role)
@@ -81,8 +81,8 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
         # Auto-create employer profile so the user can post jobs immediately
         employer = Employer(
             user_id=new_user.id,
-            company_name=new_user.name,   # editable later via /employer/profile
-            region_code="3171",           # default Jakarta — editable
+            company_name=new_user.name,  # editable later via /employer/profile
+            region_code="3171",  # default Jakarta — editable
             industry="",
         )
         existing_emp = await repos.employers.find(lambda e: e.user_id == new_user.id)
@@ -103,8 +103,8 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
             "id": new_user.id,
             "name": new_user.name,
             "email": new_user.email,
-            "role": new_user.role
-        }
+            "role": new_user.role,
+        },
     )
 
 
@@ -120,20 +120,17 @@ async def login_user(request: UserLoginRequest, db: AsyncSession = Depends(get_s
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
         )
 
     if not verify_password(request.password, user.password_hash):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
         )
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User account is inactive"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User account is inactive"
         )
 
     logger.info("User logged in: user_id=%s", user.id)
@@ -146,10 +143,5 @@ async def login_user(request: UserLoginRequest, db: AsyncSession = Depends(get_s
 
     return TokenResponse(
         access_token=token,
-        user={
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "role": user.role
-        }
+        user={"id": user.id, "name": user.name, "email": user.email, "role": user.role},
     )

@@ -9,6 +9,7 @@ These models are the single source of truth for:
 Field naming follows snake_case so models map 1:1 to Supabase tables.
 The `embedding` field uses list[float] in Python and `vector(768)` in pgvector.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -19,6 +20,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 # ── Common ────────────────────────────────────────────────────────────────────
+
 
 def _now() -> datetime:
     return datetime.now(UTC)
@@ -36,6 +38,7 @@ class TimestampedModel(BaseModel):
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
+
 class UserRole(str, Enum):
     SEEKER = "seeker"
     EMPLOYER = "employer"
@@ -51,7 +54,7 @@ class EducationLevel(str, Enum):
 
 
 class ApplicationStatus(str, Enum):
-    SAVED = "saved"          # Bookmarked/saved (not yet applied)
+    SAVED = "saved"  # Bookmarked/saved (not yet applied)
     APPLIED = "applied"
     REVIEWED = "reviewed"
     INTERVIEW = "interview"
@@ -69,8 +72,10 @@ class VerificationStatus(str, Enum):
 
 # ── Users / Auth ──────────────────────────────────────────────────────────────
 
+
 class User(TimestampedModel):
     """`auth.users` equivalent. Supabase auth provides id; we mirror it."""
+
     id: str = Field(default_factory=_uid)
     email: EmailStr
     password_hash: str
@@ -80,6 +85,7 @@ class User(TimestampedModel):
 
 
 # ── Seeker profile ────────────────────────────────────────────────────────────
+
 
 class Skill(BaseModel):
     name: str
@@ -128,6 +134,7 @@ class SeekerProfile(TimestampedModel):
 
 # ── Employer / Company ────────────────────────────────────────────────────────
 
+
 class Employer(TimestampedModel):
     id: str = Field(default_factory=_uid)
     user_id: str
@@ -142,6 +149,7 @@ class Employer(TimestampedModel):
 
 
 # ── Job posting ───────────────────────────────────────────────────────────────
+
 
 class JobPosting(TimestampedModel):
     id: str = Field(default_factory=_uid)
@@ -165,6 +173,7 @@ class JobPosting(TimestampedModel):
 
 # ── Applications ──────────────────────────────────────────────────────────────
 
+
 class Application(TimestampedModel):
     id: str = Field(default_factory=_uid)
     job_id: str
@@ -176,11 +185,12 @@ class Application(TimestampedModel):
 
 # ── Match results (cached) ────────────────────────────────────────────────────
 
+
 class MatchResult(BaseModel):
     job_id: str
     seeker_id: str
-    score: float           # final reranked score [0..1]
-    cosine: float          # raw bi-encoder cosine
+    score: float  # final reranked score [0..1]
+    cosine: float  # raw bi-encoder cosine
     skill_overlap: float
     region_match: bool
     salary_in_range: bool
@@ -191,6 +201,7 @@ class MatchResult(BaseModel):
 
 class MatchBundle(TimestampedModel):
     """A point-in-time top-K result for a (seeker, query) or (job, query)."""
+
     id: str = Field(default_factory=_uid)
     subject_kind: Literal["seeker", "job"]
     subject_id: str
@@ -200,6 +211,7 @@ class MatchBundle(TimestampedModel):
 
 
 # ── Skill gap & advisor ───────────────────────────────────────────────────────
+
 
 class CourseRecommendation(BaseModel):
     name: str
@@ -229,12 +241,15 @@ class ChatMessage(BaseModel):
 
 class Course(TimestampedModel):
     """Indonesian online course / bootcamp catalog entry."""
+
     id: str = Field(default_factory=_uid)
     name: str
     provider: str  # Dicoding | Coursera ID | Prakerja | Hacktiv8 | Purwadhika | RevoU | Binar | MySkill | Skill Academy | ...
-    category: str  # "tech", "design", "marketing", "finance", "language", "ops", "healthcare", "agri"
+    category: (
+        str  # "tech", "design", "marketing", "finance", "language", "ops", "healthcare", "agri"
+    )
     skills_taught: list[str] = []
-    duration: str   # e.g. "1 bulan", "12 minggu"
+    duration: str  # e.g. "1 bulan", "12 minggu"
     cost_idr: int = 0
     is_prakerja: bool = False  # subsidized by Kartu Prakerja
     level: Literal["beginner", "intermediate", "advanced"] = "beginner"
@@ -252,8 +267,10 @@ class ChatSession(TimestampedModel):
 
 # ── AI observability ──────────────────────────────────────────────────────────
 
+
 class AIPerformanceLog(TimestampedModel):
     """One row per Gemini call. Admin reviews these in the AI dashboard."""
+
     id: str = Field(default_factory=_uid)
     request_id: str
     user_id: str | None = None
@@ -271,8 +288,10 @@ class AIPerformanceLog(TimestampedModel):
 
 # ── Gamification ──────────────────────────────────────────────────────────────
 
+
 class GamificationStats(TimestampedModel):
     """Per-seeker quest progress. Stored alongside the seeker profile."""
+
     id: str = Field(default_factory=_uid)
     seeker_id: str
     xp: int = 0

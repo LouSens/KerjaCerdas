@@ -34,6 +34,7 @@ from backend.app.db.session import async_session
 TSchema = TypeVar("TSchema", bound=BaseModel)
 TModel = TypeVar("TModel")
 
+
 class PostgresRepository(Generic[TSchema, TModel]):
     """Async Postgres repository keyed on `id`."""
 
@@ -103,6 +104,7 @@ class PostgresRepository(Generic[TSchema, TModel]):
         all_items = await self.list()
         return [x for x in all_items if predicate(x)]
 
+
 class Repositories:
     """Convenience bundle, injected via FastAPI dependency."""
 
@@ -119,7 +121,9 @@ class Repositories:
         self.gamification = PostgresRepository(GameSchema, GamificationStats)
         self.courses = PostgresRepository(CourseSchema, Course)
 
+
 _repos: Repositories | None = None
+
 
 def get_repositories() -> Repositories:
     global _repos

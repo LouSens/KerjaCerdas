@@ -5,6 +5,7 @@ FastAPI dependencies for authentication, database sessions, and role checks.
 
 ANTIGRAVITY PROTOCOL: Every secured endpoint MUST use get_current_user.
 """
+
 from __future__ import annotations
 
 import logging
@@ -66,8 +67,7 @@ async def require_employer(current_user: User = Depends(get_current_user)) -> Us
     """Dependency that ensures the user is an employer."""
     if current_user.role != "employer":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Employer access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Employer access required"
         )
     return current_user
 
@@ -75,16 +75,11 @@ async def require_employer(current_user: User = Depends(get_current_user)) -> Us
 async def require_seeker(current_user: User = Depends(get_current_user)) -> User:
     """Dependency that ensures the user is a job seeker."""
     if current_user.role != "seeker":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seeker access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seeker access required")
     return current_user
 
 
-oauth2_scheme_optional = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/login", auto_error=False
-)
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 
 async def get_current_user_optional(
