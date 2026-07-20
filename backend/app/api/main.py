@@ -29,6 +29,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from backend.app.api.database import init_db, reconfigure
 from backend.app.api.middleware.rate_limiter import RateLimiterMiddleware
 from backend.app.api.middleware.sanitization import RequestSizeMiddleware
+from backend.app.api.routers.admin import router as admin_router
 from backend.app.api.routers.agent import router as agent_router
 from backend.app.api.routers.auth import router as auth_router
 from backend.app.api.routers.employer import router as employer_router  # prefix=/employer
@@ -128,6 +129,7 @@ for r in (
     karirhub_router,
     events_router,
     experiments_router,
+    admin_router,
 ):
     app.include_router(r, prefix="/api/v1")
 
