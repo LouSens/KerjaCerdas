@@ -65,7 +65,6 @@ externalPort = 80
 [userenv]
 
 [userenv.shared]
-SEED_DEFAULT_PASSWORD = "unified-bruising-supplier-prior-untaxed-mutilator"
 
 [userenv.production]
 APP_ENV = "production"
