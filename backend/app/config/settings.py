@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # Gemini Embedding 2 — Vertex model id is `gemini-embedding-001`
     # (was experimental as `gemini-embedding-exp-03-07`). 3072-dim, MRL-truncatable.
     gemini_embed_model: str = "gemini-embedding-001"
-    gemini_embed_dim: int = 3072  # truncate to 768/1536 if you index w/ pgvector
+    gemini_embed_dim: int = 768  # must match vector(768) pgvector column; MRL-truncated from 3072
     # Chat / generation — Gemini 3.1 Flash Lite (cheap, fast, JSON-mode).
     gemini_chat_model: str = "gemini-3.1-flash-lite"
 
