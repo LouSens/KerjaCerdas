@@ -19,12 +19,13 @@ def _require_token(x_admin_token: str = Header(...)) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
-@router.post("/seed")
-async def run_seed(_: None = None, x_admin_token: str = Header(...)) -> dict:
-    """Seed the production database with demo employers, jobs, seekers, and courses."""
-    _require_token(x_admin_token)
+@router.get("/seed")
+async def run_seed(token: str) -> dict:
+    """Seed the production database. Hit in browser: /api/v1/admin/seed?token=YOUR_PASSWORD"""
+    expected = os.environ.get("SEED_DEFAULT_PASSWORD", "")
+    if not expected or token != expected:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
-    # Import here to avoid loading heavy deps at module import time
     from backend.scripts.seed_all import seed  # type: ignore[attr-defined]
 
     await seed(clear=False)
