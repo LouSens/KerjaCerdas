@@ -67,6 +67,9 @@ externalPort = 80
 [userenv.shared]
 SEED_DEFAULT_PASSWORD = "unified-bruising-supplier-prior-untaxed-mutilator"
 
+[userenv.production]
+APP_ENV = "production"
+
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 240000
