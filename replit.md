@@ -54,6 +54,21 @@ database/         init.sql reference dump
 docs/             Business proposals, API spec, sequence diagrams
 ```
 
+## Linting & Git Hook
+
+Ruff is used for linting and formatting. A pre-commit hook lives in `scripts/hooks/pre-commit` and blocks commits that fail `ruff check` or `ruff format --check`.
+
+To activate the hook in a fresh clone:
+```bash
+git config core.hooksPath scripts/hooks
+```
+
+To auto-fix before committing:
+```bash
+ruff check --fix backend/app/ && ruff format backend/app/
+```
+
 ## User preferences
 
 - Keep existing project structure and stack — do not restructure or migrate.
+- Always run `ruff check backend/app/` and `ruff format --check backend/app/` before committing. The pre-commit hook enforces this automatically.
