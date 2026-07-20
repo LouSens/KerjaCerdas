@@ -55,10 +55,19 @@ def configure_logging(level: str = "INFO") -> None:
         # Graceful degradation — structlog not installed
         return
 
+    def _safe_add_logger_name(logger: object, method: str, event_dict: dict) -> dict:
+        """add_logger_name guard — stdlib bridge can pass logger=None."""
+        record = event_dict.get("_record")
+        if record is not None and getattr(record, "name", None) is not None:
+            event_dict["logger"] = record.name
+        elif logger is not None and hasattr(logger, "name"):
+            event_dict["logger"] = logger.name
+        return event_dict
+
     # ── shared processors (always applied) ────────────────────────────────
     shared_processors: list = [
         structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_logger_name,
+        _safe_add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
