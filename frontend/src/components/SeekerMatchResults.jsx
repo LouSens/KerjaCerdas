@@ -24,12 +24,26 @@ const FACETS = {
     workMode: {
         label: 'Mode Kerja', accent: KC.pink,
         options: ['Onsite', 'Hybrid', 'Remote'],
-        match: (m, v) => new RegExp(v, 'i').test(m.location || m.work_type || ''),
+        match: (m, v) => {
+            if (v === 'Remote') {
+                return m.remote_allowed || /remote/i.test(m.location || '');
+            }
+            if (v === 'Hybrid') {
+                return /hybrid/i.test(m.location || '');
+            }
+            if (v === 'Onsite') {
+                return !m.remote_allowed && !/remote|hybrid/i.test(m.location || '');
+            }
+            return true;
+        }
     },
     type: {
         label: 'Tipe Kerja', accent: KC.lime,
         options: ['Full-time', 'Contract', 'Part-time', 'Internship', 'Freelance'],
-        match: (m, v) => new RegExp(v, 'i').test(m.work_type || m.employment_type || 'Full-time'),
+        match: (m, v) => {
+            const typeStr = m.work_type || m.employment_type || 'Full-time';
+            return new RegExp(v, 'i').test(typeStr);
+        }
     },
     role: {
         label: 'Role / Industri', accent: KC.yellow,
@@ -40,7 +54,9 @@ const FACETS = {
         label: 'Pengalaman', accent: KC.orange,
         options: ['Fresh grad', '1-3 thn', '3-5 thn', '5-8 thn', '8+ thn'],
         match: (m, v) => {
-            const exp = parseInt(String(m.experience_range || '').replace(/\D/g, '')) || 0
+            const exp = typeof m.experience_years_min === 'number'
+                ? m.experience_years_min
+                : parseInt(String(m.experience_range || '').match(/\d+/)?.[0] || '0')
             if (v === 'Fresh grad') return exp <= 1
             if (v === '1-3 thn') return exp >= 1 && exp <= 3
             if (v === '3-5 thn') return exp >= 3 && exp <= 5
@@ -54,7 +70,9 @@ const FACETS = {
         options: ['Rp 5jt+', 'Rp 10jt+', 'Rp 15jt+', 'Rp 25jt+', 'Rp 40jt+'],
         match: (m, v) => {
             const min = parseInt(v.replace(/\D/g, '')) || 0
-            const got = parseInt(String(m.salary_range || '').replace(/\D/g, '')) || 0
+            const got = typeof m.salary_min === 'number' && m.salary_min > 0
+                ? (m.salary_min / 1000000)
+                : parseInt(String(m.salary_range || '').match(/\d+/)?.[0] || '0')
             return got >= min
         },
     },
@@ -77,8 +95,6 @@ export default function SeekerMatchResults() {
     const [selectedJob, setSelectedJob] = useState(null)
 
     const hasProfile = Boolean(seekerId || profile?.skills?.length > 0)
-
-    if (agentLoading) return <MatchSkeleton />
 
     if (!hasProfile) {
         return (
@@ -179,100 +195,136 @@ export default function SeekerMatchResults() {
             <DesignStyles />
             <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
                 <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .5s ease both' }}>Top 5 Match Untukmu</h1>
+                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .5s ease both' }}>
+                        {agentLoading ? 'AI lagi nyari yang cocok…' : 'Top 5 Match Untukmu'}
+                    </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Dicocokkan otomatis oleh AI · gunakan filter untuk menyaring hasil
+                        {agentLoading
+                            ? 'AI sedang mencocokkan profilmu dengan puluhan ribu lowongan aktif'
+                            : 'Dicocokkan otomatis oleh AI · gunakan filter untuk menyaring hasil'}
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <button className="kc-btn" onClick={() => setShowFilters(v => !v)} style={topBtn('#fff')}>
-                        ⚙️ Filter {activeCount > 0 && <span style={{ marginLeft: 6, padding: '2px 6px', background: KC.orange, color: '#fff', borderRadius: 4, fontSize: 10, fontWeight: 900 }}>{activeCount}</span>}
-                    </button>
-                    <button className="kc-btn" onClick={() => runAgent({ explicitIntent: 'match_jobs' })} style={topBtn(KC.orange, '#fff')}>
-                        Re-Match
+                    {!agentLoading && (
+                        <button className="kc-btn" onClick={() => setShowFilters(v => !v)} style={topBtn('#fff')}>
+                            ⚙️ Filter {activeCount > 0 && <span style={{ marginLeft: 6, padding: '2px 6px', background: KC.orange, color: '#fff', borderRadius: 4, fontSize: 10, fontWeight: 900 }}>{activeCount}</span>}
+                        </button>
+                    )}
+                    <button
+                        className="kc-btn"
+                        disabled={agentLoading}
+                        onClick={async () => {
+                            const activeFilters = {};
+                            if (facets.location.size > 0) {
+                                activeFilters.location = [...facets.location][0];
+                            }
+                            if (facets.salary.size > 0) {
+                                const val = [...facets.salary][0];
+                                const millions = parseInt(val.replace(/\D/g, '')) || 0;
+                                activeFilters.salary_min = millions * 1000000;
+                            }
+                            if (facets.experience.size > 0) {
+                                const val = [...facets.experience][0];
+                                if (val === 'Fresh grad') activeFilters.experience_min = 0;
+                                else {
+                                    const num = parseInt(val.replace(/\D/g, '')) || 0;
+                                    activeFilters.experience_min = num;
+                                }
+                            }
+                            await runAgent({ explicitIntent: 'match_jobs', filters: activeFilters });
+                        }}
+                        style={topBtn(KC.orange, '#fff')}
+                    >
+                        {agentLoading ? 'Memproses…' : 'Re-Match'}
                     </button>
                 </div>
             </header>
 
-            {/* ── Faceted filter panel (LinkedIn-style) ────────────────── */}
-            {showFilters && (
-                <BrutalCard color="#fff" padding={20} style={{ animation: 'kc-fade-up .25s ease both' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <Tag color={KC.yellow}>filter pintar</Tag>
-                            <span style={{ fontSize: 12, color: KC.mute, fontWeight: 700 }}>
-                                {list.length} hasil dari {baseList.length} match
-                            </span>
-                        </div>
-                        <button className="kc-btn" onClick={resetAll} disabled={activeCount === 0} style={{ ...topBtn('#fff'), opacity: activeCount === 0 ? 0.45 : 1, padding: '6px 12px', fontSize: 11 }}>
-                            Reset semua
-                        </button>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 14 }}>
-                        {Object.entries(FACETS).map(([key, facet]) => (
-                            <FacetGroup key={key} facet={facet} selected={facets[key]} onToggle={(v) => toggleFacet(key, v)} />
-                        ))}
-                    </div>
-
-                    {activeCount > 0 && (
-                        <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1.5px dashed ${KC.ink}`, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute }}>Aktif:</span>
-                            {Object.entries(facets).flatMap(([k, sel]) =>
-                                [...sel].map(v => (
-                                    <button key={`${k}-${v}`} onClick={() => toggleFacet(k, v)} style={{
-                                        padding: '4px 10px', background: FACETS[k].accent, color: KC.ink,
-                                        border: `1.5px solid ${KC.ink}`, borderRadius: 999,
-                                        fontSize: 11, fontWeight: 800, cursor: 'pointer',
-                                    }}>
-                                        {v} ×
-                                    </button>
-                                ))
-                            )}
-                        </div>
-                    )}
-                </BrutalCard>
-            )}
-
-            <BandLegend side="seeker" />
-
-            {(() => {
-                const groups = BAND_ORDER
-                    .map(key => ({ ...BAND_META[key], items: list.filter(m => bandOf(m) === key) }))
-                    .filter(g => g.items.length)
-                return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
-                        {groups.map(g => (
-                            <div key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <span style={{ width: 14, height: 14, background: g.color, border: `2px solid ${KC.ink}`, borderRadius: 4, boxShadow: `1.5px 1.5px 0 ${KC.ink}` }} />
-                                        <h2 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>{g.label}</h2>
-                                        <Tag color={g.color} size="sm">{g.items.length}</Tag>
-                                    </div>
-                                    <p style={{ fontSize: 12, fontWeight: 600, color: KC.mute, margin: '0 0 0 24px', lineHeight: 1.5 }}>{g.seeker}</p>
+            {agentLoading ? (
+                <MatchSkeleton inline />
+            ) : (
+                <>
+                    {/* ── Faceted filter panel (LinkedIn-style) ────────────────── */}
+                    {showFilters && (
+                        <BrutalCard color="#fff" padding={20} style={{ animation: 'kc-fade-up .25s ease both' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <Tag color={KC.yellow}>filter pintar</Tag>
+                                    <span style={{ fontSize: 12, color: KC.mute, fontWeight: 700 }}>
+                                        {list.length} hasil dari {baseList.length} match
+                                    </span>
                                 </div>
-                                <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                    {g.items.map((m, i) => (
-                                        <MatchCard key={m.job_id || `${g.key}-${i}`} match={m} band={g.key} bandColor={g.color} bandLabel={g.label}
-                                            saved={isJobSaved(m.job_id || m.id)} onSave={() => toggleSaveJob(m)}
-                                            onView={() => {
-                                                trackEvent?.('job_viewed', { job_id: m.job_id, band: g.key })
-                                                setSelectedJob(m)
-                                            }} />
-                                    ))}
-                                </div>
+                                <button className="kc-btn" onClick={resetAll} disabled={activeCount === 0} style={{ ...topBtn('#fff'), opacity: activeCount === 0 ? 0.45 : 1, padding: '6px 12px', fontSize: 11 }}>
+                                    Reset semua
+                                </button>
                             </div>
-                        ))}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 14 }}>
+                                {Object.entries(FACETS).map(([key, facet]) => (
+                                    <FacetGroup key={key} facet={facet} selected={facets[key]} onToggle={(v) => toggleFacet(key, v)} />
+                                ))}
+                            </div>
+
+                            {activeCount > 0 && (
+                                <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1.5px dashed ${KC.ink}`, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute }}>Aktif:</span>
+                                    {Object.entries(facets).flatMap(([k, sel]) =>
+                                        [...sel].map(v => (
+                                            <button key={`${k}-${v}`} onClick={() => toggleFacet(k, v)} style={{
+                                                padding: '4px 10px', background: FACETS[k].accent, color: KC.ink,
+                                                border: `1.5px solid ${KC.ink}`, borderRadius: 999,
+                                                fontSize: 11, fontWeight: 800, cursor: 'pointer',
+                                            }}>
+                                                {v} ×
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </BrutalCard>
+                    )}
+
+                    <BandLegend side="seeker" />
+
+                    {(() => {
+                        const groups = BAND_ORDER
+                            .map(key => ({ ...BAND_META[key], items: list.filter(m => bandOf(m) === key) }))
+                            .filter(g => g.items.length)
+                        return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
+                                {groups.map(g => (
+                                    <div key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <span style={{ width: 14, height: 14, background: g.color, border: `2px solid ${KC.ink}`, borderRadius: 4, boxShadow: `1.5px 1.5px 0 ${KC.ink}` }} />
+                                                <h2 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>{g.label}</h2>
+                                                <Tag color={g.color} size="sm">{g.items.length}</Tag>
+                                            </div>
+                                            <p style={{ fontSize: 12, fontWeight: 600, color: KC.mute, margin: '0 0 0 24px', lineHeight: 1.5 }}>{g.seeker}</p>
+                                        </div>
+                                        <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                            {g.items.map((m, i) => (
+                                                <MatchCard key={m.job_id || `${g.key}-${i}`} match={m} band={g.key} bandColor={g.color} bandLabel={g.label}
+                                                    saved={isJobSaved(m.job_id || m.id)} onSave={() => toggleSaveJob(m)}
+                                                    onView={() => {
+                                                        trackEvent?.('job_viewed', { job_id: m.job_id, band: g.key })
+                                                        setSelectedJob(m)
+                                                    }} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )
+                    })()}
+
+                    <div style={{ marginTop: 12, padding: 14, background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, textAlign: 'center', fontSize: 13, fontWeight: 700, color: KC.mute }}>
+                        Hanya 5 hasil teratas yang ditampilkan. <span onClick={() => useStore.getState().navigate('pricing')} style={{ color: KC.ink, textDecoration: 'underline', cursor: 'pointer' }}>Upgrade ke Pro</span> buat akses top-20 + insight mingguan.
                     </div>
-                )
-            })()}
 
-            <div style={{ marginTop: 12, padding: 14, background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, textAlign: 'center', fontSize: 13, fontWeight: 700, color: KC.mute }}>
-                Hanya 5 hasil teratas yang ditampilkan. <span onClick={() => useStore.getState().navigate('pricing')} style={{ color: KC.ink, textDecoration: 'underline', cursor: 'pointer' }}>Upgrade ke Pro</span> buat akses top-20 + insight mingguan.
-            </div>
-
-            <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
+                    <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
+                </>
+            )}
         </div>
     )
 }
@@ -331,7 +383,7 @@ function MatchCard({ match, band, bandColor, bandLabel, saved, onSave, onView })
     )
 }
 
-function MatchSkeleton() {
+function MatchSkeleton({ inline }) {
     const [stageIdx, setStageIdx] = useState(2)
     useEffect(() => {
         const t = setInterval(() => setStageIdx(i => Math.min(3, i + 1)), 1800)
@@ -345,19 +397,8 @@ function MatchSkeleton() {
         { l: 'Pilih Terbaik', dur: 'Antre' },
     ]
 
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <DesignStyles />
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
-                <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .5s ease both' }}>AI lagi nyari yang cocok…</h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>AI sedang mencocokkan profilmu dengan puluhan ribu lowongan aktif</p>
-                </div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: KC.lime, border: `2px solid ${KC.ink}`, borderRadius: 999, fontSize: 12, fontWeight: 800, boxShadow: `2px 2px 0 ${KC.ink}` }}>
-                    <span className="kc-ping" /> ESTIMASI 8 DETIK
-                </div>
-            </header>
-
+    const content = (
+        <>
             <BrutalCard color="#fff" padding={20}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
                     {stageDefs.map((st, i) => {
@@ -395,6 +436,24 @@ function MatchSkeleton() {
                     </BrutalCard>
                 ))}
             </div>
+        </>
+    )
+
+    if (inline) return content
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <DesignStyles />
+            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
+                <div>
+                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .5s ease both' }}>AI lagi nyari yang cocok…</h1>
+                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>AI sedang mencocokkan profilmu dengan puluhan ribu lowongan aktif</p>
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: KC.lime, border: `2px solid ${KC.ink}`, borderRadius: 999, fontSize: 12, fontWeight: 800, boxShadow: `2px 2px 0 ${KC.ink}` }}>
+                    <span className="kc-ping" /> ESTIMASI 8 DETIK
+                </div>
+            </header>
+            {content}
         </div>
     )
 }

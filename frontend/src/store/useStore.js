@@ -215,7 +215,7 @@ const useStore = create(
             advisorSessionId: null,
             targetJobTitle: null,
 
-            runAgent: async ({ message, targetJobId, explicitIntent } = {}) => {
+            runAgent: async ({ message, targetJobId, explicitIntent, filters } = {}) => {
                 const { seekerId, profile, advisorLog, advisorSessionId } = get()
                 const userMsg = message ? { role: 'user', content: message } : null
                 if (userMsg) set({ advisorLog: [...advisorLog, userMsg], advisorInput: '' })
@@ -223,8 +223,8 @@ const useStore = create(
                 try {
                     const activeSessionId = advisorSessionId || seekerId || 'demo'
                     const payload = seekerId
-                        ? { seekerId, message, targetJobId, explicitIntent, sessionId: activeSessionId }
-                        : { seeker: { ...profile, user_id: 'demo' }, message, targetJobId, explicitIntent, sessionId: 'demo' }
+                        ? { seekerId, message, targetJobId, explicitIntent, sessionId: activeSessionId, filters }
+                        : { seeker: { ...profile, user_id: 'demo' }, message, targetJobId, explicitIntent, sessionId: 'demo', filters }
                     const res = await invokeAgent(payload)
                     set({
                         agentLoading: false,
@@ -242,6 +242,7 @@ const useStore = create(
                     return res
                 } catch (e) {
                     set({ agentLoading: false, agentError: e.message })
+                    toast.error('Gagal memproses agent: ' + e.message)
                     console.error('Agent gagal — cek backend', e)
                 }
             },

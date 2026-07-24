@@ -74,7 +74,7 @@ export const registerUser = ({ name, email, password, role }) =>
     })
 
 // ── Agent (unified entrypoint for match / skill-gap / advisor) ──────────────
-export async function invokeAgent({ message, seekerId, seeker, targetJobId, explicitIntent, sessionId }) {
+export async function invokeAgent({ message, seekerId, seeker, targetJobId, explicitIntent, sessionId, filters }) {
     return request(`${API_BASE}/agent/invoke`, {
         method: 'POST',
         body: JSON.stringify({
@@ -84,6 +84,7 @@ export async function invokeAgent({ message, seekerId, seeker, targetJobId, expl
             target_job_id: targetJobId ?? null,
             explicit_intent: explicitIntent ?? null,
             session_id: sessionId,
+            filters: filters ?? {},
         }),
     })
 }

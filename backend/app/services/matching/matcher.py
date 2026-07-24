@@ -269,9 +269,19 @@ class SemanticMatcher:
             region_ok = False
             if filters.get("location"):
                 target_loc = filters["location"].lower()
-                if j.region_code.lower() == target_loc or target_loc in [
-                    r.lower() for r in (seeker.preferred_regions or [])
-                ]:
+                bps_names = {
+                    "3171": "jakarta pusat", "3172": "jakarta utara", "3173": "jakarta barat",
+                    "3174": "jakarta selatan", "3175": "jakarta timur", "3273": "bandung",
+                    "3578": "surabaya", "3471": "yogyakarta", "5171": "denpasar",
+                    "1275": "medan", "7371": "makassar", "6371": "balikpapan"
+                }
+                reg_name = bps_names.get(j.region_code, "").lower()
+                if (
+                    j.region_code.lower() == target_loc
+                    or target_loc in reg_name
+                    or (j.region_code.lower().startswith("317") and target_loc == "jakarta")
+                    or target_loc in [r.lower() for r in (seeker.preferred_regions or [])]
+                ):
                     loc_boost = 0.15
                     region_ok = True
 
