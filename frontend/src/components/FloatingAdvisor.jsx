@@ -99,12 +99,24 @@ export default function FloatingAdvisor() {
 
 const parseInline = (text) => {
     if (!text) return '';
+    // Handle bold markdown '**'
     const parts = text.split('**');
-    return parts.map((part, i) => {
-        if (i % 2 === 1) {
-            return <strong key={i} className="font-extrabold">{part}</strong>;
+    return parts.flatMap((part, i) => {
+        const isBold = i % 2 === 1;
+        // Inside bold/normal text, handle italics '*'
+        const subParts = part.split('*');
+        const renderedSubParts = subParts.map((subPart, j) => {
+            const isItalic = j % 2 === 1;
+            if (isItalic) {
+                return <em key={j} className="italic not-italic font-medium text-kc-orange">{subPart}</em>;
+            }
+            return subPart;
+        });
+
+        if (isBold) {
+            return <strong key={i} className="font-extrabold text-kc-dark">{renderedSubParts}</strong>;
         }
-        return part;
+        return renderedSubParts;
     });
 };
 
@@ -116,30 +128,44 @@ const renderMarkdown = (text) => {
         if (cleanLine === '---') {
             return <hr key={idx} className="border-t border-dashed border-kc-dark my-2" />;
         }
-        if (cleanLine.startsWith('### ')) {
-            return <h4 key={idx} className="font-extrabold text-[13px] mt-2 mb-1 uppercase text-kc-dark">{parseInline(cleanLine.slice(4))}</h4>;
+        
+        // Match headers of level 1 to 6 (e.g. ### Header)
+        const headerMatch = cleanLine.match(/^(#{1,6})\s+(.*)/);
+        if (headerMatch) {
+            const level = headerMatch[1].length;
+            const content = headerMatch[2];
+            if (level === 3) {
+                return <h4 key={idx} className="font-extrabold text-[13px] mt-3 mb-1 uppercase text-kc-dark block">{parseInline(content)}</h4>;
+            } else if (level <= 2) {
+                return <h3 key={idx} className="font-extrabold text-sm mt-4 mb-1 text-kc-orange block">{parseInline(content)}</h3>;
+            } else {
+                return <h5 key={idx} className="font-bold text-[11px] mt-2 mb-1 text-kc-dark block">{parseInline(content)}</h5>;
+            }
         }
-        if (cleanLine.startsWith('## ') || cleanLine.startsWith('# ')) {
-            const content = cleanLine.startsWith('## ') ? cleanLine.slice(3) : cleanLine.slice(2);
-            return <h3 key={idx} className="font-extrabold text-sm mt-3 mb-1 text-kc-orange">{parseInline(content)}</h3>;
-        }
-        if (cleanLine.startsWith('- ') || cleanLine.startsWith('* ')) {
+
+        // Match bullet lists starting with - or * followed by one or more spaces
+        const bulletMatch = cleanLine.match(/^[-*]\s+(.*)/);
+        if (bulletMatch) {
             return (
-                <div key={idx} className="flex gap-1.5 ml-2 my-1">
-                    <span>•</span>
-                    <span className="flex-1">{parseInline(cleanLine.slice(2))}</span>
+                <div key={idx} className="flex gap-1.5 ml-2 my-1 items-start">
+                    <span className="text-kc-orange">•</span>
+                    <span className="flex-1 text-xs">{parseInline(bulletMatch[1])}</span>
                 </div>
             );
         }
-        const numMatch = cleanLine.match(/^(\d+)\.\s(.*)/);
+
+        // Match numbered lists starting with digits followed by . and one or more spaces
+        const numMatch = cleanLine.match(/^(\d+)\.\s+(.*)/);
         if (numMatch) {
             return (
-                <div key={idx} className="flex gap-1.5 ml-2 my-1">
-                    <span>{numMatch[1]}.</span>
-                    <span className="flex-1">{parseInline(numMatch[2])}</span>
+                <div key={idx} className="flex gap-1.5 ml-2 my-1 items-start">
+                    <span className="font-bold text-kc-orange">{numMatch[1]}.</span>
+                    <span className="flex-1 text-xs">{parseInline(numMatch[2])}</span>
                 </div>
             );
         }
+
+        // Match table rows starting and ending with |
         if (cleanLine.startsWith('|') && cleanLine.endsWith('|')) {
             const cells = cleanLine.split('|').map(c => c.trim()).filter(c => c !== '');
             if (cells.every(c => c.match(/^-+$/))) {
@@ -153,9 +179,12 @@ const renderMarkdown = (text) => {
                 </div>
             );
         }
+
         if (cleanLine === '') {
-            return <div key={idx} className="h-1.5" />;
+            return <div key={idx} className="h-2" />;
         }
-        return <p key={idx} className="my-1 leading-normal">{parseInline(line)}</p>;
+        
+        // Standard text paragraph
+        return <p key={idx} className="my-1 leading-normal text-xs">{parseInline(line)}</p>;
     });
 };
