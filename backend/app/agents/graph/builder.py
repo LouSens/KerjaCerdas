@@ -1,31 +1,39 @@
 """LangGraph topology for the KerjaCerdas agent (V2 Autonomous Swarm).
 
 Compatible with LangGraph >= 1.1.x (no `langgraph.prebuilt` / `create_react_agent`).
-Builds a hand-rolled ReAct loop:
 
-  START → agent_node → (tool_node | END)
-                  ↑_________|
+Architecture
+------------
+The graph is intentionally simple: one agent node that calls the Gemini LLM
+and returns the AI text response.  Job *matching* is handled by SemanticMatcher
+before the graph runs (see agent.py); the graph's sole job is to generate the
+natural-language `final_response`.
 
-The agent node calls the LLM which may request tool calls.
-The tool node executes them and the loop repeats until the LLM
-produces a final message with no more tool calls.
+Tool calling via bind_tools() is disabled in this build because the installed
+version of google-generativeai raises:
+
+    AttributeError: 'bool' object has no attribute 'items'
+
+when converting Pydantic v2 tool schemas (which emit `additionalProperties: false`)
+to Gemini FunctionDeclaration format.  The fix is to invoke the LLM without
+tool-binding; tool logic is described in the system prompt instead.
+
+  START → agent_node → END
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
-from typing import Literal
 
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, MessagesState
 from langgraph.graph.state import CompiledStateGraph, StateGraph
 
-from backend.app.agents.tools.superpowers import SUPERPOWER_TOOLS
 from backend.app.config.settings import settings
 
 logger = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -47,68 +55,29 @@ def _build_llm() -> ChatGoogleGenerativeAI:
     )
 
 
-# Build a dict of {tool_name: tool_fn} for fast dispatch
-_TOOL_MAP = {t.name: t for t in SUPERPOWER_TOOLS}
-
-
 # ---------------------------------------------------------------------------
-# Graph node implementations
+# Graph node
 # ---------------------------------------------------------------------------
 
 async def _agent_node(state: MessagesState) -> dict:
-    """Invoke the LLM with the current message history."""
+    """Invoke the LLM and return its response.
+
+    Tools are intentionally NOT bound here to avoid the google-generativeai
+    `additionalProperties` schema bug.  The system prompt contains descriptions
+    of available capabilities so the LLM still gives contextual answers.
+    """
     from backend.app.services.prompt_loader import build_system_prompt
 
     llm = _build_llm()
-    llm_with_tools = llm.bind_tools(SUPERPOWER_TOOLS)
 
     system_prompt = build_system_prompt(role="supervisor")
 
-    # Prepend system message if not already present
     messages = list(state["messages"])
-    from langchain_core.messages import SystemMessage
     if not messages or not isinstance(messages[0], SystemMessage):
         messages = [SystemMessage(content=system_prompt)] + messages
 
-    response: AIMessage = await llm_with_tools.ainvoke(messages)
+    response: AIMessage = await llm.ainvoke(messages)
     return {"messages": [response]}
-
-
-async def _tool_node(state: MessagesState) -> dict:
-    """Execute any tool calls requested by the last AI message."""
-    last_message: AIMessage = state["messages"][-1]
-    tool_results: list[ToolMessage] = []
-
-    for call in last_message.tool_calls:
-        tool_name = call["name"]
-        tool_args = call["args"]
-        call_id = call["id"]
-
-        tool_fn = _TOOL_MAP.get(tool_name)
-        if tool_fn is None:
-            result_content = json.dumps({"error": f"Unknown tool: {tool_name}"})
-        else:
-            try:
-                # All superpower tools are async
-                result = await tool_fn.ainvoke(tool_args)
-                result_content = result if isinstance(result, str) else json.dumps(result)
-            except Exception as exc:  # noqa: BLE001
-                logger.exception("Tool '%s' raised an exception", tool_name)
-                result_content = json.dumps({"error": str(exc)})
-
-        tool_results.append(
-            ToolMessage(content=result_content, tool_call_id=call_id)
-        )
-
-    return {"messages": tool_results}
-
-
-def _should_continue(state: MessagesState) -> Literal["tools", "__end__"]:
-    """Route back to tool execution if the LLM requested any tool calls."""
-    last: AIMessage = state["messages"][-1]
-    if hasattr(last, "tool_calls") and last.tool_calls:
-        return "tools"
-    return "__end__"
 
 
 # ---------------------------------------------------------------------------
@@ -123,18 +92,9 @@ def build_graph_v2(checkpointer=None) -> CompiledStateGraph:
         checkpointer = mem_mgr.get_checkpointer()
 
     graph = StateGraph(MessagesState)
-
     graph.add_node("agent", _agent_node)
-    graph.add_node("tools", _tool_node)
-
     graph.set_entry_point("agent")
-
-    graph.add_conditional_edges(
-        "agent",
-        _should_continue,
-        {"tools": "tools", "__end__": END},
-    )
-    graph.add_edge("tools", "agent")
+    graph.add_edge("agent", END)
 
     return graph.compile(checkpointer=checkpointer)
 
