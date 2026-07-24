@@ -393,18 +393,6 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
                 category="tech",
             )
         )
-    return results[:5]y[0])
-            results.append(
-                CourseRecommendation(name=entry[0], provider=entry[1], duration=entry[2])
-            )
-    if not results:
-        results.append(
-            CourseRecommendation(
-                name="Bangkit Academy — Tech Generalist Path",
-                provider="Bangkit (Kominfo + GoTo + Traveloka)",
-                duration="6 bulan",
-            )
-        )
     return results[:5]
 
 

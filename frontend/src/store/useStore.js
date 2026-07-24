@@ -211,15 +211,17 @@ const useStore = create(
             ],
             advisorInput: '',
             setAdvisorInput: (v) => set({ advisorInput: v }),
+            advisorSessionId: null,
 
             runAgent: async ({ message, targetJobId, explicitIntent } = {}) => {
-                const { seekerId, profile, advisorLog } = get()
+                const { seekerId, profile, advisorLog, advisorSessionId } = get()
                 const userMsg = message ? { role: 'user', content: message } : null
                 if (userMsg) set({ advisorLog: [...advisorLog, userMsg], advisorInput: '' })
                 set({ agentLoading: true, agentError: null })
                 try {
+                    const activeSessionId = advisorSessionId || seekerId || 'demo'
                     const payload = seekerId
-                        ? { seekerId, message, targetJobId, explicitIntent, sessionId: seekerId }
+                        ? { seekerId, message, targetJobId, explicitIntent, sessionId: activeSessionId }
                         : { seeker: { ...profile, user_id: 'demo' }, message, targetJobId, explicitIntent, sessionId: 'demo' }
                     const res = await invokeAgent(payload)
                     set({
@@ -230,7 +232,7 @@ const useStore = create(
                         recommendedCourses: res.recommended_courses || [],
                         ...(res.seeker_id ? { seekerId: res.seeker_id } : {}),
                     })
-                    if (res.final_response) {
+                    if (res.final_response && message) {
                         set((s) => ({ advisorLog: [...s.advisorLog, { role: 'assistant', content: res.final_response }] }))
                     }
                     return res
@@ -275,8 +277,19 @@ const useStore = create(
                     toast.success(res.parsed_offline
                         ? 'CV diparse (mode offline) — tambah GEMINI_API_KEY untuk hasil lebih akurat.'
                         : `CV diparse: ${res.summary.skills_count} skill terdeteksi`)
+                    
                     // Reload full profile from backend after CV upload
-                    get().loadSeekerProfile()
+                    await get().loadSeekerProfile()
+                    
+                    const updated = get().profile
+                    const name = updated?.full_name || 'Rekan'
+                    
+                    set({
+                        advisorSessionId: `${res.seeker_id}_${Date.now()}`,
+                        advisorLog: [
+                            { role: 'assistant', content: `Halo ${name}! Saya AI Advisor KerjaCerdas. Saya telah menganalisis CV baru yang Anda unggah. Ada yang bisa saya bantu terkait peluang karier atau skill gap Anda?` }
+                        ]
+                    })
                 } catch (e) {
                     set({ cvUploading: false })
                     toast.error('Upload CV gagal: ' + e.message)

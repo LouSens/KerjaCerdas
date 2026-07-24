@@ -61,13 +61,13 @@ export default function FloatingAdvisor() {
                     {advisorLog.map((m, i) => (
                         <div
                             key={i}
-                            className={`w-fit rounded-xl text-xs leading-relaxed whitespace-pre-wrap px-3 py-2 max-w-[85%] border-2 border-kc-dark ${
+                            className={`w-fit rounded-xl text-xs leading-relaxed px-3 py-2 max-w-[85%] border-2 border-kc-dark ${
                                 m.role === 'user'
                                     ? 'ml-auto bg-kc-dark text-white rounded-br-sm'
                                     : 'mr-auto bg-kc-cream text-kc-dark rounded-bl-sm'
                             }`}
                         >
-                            {m.content}
+                            {m.role === 'user' ? m.content : renderMarkdown(m.content)}
                         </div>
                     ))}
                     {agentLoading && (
@@ -91,8 +91,71 @@ export default function FloatingAdvisor() {
                     >
                         <Send size={14} />
                     </button>
-                </form>
+                 </form>
             </div>
         </>
     )
 }
+
+const parseInline = (text) => {
+    if (!text) return '';
+    const parts = text.split('**');
+    return parts.map((part, i) => {
+        if (i % 2 === 1) {
+            return <strong key={i} className="font-extrabold">{part}</strong>;
+        }
+        return part;
+    });
+};
+
+const renderMarkdown = (text) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, idx) => {
+        let cleanLine = line.trim();
+        if (cleanLine === '---') {
+            return <hr key={idx} className="border-t border-dashed border-kc-dark my-2" />;
+        }
+        if (cleanLine.startsWith('### ')) {
+            return <h4 key={idx} className="font-extrabold text-[13px] mt-2 mb-1 uppercase text-kc-dark">{parseInline(cleanLine.slice(4))}</h4>;
+        }
+        if (cleanLine.startsWith('## ') || cleanLine.startsWith('# ')) {
+            const content = cleanLine.startsWith('## ') ? cleanLine.slice(3) : cleanLine.slice(2);
+            return <h3 key={idx} className="font-extrabold text-sm mt-3 mb-1 text-kc-orange">{parseInline(content)}</h3>;
+        }
+        if (cleanLine.startsWith('- ') || cleanLine.startsWith('* ')) {
+            return (
+                <div key={idx} className="flex gap-1.5 ml-2 my-1">
+                    <span>•</span>
+                    <span className="flex-1">{parseInline(cleanLine.slice(2))}</span>
+                </div>
+            );
+        }
+        const numMatch = cleanLine.match(/^(\d+)\.\s(.*)/);
+        if (numMatch) {
+            return (
+                <div key={idx} className="flex gap-1.5 ml-2 my-1">
+                    <span>{numMatch[1]}.</span>
+                    <span className="flex-1">{parseInline(numMatch[2])}</span>
+                </div>
+            );
+        }
+        if (cleanLine.startsWith('|') && cleanLine.endsWith('|')) {
+            const cells = cleanLine.split('|').map(c => c.trim()).filter(c => c !== '');
+            if (cells.every(c => c.match(/^-+$/))) {
+                return null;
+            }
+            return (
+                <div key={idx} className="flex gap-3 px-2 py-1 bg-white border-b border-kc-dark text-[10px] font-bold">
+                    {cells.map((cell, cidx) => (
+                        <div key={cidx} className="flex-1">{parseInline(cell)}</div>
+                    ))}
+                </div>
+            );
+        }
+        if (cleanLine === '') {
+            return <div key={idx} className="h-1.5" />;
+        }
+        return <p key={idx} className="my-1 leading-normal">{parseInline(line)}</p>;
+    });
+};
