@@ -31,6 +31,7 @@ from backend.app.db.schemas import (
 )
 from backend.app.utils import content_to_text
 from fastapi import APIRouter, Depends
+from langgraph.errors import GraphRecursionError
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -283,11 +284,22 @@ async def invoke_agent(
     state_in = {"messages": [("user", context)]}
     config = {
         "configurable": {"thread_id": req.session_id or seeker.id},
-        "recursion_limit": 5,
+        "recursion_limit": 10,
     }
-    out = await app_graph.ainvoke(state_in, config=config)
-
-    final_response = content_to_text(out["messages"][-1].content)
+    try:
+        out = await app_graph.ainvoke(state_in, config=config)
+        final_response = content_to_text(out["messages"][-1].content)
+    except GraphRecursionError:
+        # Agent ran out of steps (e.g. tool loop under LLM throttling).
+        # Degrade gracefully: return the deterministic matches we already have.
+        logger.warning(
+            "graph_recursion_limit seeker=%s — returning matches without LLM narrative", seeker.id
+        )
+        out = {}
+        final_response = (
+            "Berikut lowongan yang paling cocok dengan profilmu. "
+            "Asisten AI sedang sibuk, jadi penjelasan detail belum tersedia — coba lagi sebentar lagi."
+        )
 
     # --- Enrich matches with job metadata --------------------------------
     seeker_skill_names = [s.name for s in (seeker.skills or [])]
