@@ -286,7 +286,7 @@ async def invoke_agent(
     }
     out = await app_graph.ainvoke(state_in, config=config)
 
-    final_response = out["messages"][-1].content
+    final_response = _content_to_text(out["messages"][-1].content)
 
     # --- Enrich matches with job metadata --------------------------------
     seeker_skill_names = [s.name for s in (seeker.skills or [])]
@@ -337,6 +337,25 @@ async def invoke_agent(
         hallucinated_ids_removed=hallucinated_removed,
         early_exit=False,
     )
+
+
+def _content_to_text(content) -> str:
+    """Normalize LLM message content to a plain string.
+
+    Gemini (via LangChain) may return content as a list of parts, e.g.
+    ``[{"type": "text", "text": "..."}, ...]`` instead of a plain string.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict) and part.get("type") == "text":
+                parts.append(part.get("text", ""))
+        return "".join(parts)
+    return str(content)
 
 
 def _band_distribution(matches: list[EnrichedMatch]) -> dict:

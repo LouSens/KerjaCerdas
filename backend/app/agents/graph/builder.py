@@ -10,6 +10,7 @@ The agent node calls the LLM which may request tool calls.
 The tool node executes them and the loop repeats until the LLM
 produces a final message with no more tool calls.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _resolve_gemini_key() -> str:
     return (
@@ -55,6 +57,7 @@ _TOOL_MAP = {t.name: t for t in SUPERPOWER_TOOLS}
 # Graph node implementations
 # ---------------------------------------------------------------------------
 
+
 async def _agent_node(state: MessagesState) -> dict:
     """Invoke the LLM with the current message history."""
     from backend.app.services.prompt_loader import build_system_prompt
@@ -67,6 +70,7 @@ async def _agent_node(state: MessagesState) -> dict:
     # Prepend system message if not already present
     messages = list(state["messages"])
     from langchain_core.messages import SystemMessage
+
     if not messages or not isinstance(messages[0], SystemMessage):
         messages = [SystemMessage(content=system_prompt)] + messages
 
@@ -96,9 +100,7 @@ async def _tool_node(state: MessagesState) -> dict:
                 logger.exception("Tool '%s' raised an exception", tool_name)
                 result_content = json.dumps({"error": str(exc)})
 
-        tool_results.append(
-            ToolMessage(content=result_content, tool_call_id=call_id)
-        )
+        tool_results.append(ToolMessage(content=result_content, tool_call_id=call_id))
 
     return {"messages": tool_results}
 
@@ -114,6 +116,7 @@ def _should_continue(state: MessagesState) -> Literal["tools", "__end__"]:
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_graph_v2(checkpointer=None) -> CompiledStateGraph:
     from backend.app.agents.memory.manager import AgentMemoryManager
