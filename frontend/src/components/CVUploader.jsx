@@ -5,7 +5,7 @@ import { updateSeekerProfile } from '../services/api'
 import toast from 'react-hot-toast'
 
 export default function CVUploader() {
-    const { uploadResume, cvUploading, seekerId, profile, navigate, loadSeekerProfile, runAgent } = useStore()
+    const { uploadResume, cvUploading, seekerId, profile, navigate, loadSeekerProfile, runAgent, profileDirty, matches } = useStore()
     const inputRef = useRef(null)
     const [dragOver, setDragOver] = useState(false)
     const [fileMeta, setFileMeta] = useState(null)
@@ -70,6 +70,7 @@ export default function CVUploader() {
                 education: manualForm.education,
             })
             await loadSeekerProfile()
+            useStore.setState({ profileDirty: true })
             toast.success('Profil tersimpan!')
         } catch (e) {
             toast.error('Gagal simpan: ' + e.message)
@@ -364,9 +365,11 @@ export default function CVUploader() {
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 360 }}>
                                     <button className="kc-btn" onClick={async () => {
-                                        const tId = toast.loading('Mencocokkan ulang lowongan dengan CV baru...');
-                                        await runAgent({ explicitIntent: 'match_jobs' });
-                                        toast.dismiss(tId);
+                                        if (profileDirty || !matches.length) {
+                                            const tId = toast.loading('Mencocokkan ulang lowongan dengan CV baru...');
+                                            await runAgent({ explicitIntent: 'match_jobs' });
+                                            toast.dismiss(tId);
+                                        }
                                         navigate('seeker-match');
                                     }} style={{
                                         width: '100%', padding: '14px', background: KC.orange, color: '#fff',

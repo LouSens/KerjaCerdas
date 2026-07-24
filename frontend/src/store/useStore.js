@@ -199,6 +199,7 @@ const useStore = create(
             },
 
             seekerId: null,
+            profileDirty: false,
             matches: [],
             missingSkills: [],
             matchingSkills: [],
@@ -233,6 +234,7 @@ const useStore = create(
                         recommendedCourses: res.recommended_courses || [],
                         targetJobTitle: res.target_job_title || null,
                         ...(res.seeker_id ? { seekerId: res.seeker_id } : {}),
+                        profileDirty: false,
                     })
                     if (res.final_response && message) {
                         set((s) => ({ advisorLog: [...s.advisorLog, { role: 'assistant', content: res.final_response }] }))
@@ -287,6 +289,7 @@ const useStore = create(
                     const name = updated?.full_name || 'Rekan'
                     
                     set({
+                        profileDirty: true,
                         advisorSessionId: `${res.seeker_id}_${Date.now()}`,
                         advisorLog: [
                             { role: 'assistant', content: `Halo ${name}! Saya AI Advisor KerjaCerdas. Saya telah menganalisis CV baru yang Anda unggah. Ada yang bisa saya bantu terkait peluang karier atau skill gap Anda?` }
