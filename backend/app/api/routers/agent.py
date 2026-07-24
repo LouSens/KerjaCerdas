@@ -29,6 +29,7 @@ from backend.app.db.schemas import (
     MatchResult,
     SeekerProfile,
 )
+from backend.app.utils import content_to_text
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
@@ -286,7 +287,7 @@ async def invoke_agent(
     }
     out = await app_graph.ainvoke(state_in, config=config)
 
-    final_response = out["messages"][-1].content
+    final_response = content_to_text(out["messages"][-1].content)
 
     # --- Enrich matches with job metadata --------------------------------
     seeker_skill_names = [s.name for s in (seeker.skills or [])]

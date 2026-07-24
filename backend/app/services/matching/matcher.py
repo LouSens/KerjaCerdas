@@ -19,6 +19,7 @@ from collections.abc import Iterable
 
 from backend.app.db.schemas import JobPosting, MatchResult, SeekerProfile
 from backend.app.services.matching.embeddings.gemini import get_embedder
+from backend.app.utils import content_to_text
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -431,12 +432,7 @@ class SemanticMatcher:
 
                 response = await llm.ainvoke([HumanMessage(content=prompt)])
                 # response.content may be a list of parts (Gemini streaming) or a plain str.
-                raw_content = response.content
-                if isinstance(raw_content, list):
-                    raw_content = " ".join(
-                        p if isinstance(p, str) else p.get("text", "") for p in raw_content
-                    )
-                lines = raw_content.split("\n")
+                lines = content_to_text(response.content).split("\n")
                 for c in top_candidates:
                     for line in lines:
                         if c["seeker_id"] in line and ":" in line:

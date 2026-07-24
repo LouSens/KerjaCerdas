@@ -18,6 +18,7 @@ import re
 
 from backend.app.agents.graph.state import AgentState
 from backend.app.db.schemas import CourseRecommendation
+from backend.app.utils import content_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ async def route_intent(state: AgentState) -> dict:
                     HumanMessage(content=msg),
                 ]
             )
-            raw = resp.content.strip()
+            raw = content_to_text(resp.content).strip()
             if raw.startswith("```"):
                 raw = re.sub(r"```[a-z]*\n?", "", raw).rstrip("`").strip()
             data = json.loads(raw)
@@ -241,7 +242,7 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
                     ),
                 ]
             )
-            raw = resp.content.strip()
+            raw = content_to_text(resp.content).strip()
             # Strip markdown code fences if present
             if raw.startswith("```"):
                 raw = re.sub(r"```[a-z]*\n?", "", raw).rstrip("`").strip()
@@ -404,7 +405,7 @@ async def run_advisor(state: AgentState) -> dict:
                 HumanMessage(content=f"{context}\n\nPertanyaan: {msg}"),
             ]
         )
-        return {"advisor_response": resp.content}
+        return {"advisor_response": content_to_text(resp.content)}
 
     except Exception as exc:
         logger.warning("Gemini advisor failed (%s) — using fallback", exc)
