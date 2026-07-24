@@ -20,6 +20,7 @@ tool-binding; tool logic is described in the system prompt instead.
 
   START → agent_node → END
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,6 +39,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _resolve_gemini_key() -> str:
     return (
@@ -58,6 +60,7 @@ def _build_llm() -> ChatGoogleGenerativeAI:
 # ---------------------------------------------------------------------------
 # Graph node
 # ---------------------------------------------------------------------------
+
 
 async def _agent_node(state: MessagesState) -> dict:
     """Invoke the LLM and return its response.
@@ -83,6 +86,7 @@ async def _agent_node(state: MessagesState) -> dict:
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_graph_v2(checkpointer=None) -> CompiledStateGraph:
     from backend.app.agents.memory.manager import AgentMemoryManager
