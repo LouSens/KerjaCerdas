@@ -14,7 +14,7 @@ export default function SeekerSearch() {
     })
     const [results, setResults] = useState([])
     const [loading, setLoading] = useState(false)
-    const { matches, runAgent } = useStore()
+    const { matches, runAgent, navigate } = useStore()
 
     // Ambil semua data loker saat pertama kali mount
     useEffect(() => {
@@ -139,7 +139,10 @@ export default function SeekerSearch() {
                                 <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
                                     <button
                                         className="kc-btn"
-                                        onClick={() => runAgent({ explicitIntent: 'skill_gap', targetJobId: job.id })}
+                                        onClick={async () => {
+                                            await runAgent({ explicitIntent: 'skill_gap', targetJobId: job.id })
+                                            navigate('seeker-skill-gap')
+                                        }}
                                         style={{ ...topBtn(KC.pink, KC.ink), flex: 1, padding: 8, fontSize: 14 }}
                                     >
                                         🧠 Cek Gap

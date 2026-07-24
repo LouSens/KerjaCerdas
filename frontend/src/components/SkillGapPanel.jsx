@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { KC, BrutalCard, Tag } from './_design'
 
 export default function SkillGapPanel() {
-    const { missingSkills, recommendedCourses, runAgent, agentLoading } = useStore()
+    const { missingSkills, recommendedCourses, runAgent, agentLoading, targetJobTitle } = useStore()
 
     useEffect(() => {
         if (!missingSkills.length && !recommendedCourses.length && !agentLoading) {
@@ -25,7 +25,7 @@ export default function SkillGapPanel() {
                     </p>
                 </div>
                 <button onClick={() => {}} style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` }}>
-                    Target: Senior Backend
+                    Target: {targetJobTitle || 'Senior Backend'}
                 </button>
             </header>
 

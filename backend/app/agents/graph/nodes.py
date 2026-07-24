@@ -195,6 +195,7 @@ async def run_skill_gap(state: AgentState) -> dict:
         "missing_skills": missing_skills,
         "matching_skills": matching_skills,
         "recommended_courses": courses,
+        "target_job_title": target.title if target else None,
     }
 
 
@@ -341,7 +342,7 @@ _COURSE_CATALOG: dict[str, tuple[str, str, str]] = {
 
 
 def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
-    """Fallback catalog lookup using case-insensitive partial match."""
+    """Fallback catalog lookup using case-insensitive partial match, prioritizing Dicoding."""
     results: list[CourseRecommendation] = []
     seen: set[str] = set()
 
@@ -350,22 +351,17 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
         if entry and entry[0] not in seen:
             seen.add(entry[0])
             name, provider, dur = entry
+            provider = "Dicoding"
         else:
             # Dynamically generate mock course recommendation for missing skill
-            name = f"Belajar {skill.title()} dari Dasar"
-            provider = "YouTube Curated" if len(skill) % 2 == 0 else "Dicoding Academy"
-            dur = "2 minggu" if len(skill) % 2 == 0 else "1 bulan"
+            name = f"Dicoding Academy — Menjadi {skill.title()} Developer"
+            provider = "Dicoding"
+            dur = "1 bulan"
             
-        if provider == "YouTube Curated":
-            url = f"https://www.youtube.com/results?search_query={skill}+tutorial+indonesia"
-            price = "Gratis"
-            rating = 4.7
-            desc = f"Video tutorial terpopuler seputar {skill.title()} untuk level pemula hingga menengah secara gratis."
-        else:
-            url = f"https://www.google.com/search?q={skill}+course+indonesia"
-            price = "Rp 150.000"
-            rating = 4.8
-            desc = f"Kurikulum industri terstruktur seputar {skill.title()} lengkap dengan portofolio, tugas praktek, dan review mentor."
+        url = f"https://www.google.com/search?q=site:dicoding.com+{skill}"
+        price = "Rp 350.000 · Prakerja OK"
+        rating = 4.8
+        desc = f"Kurikulum resmi terstruktur seputar {skill.title()} lengkap dengan portofolio proyek riil, modul Bahasa Indonesia, dan review code dari mentor expert Dicoding."
 
         results.append(
             CourseRecommendation(
@@ -383,13 +379,13 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
     if not results:
         results.append(
             CourseRecommendation(
-                name="Bangkit Academy — Tech Generalist Path",
-                provider="Bangkit (Kominfo + GoTo + Traveloka)",
-                duration="6 bulan",
-                url="https://grow.google/intl/id_id/bangkit/",
-                price="Gratis",
+                name="Dicoding Academy — Menjadi Web Developer Expert",
+                provider="Dicoding",
+                duration="3 bulan",
+                url="https://www.dicoding.com/",
+                price="Rp 500.000",
                 rating=4.9,
-                description="Program kesiapan karier yang didesain oleh Google, GoTo, dan Traveloka untuk melahirkan talenta digital berkaliber tinggi.",
+                description="Kurikulum terlengkap di Indonesia untuk menguasai pemrograman web backend maupun frontend berstandar internasional.",
                 category="tech",
             )
         )

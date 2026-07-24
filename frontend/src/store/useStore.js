@@ -212,6 +212,7 @@ const useStore = create(
             advisorInput: '',
             setAdvisorInput: (v) => set({ advisorInput: v }),
             advisorSessionId: null,
+            targetJobTitle: null,
 
             runAgent: async ({ message, targetJobId, explicitIntent } = {}) => {
                 const { seekerId, profile, advisorLog, advisorSessionId } = get()
@@ -230,6 +231,7 @@ const useStore = create(
                         missingSkills: res.missing_skills || [],
                         matchingSkills: res.matching_skills || [],
                         recommendedCourses: res.recommended_courses || [],
+                        targetJobTitle: res.target_job_title || null,
                         ...(res.seeker_id ? { seekerId: res.seeker_id } : {}),
                     })
                     if (res.final_response && message) {

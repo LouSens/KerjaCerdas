@@ -5,11 +5,12 @@ import { updateSeekerProfile } from '../services/api'
 import toast from 'react-hot-toast'
 
 export default function CVUploader() {
-    const { uploadResume, cvUploading, seekerId, profile, navigate, loadSeekerProfile } = useStore()
+    const { uploadResume, cvUploading, seekerId, profile, navigate, loadSeekerProfile, runAgent } = useStore()
     const inputRef = useRef(null)
     const [dragOver, setDragOver] = useState(false)
     const [fileMeta, setFileMeta] = useState(null)
     const [activeTab, setActiveTab] = useState('upload') // 'upload' | 'manual'
+    const [isEditingCV, setIsEditingCV] = useState(false)
 
     const [manualForm, setManualForm] = useState({
         full_name: profile?.full_name || '',
@@ -127,10 +128,11 @@ export default function CVUploader() {
         if (seekerId) loadSeekerProfile()
     }, [seekerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleFile = (file) => {
+    const handleFile = async (file) => {
         if (!file) return
         setFileMeta({ name: file.name, size: file.size })
-        uploadResume(file)
+        await uploadResume(file)
+        setIsEditingCV(false)
     }
 
     const skillsCount = profile?.skills?.length ?? 0
@@ -323,151 +325,192 @@ export default function CVUploader() {
                 </BrutalCard>
             )}
 
-            {activeTab === 'upload' && (<>
-                {/* ── Upload dropzone ───────────────────────────────────────── */}
-                <BrutalCard color="#fff" padding={0} style={{ overflow: 'hidden' }}>
-                    <div
-                        onClick={() => !cvUploading && inputRef.current?.click()}
-                        onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]) }}
-                        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                        onDragLeave={() => setDragOver(false)}
-                        style={{
-                            padding: '48px 28px', textAlign: 'center',
-                            background: dragOver ? KC.lime : cvUploading ? KC.bone : '#fff',
-                            cursor: cvUploading ? 'wait' : 'pointer',
-                            borderBottom: `2px dashed ${KC.ink}`,
-                            transition: 'background .15s ease',
-                        }}
-                    >
-                        {cvUploading ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                                <div className="kc-spin" style={{ width: 48, height: 48, borderWidth: 5 }} />
-                                <Tag color={KC.yellow}>Sedang dianalisis…</Tag>
-                                <p style={{ fontSize: 14, fontWeight: 800, color: KC.ink, margin: 0 }}>
-                                    AI kami sedang membaca CV dan mengenali profilmu
-                                </p>
-                                <p style={{ fontSize: 12, color: KC.mute, margin: 0 }}>
-                                    {fileMeta ? fileMeta.name : 'Sebentar lagi selesai…'}
-                                </p>
-                            </div>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+            {activeTab === 'upload' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20, alignItems: 'flex-start', width: '100%' }}>
+                    
+                    {/* Left Panel: Dropzone or Active CV Status */}
+                    {seekerId && !isEditingCV ? (
+                        <BrutalCard color="#fff" padding={28}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}>
                                 <div style={{
-                                    width: 88, height: 88, background: KC.cyan,
-                                    border: `3px solid ${KC.ink}`, borderRadius: 18,
+                                    width: 90, height: 90, background: KC.lime,
+                                    border: `3px solid ${KC.ink}`, borderRadius: 20,
                                     display: 'grid', placeItems: 'center',
                                     boxShadow: `6px 6px 0 ${KC.ink}`,
-                                    transform: `rotate(${dragOver ? '4deg' : '-4deg'})`,
-                                    transition: 'transform .25s cubic-bezier(.34,1.56,.64,1)',
-                                    fontSize: 40,
+                                    transform: 'rotate(-3deg)',
+                                    fontSize: 42,
                                 }}>
                                     📄
                                 </div>
-                                <h2 style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.8, margin: '8px 0 4px' }}>
-                                    {dragOver ? 'Lepas di sini!' : 'Drop CV atau klik untuk pilih file'}
-                                </h2>
-                                <p style={{ fontSize: 13, color: KC.mute, margin: 0 }}>
-                                    PDF · maks 10 MB · Bahasa Indonesia atau English
-                                </p>
-                                <button className="kc-btn" style={{
-                                    marginTop: 8, padding: '12px 24px', background: KC.orange, color: '#fff',
-                                    border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, fontSize: 14,
-                                    cursor: 'pointer', boxShadow: `4px 4px 0 ${KC.ink}`,
-                                }}>
-                                    Pilih File →
-                                </button>
-                            </div>
-                        )}
-                        <input ref={inputRef} type="file" accept=".pdf" onChange={(e) => handleFile(e.target.files?.[0])} style={{ display: 'none' }} />
-                    </div>
-
-                    {/* Pipeline strip below dropzone */}
-                    <div style={{ padding: '20px 24px', background: KC.bone }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 12 }}>
-                            Apa yang terjadi setelah kamu upload
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 10 }}>
-                            {[
-                                { icon: '🔍', label: 'Baca dokumen' },
-                                { icon: '🧠', label: 'Kenali skill' },
-                                { icon: '📊', label: 'Analisis profil' },
-                                { icon: '✅', label: 'Siap dicocokkan' },
-                            ].map((s, i) => (
-                                <div key={i} className="kc-card" style={{ padding: 12, background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 10 }}>
-                                    <div style={{ fontSize: 18 }}>{s.icon}</div>
-                                    <div style={{ fontSize: 12, fontWeight: 900, marginTop: 4 }}>{s.label}</div>
+                                <div>
+                                    <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: -0.6, margin: '0 0 6px' }}>
+                                        CV Anda Aktif & Terbaca
+                                    </h2>
+                                    <p style={{ fontSize: 13, color: KC.mute, fontWeight: 700, margin: 0 }}>
+                                        Dokumen: {fileMeta ? fileMeta.name : 'CV_Kandidat.pdf'}
+                                    </p>
+                                    {fileMeta && (
+                                        <p style={{ fontSize: 11, color: KC.mute, margin: '2px 0 0' }}>
+                                            Ukuran: {(fileMeta.size / 1024).toFixed(1)} KB
+                                        </p>
+                                    )}
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                </BrutalCard>
 
-                {/* ── Right rail: status + tips ─────────────────────────────── */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {seekerId ? (
-                        <BrutalCard color={KC.lime} padding={18}>
-                            <Tag color={KC.ink} ink="#fff" size="sm">✓ CV Berhasil Dianalisis</Tag>
-                            <h3 style={{ fontSize: 16, fontWeight: 900, margin: '10px 0 4px', letterSpacing: -0.4 }}>
-                                Profilmu sudah siap!
-                            </h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>
-                                <Mini label="Keahlian" value={skillsCount} />
-                                <Mini label="Pengalaman" value={expCount} />
-                                <Mini label="Pendidikan" value={eduCount} />
+                                <div style={{ width: '100%', maxWidth: 360, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '10px 0' }}>
+                                    <Mini label="Keahlian" value={skillsCount} />
+                                    <Mini label="Pengalaman" value={expCount} />
+                                    <Mini label="Pendidikan" value={eduCount} />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 360 }}>
+                                    <button className="kc-btn" onClick={async () => {
+                                        const tId = toast.loading('Mencocokkan ulang lowongan dengan CV baru...');
+                                        await runAgent({ explicitIntent: 'match_jobs' });
+                                        toast.dismiss(tId);
+                                        navigate('seeker-match');
+                                    }} style={{
+                                        width: '100%', padding: '14px', background: KC.orange, color: '#fff',
+                                        border: `2px solid ${KC.ink}`, borderRadius: 12, fontWeight: 900, fontSize: 14,
+                                        cursor: 'pointer', boxShadow: `4px 4px 0 ${KC.ink}`,
+                                    }}>
+                                        🚀 Lihat Top-5 Match Sekarang →
+                                    </button>
+                                    <button className="kc-btn" onClick={() => setIsEditingCV(true)} style={{
+                                        width: '100%', padding: '12px', background: '#fff', color: KC.ink,
+                                        border: `2px solid ${KC.ink}`, borderRadius: 12, fontWeight: 800, fontSize: 13,
+                                        cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}`,
+                                    }}>
+                                        🔄 Upload CV Dokumen Baru
+                                    </button>
+                                </div>
                             </div>
-                            <button className="kc-btn" onClick={() => navigate('seeker-match')} style={{
-                                marginTop: 14, width: '100%', padding: '10px', background: KC.ink, color: '#fff',
-                                border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, fontSize: 13,
-                                cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.orange}`,
-                            }}>
-                                Lihat Top-5 Match →
-                            </button>
                         </BrutalCard>
                     ) : (
-                        <BrutalCard color={KC.orange} padding={18} style={{ color: '#fff' }}>
-                            <div style={{ fontSize: 24 }}>✨</div>
-                            <h3 style={{ fontSize: 16, fontWeight: 900, margin: '8px 0 6px' }}>
-                                Belum upload CV
-                            </h3>
-                            <p style={{ fontSize: 12, opacity: 0.92, lineHeight: 1.5, margin: 0 }}>
-                                Tanpa CV, AI cuma bisa nebak dari profil kosong. Upload sekali, dapet top-5 match selamanya.
-                            </p>
+                        <BrutalCard color="#fff" padding={0} style={{ overflow: 'hidden' }}>
+                            <div
+                                onClick={() => !cvUploading && inputRef.current?.click()}
+                                onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]) }}
+                                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                                onDragLeave={() => setDragOver(false)}
+                                style={{
+                                    padding: '48px 28px', textAlign: 'center',
+                                    background: dragOver ? KC.lime : cvUploading ? KC.bone : '#fff',
+                                    cursor: cvUploading ? 'wait' : 'pointer',
+                                    borderBottom: `2px dashed ${KC.ink}`,
+                                    transition: 'background .15s ease',
+                                }}
+                            >
+                                {cvUploading ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                        <div className="kc-spin" style={{ width: 48, height: 48, borderWidth: 5 }} />
+                                        <Tag color={KC.yellow}>Sedang dianalisis…</Tag>
+                                        <p style={{ fontSize: 14, fontWeight: 800, color: KC.ink, margin: 0 }}>
+                                            AI kami sedang membaca CV dan mengenali profilmu
+                                        </p>
+                                        <p style={{ fontSize: 12, color: KC.mute, margin: 0 }}>
+                                            {fileMeta ? fileMeta.name : 'Sebentar lagi selesai…'}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                                        <div style={{
+                                            width: 88, height: 88, background: KC.cyan,
+                                            border: `3px solid ${KC.ink}`, borderRadius: 18,
+                                            display: 'grid', placeItems: 'center',
+                                            boxShadow: `6px 6px 0 ${KC.ink}`,
+                                            transform: `rotate(${dragOver ? '4deg' : '-4deg'})`,
+                                            transition: 'transform .25s cubic-bezier(.34,1.56,.64,1)',
+                                            fontSize: 40,
+                                        }}>
+                                            📄
+                                        </div>
+                                        <h2 style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.8, margin: '8px 0 4px' }}>
+                                            {dragOver ? 'Lepas di sini!' : 'Drop CV atau klik untuk pilih file'}
+                                        </h2>
+                                        <p style={{ fontSize: 13, color: KC.mute, margin: 0 }}>
+                                            PDF · maks 10 MB · Bahasa Indonesia atau English
+                                        </p>
+                                        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                                            <button className="kc-btn" style={{
+                                                padding: '12px 24px', background: KC.orange, color: '#fff',
+                                                border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, fontSize: 14,
+                                                cursor: 'pointer', boxShadow: `4px 4px 0 ${KC.ink}`,
+                                            }}>
+                                                Pilih File →
+                                            </button>
+                                            {seekerId && (
+                                                <button className="kc-btn" onClick={(e) => { e.stopPropagation(); setIsEditingCV(false) }} style={{
+                                                    padding: '12px 24px', background: '#fff', color: KC.ink,
+                                                    border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, fontSize: 14,
+                                                    cursor: 'pointer', boxShadow: `4px 4px 0 ${KC.ink}`,
+                                                }}>
+                                                    Batal
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                <input ref={inputRef} type="file" accept=".pdf" onChange={(e) => handleFile(e.target.files?.[0])} style={{ display: 'none' }} />
+                            </div>
+
+                            {/* Pipeline strip below dropzone */}
+                            <div style={{ padding: '20px 24px', background: KC.bone }}>
+                                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 12 }}>
+                                    Apa yang terjadi setelah kamu upload
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 10 }}>
+                                    {[
+                                        { icon: '🔍', label: 'Baca dokumen' },
+                                        { icon: '🧠', label: 'Kenali skill' },
+                                        { icon: '📊', label: 'Analisis profil' },
+                                        { icon: '✅', label: 'Siap dicocokkan' },
+                                    ].map((s, i) => (
+                                        <div key={i} className="kc-card" style={{ padding: 12, background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 10 }}>
+                                            <div style={{ fontSize: 18 }}>{s.icon}</div>
+                                            <div style={{ fontSize: 12, fontWeight: 900, marginTop: 4 }}>{s.label}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </BrutalCard>
                     )}
 
-                    <BrutalCard color="#fff" padding={18}>
-                        <Tag color={KC.cyan} size="sm">Tips</Tag>
-                        <h3 style={{ fontSize: 14, fontWeight: 900, margin: '10px 0 10px' }}>
-                            Supaya hasilnya lebih akurat
-                        </h3>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {[
-                                'Gunakan file PDF (bukan foto atau scan gambar).',
-                                'Cantumkan skill dan keahlian secara lengkap.',
-                                'Sertakan lama pengalaman di setiap posisi.',
-                                'Tambahkan kota domisili dan ekspektasi gaji jika ada.',
-                            ].map((t, i) => (
-                                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, fontWeight: 600, color: KC.ink, lineHeight: 1.5 }}>
-                                    <span style={{ width: 18, height: 18, borderRadius: 5, background: KC.lime, border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', fontSize: 11, flexShrink: 0 }}>✓</span>
-                                    <span>{t}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </BrutalCard>
+                    {/* Right rail: status + tips */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <BrutalCard color="#fff" padding={18}>
+                            <Tag color={KC.cyan} size="sm">Tips</Tag>
+                            <h3 style={{ fontSize: 14, fontWeight: 900, margin: '10px 0 10px' }}>
+                                Supaya hasilnya lebih akurat
+                            </h3>
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {[
+                                    'Gunakan file PDF (bukan foto atau scan gambar).',
+                                    'Cantumkan skill dan keahlian secara lengkap.',
+                                    'Sertakan lama pengalaman di setiap posisi.',
+                                    'Tambahkan kota domisili dan ekspektasi gaji jika ada.',
+                                ].map((t, i) => (
+                                    <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, fontWeight: 600, color: KC.ink, lineHeight: 1.5 }}>
+                                        <span style={{ width: 18, height: 18, borderRadius: 5, background: KC.lime, border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', fontSize: 11, flexShrink: 0 }}>✓</span>
+                                        <span>{t}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </BrutalCard>
 
-                    <BrutalCard color={KC.ink} padding={16} style={{ color: '#fff' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontSize: 22 }}>🔒</span>
-                            <div>
-                                <div style={{ fontSize: 12, fontWeight: 800 }}>CV-mu aman & terlindungi</div>
-                                <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>
-                                    Data kamu tidak dibagikan ke perusahaan manapun tanpa izinmu
+                        <BrutalCard color={KC.ink} padding={16} style={{ color: '#fff' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 22 }}>🔒</span>
+                                <div>
+                                    <div style={{ fontSize: 12, fontWeight: 800 }}>CV-mu aman & terlindungi</div>
+                                    <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>
+                                        Data kamu tidak dibagikan ke perusahaan manapun tanpa izinmu
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </BrutalCard>
+                        </BrutalCard>
+                    </div>
                 </div>
-            </>)}
+            )}
         </div>
     )
 }

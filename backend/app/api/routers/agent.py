@@ -96,6 +96,7 @@ class AgentInvokeResponse(BaseModel):
     matching_skills: list[str] = []
     recommended_courses: list[CourseRecommendation] = []
     seeker_id: str | None = None  # echo back so frontend can cache it
+    target_job_title: str | None = None
     # Observability fields (used by monitoring + A/B analysis)
     fallback_used: bool = False  # True when seeker_id was stale or absent
     band_distribution: dict = {}  # {"strong": n, "possible": n, "stretch": n}
@@ -272,6 +273,7 @@ async def invoke_agent(
             ),
             matches=enriched,
             seeker_id=seeker.id if seeker is not _ANONYMOUS_SEEKER else None,
+            target_job_title=None,
             fallback_used=fallback_used,
             band_distribution=band_dist,
             routing_confidence=1.0,
@@ -358,6 +360,7 @@ async def invoke_agent(
         matching_skills=out.get("matching_skills", []),
         recommended_courses=out.get("recommended_courses", []),
         seeker_id=seeker.id if seeker is not _ANONYMOUS_SEEKER else None,
+        target_job_title=out.get("target_job_title"),
         fallback_used=fallback_used,
         band_distribution=band_dist,
         routing_confidence=routing_confidence,
