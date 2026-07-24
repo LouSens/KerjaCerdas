@@ -71,7 +71,22 @@ async def list_jobs(
         q_lower = q.lower()
         jobs = [j for j in jobs if q_lower in j.title.lower() or q_lower in j.description.lower()]
 
-    # Enrich with verified flag (batch employer lookup)
+    _BPS_REGIONS = {
+        "3171": "Jakarta Pusat",
+        "3172": "Jakarta Utara",
+        "3173": "Jakarta Barat",
+        "3174": "Jakarta Selatan",
+        "3175": "Jakarta Timur",
+        "3273": "Bandung",
+        "3578": "Surabaya",
+        "3471": "Yogyakarta",
+        "5171": "Denpasar",
+        "1275": "Medan",
+        "7371": "Makassar",
+        "6371": "Balikpapan",
+    }
+
+    # Enrich with verified flag and location (batch employer lookup)
     employer_cache: dict[str, bool] = {}
     result_items = []
     for j in jobs[offset : offset + limit]:
@@ -81,6 +96,12 @@ async def list_jobs(
             employer_cache[emp_id] = _is_employer_verified(emp)
         item = j.model_dump() if hasattr(j, "model_dump") else dict(j)
         item["verified"] = employer_cache[emp_id]
+        
+        location_str = _BPS_REGIONS.get(j.region_code, j.region_code)
+        if j.remote_allowed:
+            location_str += " · Remote OK"
+        item["location"] = location_str
+        
         result_items.append(item)
 
     return {"total": len(jobs), "offset": offset, "limit": limit, "items": result_items}
@@ -93,4 +114,26 @@ async def get_job(job_id: str):
     if not j:
         return {"error": "not_found"}
     employer = await repos.employers.get(j.employer_id)
-    return j.model_dump() | {"verified": _is_employer_verified(employer)}
+    
+    _BPS_REGIONS = {
+        "3171": "Jakarta Pusat",
+        "3172": "Jakarta Utara",
+        "3173": "Jakarta Barat",
+        "3174": "Jakarta Selatan",
+        "3175": "Jakarta Timur",
+        "3273": "Bandung",
+        "3578": "Surabaya",
+        "3471": "Yogyakarta",
+        "5171": "Denpasar",
+        "1275": "Medan",
+        "7371": "Makassar",
+        "6371": "Balikpapan",
+    }
+    location_str = _BPS_REGIONS.get(j.region_code, j.region_code)
+    if j.remote_allowed:
+        location_str += " · Remote OK"
+        
+    return j.model_dump() | {
+        "verified": _is_employer_verified(employer),
+        "location": location_str
+    }

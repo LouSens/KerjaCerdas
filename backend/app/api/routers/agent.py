@@ -133,7 +133,21 @@ async def _enrich_matches(
         else:
             salary_str = "Competitive"
 
-        location = job.region_code
+        _BPS_REGIONS = {
+            "3171": "Jakarta Pusat",
+            "3172": "Jakarta Utara",
+            "3173": "Jakarta Barat",
+            "3174": "Jakarta Selatan",
+            "3175": "Jakarta Timur",
+            "3273": "Bandung",
+            "3578": "Surabaya",
+            "3471": "Yogyakarta",
+            "5171": "Denpasar",
+            "1275": "Medan",
+            "7371": "Makassar",
+            "6371": "Balikpapan",
+        }
+        location = _BPS_REGIONS.get(job.region_code, job.region_code)
         if job.remote_allowed:
             location += " · Remote OK"
 
