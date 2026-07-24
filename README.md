@@ -292,9 +292,11 @@ erDiagram
     USERS ||--o| SEEKERS : "has_profile"
     USERS ||--o| EMPLOYERS : "has_profile"
     USERS ||--o{ CHAT_SESSIONS : "owns_history"
+    USERS ||--o{ EVENTS : "logs_analytics"
     EMPLOYERS ||--o{ JOBS : "posts"
     SEEKERS ||--o{ APPLICATIONS : "submits"
     JOBS ||--o{ APPLICATIONS : "receives"
+    JOBS ||--o{ EVENTS : "tracked_on"
     SEEKERS ||--o{ SKILL_GAPS : "analyzed_for"
 
     USERS {
@@ -341,6 +343,13 @@ erDiagram
         JSONB missing_skills
         JSONB recommended_courses
         FLOAT match_percentage
+    }
+    EVENTS {
+        UUID id PK
+        UUID user_id FK
+        UUID job_id FK
+        VARCHAR event_type "A/B Testing & Funnel"
+        JSONB payload
     }
 ```
 
