@@ -59,6 +59,8 @@ def _build_engine(database_url: str):
         echo=False,
         future=True,
         connect_args=connect_args,
+        pool_pre_ping=True,
+        pool_recycle=300,
     )
 
     if is_sqlite:
