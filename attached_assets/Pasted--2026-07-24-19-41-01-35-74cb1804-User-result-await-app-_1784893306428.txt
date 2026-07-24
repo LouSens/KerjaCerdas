@@ -1,0 +1,151 @@
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| result = await app( # type: ignore[func-returns-value]
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/starlette/middleware/cors.py", line 154, in simple_response
+
+2026-07-24 19:41:01.35
+74cb1804
+User
++ Exception Group Traceback (most recent call last):
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| await super().__call__(scope, receive, send)
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 815, in __aexit__
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| raise BaseExceptionGroup(
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| await self.middleware_stack(scope, receive, send)
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/starlette/_utils.py", line 85, in create_collapsing_task_group
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| Traceback (most recent call last):
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+ERROR: Exception in ASGI application
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| async with anyio.create_task_group() as tg:
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+raise exc
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2026-07-24 19:41:01.35
+74cb1804
+User
++-+---------------- 1 ----------------
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+await self.app(scope, receive, send)
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| return await self.app(scope, receive, send)
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| response = await self.dispatch_func(request, call_next)
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2026-07-24 19:41:01.35
+74cb1804
+User
+| raise exc
+
+2026-07-24 19:41:35.74
+74cb1804
+User
+{"event": "[f854c9bf] GET / -> 200 (1ms)", "logger": "backend.app.api.main", "level": "info", "timestamp": "2026-07-24T11:41:35.740177Z", "_logger": "<_FixedFindCallerLogger backend.app.api.main (INFO)>", "_name": "info"}
+
+
+2026-07-24 19:41:37.08
+74cb1804
+User
+{"event": "[a155eb67]
