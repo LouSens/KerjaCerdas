@@ -52,7 +52,41 @@ def _build_engine(database_url: str):
 
     # SQLite needs special handling for async + foreign keys
     is_sqlite = "sqlite" in database_url
-    connect_args = {"check_same_thread": False} if is_sqlite else {}
+    is_neon = "neon.tech" in database_url
+
+    if is_neon:
+        # Rewrite to Neon's PgBouncer pooler endpoint, which stays alive even
+        # when the serverless compute is suspended.  The pooler hostname is the
+        # same as the direct hostname but with "-pooler" inserted before the
+        # first ".".  e.g. ep-foo-bar.c-3.region.aws.neon.tech
+        #                -> ep-foo-bar-pooler.c-3.region.aws.neon.tech
+        import urllib.parse as _up
+
+        _parsed = _up.urlparse(database_url)
+        _host = _parsed.hostname or ""
+        if _host and "-pooler" not in _host:
+            _pooler_host = _host.replace(".", "-pooler.", 1)
+            _netloc = _pooler_host
+            if _parsed.port:
+                _netloc = f"{_pooler_host}:{_parsed.port}"
+            if _parsed.username:
+                _userinfo = _parsed.username
+                if _parsed.password:
+                    _userinfo = f"{_parsed.username}:{_parsed.password}"
+                _netloc = f"{_userinfo}@{_netloc}"
+            database_url = _up.urlunparse(_parsed._replace(netloc=_netloc))
+            logger.info("Neon: rewritten to pooler endpoint → %s", _host.split(".")[0] + "-pooler")
+
+        # PgBouncer / Neon pooler requires prepared-statement caching disabled.
+        connect_args: dict = {
+            "statement_cache_size": 0,
+            "command_timeout": 30,
+            "timeout": 15,  # seconds to wait for Neon compute to wake up
+        }
+    elif is_sqlite:
+        connect_args = {"check_same_thread": False}
+    else:
+        connect_args = {}
 
     engine = create_async_engine(
         database_url,

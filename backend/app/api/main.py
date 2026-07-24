@@ -138,7 +138,19 @@ for r in (
 async def log_requests(request: Request, call_next):
     request_id = uuid.uuid4().hex[:8]
     start = time.time()
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        duration_ms = int((time.time() - start) * 1000)
+        logger.exception(
+            "[%s] %s %s -> UNHANDLED %s (%dms)",
+            request_id,
+            request.method,
+            request.url.path,
+            type(exc).__name__,
+            duration_ms,
+        )
+        raise
     duration_ms = int((time.time() - start) * 1000)
     logger.info(
         "[%s] %s %s -> %d (%dms)",
