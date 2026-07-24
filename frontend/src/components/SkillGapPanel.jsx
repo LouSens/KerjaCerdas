@@ -59,97 +59,140 @@ export default function SkillGapPanel() {
 
             {/* BENTO GRID */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: 'minmax(160px, auto)', gap: 14 }}>
-                {/* Featured course */}
-                <BrutalCard color={KC.orange} padding={22} style={{ gridColumn: 'span 2', gridRow: 'span 2', color: '#fff', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Tag color="#fff" ink={KC.ink}>★ recommended</Tag>
-                        <span style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>{courses[0]?.provider || 'Dicoding'}</span>
-                    </div>
-                    <h3 style={{ fontSize: 28, fontWeight: 900, letterSpacing: -1, lineHeight: 1.05, marginTop: 18 }}>
-                        {courses[0]?.title || 'Kafka untuk Backend Engineer Indonesia'}
-                    </h3>
-                    <p style={{ fontSize: 14, opacity: 0.92, lineHeight: 1.55, marginTop: 10 }}>
-                        {courses[0]?.description || 'Event streaming dari nol: producer, consumer, partition, schema registry. Studi kasus payment + e-commerce.'}
-                    </p>
-                    <div style={{ display: 'flex', gap: 14, fontSize: 12, fontWeight: 700, marginTop: 14 }}>
-                        <span>⏱ {courses[0]?.duration_hours || 14} jam</span>
-                        <span>★ {courses[0]?.rating || 4.8}</span>
-                        <span>💰 {courses[0]?.price || 'Rp 0 · Prakerja'}</span>
-                    </div>
-                    <div style={{ marginTop: 'auto', paddingTop: 18 }}>
-                        <button onClick={() => {}} style={{ padding: '12px 20px', background: '#fff', color: KC.ink, border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
-                            Mulai Belajar →
-                        </button>
-                    </div>
-                </BrutalCard>
+                {/* Featured course (1st recommendation) */}
+                {courses[0] && (
+                    <BrutalCard color={KC.orange} padding={22} style={{ gridColumn: 'span 2', gridRow: 'span 2', color: '#fff', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Tag color="#fff" ink={KC.ink}>★ recommended</Tag>
+                            <span style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>{courses[0].provider}</span>
+                        </div>
+                        <h3 style={{ fontSize: 28, fontWeight: 900, letterSpacing: -1, lineHeight: 1.05, marginTop: 18 }}>
+                            {courses[0].name}
+                        </h3>
+                        <p style={{ fontSize: 14, opacity: 0.92, lineHeight: 1.55, marginTop: 10, flexGrow: 1 }}>
+                            {courses[0].description || `Belajar materi dasar hingga tingkat lanjut mengenai ${courses[0].name} secara mendalam.`}
+                        </p>
+                        <div style={{ display: 'flex', gap: 14, fontSize: 12, fontWeight: 700, marginTop: 14, marginBottom: 14 }}>
+                            <span>⏱ {courses[0].duration}</span>
+                            <span>★ {courses[0].rating || 4.8}</span>
+                            <span>💰 {courses[0].price || 'Rp 150.000'}</span>
+                        </div>
+                        <div style={{ paddingTop: 6 }}>
+                            <button onClick={() => window.open(courses[0].url || 'https://google.com', '_blank')} style={{ padding: '12px 20px', background: '#fff', color: KC.ink, border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
+                                Mulai Belajar →
+                            </button>
+                        </div>
+                    </BrutalCard>
+                )}
 
-                <BrutalCard color={KC.cyan} padding={18}>
-                    <Tag color="#fff" size="sm">Coursera</Tag>
-                    <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '10px 0 6px' }}>Kafka Series · Apache Foundation</h4>
-                    <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, margin: '0 0 10px' }}>Dasar sampai advance, English.</p>
-                    <div style={{ display: 'flex', gap: 10, fontSize: 11, fontWeight: 700 }}>
-                        <span>⏱ 18 jam</span><span>Rp 450k</span>
-                    </div>
-                </BrutalCard>
+                {/* Next 2 courses (render as small cards) */}
+                {courses.slice(1, 3).map((c, i) => {
+                    const isYT = c.provider === 'YouTube Curated';
+                    const colors = [KC.cyan, KC.lime];
+                    const bg = colors[i % colors.length];
+                    return (
+                        <BrutalCard key={i} color={bg} padding={18} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                    <Tag color="#fff" size="sm">{c.provider}</Tag>
+                                    {isYT && <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 6px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 4 }}>FREE</span>}
+                                </div>
+                                <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '0 0 6px' }}>{c.name}</h4>
+                                <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, margin: '0 0 10px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.description || 'Kursus pilihan terbaik untuk menutup gap skill kamu.'}</p>
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', gap: 10, fontSize: 11, fontWeight: 700, marginBottom: 10 }}>
+                                    <span>⏱ {c.duration}</span>
+                                    <span>💰 {c.price || 'Rp 150k'}</span>
+                                </div>
+                                <button onClick={() => window.open(c.url || 'https://google.com', '_blank')} style={{ width: '100%', padding: '6px 12px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer', boxShadow: `1.5px 1.5px 0 ${KC.ink}` }}>
+                                    Mulai Belajar →
+                                </button>
+                            </div>
+                        </BrutalCard>
+                    );
+                })}
 
-                <BrutalCard color={KC.lime} padding={18}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <Tag color="#fff" size="sm">YouTube</Tag>
-                        <span style={{ fontSize: 11, fontWeight: 900, padding: '2px 6px', background: '#fff', border: `1px solid ${KC.ink}`, borderRadius: 4 }}>FREE</span>
-                    </div>
-                    <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '0 0 6px' }}>Kafka in 100 Seconds (Fireship)</h4>
-                    <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, margin: '0 0 10px' }}>Quick overview · 1 jam playlist.</p>
-                    <div style={{ fontSize: 11, fontWeight: 700 }}>👁 2.4M views</div>
-                </BrutalCard>
-
-                <BrutalCard color={KC.yellow} padding={18} style={{ gridColumn: 'span 2' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                        <div style={{ width: 70, height: 70, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 12, display: 'grid', placeItems: 'center', fontSize: 28, fontWeight: 900 }}>TF</div>
-                        <div style={{ flex: 1 }}>
-                            <Tag color="#fff" size="sm">HashiCorp · RevoU</Tag>
-                            <h4 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '8px 0 6px' }}>Terraform Associate Cert Prep</h4>
-                            <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.78, margin: '0 0 10px', lineHeight: 1.5 }}>Sertifikasi resmi HashiCorp. Lab AWS + GCP. 8 minggu, mentor 1-on-1.</p>
-                            <div style={{ display: 'flex', gap: 14, fontSize: 11, fontWeight: 700 }}>
-                                <span>⏱ 40 jam</span><span>💰 Rp 1.8jt</span><span>🎓 Sertifikat</span>
+                {/* 4th course (render as medium span 2 card) */}
+                {courses[3] && (
+                    <BrutalCard color={KC.yellow} padding={18} style={{ gridColumn: 'span 2' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                            <div style={{ width: 70, height: 70, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 12, display: 'grid', placeItems: 'center', fontSize: 24, fontWeight: 900 }}>
+                                {courses[3].provider === 'YouTube Curated' ? '📺' : '🎓'}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <Tag color="#fff" size="sm">{courses[3].provider}</Tag>
+                                <h4 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '8px 0 6px' }}>{courses[3].name}</h4>
+                                <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.78, margin: '0 0 10px', lineHeight: 1.5 }}>
+                                    {courses[3].description || 'Rekomendasi kursus dengan kurikulum komprehensif.'}
+                                </p>
+                                <div style={{ display: 'flex', gap: 14, fontSize: 11, fontWeight: 700, marginBottom: 10 }}>
+                                    <span>⏱ {courses[3].duration}</span>
+                                    <span>💰 {courses[3].price || 'Rp 150k'}</span>
+                                    <span>★ {courses[3].rating || 4.7}</span>
+                                </div>
+                                <button onClick={() => window.open(courses[3].url || 'https://google.com', '_blank')} style={{ padding: '6px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 11, boxShadow: `2px 2px 0 ${KC.ink}` }}>
+                                    Kunjungi Kelas →
+                                </button>
                             </div>
                         </div>
-                    </div>
-                </BrutalCard>
+                    </BrutalCard>
+                )}
 
-                <BrutalCard color={KC.pink} padding={18}>
-                    <Tag color="#fff" size="sm">Redis University</Tag>
-                    <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '10px 0 6px' }}>Caching Strategies with Redis</h4>
-                    <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, margin: '0 0 10px' }}>Vendor cert · self-paced.</p>
-                    <div style={{ display: 'flex', gap: 10, fontSize: 11, fontWeight: 700 }}>
-                        <span>⏱ 6 jam</span><span>FREE</span>
-                    </div>
-                </BrutalCard>
+                {/* 5th course or default fallback */}
+                {courses[4] ? (
+                    <BrutalCard color={KC.pink} padding={18} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div>
+                            <Tag color="#fff" size="sm">{courses[4].provider}</Tag>
+                            <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '10px 0 6px' }}>{courses[4].name}</h4>
+                            <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, margin: '0 0 10px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{courses[4].description}</p>
+                        </div>
+                        <div>
+                            <div style={{ display: 'flex', gap: 10, fontSize: 11, fontWeight: 700, marginBottom: 10 }}>
+                                <span>⏱ {courses[4].duration}</span><span> {courses[4].price}</span>
+                            </div>
+                            <button onClick={() => window.open(courses[4].url || 'https://google.com', '_blank')} style={{ width: '100%', padding: '6px 12px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer', boxShadow: `1.5px 1.5px 0 ${KC.ink}` }}>
+                                Buka Kelas
+                            </button>
+                        </div>
+                    </BrutalCard>
+                ) : (
+                    <BrutalCard color={KC.pink} padding={18}>
+                        <Tag color="#fff" size="sm">Prakerja</Tag>
+                        <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '10px 0 6px' }}>Prakerja Indonesia</h4>
+                        <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, margin: '0 0 10px' }}>Subsidi pelatihan dari pemerintah untuk pencari kerja.</p>
+                        <button onClick={() => window.open('https://www.prakerja.go.id/', '_blank')} style={{ width: '100%', padding: '6px 12px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer', boxShadow: `1.5px 1.5px 0 ${KC.ink}` }}>
+                            Daftar Prakerja
+                        </button>
+                    </BrutalCard>
+                )}
 
+                {/* 1-on-1 Booking */}
                 <BrutalCard color={KC.ink} padding={18} style={{ color: '#fff' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                         <span style={{ color: KC.orange, fontSize: 18 }}>✨</span>
-                        <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.6 }}>Bonus</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.6 }}>Mentoring</span>
                     </div>
-                    <h4 style={{ fontSize: 14, fontWeight: 900, lineHeight: 1.25, margin: '0 0 6px' }}>1-on-1 dengan ex-Tokopedia engineer</h4>
-                    <p style={{ fontSize: 11, opacity: 0.7, margin: '0 0 10px', lineHeight: 1.5 }}>Sesi 30 menit review portofolio.</p>
-                    <button onClick={() => {}} style={{ width: '100%', padding: 8, background: KC.orange, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 900, color: '#fff', cursor: 'pointer' }}>Book sesi (Coming soon)</button>
+                    <h4 style={{ fontSize: 14, fontWeight: 900, lineHeight: 1.25, margin: '0 0 6px' }}>1-on-1 Review Portofolio</h4>
+                    <p style={{ fontSize: 11, opacity: 0.7, margin: '0 0 10px', lineHeight: 1.5 }}>Review portofolio & simulasi interview 30 menit bersama mentor expert.</p>
+                    <button onClick={() => window.open('https://topmate.io', '_blank')} style={{ width: '100%', padding: 8, background: KC.orange, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 900, color: '#fff', cursor: 'pointer' }}>Book Sesi Mentoring</button>
                 </BrutalCard>
 
+                {/* Custom roadmap based on missing skills */}
                 <BrutalCard color="#fff" padding={18} style={{ gridColumn: 'span 2' }}>
-                    <Tag color={KC.yellow}>roadmap · 6 minggu</Tag>
-                    <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '10px 0 12px' }}>Jadwal belajar yang AI rekomendasiin</h4>
+                    <Tag color={KC.yellow}>roadmap belajar</Tag>
+                    <h4 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: '10px 0 12px' }}>Jadwal rekomendasi untuk menutup gap-mu</h4>
                     <div style={{ display: 'flex' }}>
-                        {[
-                            { w: 'W1-2', t: 'Kafka basics', c: KC.orange },
-                            { w: 'W3', t: 'Kafka project', c: KC.orange },
-                            { w: 'W4-5', t: 'Terraform', c: KC.cyan },
-                            { w: 'W6', t: 'Redis', c: KC.pink },
-                        ].map((s, i) => (
-                            <div key={i} style={{ flex: 1, padding: '10px 6px', background: s.c, border: `1.5px solid ${KC.ink}`, marginLeft: i ? -1 : 0, textAlign: 'center' }}>
-                                <div style={{ fontSize: 10, fontWeight: 900 }}>{s.w}</div>
-                                <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2 }}>{s.t}</div>
-                            </div>
-                        ))}
+                        {gaps.slice(0, 4).map((skill, i) => {
+                            const colors = [KC.orange, KC.cyan, KC.yellow, KC.pink];
+                            const c = colors[i % colors.length];
+                            return (
+                                <div key={i} style={{ flex: 1, padding: '10px 6px', background: c, border: `1.5px solid ${KC.ink}`, marginLeft: i ? -1 : 0, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, fontWeight: 900 }}>W{i * 2 + 1}-{i * 2 + 2}</div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{skill}</div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </BrutalCard>
             </div>
@@ -158,5 +201,7 @@ export default function SkillGapPanel() {
 }
 
 const DEMO_COURSES = [
-    { title: 'Kafka untuk Backend Engineer Indonesia', provider: 'Dicoding', duration_hours: 14, rating: 4.8, price: 'Rp 0 · Prakerja', description: 'Event streaming dari nol: producer, consumer, partition, schema registry.' },
+    { name: 'Kuasai Kafka untuk Backend', provider: 'Dicoding Academy', duration: '14 jam', rating: 4.8, price: 'Rp 150.000', description: 'Event streaming dari nol: producer, consumer, partition, schema registry. Contoh studi kasus riil.' },
+    { name: 'Terraform Infrastructure as Code', provider: 'YouTube Curated', duration: '6 jam', rating: 4.7, price: 'Gratis', description: 'Belajar setup provider AWS, state management, dan module Terraform dari nol.' },
+    { name: 'Redis Caching Strategies', provider: 'Dicoding Academy', duration: '8 jam', rating: 4.6, price: 'Rp 150.000', description: 'Optimasi latency aplikasi web menggunakan read/write caching pattern di Redis.' },
 ]

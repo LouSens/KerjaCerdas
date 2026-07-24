@@ -218,6 +218,10 @@ class CourseRecommendation(BaseModel):
     provider: str
     duration: str
     url: str | None = None
+    price: str | None = None
+    rating: float | None = None
+    description: str | None = None
+    category: str | None = None
 
 
 class SkillGapResult(TimestampedModel):
