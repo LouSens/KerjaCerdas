@@ -53,7 +53,7 @@ class SeekerProfile(Base, TimestampedMixin):
     __tablename__ = "seekers"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True, unique=True)
     full_name: Mapped[str] = mapped_column(String(255))
     headline: Mapped[str] = mapped_column(String(255), default="")
     nik: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -76,7 +76,7 @@ class Employer(Base, TimestampedMixin):
     __tablename__ = "employers"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True, unique=True)
     company_name: Mapped[str] = mapped_column(String(255))
     npwp: Mapped[str | None] = mapped_column(String(50), nullable=True)
     industry: Mapped[str] = mapped_column(String(100), default="")

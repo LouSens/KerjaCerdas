@@ -35,6 +35,7 @@ async def seed_seekers_data():
             ) for (c, t, sd, ed, desc) in s["exp"]]
             skill_objs = [Skill(name=n, level=lv, years=yr) for (n, lv, yr) in s["skills"]]
             seeker = SeekerProfile(
+                id=u.id,
                 user_id=u.id, full_name=mutated_name, headline=s["headline"],
                 region_code=s["region_code"], preferred_regions=s.get("preferred", []),
                 skills=skill_objs, experience=exp_objs, education=edu_objs,

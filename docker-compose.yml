@@ -1,43 +1,64 @@
-# KerjaCerdas — Docker Compose Stack (MVP V2)
-# Usage: docker-compose up --build (requires Docker Desktop running)
+# KerjaCerdas — Docker Compose Stack (local dev)
+# Usage: docker compose up --build
+# All three services start: postgres (pgvector), backend API, frontend dev server.
+#
+# NOTE: DATABASE_URL in the api service is set explicitly here to point at the
+# local `db` container — this overrides any Supabase URL that may be in .env.
+# VITE_API_URL is set to http://localhost:8000 so the browser (outside Docker)
+# can reach the API; the frontend dev server proxies /api/* to the api container.
 
 services:
+
+  # ── PostgreSQL + pgvector ──────────────────────────────────────────────────
   db:
     image: pgvector/pgvector:pg16
     restart: always
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=kerjacerdas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kerjacerdas
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d kerjacerdas" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
+  # ── FastAPI backend ────────────────────────────────────────────────────────
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      - DEMO_MODE=true
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/kerjacerdas
     env_file:
       - .env
+    environment:
+      # Override DATABASE_URL to use the local db container (not Supabase)
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/kerjacerdas
+      DEMO_MODE: "true"
+      APP_ENV: development
     volumes:
       - ./backend:/app/backend
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: on-failure
 
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://api:8000
+      # Must be the Docker service name — Vite proxy runs inside the container
+      VITE_API_URL: http://api:8000
     volumes:
       - ./frontend/src:/app/src
     depends_on:

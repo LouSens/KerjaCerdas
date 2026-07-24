@@ -596,6 +596,7 @@ async def seed(clear: bool) -> None:
         skill_objs = [Skill(name=n, level=lv, years=yr) for (n, lv, yr) in s["skills"]]
 
         seeker = SeekerProfile(
+            id=u.id,
             user_id=u.id,
             full_name=s["full_name"],
             headline=s["headline"],

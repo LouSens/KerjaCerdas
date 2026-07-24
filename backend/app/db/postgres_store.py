@@ -59,12 +59,25 @@ class PostgresRepository(Generic[TSchema, TModel]):
         async with async_session() as session:
             # check if exists
             oid = getattr(obj, "id")
-            stmt = select(self.model).where(self.model.id == oid)
+            if hasattr(self.model, "user_id") and hasattr(obj, "user_id"):
+                user_id_val = getattr(obj, "user_id")
+                stmt = select(self.model).where(
+                    (self.model.id == oid) | (self.model.user_id == user_id_val)
+                )
+            else:
+                stmt = select(self.model).where(self.model.id == oid)
             result = await session.execute(stmt)
             existing = result.scalar_one_or_none()
 
             data = obj.model_dump()
             if existing:
+                if existing.id != oid:
+                    data["id"] = existing.id
+                    if hasattr(obj, "id"):
+                        try:
+                            obj.id = existing.id
+                        except Exception:
+                            pass
                 for k, v in data.items():
                     setattr(existing, k, v)
             else:

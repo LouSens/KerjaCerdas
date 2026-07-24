@@ -71,6 +71,37 @@ async def create_or_update_profile(
         elif isinstance(sk, Skill):
             skills.append(sk)
 
+    # Parse inline experience
+    from backend.app.db.schemas import WorkExperience, Education, VerificationStatus, EducationLevel
+    raw_exp = data.get("experience", [])
+    experience: list[WorkExperience] = []
+    for x in raw_exp:
+        if isinstance(x, dict):
+            experience.append(WorkExperience(**x))
+        elif isinstance(x, WorkExperience):
+            experience.append(x)
+
+    # Parse inline education
+    raw_edu = data.get("education", [])
+    education: list[Education] = []
+    for e in raw_edu:
+        if isinstance(e, dict):
+            raw_deg = (e.get("degree") or "S1").upper()
+            try:
+                deg = EducationLevel(raw_deg)
+            except ValueError:
+                deg = EducationLevel.S1
+            education.append(Education(
+                institution=e.get("institution", ""),
+                degree=deg,
+                major=e.get("major", ""),
+                graduation_year=int(e.get("graduation_year") or 2024),
+                ijazah_number=e.get("ijazah_number"),
+                sivil_verified=VerificationStatus(e.get("sivil_verified", "unverified")),
+            ))
+        elif isinstance(e, Education):
+            education.append(e)
+
     if existing:
         profile = existing[0]
         for field in (
@@ -85,8 +116,12 @@ async def create_or_update_profile(
         ):
             if field in data:
                 setattr(profile, field, data[field])
-        if skills:
+        if "skills" in data:
             profile.skills = skills
+        if "experience" in data:
+            profile.experience = experience
+        if "education" in data:
+            profile.education = education
     else:
         profile = SeekerProfile(
             user_id=current_user.id,
@@ -94,6 +129,8 @@ async def create_or_update_profile(
             headline=data.get("headline", ""),
             region_code=data.get("region_code", "3171"),
             skills=skills,
+            experience=experience,
+            education=education,
             resume_text=data.get("resume_text", ""),
             salary_expectation_min=data.get("salary_expectation_min", 0),
             salary_expectation_max=data.get("salary_expectation_max", 0),

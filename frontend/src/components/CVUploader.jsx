@@ -21,8 +21,37 @@ export default function CVUploader() {
         headline: profile?.headline || '',
         salary_expectation_min: profile?.salary_expectation_min || '',
         salary_expectation_max: profile?.salary_expectation_max || '',
+        experience: profile?.experience || [],
+        education: profile?.education || [],
     })
+
+    const [expForm, setExpForm] = useState({
+        company: '', title: '', start_date: '', end_date: '', description: ''
+    })
+    const [eduForm, setEduForm] = useState({
+        institution: '', degree: 'S1', major: '', graduation_year: 2024
+    })
+
     const [manualSaving, setManualSaving] = useState(false)
+
+    // Sync manualForm whenever profile changes (e.g. after upload or load)
+    useEffect(() => {
+        if (profile) {
+            setManualForm({
+                full_name: profile.full_name || '',
+                nik: profile.nik || '',
+                date_of_birth: profile.date_of_birth || '',
+                region_code: profile.region_code || '3171',
+                skillInput: '',
+                skills: (profile.skills || []).map(s => s.name || s),
+                headline: profile.headline || '',
+                salary_expectation_min: profile.salary_expectation_min || '',
+                salary_expectation_max: profile.salary_expectation_max || '',
+                experience: profile.experience || [],
+                education: profile.education || [],
+            })
+        }
+    }, [profile])
 
     const handleManualSave = async () => {
         setManualSaving(true)
@@ -36,6 +65,8 @@ export default function CVUploader() {
                 skills: manualForm.skills.map(name => ({ name, level: 'intermediate', years: 0 })),
                 salary_expectation_min: Number(manualForm.salary_expectation_min) || 0,
                 salary_expectation_max: Number(manualForm.salary_expectation_max) || 0,
+                experience: manualForm.experience,
+                education: manualForm.education,
             })
             await loadSeekerProfile()
             toast.success('Profil tersimpan!')
@@ -53,6 +84,42 @@ export default function CVUploader() {
         }
     }
     const removeSkill = (s) => setManualForm(prev => ({ ...prev, skills: prev.skills.filter(x => x !== s) }))
+
+    const addExperience = () => {
+        if (expForm.company && expForm.title) {
+            setManualForm(prev => ({
+                ...prev,
+                experience: [...prev.experience, { ...expForm }]
+            }))
+            setExpForm({ company: '', title: '', start_date: '', end_date: '', description: '' })
+        } else {
+            toast.error('Perusahaan dan posisi wajib diisi')
+        }
+    }
+    const removeExperience = (index) => {
+        setManualForm(prev => ({
+            ...prev,
+            experience: prev.experience.filter((_, i) => i !== index)
+        }))
+    }
+
+    const addEducation = () => {
+        if (eduForm.institution && eduForm.major) {
+            setManualForm(prev => ({
+                ...prev,
+                education: [...prev.education, { ...eduForm }]
+            }))
+            setEduForm({ institution: '', degree: 'S1', major: '', graduation_year: 2024 })
+        } else {
+            toast.error('Institusi dan jurusan wajib diisi')
+        }
+    }
+    const removeEducation = (index) => {
+        setManualForm(prev => ({
+            ...prev,
+            education: prev.education.filter((_, i) => i !== index)
+        }))
+    }
 
     // If user already has a seekerId (from a previous CV upload), reload their
     // profile from the backend so we always show fresh stats.
@@ -170,12 +237,85 @@ export default function CVUploader() {
                                     placeholder="Contoh: 25000000" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                             </div>
                         </div>
+
+                        {/* ── Experience Section ── */}
+                        <div style={{ borderTop: `2px solid ${KC.ink}`, paddingTop: 20, marginTop: 10 }}>
+                            <h3 style={{ fontSize: 16, fontWeight: 900, margin: '0 0 12px' }}>Pengalaman Kerja ({manualForm.experience.length})</h3>
+                            
+                            {/* Experience List */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15 }}>
+                                {manualForm.experience.map((exp, index) => (
+                                    <div key={index} style={{ padding: 12, background: KC.bone, border: `2px solid ${KC.ink}`, borderRadius: 10, position: 'relative' }}>
+                                        <button onClick={() => removeExperience(index)} style={{ position: 'absolute', top: 8, right: 8, background: KC.orangeSoft, border: `1.5px solid ${KC.ink}`, borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 800 }}>Hapus</button>
+                                        <div style={{ fontWeight: 800, fontSize: 14 }}>{exp.title}</div>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: KC.mute }}>{exp.company} · {exp.start_date} s/d {exp.end_date || 'Sekarang'}</div>
+                                        {exp.description && <div style={{ fontSize: 11, marginTop: 4 }}>{exp.description}</div>}
+                                    </div>
+                                ))}
+                                {manualForm.experience.length === 0 && <span style={{ fontSize: 12, color: KC.mute, fontWeight: 600 }}>Belum ada pengalaman kerja</span>}
+                            </div>
+
+                            {/* Add Experience Form */}
+                            <div style={{ background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ fontWeight: 900, fontSize: 12 }}>+ Tambah Pengalaman Baru</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                    <input value={expForm.company} onChange={e => setExpForm(p => ({ ...p, company: e.target.value }))} placeholder="Nama Perusahaan" style={miniInput} />
+                                    <input value={expForm.title} onChange={e => setExpForm(p => ({ ...p, title: e.target.value }))} placeholder="Posisi / Jabatan" style={miniInput} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                    <div>
+                                        <span style={{ fontSize: 9, fontWeight: 900, color: KC.mute, display: 'block', marginBottom: 2 }}>Mulai (YYYY-MM)</span>
+                                        <input value={expForm.start_date} onChange={e => setExpForm(p => ({ ...p, start_date: e.target.value }))} placeholder="Contoh: 2022-01" style={miniInput} />
+                                    </div>
+                                    <div>
+                                        <span style={{ fontSize: 9, fontWeight: 900, color: KC.mute, display: 'block', marginBottom: 2 }}>Selesai (YYYY-MM atau kosong)</span>
+                                        <input value={expForm.end_date} onChange={e => setExpForm(p => ({ ...p, end_date: e.target.value }))} placeholder="Contoh: 2023-05" style={miniInput} />
+                                    </div>
+                                </div>
+                                <input value={expForm.description} onChange={e => setExpForm(p => ({ ...p, description: e.target.value }))} placeholder="Deskripsi singkat pencapaian / tugas..." style={miniInput} />
+                                <button onClick={addExperience} style={miniBtn(KC.cyan)}>Tambah Pengalaman</button>
+                            </div>
+                        </div>
+
+                        {/* ── Education Section ── */}
+                        <div style={{ borderTop: `2px solid ${KC.ink}`, paddingTop: 20, marginTop: 10 }}>
+                            <h3 style={{ fontSize: 16, fontWeight: 900, margin: '0 0 12px' }}>Riwayat Pendidikan ({manualForm.education.length})</h3>
+
+                            {/* Education List */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15 }}>
+                                {manualForm.education.map((edu, index) => (
+                                    <div key={index} style={{ padding: 12, background: KC.bone, border: `2px solid ${KC.ink}`, borderRadius: 10, position: 'relative' }}>
+                                        <button onClick={() => removeEducation(index)} style={{ position: 'absolute', top: 8, right: 8, background: KC.orangeSoft, border: `1.5px solid ${KC.ink}`, borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 800 }}>Hapus</button>
+                                        <div style={{ fontWeight: 800, fontSize: 14 }}>{edu.degree} {edu.major}</div>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: KC.mute }}>{edu.institution} · Lulus {edu.graduation_year}</div>
+                                    </div>
+                                ))}
+                                {manualForm.education.length === 0 && <span style={{ fontSize: 12, color: KC.mute, fontWeight: 600 }}>Belum ada riwayat pendidikan</span>}
+                            </div>
+
+                            {/* Add Education Form */}
+                            <div style={{ background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ fontWeight: 900, fontSize: 12 }}>+ Tambah Pendidikan Baru</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                    <input value={eduForm.institution} onChange={e => setEduForm(p => ({ ...p, institution: e.target.value }))} placeholder="Nama Sekolah / Universitas" style={miniInput} />
+                                    <input value={eduForm.major} onChange={e => setEduForm(p => ({ ...p, major: e.target.value }))} placeholder="Jurusan" style={miniInput} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                    <select value={eduForm.degree} onChange={e => setEduForm(p => ({ ...p, degree: e.target.value }))} style={miniInput}>
+                                        {['SMA', 'D3', 'D4', 'S1', 'S2', 'S3'].map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                    <input type="number" value={eduForm.graduation_year} onChange={e => setEduForm(p => ({ ...p, graduation_year: Number(e.target.value) || 2024 }))} placeholder="Tahun Kelulusan" style={miniInput} />
+                                </div>
+                                <button onClick={addEducation} style={miniBtn(KC.cyan)}>Tambah Pendidikan</button>
+                            </div>
+                        </div>
+
                         <button onClick={handleManualSave} disabled={manualSaving} style={{
                             padding: '14px 20px', background: KC.orange, color: '#fff',
                             border: `2px solid ${KC.ink}`, borderRadius: 12, fontWeight: 900,
                             fontSize: 15, cursor: manualSaving ? 'wait' : 'pointer',
                             boxShadow: `4px 4px 0 ${KC.ink}`, opacity: manualSaving ? 0.7 : 1,
-                            fontFamily: 'inherit', alignSelf: 'flex-start',
+                            fontFamily: 'inherit', alignSelf: 'flex-start', marginTop: 10
                         }}>
                             {manualSaving ? 'Menyimpan…' : 'Simpan Profil →'}
                         </button>
@@ -340,3 +480,14 @@ function Mini({ label, value }) {
         </div>
     )
 }
+
+const miniInput = {
+    padding: '8px 12px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+    borderRadius: 8, fontSize: 12, fontWeight: 600, width: '100%',
+    boxSizing: 'border-box', fontFamily: 'inherit'
+}
+const miniBtn = (bg) => ({
+    padding: '8px 14px', background: bg, border: `2px solid ${KC.ink}`,
+    borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 12,
+    fontFamily: 'inherit', boxShadow: `2px 2px 0 ${KC.ink}`, alignSelf: 'flex-start'
+})
