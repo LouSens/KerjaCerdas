@@ -67,7 +67,20 @@ class PostgresRepository(Generic[TSchema, TModel]):
             else:
                 stmt = select(self.model).where(self.model.id == oid)
             result = await session.execute(stmt)
-            existing = result.scalar_one_or_none()
+            rows = result.scalars().all()
+            if len(rows) <= 1:
+                existing = rows[0] if rows else None
+            else:
+                # Multiple matches (e.g. legacy rows sharing a user_id):
+                # prefer the exact id match, otherwise the most recently
+                # updated row, instead of crashing with MultipleResultsFound.
+                existing = next((r for r in rows if r.id == oid), None)
+                if existing is None:
+                    def _recency(r):
+                        ts = getattr(r, "updated_at", None) or getattr(r, "created_at", None)
+                        return (ts is not None, ts, r.id)
+
+                    existing = max(rows, key=_recency)
 
             data = obj.model_dump()
             if existing:

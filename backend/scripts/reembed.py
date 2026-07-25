@@ -46,8 +46,8 @@ async def reembed(force_all: bool = False) -> None:
     )
 
     async def _persist(model, row_id: str, embedding, embedding_model: str) -> None:
-        # Targeted by-PK update: avoids the store's id-OR-user_id upsert lookup,
-        # which breaks on legacy rows sharing a user_id.
+        # Targeted by-PK update: only touches the embedding columns, avoiding a
+        # full-row upsert round-trip per record.
         async with async_session() as session:
             await session.execute(
                 update(model)
