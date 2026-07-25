@@ -100,23 +100,26 @@ export default function FloatingAdvisor() {
 const parseInline = (text) => {
     if (!text) return '';
     // Handle bold markdown '**'
+    // NOTE: every element rendered here MUST have a key unique across the
+    // whole returned array. Flattening segments with per-segment indexes
+    // produced duplicate React keys, which made React duplicate DOM text on
+    // every re-render (one extra copy per keystroke in the input box).
     const parts = text.split('**');
-    return parts.flatMap((part, i) => {
+    return parts.map((part, i) => {
         const isBold = i % 2 === 1;
         // Inside bold/normal text, handle italics '*'
-        const subParts = part.split('*');
-        const renderedSubParts = subParts.map((subPart, j) => {
+        const renderedSubParts = part.split('*').map((subPart, j) => {
             const isItalic = j % 2 === 1;
             if (isItalic) {
-                return <em key={j} className="italic not-italic font-medium text-kc-orange">{subPart}</em>;
+                return <em key={`${i}-${j}`} className="not-italic font-medium text-kc-orange">{subPart}</em>;
             }
-            return subPart;
+            return <span key={`${i}-${j}`}>{subPart}</span>;
         });
 
         if (isBold) {
             return <strong key={i} className="font-extrabold text-kc-dark">{renderedSubParts}</strong>;
         }
-        return renderedSubParts;
+        return <span key={i}>{renderedSubParts}</span>;
     });
 };
 
