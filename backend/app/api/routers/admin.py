@@ -51,3 +51,46 @@ async def trigger_seed(token: str, background_tasks: BackgroundTasks) -> dict:
 async def seed_status() -> dict:
     """Check whether the background seed is still running."""
     return {"running": _seed_running}
+
+
+_reembed_state: dict = {"running": False, "done": False, "error": None}
+
+
+async def _run_reembed() -> None:
+    try:
+        from backend.scripts.reembed import reembed
+
+        await reembed(force_all=False)
+        _reembed_state["done"] = True
+    except Exception as exc:  # noqa: BLE001 — surfaced via status endpoint
+        _reembed_state["error"] = str(exc)
+    finally:
+        _reembed_state["running"] = False
+
+
+@router.get("/reembed")
+async def trigger_reembed(token: str, background_tasks: BackgroundTasks) -> dict:
+    """Re-embed rows whose vectors were made by a stale embedding model.
+
+    Browser: /api/v1/admin/reembed?token=YOUR_PASSWORD
+    Poll /api/v1/admin/reembed/status to check progress.
+    """
+    expected = os.environ.get("SEED_DEFAULT_PASSWORD", "")
+    if not expected or token != expected:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    if _reembed_state["running"]:
+        return {"status": "running", "message": "Re-embed already in progress"}
+
+    _reembed_state.update({"running": True, "done": False, "error": None})
+    background_tasks.add_task(_run_reembed)
+    return {
+        "status": "started",
+        "message": "Re-embedding started — check /api/v1/admin/reembed/status",
+    }
+
+
+@router.get("/reembed/status")
+async def reembed_status() -> dict:
+    """Check re-embed progress; error is set if the run failed."""
+    return dict(_reembed_state)
