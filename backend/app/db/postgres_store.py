@@ -14,6 +14,7 @@ from backend.app.db.models import (
     GamificationStats,
     JobPosting,
     MatchBundle,
+    QueryEmbedding,
     SeekerProfile,
     SkillGapResult,
     User,
@@ -253,6 +254,52 @@ async def list_seekers_missing_embedding(embedding_model: str) -> list[SeekerSch
                 data["embedding"] = list(data["embedding"])
             out.append(SeekerSchema.model_validate(data))
         return out
+
+
+# ── Query-embedding persistent cache ─────────────────────────────────────────
+# DB tier of the matcher's query-embedding cache (see matcher._embed_query_cached).
+# Both helpers are failure-safe: a DB hiccup degrades to a cache miss / skipped
+# write, never a failed match request.
+
+_QUERY_EMBED_TABLE_MAX = 5000
+
+
+async def get_query_embedding(cache_key: str) -> list[float] | None:
+    """Fetch a persisted query embedding by its cache key, or None on miss/error."""
+    try:
+        async with async_session() as session:
+            row = await session.get(QueryEmbedding, cache_key)
+            if row is None or not isinstance(row.embedding, list):
+                return None
+            return [float(x) for x in row.embedding]
+    except Exception as exc:
+        _ann_logger.warning("get_query_embedding failed (%s) — treating as cache miss", exc)
+        return None
+
+
+async def save_query_embedding(cache_key: str, model: str, embedding: list[float]) -> None:
+    """Persist a query embedding (idempotent), pruning oldest rows past the cap."""
+    try:
+        async with async_session() as session:
+            existing = await session.get(QueryEmbedding, cache_key)
+            if existing is None:
+                session.add(
+                    QueryEmbedding(cache_key=cache_key, model=model, embedding=embedding)
+                )
+            # Keep the table bounded: drop the oldest rows beyond the cap.
+            prune_ids = (
+                select(QueryEmbedding.cache_key)
+                .order_by(QueryEmbedding.created_at.desc())
+                .offset(_QUERY_EMBED_TABLE_MAX)
+            )
+            rows = (await session.execute(prune_ids)).scalars().all()
+            for key in rows:
+                old = await session.get(QueryEmbedding, key)
+                if old is not None:
+                    await session.delete(old)
+            await session.commit()
+    except Exception as exc:
+        _ann_logger.warning("save_query_embedding failed (%s) — skipping persist", exc)
 
 
 class Repositories:

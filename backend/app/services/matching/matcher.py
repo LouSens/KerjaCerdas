@@ -210,14 +210,27 @@ class SemanticMatcher:
         self._w: dict | None = None
 
     async def _embed_query_cached(self, text: str) -> list[float]:
-        """Embed query text with an LRU cache. Only successful embeds are
-        cached; failures propagate so callers keep their degrade path."""
-        key = _query_cache_key(getattr(self.embedder, "model", ""), text)
+        """Embed query text with a two-tier cache: in-process LRU, then a small
+        Postgres table (survives restarts, shared across instances). Only
+        successful embeds are cached; failures propagate so callers keep their
+        degrade path. DB tier errors degrade to a miss, never a failure."""
+        from backend.app.db import postgres_store as store
+
+        model = getattr(self.embedder, "model", "")
+        key = _query_cache_key(model, text)
         cached = _query_cache.get(key)
         if cached is not None:
             _query_cache.move_to_end(key)
             return cached
+        persisted = await store.get_query_embedding(key)
+        if persisted:
+            _query_cache[key] = persisted
+            _query_cache.move_to_end(key)
+            while len(_query_cache) > _QUERY_CACHE_MAX:
+                _query_cache.popitem(last=False)
+            return persisted
         vec = await self.embedder.embed(text, task_type="RETRIEVAL_QUERY")
+        await store.save_query_embedding(key, model, vec)
         _query_cache[key] = vec
         _query_cache.move_to_end(key)
         while len(_query_cache) > _QUERY_CACHE_MAX:

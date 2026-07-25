@@ -206,6 +206,25 @@ class GamificationStats(Base, TimestampedMixin):
     quests_completed: Mapped[list[Any]] = mapped_column(JSON, default=list)
 
 
+class QueryEmbedding(Base):
+    """Persistent tier of the matcher's query-embedding cache.
+
+    Keyed by sha256(model + query text) — identical to the in-process LRU key —
+    so invalidation stays automatic: any profile/job text edit or model switch
+    produces a new key. Survives restarts and is shared across instances, so
+    the first match after a deploy still skips the Gemini embed call.
+    The vector is stored as JSON (not pgvector) because it is only ever fetched
+    by exact key, never similarity-searched.
+    """
+
+    __tablename__ = "query_embeddings"
+
+    cache_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    embedding: Mapped[list[Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
 class Event(Base):
     """Analytics event table — foundation of the feedback loop data moat.
 
