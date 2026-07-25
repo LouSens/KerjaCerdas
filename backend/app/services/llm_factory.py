@@ -19,13 +19,71 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 
-from langchain_core.runnables import Runnable
+from langchain_core.runnables import Runnable, RunnableLambda
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from backend.app.config.settings import settings
 
 logger = logging.getLogger(__name__)
+
+
+class LLMBusyError(RuntimeError):
+    """All chat models are unavailable (throttled/failing); callers should degrade gracefully."""
+
+
+# --- Circuit breaker -------------------------------------------------------
+# When the whole fallback chain fails, hitting every model again on the very
+# next request only burns more RPM. Trip a short breaker so subsequent calls
+# fail fast (LLMBusyError) without any network calls until the cooldown ends.
+_BREAKER_COOLDOWN_S = 30.0
+_breaker_open_until = 0.0
+
+
+def _breaker_remaining() -> float:
+    return _breaker_open_until - time.monotonic()
+
+
+def _trip_breaker() -> None:
+    global _breaker_open_until
+    _breaker_open_until = time.monotonic() + _BREAKER_COOLDOWN_S
+    logger.warning("LLM circuit breaker tripped — failing fast for %.0fs", _BREAKER_COOLDOWN_S)
+
+
+def reset_breaker() -> None:
+    """Test hook / manual reset."""
+    global _breaker_open_until
+    _breaker_open_until = 0.0
+
+
+def _is_availability_error(exc: BaseException) -> bool:
+    """True for throttling / transient provider outages (429, 5xx, timeouts)."""
+    seen: set[int] = set()
+    cur: BaseException | None = exc
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        text = str(cur).lower()
+        if any(
+            marker in text
+            for marker in (
+                "429",
+                "resource_exhausted",
+                "quota",
+                "rate limit",
+                "503",
+                "unavailable",
+                "500",
+                "internal",
+                "timeout",
+                "timed out",
+                "deadline",
+                "connection",
+            )
+        ):
+            return True
+        cur = cur.__cause__ or cur.__context__
+    return False
 
 
 def resolve_gemini_key() -> str:
@@ -66,6 +124,40 @@ def build_chat_llm(temperature: float = 0.4, **kwargs) -> Runnable:
         )
         for m in chat_model_chain()
     ]
-    if len(llms) == 1:
-        return llms[0]
-    return llms[0].with_fallbacks(llms[1:])
+    chain: Runnable = llms[0] if len(llms) == 1 else llms[0].with_fallbacks(llms[1:])
+
+    def _check_breaker() -> None:
+        remaining = _breaker_remaining()
+        if remaining > 0:
+            raise LLMBusyError(f"LLM circuit breaker open for another {remaining:.0f}s")
+
+    def _handle_failure(exc: Exception) -> None:
+        # Only availability-class failures (429/5xx/timeouts) open the breaker;
+        # persistent misconfiguration (auth, bad request) should not be masked
+        # as "busy" for repeated 30s windows. Either way the caller gets
+        # LLMBusyError so the API degrades instead of crashing.
+        if _is_availability_error(exc):
+            _trip_breaker()
+        raise LLMBusyError("All chat models failed") from exc
+
+    def _guarded_invoke(value, config=None):
+        _check_breaker()
+        try:
+            # Breaker closes by cooldown expiry only — success never resets it,
+            # so a slow success can't race a concurrent failure's trip.
+            return chain.invoke(value, config=config)
+        except LLMBusyError:
+            raise
+        except Exception as exc:
+            _handle_failure(exc)
+
+    async def _guarded_ainvoke(value, config=None):
+        _check_breaker()
+        try:
+            return await chain.ainvoke(value, config=config)
+        except LLMBusyError:
+            raise
+        except Exception as exc:
+            _handle_failure(exc)
+
+    return RunnableLambda(_guarded_invoke, afunc=_guarded_ainvoke)

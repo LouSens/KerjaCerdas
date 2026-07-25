@@ -57,8 +57,10 @@ class _FakeGeminiLLM(Runnable):
 
 @pytest.fixture
 def fake_gemini():
+    llm_factory.reset_breaker()
     with patch.object(llm_factory, "ChatGoogleGenerativeAI", _FakeGeminiLLM):
         yield _FakeGeminiLLM
+    llm_factory.reset_breaker()
 
 
 CHAIN = chat_model_chain()
@@ -100,13 +102,36 @@ async def test_first_two_throttled_last_resort_answers(fake_gemini):
 
 
 @pytest.mark.asyncio
-async def test_all_three_throttled_raises_in_chain_order(fake_gemini):
+async def test_all_three_throttled_raises_llm_busy(fake_gemini):
+    from backend.app.services.llm_factory import LLMBusyError
+
     fake_gemini.reset(throttled=set(CHAIN))
     llm = build_chat_llm()
-    with pytest.raises(_ThrottledError):
+    with pytest.raises(LLMBusyError):
         await llm.ainvoke("hi")
     # Every model in the chain was attempted, in order, before giving up.
     assert fake_gemini.call_log == CHAIN
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_fails_fast_after_total_failure(fake_gemini):
+    """Second call while the breaker is open must NOT hit any model."""
+    from backend.app.services.llm_factory import LLMBusyError
+
+    fake_gemini.reset(throttled=set(CHAIN))
+    llm = build_chat_llm()
+    with pytest.raises(LLMBusyError):
+        await llm.ainvoke("hi")
+    assert fake_gemini.call_log == CHAIN  # first call burned the whole chain
+
+    fake_gemini.reset(throttled=set())  # models healthy again, but breaker open
+    with pytest.raises(LLMBusyError):
+        await llm.ainvoke("hi")
+    assert fake_gemini.call_log == []  # zero network calls while breaker open
+
+    llm_factory.reset_breaker()
+    out = await llm.ainvoke("hi")  # cooldown over → normal service resumes
+    assert out.content == f"answer-from-{CHAIN[0]}"
 
 
 # ---------------------------------------------------------------------------

@@ -304,9 +304,20 @@ async def invoke_agent(
         "configurable": {"thread_id": req.session_id or seeker.id},
         "recursion_limit": 10,
     }
+    from backend.app.services.llm_factory import LLMBusyError
+
     try:
         out = await app_graph.ainvoke(state_in, config=config)
         final_response = content_to_text(out["messages"][-1].content)
+    except LLMBusyError:
+        # All chat models throttled/failing (or circuit breaker open).
+        # Degrade gracefully: return the deterministic matches we already have.
+        logger.warning("llm_busy seeker=%s — returning matches without LLM narrative", seeker.id)
+        out = {}
+        final_response = (
+            "Berikut lowongan yang paling cocok dengan profilmu. "
+            "Asisten AI sedang sibuk, jadi penjelasan detail belum tersedia — coba lagi sebentar lagi."
+        )
     except GraphRecursionError:
         # Agent ran out of steps (e.g. tool loop under LLM throttling).
         # Degrade gracefully: return the deterministic matches we already have.
