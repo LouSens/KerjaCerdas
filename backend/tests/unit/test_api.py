@@ -5,6 +5,7 @@ Tests for FastAPI endpoints in demo mode.
 
 ANTIGRAVITY PROTOCOL: All API changes require test updates.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -93,7 +94,7 @@ class TestSkillGapEndpoint:
                 "region_code": "3171",
             },
             "user_message": "Apa skill gap saya untuk job ini?",
-            "target_job_id": "job-1", # Assume job-1 requires Docker
+            "target_job_id": "job-1",  # Assume job-1 requires Docker
         }
         response = client.post("/api/v1/agent/invoke", json=payload)
         assert response.status_code == 200
@@ -102,7 +103,7 @@ class TestSkillGapEndpoint:
         assert "matching_skills" in data
 
     def test_skill_gap_severity_levels(self, client: TestClient) -> None:
-        pass # Severity level logic is deprecated in the new agent endpoint
+        pass  # Severity level logic is deprecated in the new agent endpoint
 
 
 class TestJobsEndpoint:
@@ -153,7 +154,9 @@ class TestIdentityVerificationEndpoint:
         assert data["verification_hash"]
         assert data["pii_redacted"] is True
 
-    def test_verify_identity_returns_failed_for_simulated_invalid_nik(self, client: TestClient) -> None:
+    def test_verify_identity_returns_failed_for_simulated_invalid_nik(
+        self, client: TestClient
+    ) -> None:
         """NIKs starting with 99 should fail in demo mode."""
         payload = {
             "nik": "9911123412341234",
@@ -205,12 +208,17 @@ class TestStartupConfiguration:
         async with app.router.lifespan_context(app):
             pass
 
-        assert calls[0] == ("reconfigure", "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas")
+        assert calls[0] == (
+            "reconfigure",
+            "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas",
+        )
         assert calls[1] == ("init_db", "")
         assert calls[2] == ("configure_auth", "configured-secret")
 
     @pytest.mark.asyncio
-    async def test_lifespan_honors_explicit_dev_database_url(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_lifespan_honors_explicit_dev_database_url(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Development startup should honor custom DB URLs instead of forcing SQLite."""
         calls: list[tuple[str, str]] = []
 
@@ -266,8 +274,11 @@ class TestStartupConfiguration:
         assert captured["secret_key"]
 
     @pytest.mark.asyncio
-    async def test_lifespan_requires_secret_in_production(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_lifespan_requires_secret_in_production(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Production startup should fail fast without a configured JWT secret."""
+
         def fake_reconfigure(database_url: str) -> None:
             return None
 
@@ -282,8 +293,3 @@ class TestStartupConfiguration:
         with pytest.raises(RuntimeError, match="JWT_SECRET_KEY must be set"):
             async with app.router.lifespan_context(app):
                 pass
-
-
-
-
-

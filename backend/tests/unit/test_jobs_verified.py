@@ -1,4 +1,5 @@
 """Unit 4 — verified-listing trust flag (pure helper, DB-free)."""
+
 from __future__ import annotations
 
 from backend.app.api.routers.jobs import _is_employer_verified as _is_verified

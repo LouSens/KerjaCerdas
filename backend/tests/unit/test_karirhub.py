@@ -3,6 +3,7 @@
 Imports only the lightweight karirhub router (not the full app) so the suite
 runs without the heavy AI stack or a live database.
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

@@ -9,6 +9,7 @@ Unit tests covering:
 
 ANTIGRAVITY PROTOCOL: All API changes require test updates.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -27,6 +28,7 @@ from backend.app.api.schemas.auth import UserLoginRequest, UserRegisterRequest
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _make_register_payload(**overrides) -> dict:
     base = {
         "email": "test@example.com",
@@ -41,6 +43,7 @@ def _make_register_payload(**overrides) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Input Sanitization
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestInputSanitization:
     """Tests for backend.app.api.middleware.sanitization"""
@@ -133,6 +136,7 @@ class TestInputSanitization:
 # 2. Auth Schema Validation
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestAuthSchemaValidation:
     """Tests for UserRegisterRequest and UserLoginRequest Pydantic models."""
 
@@ -142,31 +146,37 @@ class TestAuthSchemaValidation:
 
     def test_invalid_email_raises(self) -> None:
         import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             UserRegisterRequest(**_make_register_payload(email="not-an-email"))
 
     def test_password_too_short_raises(self) -> None:
         import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             UserRegisterRequest(**_make_register_payload(password="Ab1"))
 
     def test_password_missing_uppercase_raises(self) -> None:
         import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             UserRegisterRequest(**_make_register_payload(password="securepass1"))
 
     def test_password_missing_digit_raises(self) -> None:
         import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             UserRegisterRequest(**_make_register_payload(password="SecurePass"))
 
     def test_invalid_role_raises(self) -> None:
         import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             UserRegisterRequest(**_make_register_payload(role="admin"))
 
     def test_name_too_short_raises(self) -> None:
         import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             UserRegisterRequest(**_make_register_payload(name="A"))
 
@@ -184,6 +194,7 @@ class TestAuthSchemaValidation:
 
     def test_login_rejects_oversized_password(self) -> None:
         import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             UserLoginRequest(email="user@test.com", password="A" * 200)
 
@@ -191,6 +202,7 @@ class TestAuthSchemaValidation:
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. Rate Limiting Middleware
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestRateLimiter:
     """Tests for RateLimiterMiddleware using the real ASGI middleware stack."""
@@ -205,6 +217,7 @@ class TestRateLimiter:
             patch("backend.app.api.main.settings.jwt_secret_key", "test-secret"),
         ):
             from backend.app.api.main import app
+
             return TestClient(app, raise_server_exceptions=False)
 
     def test_health_check_passes_under_limit(self, client: TestClient) -> None:
@@ -225,6 +238,7 @@ class TestRateLimiter:
         # When the app 500s (patched lifespan), the headers may be absent.
         # So we just check the middleware limit configuration directly.
         from backend.app.api.middleware.rate_limiter import _ROUTE_LIMITS
+
         limit, window = _ROUTE_LIMITS["/api/v1/auth/login"]
         assert limit == 10
         assert window == 60
@@ -265,23 +279,23 @@ class TestRateLimiter:
             _ROUTE_LIMITS.update(original)
 
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. JWT Authentication Flow
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestJWTAuth:
     """Tests for the JWT decode/encode cycle and dependency guards."""
 
     def setup_method(self) -> None:
         from backend.app.api.services.auth_service import configure
+
         configure(secret_key="unit-test-secret", expire_minutes=30)
 
     def test_create_and_decode_token(self) -> None:
         from backend.app.api.services.auth_service import create_access_token, decode_access_token
-        token = create_access_token(
-            user_id="user-123", role="seeker", name="Budi"
-        )
+
+        token = create_access_token(user_id="user-123", role="seeker", name="Budi")
         payload = decode_access_token(token)
         assert payload is not None
         assert payload["sub"] == "user-123"
@@ -292,6 +306,7 @@ class TestJWTAuth:
         import datetime
 
         import jwt
+
         payload = {
             "sub": "user-123",
             "role": "seeker",
@@ -300,22 +315,26 @@ class TestJWTAuth:
         expired_token = jwt.encode(payload, "unit-test-secret", algorithm="HS256")
 
         from backend.app.api.services.auth_service import decode_access_token
+
         result = decode_access_token(expired_token)
         assert result is None
 
     def test_invalid_signature_returns_none(self) -> None:
         """Token signed with wrong key should return None."""
         import jwt
+
         payload = {"sub": "user-123", "role": "seeker"}
         bad_token = jwt.encode(payload, "wrong-secret", algorithm="HS256")
 
         from backend.app.api.services.auth_service import decode_access_token
+
         result = decode_access_token(bad_token)
         assert result is None
 
     def test_tampered_token_returns_none(self) -> None:
         """Mutating the token payload should make it invalid."""
         from backend.app.api.services.auth_service import create_access_token, decode_access_token
+
         token = create_access_token("u1", "seeker", "Name")
         # Flip a character in the signature part
         parts = token.split(".")
@@ -324,6 +343,7 @@ class TestJWTAuth:
 
     def test_password_hash_and_verify(self) -> None:
         from backend.app.api.services.auth_service import hash_password, verify_password
+
         plain = "MySecret1"
         hashed = hash_password(plain)
         assert hashed != plain
@@ -331,6 +351,7 @@ class TestJWTAuth:
 
     def test_wrong_password_does_not_verify(self) -> None:
         from backend.app.api.services.auth_service import hash_password, verify_password
+
         hashed = hash_password("CorrectHorse1")
         assert not verify_password("WrongPassword1", hashed)
 
@@ -339,28 +360,39 @@ class TestJWTAuth:
 # 5. Seed Auth Utils — hardened credential seeding
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestSeedAuthUtils:
     """Tests for backend.scripts.auth_utils — no hardcoded credentials."""
 
-    def test_get_seed_password_hash_raises_when_env_unset(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_seed_password_hash_raises_when_env_unset(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """_get_seed_password_hash must raise RuntimeError when env var is absent."""
         monkeypatch.delenv("SEED_DEFAULT_PASSWORD", raising=False)
         from backend.scripts import auth_utils
+
         with pytest.raises(RuntimeError, match="SEED_DEFAULT_PASSWORD"):
             auth_utils._get_seed_password_hash()
 
-    def test_get_seed_password_hash_raises_when_env_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_seed_password_hash_raises_when_env_empty(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """An empty string env var must also be rejected."""
         monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "   ")
         from backend.scripts import auth_utils
+
         with pytest.raises(RuntimeError, match="SEED_DEFAULT_PASSWORD"):
             auth_utils._get_seed_password_hash()
 
-    def test_get_seed_password_hash_returns_valid_bcrypt(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_seed_password_hash_returns_valid_bcrypt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A set env var must produce a valid bcrypt hash that verifies correctly."""
         import bcrypt
+
         monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "TestSeedPass1!")
         from backend.scripts import auth_utils
+
         hashed = auth_utils._get_seed_password_hash()
         assert hashed.startswith("$2b$")
         assert bcrypt.checkpw(b"TestSeedPass1!", hashed.encode())
@@ -370,6 +402,7 @@ class TestSeedAuthUtils:
         import inspect
 
         from backend.scripts import auth_utils
+
         src = inspect.getsource(auth_utils)
         assert "$2b$12$demoDemoDemoDemoDemoDe" not in src
         assert "$2b$12$mgn8EsuPZveDhiTXdBaxNO" not in src
@@ -379,11 +412,14 @@ class TestSeedAuthUtils:
         import inspect
 
         from backend.scripts import seed_all
+
         src = inspect.getsource(seed_all)
         assert "$2b$12$" not in src
 
     @pytest.mark.asyncio
-    async def test_seed_auth_user_new_user_sets_password(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_seed_auth_user_new_user_sets_password(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """seed_auth_user creates a new user with a hashed password from env var."""
         from unittest.mock import patch
 
@@ -421,6 +457,7 @@ class TestSeedAuthUtils:
 
         with patch("backend.scripts.auth_utils.async_session_factory", new=fake_session_factory):
             from backend.scripts.auth_utils import seed_auth_user
+
             result = await seed_auth_user("new@example.com", "New User", "seeker")
 
         assert mock_user is not None
@@ -466,6 +503,7 @@ class TestSeedAuthUtils:
 
         with patch("backend.scripts.auth_utils.async_session_factory", new=fake_session_factory):
             from backend.scripts.auth_utils import seed_auth_user
+
             result = await seed_auth_user("existing@example.com", "Existing User", "employer")
 
         # Role updated, password left intact

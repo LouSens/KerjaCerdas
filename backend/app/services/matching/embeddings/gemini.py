@@ -139,29 +139,33 @@ class GeminiEmbedder:
             )
             return [list(e.values) for e in resp.embeddings]
 
-        # Bounded retry with backoff on quota/transient errors. Never silently
-        # degrade to hash vectors — raise so callers leave rows unembedded.
+        # Bounded retry with backoff, but ONLY for quota errors. Non-quota
+        # errors raise immediately. Query-time embeds get a single quick retry
+        # so user-facing ranking degrades fast instead of stalling for ~17s.
+        # Never silently degrade to hash vectors — raise so callers leave rows
+        # unembedded (documents) or rank without semantics (queries).
+        max_attempts = 2 if task_type == "RETRIEVAL_QUERY" else _MAX_ATTEMPTS
         last_exc: Exception | None = None
-        for attempt in range(_MAX_ATTEMPTS):
+        for attempt in range(max_attempts):
             try:
                 return await asyncio.to_thread(_sync)
             except Exception as exc:
                 last_exc = exc
-                if attempt < _MAX_ATTEMPTS - 1:
+                if not _is_quota_error(exc):
+                    logger.error("Gemini embed failed (non-quota): %s", exc)
+                    raise EmbeddingUnavailableError(str(exc)) from exc
+                if attempt < max_attempts - 1:
                     wait = _BACKOFF_S[min(attempt, len(_BACKOFF_S) - 1)]
-                    level = logging.INFO if _is_quota_error(exc) else logging.WARNING
-                    logger.log(
-                        level,
-                        "Gemini embed attempt %d/%d failed (%s) — retrying in %.0fs",
+                    logger.info(
+                        "Gemini embed quota-limited, attempt %d/%d — retrying in %.0fs",
                         attempt + 1,
-                        _MAX_ATTEMPTS,
-                        exc,
+                        max_attempts,
                         wait,
                     )
                     await asyncio.sleep(wait)
         logger.error(
             "Gemini embed FAILED after %d attempts (%s) — refusing to store junk vectors",
-            _MAX_ATTEMPTS,
+            max_attempts,
             last_exc,
         )
         raise EmbeddingUnavailableError(str(last_exc)) from last_exc

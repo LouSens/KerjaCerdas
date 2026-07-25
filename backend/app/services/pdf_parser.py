@@ -253,7 +253,8 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
                         response_mime_type="application/json",
                         temperature=settings.parser_temperature,
                         http_options=types.HttpOptions(
-                            retry_options=types.HttpRetryOptions(attempts=1)
+                            timeout=30_000,  # ms — cap each model attempt
+                            retry_options=types.HttpRetryOptions(attempts=1),
                         ),
                     ),
                 )

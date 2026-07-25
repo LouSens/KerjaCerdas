@@ -4,6 +4,7 @@ Verifies that the recruiter shortlist is grouped into Strong/Possible/Stretch
 instead of a finalized ranking, and that ordering inside a band is stable per
 job but does not leak a false hierarchy.
 """
+
 from __future__ import annotations
 
 import pytest

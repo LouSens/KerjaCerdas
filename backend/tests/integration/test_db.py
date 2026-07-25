@@ -30,6 +30,7 @@ async def setup_database():
     yield
     await test_engine.dispose()
 
+
 async def test_create_and_fetch_user():
     """Test that we can insert and retrieve a user using the database."""
     async with async_session_factory() as session:

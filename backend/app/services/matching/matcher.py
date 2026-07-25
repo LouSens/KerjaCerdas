@@ -274,7 +274,10 @@ class SemanticMatcher:
             if not j.is_active:
                 continue
 
-            cos = cosine(query_vec, j.embedding or [])
+            # Vectors from a different embedding model are incompatible with the
+            # query vector — treat those rows as unembedded (cosine=0).
+            job_vec = j.embedding if j.embedding_model == settings.gemini_embed_model else []
+            cos = cosine(query_vec, job_vec or [])
             skill = _skill_overlap(seeker_skill_names, j.required_skills)
 
             s_lower = {x.lower() for x in seeker_skill_names}
@@ -388,7 +391,9 @@ class SemanticMatcher:
             query_vec = []
         scored: list[dict] = []
         for s in seekers:
-            cos = cosine(query_vec, s.embedding or [])
+            # Skip cross-model vectors — cosine across models is meaningless.
+            seeker_vec = s.embedding if s.embedding_model == settings.gemini_embed_model else []
+            cos = cosine(query_vec, seeker_vec or [])
             skill = _skill_overlap([sk.name for sk in s.skills], job.required_skills)
 
             # Hybrid AI Boost based on filters
