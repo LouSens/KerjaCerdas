@@ -16,7 +16,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-from backend.app.db.models import Base
+from backend.app.db.models import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
@@ -39,9 +39,9 @@ def run_migrations_offline() -> None:
 
     """
     import os
+
     url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
+        "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
     )
     context.configure(
         url=url,
@@ -69,10 +69,10 @@ async def run_async_migrations() -> None:
 
     import os
     import urllib.parse
+
     section = config.get_section(config.config_ini_section, {})
     db_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
+        "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
     )
     # Normalize: asyncpg driver is required for async alembic
     if db_url.startswith("postgresql://"):

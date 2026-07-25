@@ -76,6 +76,7 @@ class PostgresRepository(Generic[TSchema, TModel]):
                 # updated row, instead of crashing with MultipleResultsFound.
                 existing = next((r for r in rows if r.id == oid), None)
                 if existing is None:
+
                     def _recency(r):
                         ts = getattr(r, "updated_at", None) or getattr(r, "created_at", None)
                         return (ts is not None, ts, r.id)
@@ -151,7 +152,7 @@ class PostgresRepository(Generic[TSchema, TModel]):
 # pgvector unavailable / non-Postgres dev DB), they return None so the caller
 # can fall back to in-Python scoring over a full table scan.
 
-import logging as _logging
+import logging as _logging  # noqa: E402  (intentional: placed near ANN scoring section)
 
 _ann_logger = _logging.getLogger(__name__)
 
