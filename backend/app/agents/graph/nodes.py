@@ -123,14 +123,19 @@ async def run_matcher(state: AgentState) -> dict:
     matcher = SemanticMatcher()
     seeker = state["seeker"]
     jobs = state.get("candidate_jobs", [])
-    matches = await matcher.rank_jobs_for_seeker(seeker, jobs)
+    # No candidate_jobs in state → let the matcher prefilter DB-side (pgvector HNSW).
+    matches = await matcher.rank_jobs_for_seeker(seeker, jobs or None)
 
     # Pre-compute skill overlap vs top match so downstream nodes don't repeat this
     matching_skills: list[str] = []
     missing_skills: list[str] = []
-    if matches and jobs:
+    if matches:
         job_index = {j.id: j for j in jobs}
         top_job = job_index.get(matches[0].job_id)
+        if top_job is None:
+            from backend.app.db.postgres_store import get_repositories
+
+            top_job = await get_repositories().jobs.get(matches[0].job_id)
         if top_job:
             seeker_lower = {s.name.lower(): s.name for s in (seeker.skills or [])}
             for req in top_job.required_skills or []:

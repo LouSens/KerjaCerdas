@@ -263,12 +263,15 @@ async def find_candidates(
 
     top_k = int((body or {}).get("top_k", 15))
     filters = (body or {}).get("filters", {})
-    seekers = await repos.seekers.list()
-    if not seekers:
+
+    # seekers=None → the matcher prefilters DB-side via the pgvector HNSW index.
+    matcher = SemanticMatcher()
+    ranked = await matcher.rank_seekers_for_job(job, top_k=top_k, filters=filters)
+    if not ranked:
         return {"job_id": job_id, "total": 0, "candidates": []}
 
-    matcher = SemanticMatcher()
-    ranked = await matcher.rank_seekers_for_job(job, seekers, top_k=top_k, filters=filters)
+    # Load only the ranked seekers (needed for the name-redaction teaser below).
+    seekers = await repos.seekers.get_many([c["seeker_id"] for c in ranked])
 
     # Redact full_name (Teaser Method / LinkedIn Style)
     for c in ranked:

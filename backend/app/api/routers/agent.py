@@ -245,15 +245,17 @@ async def invoke_agent(
             seeker = _ANONYMOUS_SEEKER
             fallback_used = True
 
-    # --- Load jobs -------------------------------------------------------
-    jobs = await repos.jobs.list()
-    valid_job_ids = {j.id for j in jobs}
-
     # --- Pre-rank to detect all-stretch corpus (token efficiency gate) ---
+    # jobs=None → the matcher prefilters DB-side via the pgvector HNSW index
+    # instead of loading every job row into Python.
     from backend.app.services.matching.matcher import SemanticMatcher
 
     matcher = SemanticMatcher()
-    raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs, filters=req.filters)
+    raw_matches = await matcher.rank_jobs_for_seeker(seeker, filters=req.filters)
+
+    # Load only the matched jobs (for enrichment + the hallucination guard).
+    jobs = await repos.jobs.get_many([m.job_id for m in raw_matches])
+    valid_job_ids = {j.id for j in jobs}
 
     # Token efficiency gate: if ALL matches are well below threshold, skip LLM
     max_score = max((m.score for m in raw_matches), default=0.0)

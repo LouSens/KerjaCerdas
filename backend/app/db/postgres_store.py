@@ -112,10 +112,133 @@ class PostgresRepository(Generic[TSchema, TModel]):
                 out.append(self.schema.model_validate(data))
             return out
 
+    async def get_many(self, ids: list[str]) -> list[TSchema]:
+        """Fetch multiple rows by id in one query (order not guaranteed)."""
+        if not ids:
+            return []
+        async with async_session() as session:
+            stmt = select(self.model).where(self.model.id.in_(ids))
+            result = await session.execute(stmt)
+            out = []
+            for obj in result.scalars().all():
+                data = {c.name: getattr(obj, c.name) for c in self.model.__table__.columns}
+                out.append(self.schema.model_validate(data))
+            return out
+
     async def find(self, predicate) -> list[TSchema]:
         """Not efficient for SQL, but maintains the interface from json_store."""
         all_items = await self.list()
         return [x for x in all_items if predicate(x)]
+
+
+# ── pgvector ANN search (DB-side semantic prefilter) ──────────────────────────
+#
+# These return (schema, cosine_similarity) tuples ordered by similarity using
+# the HNSW indexes (embedding <=> query). If the vector query cannot run (e.g.
+# pgvector unavailable / non-Postgres dev DB), they return None so the caller
+# can fall back to in-Python scoring over a full table scan.
+
+import logging as _logging
+
+_ann_logger = _logging.getLogger(__name__)
+
+
+async def semantic_search_jobs(
+    query_vec: list[float], limit: int, embedding_model: str
+) -> list[tuple[JobSchema, float]] | None:
+    """Top-N active jobs by cosine similarity, computed in Postgres via HNSW."""
+    try:
+        async with async_session() as session:
+            dist = JobPosting.embedding.cosine_distance(query_vec)
+            stmt = (
+                select(JobPosting, dist.label("distance"))
+                .where(
+                    JobPosting.is_active.is_(True),
+                    JobPosting.embedding.is_not(None),
+                    JobPosting.embedding_model == embedding_model,
+                )
+                .order_by(dist)
+                .limit(limit)
+            )
+            result = await session.execute(stmt)
+            out: list[tuple[JobSchema, float]] = []
+            for obj, distance in result.all():
+                data = {c.name: getattr(obj, c.name) for c in JobPosting.__table__.columns}
+                if data.get("embedding") is not None:
+                    data["embedding"] = list(data["embedding"])
+                out.append((JobSchema.model_validate(data), 1.0 - float(distance)))
+            return out
+    except Exception as exc:
+        _ann_logger.warning("semantic_search_jobs failed (%s) — falling back to full scan", exc)
+        return None
+
+
+async def semantic_search_seekers(
+    query_vec: list[float], limit: int, embedding_model: str
+) -> list[tuple[SeekerSchema, float]] | None:
+    """Top-N seekers by cosine similarity, computed in Postgres via HNSW."""
+    try:
+        async with async_session() as session:
+            dist = SeekerProfile.embedding.cosine_distance(query_vec)
+            stmt = (
+                select(SeekerProfile, dist.label("distance"))
+                .where(
+                    SeekerProfile.embedding.is_not(None),
+                    SeekerProfile.embedding_model == embedding_model,
+                )
+                .order_by(dist)
+                .limit(limit)
+            )
+            result = await session.execute(stmt)
+            out: list[tuple[SeekerSchema, float]] = []
+            for obj, distance in result.all():
+                data = {c.name: getattr(obj, c.name) for c in SeekerProfile.__table__.columns}
+                if data.get("embedding") is not None:
+                    data["embedding"] = list(data["embedding"])
+                out.append((SeekerSchema.model_validate(data), 1.0 - float(distance)))
+            return out
+    except Exception as exc:
+        _ann_logger.warning("semantic_search_seekers failed (%s) — falling back to full scan", exc)
+        return None
+
+
+async def list_jobs_missing_embedding(embedding_model: str) -> list[JobSchema]:
+    """Active jobs that the ANN query can't see: no embedding, or a vector from
+    a different model (incompatible with the query vector). Scored with cos=0
+    so hybrid results stay equivalent to the old full-scan behaviour."""
+    async with async_session() as session:
+        stmt = select(JobPosting).where(
+            JobPosting.is_active.is_(True),
+            (JobPosting.embedding.is_(None))
+            | (JobPosting.embedding_model.is_(None))
+            | (JobPosting.embedding_model != embedding_model),
+        )
+        result = await session.execute(stmt)
+        out = []
+        for obj in result.scalars().all():
+            data = {c.name: getattr(obj, c.name) for c in JobPosting.__table__.columns}
+            if data.get("embedding") is not None:
+                data["embedding"] = list(data["embedding"])
+            out.append(JobSchema.model_validate(data))
+        return out
+
+
+async def list_seekers_missing_embedding(embedding_model: str) -> list[SeekerSchema]:
+    """Seekers invisible to the ANN query (no embedding or cross-model vector)."""
+    async with async_session() as session:
+        stmt = select(SeekerProfile).where(
+            (SeekerProfile.embedding.is_(None))
+            | (SeekerProfile.embedding_model.is_(None))
+            | (SeekerProfile.embedding_model != embedding_model),
+        )
+        result = await session.execute(stmt)
+        out = []
+        for obj in result.scalars().all():
+            data = {c.name: getattr(obj, c.name) for c in SeekerProfile.__table__.columns}
+            if data.get("embedding") is not None:
+                data["embedding"] = list(data["embedding"])
+            out.append(SeekerSchema.model_validate(data))
+        return out
 
 
 class Repositories:

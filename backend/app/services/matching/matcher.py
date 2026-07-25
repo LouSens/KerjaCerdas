@@ -245,13 +245,64 @@ class SemanticMatcher:
 
     # ── Query / ranking ───────────────────────────────────────────────────────
 
+    @staticmethod
+    def _prefilter_limit(top_k: int) -> int:
+        """ANN candidate pool size: enough headroom that structured boosts can
+        reshuffle the semantic order without losing relevant rows."""
+        return max(top_k * 5, 200)
+
+    async def _job_candidates(
+        self, query_vec: list[float], top_k: int
+    ) -> list[tuple[JobPosting, float | None]]:
+        """Fetch job candidates DB-side. Returns (job, cosine) pairs — cosine is
+        precomputed by pgvector (`embedding <=> query`, HNSW index). Falls back
+        to a full scan with in-Python cosine (cos=None) if the ANN query can't run."""
+        from backend.app.config.settings import settings
+        from backend.app.db import postgres_store as store
+
+        model = settings.gemini_embed_model
+        if query_vec:
+            rows = await store.semantic_search_jobs(query_vec, self._prefilter_limit(top_k), model)
+            if rows is not None:
+                extras = await store.list_jobs_missing_embedding(model)
+                return [(j, cos) for j, cos in rows] + [(j, 0.0) for j in extras]
+        # No query vector (embedder down) or pgvector unavailable — full scan.
+        all_jobs = await store.get_repositories().jobs.list()
+        return [(j, None) for j in all_jobs]
+
+    async def _seeker_candidates(
+        self, query_vec: list[float], top_k: int
+    ) -> list[tuple[SeekerProfile, float | None]]:
+        """Seeker-side twin of `_job_candidates` (employer reverse matching)."""
+        from backend.app.config.settings import settings
+        from backend.app.db import postgres_store as store
+
+        model = settings.gemini_embed_model
+        if query_vec:
+            rows = await store.semantic_search_seekers(
+                query_vec, self._prefilter_limit(top_k), model
+            )
+            if rows is not None:
+                extras = await store.list_seekers_missing_embedding(model)
+                return [(s, cos) for s, cos in rows] + [(s, 0.0) for s in extras]
+        all_seekers = await store.get_repositories().seekers.list()
+        return [(s, None) for s in all_seekers]
+
     async def rank_jobs_for_seeker(
         self,
         seeker: SeekerProfile,
-        jobs: Iterable[JobPosting],
+        jobs: Iterable[JobPosting] | None = None,
         top_k: int | None = None,
         filters: dict | None = None,
     ) -> list[MatchResult]:
+        """Rank jobs for a seeker.
+
+        When `jobs` is None (the default for API callers), the semantic
+        prefilter runs in Postgres via the pgvector HNSW index instead of
+        scanning every row in Python — structured boosts are applied after,
+        so results stay equivalent to the old full-scan hybrid scoring.
+        Passing an explicit `jobs` iterable keeps the in-memory path (tests,
+        agent graph state)."""
         from backend.app.config.settings import settings
 
         if top_k is None:
@@ -269,15 +320,23 @@ class SemanticMatcher:
             query_vec = []
         seeker_skill_names = [s.name for s in seeker.skills]
 
+        if jobs is None:
+            candidates = await self._job_candidates(query_vec, top_k)
+        else:
+            candidates = [(j, None) for j in jobs]
+
         scored: list[MatchResult] = []
-        for j in jobs:
+        for j, pre_cos in candidates:
             if not j.is_active:
                 continue
 
-            # Vectors from a different embedding model are incompatible with the
-            # query vector — treat those rows as unembedded (cosine=0).
-            job_vec = j.embedding if j.embedding_model == settings.gemini_embed_model else []
-            cos = cosine(query_vec, job_vec or [])
+            if pre_cos is not None:
+                cos = pre_cos
+            else:
+                # Vectors from a different embedding model are incompatible with
+                # the query vector — treat those rows as unembedded (cosine=0).
+                job_vec = j.embedding if j.embedding_model == settings.gemini_embed_model else []
+                cos = cosine(query_vec, job_vec or [])
             skill = _skill_overlap(seeker_skill_names, j.required_skills)
 
             s_lower = {x.lower() for x in seeker_skill_names}
@@ -372,11 +431,14 @@ class SemanticMatcher:
     async def rank_seekers_for_job(
         self,
         job: JobPosting,
-        seekers: Iterable[SeekerProfile],
+        seekers: Iterable[SeekerProfile] | None = None,
         top_k: int | None = None,
         filters: dict | None = None,
     ) -> list[dict]:
-        """Reverse matching: given a job, rank seekers by fit. Used by employer dashboard."""
+        """Reverse matching: given a job, rank seekers by fit. Used by employer dashboard.
+
+        With `seekers=None` the semantic prefilter runs DB-side via pgvector
+        (HNSW); an explicit iterable keeps the in-memory path."""
         from backend.app.config.settings import settings
 
         if top_k is None:
@@ -389,11 +451,20 @@ class SemanticMatcher:
         except EmbeddingUnavailableError as exc:
             _logger.error("query embed unavailable (%s) — ranking without semantic score", exc)
             query_vec = []
+
+        if seekers is None:
+            candidates = await self._seeker_candidates(query_vec, top_k)
+        else:
+            candidates = [(s, None) for s in seekers]
+
         scored: list[dict] = []
-        for s in seekers:
-            # Skip cross-model vectors — cosine across models is meaningless.
-            seeker_vec = s.embedding if s.embedding_model == settings.gemini_embed_model else []
-            cos = cosine(query_vec, seeker_vec or [])
+        for s, pre_cos in candidates:
+            if pre_cos is not None:
+                cos = pre_cos
+            else:
+                # Skip cross-model vectors — cosine across models is meaningless.
+                seeker_vec = s.embedding if s.embedding_model == settings.gemini_embed_model else []
+                cos = cosine(query_vec, seeker_vec or [])
             skill = _skill_overlap([sk.name for sk in s.skills], job.required_skills)
 
             # Hybrid AI Boost based on filters
