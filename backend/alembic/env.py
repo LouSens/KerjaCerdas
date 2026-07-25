@@ -40,7 +40,7 @@ def run_migrations_offline() -> None:
     """
     import os
     url = os.environ.get(
-        "DATABASE_URL", 
+        "DATABASE_URL",
         "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
     )
     context.configure(

@@ -62,12 +62,10 @@ async def route_intent(state: AgentState) -> dict:
     if gemini_key:
         try:
             from langchain_core.messages import HumanMessage, SystemMessage
-            from langchain_google_genai import ChatGoogleGenerativeAI
 
-            llm = ChatGoogleGenerativeAI(
-                model=settings.gemini_chat_model,
-                temperature=0.0,
-            )
+            from backend.app.services.llm_factory import build_chat_llm
+
+            llm = build_chat_llm(temperature=0.0)
             sys = (
                 "Kamu adalah intent classifier untuk platform job matching. "
                 "Klasifikasikan pesan user ke salah satu intent berikut: "
@@ -217,12 +215,11 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
     if gemini_key:
         try:
             from langchain_core.messages import HumanMessage, SystemMessage
-            from langchain_google_genai import ChatGoogleGenerativeAI
 
+            from backend.app.services.llm_factory import build_chat_llm
             from backend.app.services.prompt_loader import build_system_prompt
 
-            llm = ChatGoogleGenerativeAI(
-                model=settings.gemini_chat_model,
+            llm = build_chat_llm(
                 temperature=settings.skill_gap_temperature,
             )
             sys = build_system_prompt(role="seeker_advisor", task="skill_gap")
@@ -357,7 +354,7 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
             name = f"Dicoding Academy — Menjadi {skill.title()} Developer"
             provider = "Dicoding"
             dur = "1 bulan"
-            
+
         url = f"https://www.google.com/search?q=site:dicoding.com+{skill}"
         price = "Rp 350.000 · Prakerja OK"
         rating = 4.8
@@ -425,14 +422,11 @@ async def run_advisor(state: AgentState) -> dict:
 
     try:
         from langchain_core.messages import HumanMessage, SystemMessage
-        from langchain_google_genai import ChatGoogleGenerativeAI
 
+        from backend.app.services.llm_factory import build_chat_llm
         from backend.app.services.prompt_loader import build_system_prompt
 
-        llm = ChatGoogleGenerativeAI(
-            model=settings.gemini_chat_model,
-            temperature=settings.advisor_temperature,
-        )
+        llm = build_chat_llm(temperature=settings.advisor_temperature)
         sys_prompt = build_system_prompt(role="seeker_advisor")
         # Build rich context from all prior nodes
         context = _build_rich_context(state)

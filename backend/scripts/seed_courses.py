@@ -11,5 +11,6 @@ async def seed_courses_data():
         await repos.courses.upsert(Course(**c))
     print(f"[courses] {len(COURSES)} created")
 
+
 if __name__ == "__main__":
     asyncio.run(seed_courses_data())

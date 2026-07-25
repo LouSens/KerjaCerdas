@@ -13,13 +13,19 @@ Weights are read from settings so they can be tuned via .env without a code chan
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 import random
 from collections.abc import Iterable
 
 from backend.app.db.schemas import JobPosting, MatchResult, SeekerProfile
-from backend.app.services.matching.embeddings.gemini import get_embedder
+from backend.app.services.matching.embeddings.gemini import (
+    EmbeddingUnavailableError,
+    get_embedder,
+)
 from backend.app.utils import content_to_text
+
+_logger = logging.getLogger(__name__)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -213,19 +219,28 @@ class SemanticMatcher:
     async def embed_job(self, job: JobPosting) -> JobPosting:
         from backend.app.config.settings import settings
 
-        job.embedding = await self.embedder.embed(
-            _build_job_text(job), task_type="RETRIEVAL_DOCUMENT"
-        )
-        job.embedding_model = settings.gemini_embed_model
+        try:
+            job.embedding = await self.embedder.embed(
+                _build_job_text(job), task_type="RETRIEVAL_DOCUMENT"
+            )
+            job.embedding_model = settings.gemini_embed_model
+        except EmbeddingUnavailableError as exc:
+            # Leave the row unembedded — never store a junk vector.
+            _logger.error("embed_job failed for job=%s (%s) — leaving unembedded", job.id, exc)
         return job
 
     async def embed_seeker(self, seeker: SeekerProfile) -> SeekerProfile:
         from backend.app.config.settings import settings
 
-        seeker.embedding = await self.embedder.embed(
-            _build_seeker_text(seeker), task_type="RETRIEVAL_DOCUMENT"
-        )
-        seeker.embedding_model = settings.gemini_embed_model
+        try:
+            seeker.embedding = await self.embedder.embed(
+                _build_seeker_text(seeker), task_type="RETRIEVAL_DOCUMENT"
+            )
+            seeker.embedding_model = settings.gemini_embed_model
+        except EmbeddingUnavailableError as exc:
+            _logger.error(
+                "embed_seeker failed for seeker=%s (%s) — leaving unembedded", seeker.id, exc
+            )
         return seeker
 
     # ── Query / ranking ───────────────────────────────────────────────────────
@@ -244,9 +259,14 @@ class SemanticMatcher:
         if filters is None:
             filters = {}
 
-        query_vec = await self.embedder.embed(
-            _build_seeker_text(seeker), task_type="RETRIEVAL_QUERY"
-        )
+        try:
+            query_vec = await self.embedder.embed(
+                _build_seeker_text(seeker), task_type="RETRIEVAL_QUERY"
+            )
+        except EmbeddingUnavailableError as exc:
+            # Degrade to structured-features-only ranking (cosine=0) instead of failing.
+            _logger.error("query embed unavailable (%s) — ranking without semantic score", exc)
+            query_vec = []
         seeker_skill_names = [s.name for s in seeker.skills]
 
         scored: list[MatchResult] = []
@@ -270,10 +290,18 @@ class SemanticMatcher:
             if filters.get("location"):
                 target_loc = filters["location"].lower()
                 bps_names = {
-                    "3171": "jakarta pusat", "3172": "jakarta utara", "3173": "jakarta barat",
-                    "3174": "jakarta selatan", "3175": "jakarta timur", "3273": "bandung",
-                    "3578": "surabaya", "3471": "yogyakarta", "5171": "denpasar",
-                    "1275": "medan", "7371": "makassar", "6371": "balikpapan"
+                    "3171": "jakarta pusat",
+                    "3172": "jakarta utara",
+                    "3173": "jakarta barat",
+                    "3174": "jakarta selatan",
+                    "3175": "jakarta timur",
+                    "3273": "bandung",
+                    "3578": "surabaya",
+                    "3471": "yogyakarta",
+                    "5171": "denpasar",
+                    "1275": "medan",
+                    "7371": "makassar",
+                    "6371": "balikpapan",
                 }
                 reg_name = bps_names.get(j.region_code, "").lower()
                 if (
@@ -353,7 +381,11 @@ class SemanticMatcher:
         if filters is None:
             filters = {}
 
-        query_vec = await self.embedder.embed(_build_job_text(job), task_type="RETRIEVAL_QUERY")
+        try:
+            query_vec = await self.embedder.embed(_build_job_text(job), task_type="RETRIEVAL_QUERY")
+        except EmbeddingUnavailableError as exc:
+            _logger.error("query embed unavailable (%s) — ranking without semantic score", exc)
+            query_vec = []
         scored: list[dict] = []
         for s in seekers:
             cos = cosine(query_vec, s.embedding or [])
@@ -425,13 +457,10 @@ class SemanticMatcher:
         if gemini_key:
             try:
                 from langchain_core.messages import HumanMessage
-                from langchain_google_genai import ChatGoogleGenerativeAI
 
-                llm = ChatGoogleGenerativeAI(
-                    model=settings.gemini_chat_model,
-                    temperature=0.1,
-                    api_key=gemini_key,
-                )
+                from backend.app.services.llm_factory import build_chat_llm
+
+                llm = build_chat_llm(temperature=0.1)
 
                 prompt = f"Anda adalah HR Assistant AI untuk platform KerjaCerdas.\nBerikan evaluasi SUPER SINGKAT (maks 1 kalimat, 10-15 kata) untuk masing-masing kandidat berikut ini berdasarkan kriteria loker: {job.title}\n"
                 prompt += f"Skill Wajib Loker: {', '.join(job.required_skills)}\n\n"

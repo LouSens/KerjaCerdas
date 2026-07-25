@@ -11,8 +11,6 @@ ANTIGRAVITY PROTOCOL: All API changes require test updates.
 """
 from __future__ import annotations
 
-import asyncio
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,12 +18,10 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from backend.app.api.middleware.sanitization import (
-    SanitizedStr,
     sanitize_filename,
     sanitize_text,
 )
 from backend.app.api.schemas.auth import UserLoginRequest, UserRegisterRequest
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -235,12 +231,12 @@ class TestRateLimiter:
 
     def test_rate_limit_exceeded_returns_429(self) -> None:
         """Exceeding the sliding-window limit should return 429."""
-        import asyncio
         from starlette.applications import Starlette
         from starlette.requests import Request as StarletteRequest
         from starlette.responses import JSONResponse
         from starlette.testclient import TestClient as StarletteTestClient
-        from backend.app.api.middleware.rate_limiter import RateLimiterMiddleware, _ROUTE_LIMITS
+
+        from backend.app.api.middleware.rate_limiter import _ROUTE_LIMITS, RateLimiterMiddleware
 
         # Build a minimal ASGI app with only the rate limiter
         async def echo(_: StarletteRequest) -> JSONResponse:
@@ -293,8 +289,9 @@ class TestJWTAuth:
 
     def test_expired_token_returns_none(self) -> None:
         """Tokens with an expiry in the past should return None."""
-        import jwt
         import datetime
+
+        import jwt
         payload = {
             "sub": "user-123",
             "role": "seeker",
@@ -371,6 +368,7 @@ class TestSeedAuthUtils:
     def test_no_hardcoded_hash_in_auth_utils(self) -> None:
         """auth_utils.py must not contain the previously hardcoded bcrypt hash."""
         import inspect
+
         from backend.scripts import auth_utils
         src = inspect.getsource(auth_utils)
         assert "$2b$12$demoDemoDemoDemoDemoDe" not in src
@@ -379,6 +377,7 @@ class TestSeedAuthUtils:
     def test_no_hardcoded_hash_in_seed_all(self) -> None:
         """seed_all.py must not contain any hardcoded bcrypt hash."""
         import inspect
+
         from backend.scripts import seed_all
         src = inspect.getsource(seed_all)
         assert "$2b$12$" not in src
@@ -386,8 +385,9 @@ class TestSeedAuthUtils:
     @pytest.mark.asyncio
     async def test_seed_auth_user_new_user_sets_password(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """seed_auth_user creates a new user with a hashed password from env var."""
+        from unittest.mock import patch
+
         import bcrypt
-        from unittest.mock import MagicMock, patch
 
         monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "SeedTestPass99!")
 
@@ -437,7 +437,7 @@ class TestSeedAuthUtils:
 
         original_hash = "$2b$12$existingHashThatMustNotBeOverwritten_____"
 
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import patch
 
         existing_user = MagicMock()
         existing_user.password_hash = original_hash

@@ -237,19 +237,31 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
     def _sync():
         from google.genai import types
 
-        resp = client.models.generate_content(
-            model=settings.gemini_chat_model,
-            contents=[
-                types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
-                "Ekstrak data terstruktur sesuai schema di task prompt. Kembalikan JSON saja.",
-            ],
-            config=types.GenerateContentConfig(
-                system_instruction=system,
-                response_mime_type="application/json",
-                temperature=settings.parser_temperature,
-            ),
-        )
-        return resp.text or "{}"
+        from backend.app.services.llm_factory import chat_model_chain
+
+        last_exc: Exception | None = None
+        for model in chat_model_chain():
+            try:
+                resp = client.models.generate_content(
+                    model=model,
+                    contents=[
+                        types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
+                        "Ekstrak data terstruktur sesuai schema di task prompt. Kembalikan JSON saja.",
+                    ],
+                    config=types.GenerateContentConfig(
+                        system_instruction=system,
+                        response_mime_type="application/json",
+                        temperature=settings.parser_temperature,
+                        http_options=types.HttpOptions(
+                            retry_options=types.HttpRetryOptions(attempts=1)
+                        ),
+                    ),
+                )
+                return resp.text or "{}"
+            except Exception as exc:  # 429/quota → try next model in the chain
+                logger.warning("Gemini PDF call failed on %s (%s) — trying next model", model, exc)
+                last_exc = exc
+        raise last_exc if last_exc else RuntimeError("no chat models configured")
 
     try:
         raw = await asyncio.to_thread(_sync)

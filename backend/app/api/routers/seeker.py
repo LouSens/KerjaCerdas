@@ -72,7 +72,8 @@ async def create_or_update_profile(
             skills.append(sk)
 
     # Parse inline experience
-    from backend.app.db.schemas import WorkExperience, Education, VerificationStatus, EducationLevel
+    from backend.app.db.schemas import Education, EducationLevel, VerificationStatus, WorkExperience
+
     raw_exp = data.get("experience", [])
     experience: list[WorkExperience] = []
     for x in raw_exp:
@@ -91,14 +92,16 @@ async def create_or_update_profile(
                 deg = EducationLevel(raw_deg)
             except ValueError:
                 deg = EducationLevel.S1
-            education.append(Education(
-                institution=e.get("institution", ""),
-                degree=deg,
-                major=e.get("major", ""),
-                graduation_year=int(e.get("graduation_year") or 2024),
-                ijazah_number=e.get("ijazah_number"),
-                sivil_verified=VerificationStatus(e.get("sivil_verified", "unverified")),
-            ))
+            education.append(
+                Education(
+                    institution=e.get("institution", ""),
+                    degree=deg,
+                    major=e.get("major", ""),
+                    graduation_year=int(e.get("graduation_year") or 2024),
+                    ijazah_number=e.get("ijazah_number"),
+                    sivil_verified=VerificationStatus(e.get("sivil_verified", "unverified")),
+                )
+            )
         elif isinstance(e, Education):
             education.append(e)
 

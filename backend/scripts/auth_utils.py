@@ -2,10 +2,10 @@ import os
 import uuid
 
 import bcrypt
+from sqlalchemy.future import select
 
 from backend.app.db.models import User as SqlUser
 from backend.app.db.session import async_session as async_session_factory
-from sqlalchemy.future import select
 
 # ---------------------------------------------------------------------------
 # Seed password – never hardcoded.
@@ -13,6 +13,7 @@ from sqlalchemy.future import select
 # There is intentionally no fallback: a missing variable is a loud failure
 # rather than a silent backdoor.
 # ---------------------------------------------------------------------------
+
 
 def _get_seed_password_hash() -> str:
     """Hash the seed password from the environment variable at call time."""

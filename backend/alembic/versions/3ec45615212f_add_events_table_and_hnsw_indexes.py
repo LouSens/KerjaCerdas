@@ -7,9 +7,10 @@ Create Date: 2026-07-17 14:11:57.474991
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '3ec45615212f'
@@ -103,7 +104,7 @@ def downgrade() -> None:
     """Downgrade schema."""
     op.execute("DROP INDEX IF EXISTS seeker_embedding_hnsw_idx;")
     op.execute("DROP INDEX IF EXISTS job_embedding_hnsw_idx;")
-    
+
     op.drop_index(op.f('ix_events_created_at'), table_name='events')
     op.drop_index(op.f('ix_events_event_type'), table_name='events')
     op.drop_index(op.f('ix_events_session_id'), table_name='events')

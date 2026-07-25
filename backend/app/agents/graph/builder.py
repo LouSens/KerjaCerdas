@@ -24,14 +24,12 @@ tool-binding; tool logic is described in the system prompt instead.
 from __future__ import annotations
 
 import logging
-import os
 
 from langchain_core.messages import AIMessage, SystemMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, MessagesState
 from langgraph.graph.state import CompiledStateGraph, StateGraph
 
-from backend.app.config.settings import settings
+from backend.app.services.llm_factory import build_chat_llm
 
 logger = logging.getLogger(__name__)
 
@@ -41,20 +39,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _resolve_gemini_key() -> str:
-    return (
-        settings.gemini_api_key
-        or os.environ.get("GEMINI_API_KEY", "")
-        or os.environ.get("GOOGLE_API_KEY", "")
-    )
-
-
-def _build_llm() -> ChatGoogleGenerativeAI:
-    return ChatGoogleGenerativeAI(
-        model=settings.gemini_chat_model,
-        temperature=0.4,
-        api_key=_resolve_gemini_key(),
-    )
+def _build_llm():
+    return build_chat_llm(temperature=0.4)
 
 
 # ---------------------------------------------------------------------------

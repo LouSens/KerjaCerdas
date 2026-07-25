@@ -11,8 +11,11 @@ Task types:
 
 Both sides MUST use the same model for cosine scores to be meaningful.
 
-When Gemini is unavailable (no key / SSL / quota) the service silently
-degrades to a deterministic hash embedder so the platform never crashes.
+Failure policy:
+  * No API key / offline    → deterministic HashEmbedder (latched, logged loudly)
+  * Quota (429) / transient → bounded retry with backoff, then
+                              EmbeddingUnavailableError — callers must leave the
+                              row unembedded rather than store junk vectors.
 """
 
 from __future__ import annotations
@@ -34,6 +37,23 @@ TaskType = Literal[
 
 # Fallback dim used by HashEmbedder and when Gemini is unreachable.
 _FALLBACK_DIM = 768
+
+# Bounded retry for quota/transient errors: attempts and backoff seconds.
+_MAX_ATTEMPTS = 4
+_BACKOFF_S = (2.0, 5.0, 10.0)
+
+
+class EmbeddingUnavailableError(RuntimeError):
+    """Raised when Gemini embeddings are configured but persistently failing.
+
+    Callers must NOT store a vector when this is raised — better an unembedded
+    row than a junk vector that silently poisons cosine scores.
+    """
+
+
+def _is_quota_error(exc: Exception) -> bool:
+    text = str(exc)
+    return "429" in text or "RESOURCE_EXHAUSTED" in text or "quota" in text.lower()
 
 
 def _get_settings():
@@ -93,11 +113,15 @@ class GeminiEmbedder:
     async def embed_batch(
         self, texts: list[str], task_type: TaskType = "RETRIEVAL_DOCUMENT"
     ) -> list[list[float]]:
+        # Hash fallback ONLY for the true no-auth/offline case (latched once).
         if self._broken:
             return await _hash_fallback().embed_batch(texts, task_type)
         try:
             client = self._client_or_raise()
         except RuntimeError:
+            logger.error(
+                "No Gemini auth — latching offline HashEmbedder (scores will be meaningless)"
+            )
             self._broken = True
             return await _hash_fallback().embed_batch(texts, task_type)
 
@@ -115,12 +139,32 @@ class GeminiEmbedder:
             )
             return [list(e.values) for e in resp.embeddings]
 
-        try:
-            return await asyncio.to_thread(_sync)
-        except Exception as exc:
-            logger.warning("Gemini embed failed (%s) — latching HashEmbedder", exc)
-            self._broken = True
-            return await _hash_fallback().embed_batch(texts, task_type)
+        # Bounded retry with backoff on quota/transient errors. Never silently
+        # degrade to hash vectors — raise so callers leave rows unembedded.
+        last_exc: Exception | None = None
+        for attempt in range(_MAX_ATTEMPTS):
+            try:
+                return await asyncio.to_thread(_sync)
+            except Exception as exc:
+                last_exc = exc
+                if attempt < _MAX_ATTEMPTS - 1:
+                    wait = _BACKOFF_S[min(attempt, len(_BACKOFF_S) - 1)]
+                    level = logging.INFO if _is_quota_error(exc) else logging.WARNING
+                    logger.log(
+                        level,
+                        "Gemini embed attempt %d/%d failed (%s) — retrying in %.0fs",
+                        attempt + 1,
+                        _MAX_ATTEMPTS,
+                        exc,
+                        wait,
+                    )
+                    await asyncio.sleep(wait)
+        logger.error(
+            "Gemini embed FAILED after %d attempts (%s) — refusing to store junk vectors",
+            _MAX_ATTEMPTS,
+            last_exc,
+        )
+        raise EmbeddingUnavailableError(str(last_exc)) from last_exc
 
 
 class HashEmbedder:

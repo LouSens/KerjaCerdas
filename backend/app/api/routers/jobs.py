@@ -96,12 +96,12 @@ async def list_jobs(
             employer_cache[emp_id] = _is_employer_verified(emp)
         item = j.model_dump() if hasattr(j, "model_dump") else dict(j)
         item["verified"] = employer_cache[emp_id]
-        
+
         location_str = _BPS_REGIONS.get(j.region_code, j.region_code)
         if j.remote_allowed:
             location_str += " · Remote OK"
         item["location"] = location_str
-        
+
         result_items.append(item)
 
     return {"total": len(jobs), "offset": offset, "limit": limit, "items": result_items}
@@ -114,7 +114,7 @@ async def get_job(job_id: str):
     if not j:
         return {"error": "not_found"}
     employer = await repos.employers.get(j.employer_id)
-    
+
     _BPS_REGIONS = {
         "3171": "Jakarta Pusat",
         "3172": "Jakarta Utara",
@@ -132,8 +132,5 @@ async def get_job(job_id: str):
     location_str = _BPS_REGIONS.get(j.region_code, j.region_code)
     if j.remote_allowed:
         location_str += " · Remote OK"
-        
-    return j.model_dump() | {
-        "verified": _is_employer_verified(employer),
-        "location": location_str
-    }
+
+    return j.model_dump() | {"verified": _is_employer_verified(employer), "location": location_str}

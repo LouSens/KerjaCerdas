@@ -16,6 +16,7 @@ Run:  python -m backend.scripts.benchmark_matching --manual-seconds-per-cv 30
 Needs a real GEMINI_API_KEY to be meaningful; without it the embedder is the
 offline HashEmbedder (cosine ≈ 0) and a loud NOT-VALID banner is printed.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -85,18 +86,42 @@ GOOD_RESUMES = [
 
 # distractors: other vocational tracks, unrelated to networking.
 DISTRACTORS = [
-    {"skills": ["memasak", "tata boga"], "headline": "lulusan smk tata boga",
-     "major": "Tata Boga", "resume": "magang di dapur restoran"},
-    {"skills": ["servis motor", "otomotif"], "headline": "smk otomotif bisa servis motor",
-     "major": "TBSM", "resume": "pkl di bengkel motor"},
-    {"skills": ["edit video", "adobe premiere"], "headline": "anak multimedia bisa edit video",
-     "major": "Multimedia", "resume": ""},
-    {"skills": ["pembukuan", "jurnal"], "headline": "lulusan akuntansi smk",
-     "major": "Akuntansi", "resume": "magang input pembukuan"},
-    {"skills": ["desain grafis", "photoshop"], "headline": "bisa desain pakai photoshop",
-     "major": "DKV", "resume": ""},
-    {"skills": ["mengetik cepat", "input data"], "headline": "smk administrasi perkantoran",
-     "major": "OTKP", "resume": "magang arsip kantor"},
+    {
+        "skills": ["memasak", "tata boga"],
+        "headline": "lulusan smk tata boga",
+        "major": "Tata Boga",
+        "resume": "magang di dapur restoran",
+    },
+    {
+        "skills": ["servis motor", "otomotif"],
+        "headline": "smk otomotif bisa servis motor",
+        "major": "TBSM",
+        "resume": "pkl di bengkel motor",
+    },
+    {
+        "skills": ["edit video", "adobe premiere"],
+        "headline": "anak multimedia bisa edit video",
+        "major": "Multimedia",
+        "resume": "",
+    },
+    {
+        "skills": ["pembukuan", "jurnal"],
+        "headline": "lulusan akuntansi smk",
+        "major": "Akuntansi",
+        "resume": "magang input pembukuan",
+    },
+    {
+        "skills": ["desain grafis", "photoshop"],
+        "headline": "bisa desain pakai photoshop",
+        "major": "DKV",
+        "resume": "",
+    },
+    {
+        "skills": ["mengetik cepat", "input data"],
+        "headline": "smk administrasi perkantoran",
+        "major": "OTKP",
+        "resume": "magang arsip kantor",
+    },
 ]
 
 
@@ -167,8 +192,7 @@ async def run(manual_seconds_per_cv: float) -> None:
 
     sem_score = {r["seeker_id"]: float(r["score"]) for r in ranked}
     kw_score = {
-        s.id: _skill_overlap([sk.name for sk in s.skills], job.required_skills)
-        for s in seekers
+        s.id: _skill_overlap([sk.name for sk in s.skills], job.required_skills) for s in seekers
     }
 
     sem_recall = _recall_in_strong(sem_score, good_ids)
@@ -189,7 +213,9 @@ async def run(manual_seconds_per_cv: float) -> None:
         print("!!! RESULTS NOT VALID FOR LIFT: ran on HashEmbedder (cosine ~ 0).   !!!")
         print("!!! Set GEMINI_API_KEY to measure real embedding lift.             !!!")
         print()
-    print(f"embedder           : {type(embedder).__name__} (model={getattr(embedder, 'model', '?')})")
+    print(
+        f"embedder           : {type(embedder).__name__} (model={getattr(embedder, 'model', '?')})"
+    )
     print(f"candidates         : {n}  (good={len(good_ids)}, distractors={n - len(good_ids)})")
     print(f"JD required_skills : {job.required_skills}")
     print("-" * 72)
