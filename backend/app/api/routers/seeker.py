@@ -331,6 +331,191 @@ async def apply_to_job(
     }
 
 
+@router.post("/skill-gap")
+async def analyze_skill_gap(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """Run AI-powered skill gap analysis for the logged-in seeker.
+
+    Accepts: { target_job_id: str | None }
+    Returns: {
+        missing_skills, matching_skills, recommended_courses,
+        match_before, match_after, target_job_title,
+        estimated_hours, gap_severity, seeker_id
+    }
+
+    Flow:
+      1. Load seeker profile and all active jobs from DB.
+      2. Run SemanticMatcher to rank jobs and find top match.
+      3. Run _run_skill_gap_inline() to compute gap vs the target job.
+      4. Recommend courses via Gemini → course store → catalog fallback.
+      5. Persist a SkillGapResult record so the frontend can load it later.
+    """
+    from backend.app.agents.graph.nodes import _recommend_courses, run_skill_gap
+    from backend.app.db.schemas import CourseRecommendation, SkillGapResult
+
+    repos = get_repositories()
+
+    # --- Resolve seeker -------------------------------------------------------
+    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
+    if not profiles:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Profile belum dibuat. Upload CV atau isi profil terlebih dahulu.",
+        )
+    seeker = profiles[0]
+
+    # --- Load jobs ------------------------------------------------------------
+    jobs = await repos.jobs.list()
+    if not jobs:
+        return {
+            "seeker_id": seeker.id,
+            "missing_skills": [],
+            "matching_skills": [],
+            "recommended_courses": [],
+            "match_before": 0.0,
+            "match_after": 0.0,
+            "target_job_title": None,
+            "estimated_hours": 0,
+            "gap_severity": "low",
+            "message": "Belum ada lowongan aktif di sistem.",
+        }
+
+    # --- Rank jobs -----------------------------------------------------------
+    matcher = SemanticMatcher()
+    raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs)
+
+    # Determine target job
+    target_job_id = body.get("target_job_id")
+    job_index = {j.id: j for j in jobs}
+
+    target = None
+    if target_job_id:
+        target = job_index.get(target_job_id)
+    if target is None and raw_matches:
+        target = job_index.get(raw_matches[0].job_id)
+
+    if target is None:
+        return {
+            "seeker_id": seeker.id,
+            "missing_skills": [],
+            "matching_skills": [],
+            "recommended_courses": [],
+            "match_before": 0.0,
+            "match_after": 0.0,
+            "target_job_title": None,
+            "estimated_hours": 0,
+            "gap_severity": "low",
+            "message": "Tidak ditemukan pekerjaan yang relevan. Tambahkan skill ke profil.",
+        }
+
+    # --- Compute skill gap ---------------------------------------------------
+    seeker_lower = {s.name.lower(): s.name for s in (seeker.skills or [])}
+    matching_skills: list[str] = []
+    missing_skills: list[str] = []
+
+    for req in target.required_skills or []:
+        if req.lower() in seeker_lower:
+            matching_skills.append(seeker_lower[req.lower()])
+        else:
+            missing_skills.append(req)
+
+    total_required = len(target.required_skills or [])
+    match_before = (len(matching_skills) / total_required) if total_required else 1.0
+    # Hypothetical match after covering all gaps
+    match_after = min(match_before + (len(missing_skills) / total_required * 0.85), 1.0) if total_required else 1.0
+
+    # Use top match score as the current match score
+    if raw_matches:
+        top_score = next((m.score for m in raw_matches if m.job_id == target.id), raw_matches[0].score)
+        match_before = max(match_before, top_score)
+
+    # --- Determine severity --------------------------------------------------
+    gap_ratio = len(missing_skills) / total_required if total_required else 0
+    if gap_ratio >= 0.5:
+        gap_severity = "high"
+    elif gap_ratio >= 0.25:
+        gap_severity = "medium"
+    else:
+        gap_severity = "low"
+
+    # --- Course recommendations (Gemini > course store > catalog) ------------
+    courses = await _recommend_courses(missing_skills, target)
+
+    # Estimated hours: ~10h per missing skill, capped at 120h
+    estimated_hours = min(len(missing_skills) * 10, 120)
+
+    # --- Persist SkillGapResult ----------------------------------------------
+    try:
+        gap_record = SkillGapResult(
+            seeker_id=seeker.id,
+            target_job_id=target.id,
+            missing_skills=missing_skills,
+            matching_skills=matching_skills,
+            gap_severity=gap_severity,
+            match_percentage=round(match_before * 100, 1),
+            recommended_courses=courses,
+            estimated_readiness_months=max(1, len(missing_skills) // 2),
+            summary=(
+                f"Gap {len(missing_skills)} skill untuk posisi {target.title}. "
+                f"Match saat ini {round(match_before * 100)}%."
+            ),
+        )
+        await repos.skill_gaps.upsert(gap_record)
+    except Exception as exc:
+        logger.warning("skill_gap persist failed: %s", exc)
+
+    logger.info(
+        "skill_gap seeker=%s target=%s missing=%d matching=%d",
+        seeker.id,
+        target.id,
+        len(missing_skills),
+        len(matching_skills),
+    )
+
+    return {
+        "seeker_id": seeker.id,
+        "target_job_id": target.id,
+        "target_job_title": target.title,
+        "missing_skills": missing_skills,
+        "matching_skills": matching_skills,
+        "recommended_courses": [c.model_dump() for c in courses],
+        "match_before": round(match_before * 100, 1),
+        "match_after": round(match_after * 100, 1),
+        "estimated_hours": estimated_hours,
+        "gap_severity": gap_severity,
+    }
+
+
+@router.get("/skill-gap/latest")
+async def get_latest_skill_gap(current_user: User = Depends(get_current_user)):
+    """Return the most recently computed skill gap result for the seeker, if any."""
+    repos = get_repositories()
+    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
+    if not profiles:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile tidak ditemukan.")
+    seeker_id = profiles[0].id
+    gaps = await repos.skill_gaps.find(lambda g: g.seeker_id == seeker_id)
+    if not gaps:
+        return None
+    # Return the most recently created
+    latest = max(gaps, key=lambda g: g.created_at)
+    courses = [c.model_dump() if hasattr(c, "model_dump") else dict(c) for c in latest.recommended_courses]
+    return {
+        "seeker_id": seeker_id,
+        "target_job_id": latest.target_job_id,
+        "target_job_title": None,
+        "missing_skills": latest.missing_skills,
+        "matching_skills": latest.matching_skills,
+        "recommended_courses": courses,
+        "match_before": latest.match_percentage,
+        "match_after": min(latest.match_percentage + 9.0, 99.0),
+        "estimated_hours": min(len(latest.missing_skills) * 10, 120),
+        "gap_severity": latest.gap_severity,
+    }
+
+
 @router.get("/applications")
 async def list_applications(current_user: User = Depends(get_current_user)):
     """Return all job applications for the logged-in seeker with job metadata.

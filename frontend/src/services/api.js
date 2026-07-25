@@ -104,6 +104,16 @@ export const updateSeekerProfile = (data) =>
 // ── Seeker gamification ─────────────────────────────────────────────────────
 export const fetchGamification = () => request(`${API_BASE}/seeker/gamification`)
 
+// ── Seeker skill gap (AI-powered) ───────────────────────────────────────────
+export const triggerSkillGap = (targetJobId = null) =>
+    request(`${API_BASE}/seeker/skill-gap`, {
+        method: 'POST',
+        body: JSON.stringify({ target_job_id: targetJobId }),
+    })
+
+export const fetchLatestSkillGap = () =>
+    request(`${API_BASE}/seeker/skill-gap/latest`)
+
 // ── Seeker bookmarks (saved jobs) ───────────────────────────────────────────
 export const fetchBookmarks = () => request(`${API_BASE}/seeker/bookmarks`)
 export const addBookmark = (jobId) =>

@@ -32,6 +32,8 @@ import {
     updateEmployerProfile,
     trackEvent,
     fetchExperimentAssignments,
+    triggerSkillGap,
+    fetchLatestSkillGap,
 } from '../services/api'
 
 const PUBLIC_VIEWS = new Set(['home', 'pricing', 'about', 'privacy'])
@@ -214,6 +216,40 @@ const useStore = create(
             setAdvisorInput: (v) => set({ advisorInput: v }),
             advisorSessionId: null,
             targetJobTitle: null,
+
+            // ─── Skill gap (AI-powered) ──────────────────────────────────
+            skillGapResult: null,   // full response from /seeker/skill-gap
+            skillGapLoading: false,
+            skillGapError: null,
+
+            /** Trigger AI skill-gap analysis and persist result. */
+            runSkillGap: async (targetJobId = null) => {
+                set({ skillGapLoading: true, skillGapError: null })
+                try {
+                    const res = await triggerSkillGap(targetJobId)
+                    set({ skillGapResult: res, skillGapLoading: false })
+                    return res
+                } catch (e) {
+                    set({ skillGapLoading: false, skillGapError: e.message })
+                    toast.error('Skill gap analysis gagal: ' + e.message)
+                }
+            },
+
+            /** Load the latest cached skill-gap result from DB (no AI call). */
+            loadSkillGap: async () => {
+                set({ skillGapLoading: true, skillGapError: null })
+                try {
+                    const res = await fetchLatestSkillGap()
+                    set({ skillGapResult: res || null, skillGapLoading: false })
+                    return res
+                } catch (e) {
+                    // 404 is expected for new users — not an error
+                    if (e.status !== 404) {
+                        set({ skillGapError: e.message })
+                    }
+                    set({ skillGapLoading: false })
+                }
+            },
 
             runAgent: async ({ message, targetJobId, explicitIntent, filters } = {}) => {
                 const { seekerId, profile, advisorLog, advisorSessionId } = get()
