@@ -16,6 +16,7 @@ import hashlib
 import logging
 import math
 import random
+from collections import OrderedDict
 from collections.abc import Iterable
 
 from backend.app.db.schemas import JobPosting, MatchResult, SeekerProfile
@@ -185,6 +186,20 @@ def _assign_bands(
     return out
 
 
+# ── Query-embedding cache ─────────────────────────────────────────────────────
+
+# Repeat match requests re-embed the same profile/job text (~1s Gemini call
+# each). Cache the query vector keyed by sha256(model + built text): unchanged
+# text → cache hit; any edit to the profile or a model switch changes the key,
+# so invalidation is automatic. Bounded LRU so memory stays flat.
+_QUERY_CACHE_MAX = 512
+_query_cache: OrderedDict[str, list[float]] = OrderedDict()
+
+
+def _query_cache_key(model: str, text: str) -> str:
+    return hashlib.sha256(f"{model}\x00{text}".encode()).hexdigest()
+
+
 # ── Matcher ───────────────────────────────────────────────────────────────────
 
 
@@ -193,6 +208,21 @@ class SemanticMatcher:
         self.embedder = get_embedder()
         # Weights from settings — lazy-loaded once
         self._w: dict | None = None
+
+    async def _embed_query_cached(self, text: str) -> list[float]:
+        """Embed query text with an LRU cache. Only successful embeds are
+        cached; failures propagate so callers keep their degrade path."""
+        key = _query_cache_key(getattr(self.embedder, "model", ""), text)
+        cached = _query_cache.get(key)
+        if cached is not None:
+            _query_cache.move_to_end(key)
+            return cached
+        vec = await self.embedder.embed(text, task_type="RETRIEVAL_QUERY")
+        _query_cache[key] = vec
+        _query_cache.move_to_end(key)
+        while len(_query_cache) > _QUERY_CACHE_MAX:
+            _query_cache.popitem(last=False)
+        return vec
 
     def _weights(self) -> dict:
         if self._w is None:
@@ -311,9 +341,7 @@ class SemanticMatcher:
             filters = {}
 
         try:
-            query_vec = await self.embedder.embed(
-                _build_seeker_text(seeker), task_type="RETRIEVAL_QUERY"
-            )
+            query_vec = await self._embed_query_cached(_build_seeker_text(seeker))
         except EmbeddingUnavailableError as exc:
             # Degrade to structured-features-only ranking (cosine=0) instead of failing.
             _logger.error("query embed unavailable (%s) — ranking without semantic score", exc)
@@ -447,7 +475,7 @@ class SemanticMatcher:
             filters = {}
 
         try:
-            query_vec = await self.embedder.embed(_build_job_text(job), task_type="RETRIEVAL_QUERY")
+            query_vec = await self._embed_query_cached(_build_job_text(job))
         except EmbeddingUnavailableError as exc:
             _logger.error("query embed unavailable (%s) — ranking without semantic score", exc)
             query_vec = []
