@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # ── Database ─────────────────────────────────────────────────────────
     # Empty string → dev falls back to SQLite under data/
     database_url: str = ""
+    # When set, dev server connects to this URL instead of the local dev DB.
+    # Useful for testing against production data without a full deployment.
+    prod_database_url: str = ""
 
     # ── JSON store root ──────────────────────────────────────────────────
     kerja_data_root: str = "data"
@@ -87,7 +90,14 @@ class Settings(BaseSettings):
 
     @property
     def effective_database_url(self) -> str:
-        """Return the DB URL to actually use."""
+        """Return the DB URL to actually use.
+
+        Priority: PROD_DATABASE_URL > DATABASE_URL > local fallback.
+        PROD_DATABASE_URL lets dev connect to the production Neon DB
+        without a full deployment.
+        """
+        if self.prod_database_url:
+            return self.prod_database_url
         if self.database_url:
             return self.database_url
         return "postgresql+asyncpg://postgres:postgres@localhost:5432/kerjacerdas"
