@@ -5,6 +5,7 @@ import useStore from './store/useStore'
 import PublicHeader from './components/PublicHeader'
 import Sidebar, { MobileBottomNav } from './components/Sidebar'
 import FloatingAdvisor from './components/FloatingAdvisor'
+import EmployerHelpPanel from './components/EmployerHelpPanel'
 import AuthModal from './components/AuthModal'
 import Footer from './components/Footer'
 
@@ -71,7 +72,9 @@ export default function App() {
                         </div>
                     </main>
                     <MobileBottomNav />
+                    {/* FloatingAdvisor = seeker-only AI chat; EmployerHelpPanel = employer-only tips */}
                     <FloatingAdvisor />
+                    <EmployerHelpPanel />
                 </div>
             )}
         </div>

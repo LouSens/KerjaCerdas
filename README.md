@@ -367,6 +367,8 @@ KerjaCerdas/
 │   │   │   │   ├── agent.py       # Endpoint streaming SSE untuk LangGraph
 │   │   │   │   ├── auth.py        # Login/Register (JWT)
 │   │   │   │   ├── employer.py    # Endpoint perusahaan & kandidat pelamar
+│   │   │   │   ├── events.py      # Analytics event tracking
+│   │   │   │   ├── experiments.py # A/B testing flag retrieval
 │   │   │   │   ├── jobs.py        # Pencarian dan paginasi lowongan
 │   │   │   │   ├── seeker.py      # Profil, bookmark, history aplikasi
 │   │   │   │   ├── uploads.py     # Endpoint Multi-modal PDF Parser
@@ -412,9 +414,11 @@ KerjaCerdas/
 │   │   │   ├── FloatingAdvisor.jsx   # Antarmuka chat interaktif dengan Swarm
 │   │   │   ├── EmployerDashboard.jsx # Analitik kolam kandidat untuk HRD
 │   │   │   ├── EmployerCandidates.jsx# AI Shortlist & tombol "Unlock Kontak"
+│   │   │   ├── EmployerHelpPanel.jsx # Panel panduan rekrutmen untuk HRD
 │   │   │   ├── EmployerPostJob.jsx   # Form pembuatan lowongan instan
 │   │   │   ├── CVUploader.jsx        # Komponen unggah PDF kandidat
 │   │   │   ├── AuthModal.jsx         # Popup Login/Register terintegrasi
+│   │   │   ├── OnboardingWizard.jsx  # Alur onboarding pengguna baru
 │   │   │   ├── PublicHeader.jsx      # Navigasi utama
 │   │   │   └── LandingHero.jsx       # Halaman pendaratan publik
 │   │   ├── services/

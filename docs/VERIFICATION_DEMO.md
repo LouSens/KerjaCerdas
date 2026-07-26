@@ -31,7 +31,7 @@ Dokumen ini disusun sebagai panduan langkah demi langkah (*step-by-step*) bagi p
 - **Aksi:** Arahkan kursor ke bagian **"Rekomendasi Pekerjaan AI"**.
 - **Narasi Juri:** *"Tanpa pelamar mengetik apa pun, mesin SemanticMatcher kami langsung memetakan vektor CV melawan vektor lowongan. Ini bukan sekadar pencarian keyword, melainkan pemahaman konteks keahlian murni."*
 > **⚙️ Di Balik Layar (Technical Flow):**
-> 1. **Backend (`matcher.py`):** Modul `SemanticMatcher.rank_jobs_for_seeker` dijalankan secara asinkron.
+> 1. **Backend (Matching Module):** Modul `SemanticMatcher.rank_jobs_for_seeker` dijalankan secara asinkron.
 > 2. **Kalkulasi *Base Score*:** Algoritma menghitung **Cosine Similarity** (60% bobot) antara vektor kandidat dan seluruh lowongan aktif, ditambah rasio **Skill Overlap** (40% bobot).
 > 3. **Output:** Menghasilkan skor kecocokan absolut (misal: 92%) yang sepenuhnya didasarkan pada kompetensi teknis, tanpa intervensi bias lokasi/gaji di tahap awal ini.
 
@@ -47,10 +47,10 @@ Dokumen ini disusun sebagai panduan langkah demi langkah (*step-by-step*) bagi p
 - **Aksi:** Pada lowongan berskor rendah, klik tombol **"🧠 Cek Gap Keahlian"**.
 - **Hasil:** Agen AI merinci kelemahan dan memberikan *micro-learning*.
 > **⚙️ Di Balik Layar (Technical Flow):**
-> 1. **Routing ke LangGraph:** Frontend menembak POST `/agent/invoke` memicu **ReAct Loop** (`create_react_agent`) di `builder.py`.
-> 2. **Mini-Survey Injection (`seeker_advisor.md`):** Jika *prompt* pengguna terdeteksi terlalu pendek (misal: "gimana ya?"), AI menolak berhalusinasi dan langsung merespons dengan 2 pertanyaan klarifikasi tajam.
-> 3. **Analisis Semantik Gemini:** `nodes.py` > `review_resume` menggunakan `SemanticMatcher` (Gemini 3.1 Flash untuk *embeddings*) membandingkan JSON kandidat dengan JSON *Job*.
-> 4. **Dynamic Routing Token Saver (`superpowers.py`):** Jika pelamar absolut tidak memiliki *skill* wajib (mismatch 100%), *tool* simulasi ditolak sistem. Mekanisme *circuit breaker* menghemat 40% pemborosan token.
+> 1. **Routing ke LangGraph:** Frontend menembak POST `/agent/invoke` memicu **ReAct Loop** (`create_react_agent`) di Graph Builder Module.
+> 2. **Mini-Survey Injection (Mini-Survey Tool):** Jika *prompt* pengguna terdeteksi terlalu pendek (misal: "gimana ya?"), AI menolak berhalusinasi dan langsung merespons dengan 2 pertanyaan klarifikasi tajam.
+> 3. **Analisis Semantik Gemini:** Agent Nodes > `review_resume` menggunakan `SemanticMatcher` (Gemini 3.1 Flash untuk *embeddings*) membandingkan JSON kandidat dengan JSON *Job*.
+> 4. **Dynamic Routing Token Saver (AI Tools Module):** Jika pelamar absolut tidak memiliki *skill* wajib (mismatch 100%), *tool* simulasi ditolak sistem. Mekanisme *circuit breaker* menghemat 40% pemborosan token.
 > 5. **Micro-Learning Tier 1:** *Tool* `analyze_skill_gap_tool` mengembalikan JSON internal untuk *micro-project* 15 menit, dirender rapi oleh UI.
 
 ---
@@ -70,8 +70,8 @@ Dokumen ini disusun sebagai panduan langkah demi langkah (*step-by-step*) bagi p
 - **Aksi:** Buka dasbor lowongan yang tayang, klik menu **"Kandidat"**.
 - **Narasi Juri:** *"Biasanya HRD harus membaca 500 PDF. Di sini, sistem sudah mengurutkan (Rerank) kandidat. Dan perhatikan, nama mereka disensor cerdas layaknya LinkedIn."*
 > **⚙️ Di Balik Layar (Technical Flow):**
-> 1. **Backend Reverse Matching:** `matcher.py` membalik logika vektor. Vektor *Job Posting* kini bertindak sebagai *Query* mencari kandidat terdekat (`rank_seekers_for_job`).
-> 2. **Redaction Middleware (`employer.py`):** Sebelum JSON dikirim ke Frontend, iterasi *middleware* mencegat *payload*. Properti `full_name` dihancurkan dan diganti menggunakan **The Teaser Method**.
+> 1. **Backend Reverse Matching:** Matching Module membalik logika vektor. Vektor *Job Posting* kini bertindak sebagai *Query* mencari kandidat terdekat (`rank_seekers_for_job`).
+> 2. **Redaction Middleware (Employer Router):** Sebelum JSON dikirim ke Frontend, iterasi *middleware* mencegat *payload*. Properti `full_name` dihancurkan dan diganti menggunakan **The Teaser Method**.
 > 3. Algoritma menengok objek `experience` kandidat. Jika ada riwayat bekerja di "Telkomsel", namanya direkayasa menjadi **"Someone at Telkomsel"**. Jika profil mahasiswa (kosong), diganti berdasarkan kode area **"Someone from 3171"**. Informasi kontak (`email`, `phone`) dihapus total dari memori respons.
 
 ### Langkah 2.3 — Eksekusi Monetisasi (Conceptual Pay-to-Unlock)
