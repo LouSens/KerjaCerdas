@@ -73,5 +73,5 @@ Sistem ini didesain tidak hanya untuk fungsionalitas, tetapi juga untuk optimali
 - **Event Tracking Terintegrasi**: Setiap aksi kritis (seperti melihat lowongan, mengubah profil, melamar) dicatat secara *closed-loop* ke dalam basis data analitik. Data ini akan membentuk *moat* organik untuk melatih ulang AI (*fine-tuning*) berdasarkan *historical hires*, menjadikan algoritma pencocokan semakin presisi tanpa bantuan manual.
 - **Progressive UI & Error Handling**: *Skeleton loader* transisional yang mensimulasikan langkah AI (misal: "Menganalisis skill gap..."), serta penanganan kesalahan dengan sistem Notifikasi Global (Toast) untuk sesi *Auth*, mencegah kebingungan teknis pada pengguna non-IT.
 
-**Komponen terkait:** `OnboardingWizard`, `useStore` (Zustand), `api.js` (Interceptors)
+**Komponen terkait:** `OnboardingWizard`, State Management (Zustand), API Client (Interceptors)
 **API:** `GET /api/v1/experiments/assignments`, `POST /api/v1/events/track`

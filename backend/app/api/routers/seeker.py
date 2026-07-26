@@ -352,8 +352,8 @@ async def analyze_skill_gap(
       4. Recommend courses via Gemini → course store → catalog fallback.
       5. Persist a SkillGapResult record so the frontend can load it later.
     """
-    from backend.app.agents.graph.nodes import _recommend_courses, run_skill_gap
-    from backend.app.db.schemas import CourseRecommendation, SkillGapResult
+    from backend.app.agents.graph.nodes import _recommend_courses
+    from backend.app.db.schemas import SkillGapResult
 
     repos = get_repositories()
 
@@ -424,11 +424,17 @@ async def analyze_skill_gap(
     total_required = len(target.required_skills or [])
     match_before = (len(matching_skills) / total_required) if total_required else 1.0
     # Hypothetical match after covering all gaps
-    match_after = min(match_before + (len(missing_skills) / total_required * 0.85), 1.0) if total_required else 1.0
+    match_after = (
+        min(match_before + (len(missing_skills) / total_required * 0.85), 1.0)
+        if total_required
+        else 1.0
+    )
 
     # Use top match score as the current match score
     if raw_matches:
-        top_score = next((m.score for m in raw_matches if m.job_id == target.id), raw_matches[0].score)
+        top_score = next(
+            (m.score for m in raw_matches if m.job_id == target.id), raw_matches[0].score
+        )
         match_before = max(match_before, top_score)
 
     # --- Determine severity --------------------------------------------------
@@ -501,7 +507,9 @@ async def get_latest_skill_gap(current_user: User = Depends(get_current_user)):
         return None
     # Return the most recently created
     latest = max(gaps, key=lambda g: g.created_at)
-    courses = [c.model_dump() if hasattr(c, "model_dump") else dict(c) for c in latest.recommended_courses]
+    courses = [
+        c.model_dump() if hasattr(c, "model_dump") else dict(c) for c in latest.recommended_courses
+    ]
     return {
         "seeker_id": seeker_id,
         "target_job_id": latest.target_job_id,

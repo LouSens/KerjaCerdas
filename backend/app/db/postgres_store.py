@@ -283,9 +283,7 @@ async def save_query_embedding(cache_key: str, model: str, embedding: list[float
         async with async_session() as session:
             existing = await session.get(QueryEmbedding, cache_key)
             if existing is None:
-                session.add(
-                    QueryEmbedding(cache_key=cache_key, model=model, embedding=embedding)
-                )
+                session.add(QueryEmbedding(cache_key=cache_key, model=model, embedding=embedding))
             # Keep the table bounded: drop the oldest rows beyond the cap.
             prune_ids = (
                 select(QueryEmbedding.cache_key)
