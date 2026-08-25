@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-
+import { useEffect } from 'react'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import useStore from './store/useStore'
 
 import PublicHeader from './components/PublicHeader'
@@ -8,6 +8,7 @@ import FloatingAdvisor from './components/FloatingAdvisor'
 import EmployerHelpPanel from './components/EmployerHelpPanel'
 import AuthModal from './components/AuthModal'
 import Footer from './components/Footer'
+import OnboardingWizard from './components/OnboardingWizard'
 
 // Public views
 import LandingHero from './components/LandingHero'
@@ -23,6 +24,7 @@ import SavedJobsPage from './components/SavedJobsPage'
 import VerificationDashboard from './components/VerificationDashboard'
 import CVUploader from './components/CVUploader'
 import SeekerSearch from './components/SeekerSearch'
+import ApplicationsPage from './components/ApplicationsPage'
 
 // Employer views
 import EmployerDashboard from './components/EmployerDashboard'
@@ -32,102 +34,211 @@ import EmployerCandidates from './components/EmployerCandidates'
 import EmployerVerification from './components/EmployerVerification'
 import JobPackUploader from './components/JobPackUploader'
 import EmployerProfile from './components/EmployerProfile'
-import OnboardingWizard from './components/OnboardingWizard'
 
+// ── Route map: view key ↔ URL path ─────────────────────────────────────────
+export const VIEW_TO_PATH = {
+    'home':                  '/',
+    'pricing':               '/harga',
+    'about':                 '/tentang',
+    'privacy':               '/privasi',
+    'seeker-dashboard':      '/dashboard',
+    'seeker-match':          '/lowongan',
+    'seeker-skill-gap':      '/skill-gap',
+    'seeker-saved':          '/tersimpan',
+    'seeker-verification':   '/verifikasi',
+    'seeker-profile':        '/profil',
+    'seeker-search':         '/cari',
+    'seeker-applications':   '/lamaran',
+    'employer-dashboard':    '/employer/dashboard',
+    'employer-jobs':         '/employer/lowongan',
+    'employer-post-job':     '/employer/pasang',
+    'employer-candidates':   '/employer/kandidat',
+    'employer-verification': '/employer/verifikasi',
+    'employer-upload':       '/employer/upload',
+    'employer-profile':      '/employer/profil',
+}
+
+export const PATH_TO_VIEW = Object.fromEntries(
+    Object.entries(VIEW_TO_PATH).map(([k, v]) => [v, k])
+)
 
 /**
- * App — role-aware shell.
- *   • Unauthenticated → PublicHeader + marketing pages.
- *   • Authenticated   → Sidebar + role-scoped content area + FloatingAdvisor.
+ * NavigationSync — bridges React Router ↔ Zustand store.
+ * Keeps URL and activeView in sync without breaking existing store logic.
  */
-export default function App() {
-    const { isAuthenticated, userRole, sidebarCollapsed, activeView, matches, checkApi, seekerId, profile } = useStore()
-    const [showOnboarding, setShowOnboarding] = useState(false)
+function NavigationSync() {
+    const { activeView, isAuthenticated, userRole, seekerId, profile } = useStore()
+    const location = useLocation()
+    const reactNavigate = useNavigate()
 
-    useEffect(() => { checkApi() }, [checkApi])
-
-    // Show onboarding wizard for new seekers who haven't uploaded a CV yet
+    // Register the react-router navigate function into the store bridge
     useEffect(() => {
-        if (isAuthenticated && userRole === 'seeker' && !seekerId && !(profile?.skills?.length > 0)) {
-            const timer = setTimeout(() => setShowOnboarding(true), 800)
-            return () => clearTimeout(timer)
+        useStore.getState()._setRouterNavigate(reactNavigate)
+        return () => useStore.getState()._setRouterNavigate(null)
+    }, [reactNavigate])
+
+    // Sync URL when activeView changes in store
+    useEffect(() => {
+        const targetPath = VIEW_TO_PATH[activeView]
+        if (targetPath && location.pathname !== targetPath) {
+            reactNavigate(targetPath, { replace: true })
         }
-    }, [isAuthenticated, userRole, seekerId, profile?.skills?.length])
+    }, [activeView]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Sync activeView when URL changes (browser back/forward, direct navigation)
+    useEffect(() => {
+        const view = PATH_TO_VIEW[location.pathname]
+        if (view && view !== useStore.getState().activeView) {
+            useStore.getState().navigate(view)
+        }
+    }, [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    return null
+}
+
+/**
+ * ProtectedRoute — redirects to home if not authenticated or wrong role.
+ */
+function ProtectedRoute({ children, role }) {
+    const { isAuthenticated, userRole } = useStore()
+    if (!isAuthenticated) return <Navigate to="/" replace />
+    if (role && userRole !== role) return <Navigate to="/" replace />
+    return children
+}
+
+/**
+ * AppShell — the authenticated layout wrapper (sidebar + main content).
+ */
+function AppShell({ children }) {
+    const { seekerId, profile, isAuthenticated, userRole } = useStore()
+    const showOnboarding = isAuthenticated && userRole === 'seeker' &&
+        !seekerId && !(profile?.skills?.length > 0)
 
     return (
-        <div className="min-h-screen bg-kc-cream font-sans text-kc-dark">
+        <div className="flex">
             <AuthModal />
             {showOnboarding && (
-                <OnboardingWizard onClose={() => setShowOnboarding(false)} />
+                <OnboardingWizard onClose={() => {
+                    // Wizard closed — stay on current page
+                }} />
             )}
-
-            {!isAuthenticated ? <PublicLayout view={activeView} /> : (
-                <div className="flex">
-                    <Sidebar />
-                    <main
-                        className="mobile-main flex-1 min-h-screen transition-[margin] duration-200 ml-60"
-                    >
-                        <div className="max-w-5xl mx-auto px-6 py-8">
-                            <AuthedView view={activeView} userRole={userRole} matches={matches} />
-                        </div>
-                    </main>
-                    <MobileBottomNav />
-                    {/* FloatingAdvisor = seeker-only AI chat; EmployerHelpPanel = employer-only tips */}
-                    <FloatingAdvisor />
-                    <EmployerHelpPanel />
+            <Sidebar />
+            <main className="mobile-main flex-1 min-h-screen transition-[margin] duration-200 ml-60">
+                <div className="max-w-5xl mx-auto px-6 py-8">
+                    {children}
                 </div>
-            )}
+            </main>
+            <MobileBottomNav />
+            <FloatingAdvisor />
+            <EmployerHelpPanel />
         </div>
     )
 }
 
-function PublicLayout({ view }) {
-    if (view === 'home') return <LandingHero />
+/**
+ * App — root component with react-router-dom Routes.
+ * BrowserRouter is already in main.jsx.
+ */
+export default function App() {
+    const { checkApi } = useStore()
+    useEffect(() => { checkApi() }, [checkApi])
+
     return (
-        <>
-            <PublicHeader />
-            <main className="pt-20">
-                {view === 'pricing' && <PricingPage />}
-                {view === 'about' && <AboutPage />}
-                {view === 'privacy' && <PrivacyPolicyPage />}
-            </main>
-            <Footer />
-        </>
+        <div className="min-h-screen bg-kc-cream font-sans text-kc-dark">
+            <NavigationSync />
+
+            <Routes>
+                {/* ── Public routes ───────────────────────────────────────────── */}
+                <Route path="/" element={<LandingHero />} />
+                <Route path="/harga" element={<><PublicHeader /><main className="pt-20"><PricingPage /></main><Footer /></>} />
+                <Route path="/tentang" element={<><PublicHeader /><main className="pt-20"><AboutPage /></main><Footer /></>} />
+                <Route path="/privasi" element={<><PublicHeader /><main className="pt-20"><PrivacyPolicyPage /></main><Footer /></>} />
+
+                {/* ── Seeker routes ─────────────────────────── */}
+                <Route path="/dashboard" element={
+                    <ProtectedRoute role="seeker">
+                        <AppShell><SeekerDashboard /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/lowongan" element={
+                    <ProtectedRoute role="seeker">
+                        <AppShell><SeekerMatchResults /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/skill-gap" element={
+                    <ProtectedRoute role="seeker">
+                        <AppShell><SkillGapPanel /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/tersimpan" element={
+                    <ProtectedRoute role="seeker">
+                        <AppShell><SavedJobsPage /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/verifikasi" element={
+                    <ProtectedRoute role="seeker">
+                        <AppShell><VerificationDashboard /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/profil" element={
+                    <ProtectedRoute role="seeker">
+                        <AppShell><CVUploader /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/cari" element={
+                    <ProtectedRoute role="seeker">
+                        <AppShell><SeekerSearch /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/lamaran" element={
+                    <ProtectedRoute role="seeker">
+                        <AppShell><ApplicationsPage /></AppShell>
+                    </ProtectedRoute>
+                } />
+
+                {/* ── Employer routes ───────────────────────── */}
+                <Route path="/employer/dashboard" element={
+                    <ProtectedRoute role="employer">
+                        <AppShell><EmployerDashboard /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/employer/lowongan" element={
+                    <ProtectedRoute role="employer">
+                        <AppShell><EmployerJobs /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/employer/pasang" element={
+                    <ProtectedRoute role="employer">
+                        <AppShell><EmployerPostJob /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/employer/kandidat" element={
+                    <ProtectedRoute role="employer">
+                        <AppShell><EmployerCandidates /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/employer/verifikasi" element={
+                    <ProtectedRoute role="employer">
+                        <AppShell><EmployerVerification /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/employer/upload" element={
+                    <ProtectedRoute role="employer">
+                        <AppShell><JobPackUploader /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/employer/profil" element={
+                    <ProtectedRoute role="employer">
+                        <AppShell><EmployerProfile /></AppShell>
+                    </ProtectedRoute>
+                } />
+
+                {/* ── Pricing & About accessible while logged in ── */}
+                <Route path="/harga" element={<PricingPage />} />
+
+                {/* ── Catch-all → home ──────────────────────── */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </div>
     )
 }
-
-function AuthedView({ view, userRole, matches }) {
-    if (userRole === 'seeker') {
-        if (view === 'seeker-dashboard')    return <SeekerDashboard />
-        if (view === 'seeker-match')        return <SeekerMatchResults />
-        if (view === 'seeker-skill-gap')    return <SkillGapPanel />
-        if (view === 'seeker-saved')        return <SavedJobsPage />
-        if (view === 'seeker-verification') return <VerificationDashboard />
-        if (view === 'seeker-profile')      return <CVUploader />
-        if (view === 'seeker-search')       return <SeekerSearch />
-    }
-
-    if (userRole === 'employer') {
-        if (view === 'employer-dashboard')    return <EmployerDashboard />
-        if (view === 'employer-jobs')         return <EmployerJobs />
-        if (view === 'employer-post-job')     return <EmployerPostJob />
-        if (view === 'employer-candidates')   return <EmployerCandidates />
-        if (view === 'employer-verification') return <EmployerVerification />
-        if (view === 'employer-upload')       return <JobPackUploader />
-        if (view === 'employer-profile')      return <EmployerProfile />
-    }
-
-
-    if (view === 'pricing') return <PricingPage />
-    if (view === 'about') return <AboutPage />
-    if (view === 'privacy') return <PrivacyPolicyPage />
-    if (view === 'home') {
-        if (userRole === 'seeker') return <SeekerDashboard />
-        if (userRole === 'employer') return <EmployerDashboard />
-        return <p className="text-sm text-kc-gray">Silakan buka menu dari sidebar.</p>
-    }
-
-    return <p className="text-sm text-kc-gray">Halaman tidak ditemukan untuk peran Anda.</p>
-}
-
-

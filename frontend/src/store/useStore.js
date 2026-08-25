@@ -1,14 +1,12 @@
 /**
- * KerjaCerdas — Zustand store.
+ * KerjaCerdas — Zustand store (v4).
  *
- * Single source of truth for: auth (seeker / employer / admin), profile,
- * matches, chat, saved jobs, uploads, sidebar + floating advisor UI state.
- *
- * The router is *role-based*. Pre-login, only `home`, `pricing`, `about`,
- * `privacy` are reachable. Post-login, allowed views depend on `userRole`.
- *
- * Saved jobs are persisted both locally (localStorage via Zustand persist)
- * and synced to the backend /seeker/bookmarks endpoint for cross-device access.
+ * Changes from v3:
+ * - Gamification completely removed (3.1)
+ * - Applications tracking added and loaded on login (3.2)
+ * - Router bridge (_setRouterNavigate / _routerNavigate) added for react-router-dom URL sync (2.1)
+ * - navigate() now also pushes to the browser URL via the router bridge
+ * - selectedCandidateJobId added so employer dashboard can pass job context to candidates view (2.3)
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -38,11 +36,11 @@ import {
 
 const PUBLIC_VIEWS = new Set(['home', 'pricing', 'about', 'privacy'])
 
-
 const ALLOWED_VIEWS = {
     seeker: new Set([
         'seeker-dashboard', 'seeker-match', 'seeker-skill-gap',
-        'seeker-verification', 'seeker-saved', 'seeker-profile', 'seeker-search',
+        'seeker-verification', 'seeker-saved', 'seeker-profile',
+        'seeker-search', 'seeker-applications',
     ]),
     employer: new Set([
         'employer-dashboard', 'employer-jobs', 'employer-candidates',
@@ -50,14 +48,44 @@ const ALLOWED_VIEWS = {
     ]),
 }
 
+// ── React Router bridge ──────────────────────────────────────────────────────
+// Allows Zustand navigate() to push to browser URL without React hooks.
+let _routerNavigate = null
+
+// ── VIEW → PATH map (mirrors App.jsx) ───────────────────────────────────────
+const VIEW_TO_PATH = {
+    'home':                  '/',
+    'pricing':               '/harga',
+    'about':                 '/tentang',
+    'privacy':               '/privasi',
+    'seeker-dashboard':      '/dashboard',
+    'seeker-match':          '/lowongan',
+    'seeker-skill-gap':      '/skill-gap',
+    'seeker-saved':          '/tersimpan',
+    'seeker-verification':   '/verifikasi',
+    'seeker-profile':        '/profil',
+    'seeker-search':         '/cari',
+    'seeker-applications':   '/lamaran',
+    'employer-dashboard':    '/employer/dashboard',
+    'employer-jobs':         '/employer/lowongan',
+    'employer-post-job':     '/employer/pasang',
+    'employer-candidates':   '/employer/kandidat',
+    'employer-verification': '/employer/verifikasi',
+    'employer-upload':       '/employer/upload',
+    'employer-profile':      '/employer/profil',
+}
+
 const useStore = create(
     persist(
         (set, get) => ({
+            // ─── Router bridge ───────────────────────────────────────────
+            _setRouterNavigate: (fn) => { _routerNavigate = fn },
+
             // ─── Auth ────────────────────────────────────────────────────
             isAuthenticated: false,
             userRole: null, // 'seeker' | 'employer' | 'admin' | null
             user: { id: null, name: '', email: '', role: null, createdAt: null },
-            authToken: null,  // JWT token — set by real login (real auth flow)
+            authToken: null,
 
             showAuthModal: false,
             authTab: 'login',
@@ -68,7 +96,6 @@ const useStore = create(
             closeAuthModal: () => set({ showAuthModal: false, preferredAuthRole: null }),
             setAuthTab: (tab) => set({ authTab: tab }),
 
-            // Hits backend /auth/login → JWT + user.
             login: async (email, password) => {
                 const res = await loginUser({ email, password })
                 const { access_token, user } = res
@@ -85,43 +112,43 @@ const useStore = create(
                     activeView: homeView,
                     seekerId: null,
                     matches: [],
+                    applications: [],
                 })
                 toast.success(`Selamat datang, ${user.name}!`)
 
-                // Post-login side effects: hydrate data from backend
                 const store = get()
                 if (resolvedRole === 'seeker') {
                     store.syncSavedJobs()
                     store.loadSeekerProfile()
+                    store.loadApplications()
                 } else if (resolvedRole === 'employer') {
                     store.refreshEmployerJobs()
                     store.loadEmployerProfile()
                 }
-                // Fetch A/B experiment assignments for this user
                 store.loadExperiments()
                 return res
             },
 
-            // Hits backend /auth/register → JWT + user.
             register: async (name, email, password, role) => {
                 const res = await registerUser({ name, email, password, role })
                 const { access_token, user } = res
+                const homeView = user.role === 'employer' ? 'employer-dashboard' : 'seeker-dashboard'
                 set({
                     isAuthenticated: true,
                     userRole: user.role,
                     user: { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: new Date().toISOString() },
                     authToken: access_token,
                     showAuthModal: false,
-                    activeView: user.role === 'employer' ? 'employer-dashboard' : 'seeker-dashboard',
+                    activeView: homeView,
                     seekerId: null,
                     matches: [],
+                    applications: [],
                 })
                 toast.success(`Akun ${user.role} dibuat — selamat datang ${user.name}!`)
                 if (user.role === 'employer') {
                     get().refreshEmployerJobs()
                     get().loadEmployerProfile()
                 }
-                // Fetch A/B experiment assignments for this user
                 get().loadExperiments()
                 return res
             },
@@ -137,22 +164,31 @@ const useStore = create(
                     matches: [],
                     authToken: null,
                     savedJobs: [],
+                    applications: [],
                     experiments: {},
                     advisorLog: [
                         { role: 'assistant', content: 'Halo! Saya advisor karier KerjaCerdas. Tanya apa saja seputar pekerjaan, skill, atau CV kamu.' },
                     ],
                 })
-                // toast removed as per user request
             },
 
-            // ─── Navigation (role-aware) ─────────────────────────────────
+            // ─── Navigation (role-aware + URL sync) ─────────────────────
             activeView: 'home',
             sidebarCollapsed: false,
             toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
 
+            // selectedCandidateJobId: so employer dashboard passes job context to candidates page
+            selectedCandidateJobId: null,
+
             navigate: (view) => {
                 const { isAuthenticated, userRole, openAuthModal } = get()
-                if (PUBLIC_VIEWS.has(view)) return set({ activeView: view })
+                if (PUBLIC_VIEWS.has(view)) {
+                    set({ activeView: view })
+                    if (_routerNavigate && VIEW_TO_PATH[view]) {
+                        _routerNavigate(VIEW_TO_PATH[view])
+                    }
+                    return
+                }
                 if (!isAuthenticated) {
                     toast('Silakan masuk dulu', { icon: '🔒' })
                     openAuthModal('login', view.startsWith('employer') ? 'employer' : 'seeker')
@@ -164,9 +200,18 @@ const useStore = create(
                     return
                 }
                 set({ activeView: view })
+                if (_routerNavigate && VIEW_TO_PATH[view]) {
+                    _routerNavigate(VIEW_TO_PATH[view])
+                }
             },
 
-            // ─── Floating advisor (bottom-right bubble) ──────────────────
+            // Navigate to candidates page with a specific job pre-selected
+            navigateToCandidates: (jobId) => {
+                set({ selectedCandidateJobId: jobId })
+                get().navigate('employer-candidates')
+            },
+
+            // ─── Floating advisor ────────────────────────────────────────
             floatingAdvisorOpen: false,
             toggleFloatingAdvisor: () => set((s) => ({ floatingAdvisorOpen: !s.floatingAdvisorOpen })),
 
@@ -178,7 +223,6 @@ const useStore = create(
             },
             updateProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
 
-            // Load seeker profile from backend and hydrate store
             loadSeekerProfile: async () => {
                 try {
                     const data = await fetchSeekerProfile()
@@ -192,6 +236,10 @@ const useStore = create(
                             education: data.education || [],
                             salary_expectation_min: data.salary_expectation_min || 0,
                             salary_expectation_max: data.salary_expectation_max || 0,
+                            // Verification status from backend
+                            ktp_verified: data.ktp_verified || false,
+                            ijazah_verified: data.ijazah_verified || false,
+                            phone_verified: data.phone_verified || false,
                         },
                         seekerId: data.id,
                     })
@@ -206,7 +254,6 @@ const useStore = create(
             missingSkills: [],
             matchingSkills: [],
             recommendedCourses: [],
-            applications: [],
             agentLoading: false,
             agentError: null,
             advisorLog: [
@@ -217,12 +264,11 @@ const useStore = create(
             advisorSessionId: null,
             targetJobTitle: null,
 
-            // ─── Skill gap (AI-powered) ──────────────────────────────────
-            skillGapResult: null,   // full response from /seeker/skill-gap
+            // ─── Skill gap ───────────────────────────────────────────────
+            skillGapResult: null,
             skillGapLoading: false,
             skillGapError: null,
 
-            /** Trigger AI skill-gap analysis and persist result. */
             runSkillGap: async (targetJobId = null) => {
                 set({ skillGapLoading: true, skillGapError: null })
                 try {
@@ -235,7 +281,6 @@ const useStore = create(
                 }
             },
 
-            /** Load the latest cached skill-gap result from DB (no AI call). */
             loadSkillGap: async () => {
                 set({ skillGapLoading: true, skillGapError: null })
                 try {
@@ -243,7 +288,6 @@ const useStore = create(
                     set({ skillGapResult: res || null, skillGapLoading: false })
                     return res
                 } catch (e) {
-                    // 404 is expected for new users — not an error
                     if (e.status !== 404) {
                         set({ skillGapError: e.message })
                     }
@@ -283,12 +327,17 @@ const useStore = create(
                 }
             },
 
+            // ─── Applications tracking (3.2) ─────────────────────────────
+            applications: [],
+            applicationsLoading: false,
+
             loadApplications: async () => {
+                set({ applicationsLoading: true })
                 try {
                     const data = await fetchApplications()
-                    set({ applications: Array.isArray(data) ? data : [] })
+                    set({ applications: Array.isArray(data) ? data : [], applicationsLoading: false })
                 } catch {
-                    // Silently ignore
+                    set({ applicationsLoading: false })
                 }
             },
 
@@ -298,7 +347,9 @@ const useStore = create(
                     if (res.already_applied) {
                         toast('Sudah melamar ke lowongan ini', { icon: '✓' })
                     } else {
-                        toast.success('Lamaran terkirim! +50 XP')
+                        toast.success('Lamaran terkirim!')
+                        // Refresh applications after applying
+                        get().loadApplications()
                     }
                     return res
                 } catch (e) {
@@ -317,21 +368,21 @@ const useStore = create(
                     set({ seekerId: res.seeker_id, cvUploading: false })
                     toast.success(res.parsed_offline
                         ? 'CV diparse (mode offline) — tambah GEMINI_API_KEY untuk hasil lebih akurat.'
-                        : `CV diparse: ${res.summary.skills_count} skill terdeteksi`)
-                    
-                    // Reload full profile from backend after CV upload
+                        : `CV diparse: ${res.summary?.skills_count || 0} skill terdeteksi`)
+
                     await get().loadSeekerProfile()
-                    
+
                     const updated = get().profile
                     const name = updated?.full_name || 'Rekan'
-                    
+
                     set({
                         profileDirty: true,
                         advisorSessionId: `${res.seeker_id}_${Date.now()}`,
                         advisorLog: [
-                            { role: 'assistant', content: `Halo ${name}! Saya AI Advisor KerjaCerdas. Saya telah menganalisis CV baru yang Anda unggah. Ada yang bisa saya bantu terkait peluang karier atau skill gap Anda?` }
+                            { role: 'assistant', content: `Halo ${name}! Saya AI Advisor KerjaCerdas. CV kamu sudah dianalisis. Ada yang bisa saya bantu terkait peluang karier atau skill gap kamu?` }
                         ]
                     })
+                    return res
                 } catch (e) {
                     set({ cvUploading: false })
                     toast.error('Upload CV gagal: ' + e.message)
@@ -340,25 +391,26 @@ const useStore = create(
 
             // ─── Employer job-pack upload ────────────────────────────────
             jobPackUploading: false,
+            jobPackResult: null,
             uploadJobPack: async (file) => {
                 if (!file) return
                 const { user } = get()
-                set({ jobPackUploading: true })
+                set({ jobPackUploading: true, jobPackResult: null })
                 try {
                     const res = await uploadJobPack({ userId: user.id || 'demo', file })
-                    set({ jobPackUploading: false })
-                    toast.success(`${res.created_job_ids.length} lowongan dibuat`)
-                    get().refreshEmployerJobs()  // refresh employer-scoped list
+                    set({ jobPackUploading: false, jobPackResult: res })
+                    toast.success(`${res.created_job_ids?.length || 0} lowongan berhasil dibuat dari PDF`)
+                    get().refreshEmployerJobs()
+                    return res
                 } catch (e) {
                     set({ jobPackUploading: false })
-                    toast.error('Upload job-pack gagal')
+                    toast.error('Upload job-pack gagal: ' + e.message)
                 }
             },
 
-            // ─── Saved jobs — synced to backend ──────────────────────────
+            // ─── Saved jobs ───────────────────────────────────────────────
             savedJobs: [],
 
-            // Load saved jobs from backend (called on login)
             syncSavedJobs: async () => {
                 try {
                     const data = await fetchBookmarks()
@@ -368,11 +420,18 @@ const useStore = create(
                             job_id: b.job_id,
                             title: b.title || '—',
                             company: b.company || '—',
+                            salary_range: b.salary_range || (b.salary_min
+                                ? `Rp ${(b.salary_min / 1e6).toFixed(0)}–${(b.salary_max / 1e6).toFixed(0)}jt`
+                                : null),
+                            location: b.region_code
+                                ? (b.remote_allowed ? `${b.region_code} · Remote` : b.region_code)
+                                : null,
+                            remote_allowed: b.remote_allowed || false,
                             savedAt: b.saved_at,
                         }))
                     })
                 } catch {
-                    // Silently ignore — user may not have a seeker profile yet
+                    // Silently ignore
                 }
             },
 
@@ -381,14 +440,12 @@ const useStore = create(
                 const id = job.job_id || job.id
                 const exists = savedJobs.find(j => (j.job_id || j.id) === id)
 
-                // Optimistic update
                 if (exists) {
                     set({ savedJobs: savedJobs.filter(j => (j.job_id || j.id) !== id) })
                 } else {
                     set({ savedJobs: [...savedJobs, { ...job, job_id: id, savedAt: new Date().toISOString() }] })
                 }
 
-                // Sync to backend if authenticated as seeker
                 if (isAuthenticated && userRole === 'seeker') {
                     try {
                         if (exists) {
@@ -397,7 +454,6 @@ const useStore = create(
                             await addBookmark(id)
                         }
                     } catch (e) {
-                        // Revert optimistic update on failure
                         set({ savedJobs })
                         toast.error('Gagal simpan: ' + e.message)
                     }
@@ -409,11 +465,11 @@ const useStore = create(
             computeProfileCompleteness: () => {
                 const { profile, seekerId } = get()
                 let score = 0
-                if (seekerId) score += 20                           // CV uploaded
-                if ((profile.skills || []).length > 0) score += 25  // Has skills
-                if ((profile.experience || []).length > 0) score += 25 // Has experience
-                if ((profile.education || []).length > 0) score += 20 // Has education
-                if (profile.salary_expectation_min > 0) score += 10  // Salary set
+                if (seekerId) score += 20
+                if ((profile.skills || []).length > 0) score += 25
+                if ((profile.experience || []).length > 0) score += 25
+                if ((profile.education || []).length > 0) score += 20
+                if (profile.salary_expectation_min > 0) score += 10
                 return score
             },
 
@@ -431,7 +487,6 @@ const useStore = create(
             },
 
             // ─── Employer-scoped jobs feed ───────────────────────────────
-            // Separate from public jobs — auth-gated, returns only this employer's postings
             employerJobs: [],
             employerJobsLoading: false,
             employerProfile: null,
@@ -454,22 +509,19 @@ const useStore = create(
                 }
             },
 
-
-            // ─ A/B Experiments ──────────────────────────────────────────
-            // Keyed by experiment name, value is the assigned variant string.
+            // ─── A/B Experiments ─────────────────────────────────────────
             experiments: {},
             loadExperiments: async () => {
                 try {
                     const data = await fetchExperimentAssignments()
                     set({ experiments: data || {} })
                 } catch {
-                    // Non-critical — app works without A/B data
+                    // Non-critical
                 }
             },
             getExperiment: (name) => get().experiments[name] ?? null,
 
-            // ─ Event Tracking ──────────────────────────────────────────
-            // Fire-and-forget analytics. Called by components on key actions.
+            // ─── Event Tracking ──────────────────────────────────────────
             trackEvent: (eventType, extra = {}) => {
                 const { user, experiments } = get()
                 const abVariant = experiments[extra.experiment] ?? null
@@ -480,7 +532,7 @@ const useStore = create(
                 })
             },
 
-            // ─ API health ──────────────────────────────────────────
+            // ─── API health ──────────────────────────────────────────────
             apiStatus: 'unknown',
             checkApi: async () => {
                 try { await healthCheck(); set({ apiStatus: 'connected' }) }
@@ -492,7 +544,7 @@ const useStore = create(
             setMobileMenuOpen: (v) => set({ isMobileMenuOpen: v }),
         }),
         {
-            name: 'kerjacerdas-v3',
+            name: 'kerjacerdas-v4',
             partialize: (s) => ({
                 isAuthenticated: s.isAuthenticated,
                 userRole: s.userRole,
@@ -503,6 +555,7 @@ const useStore = create(
                 sidebarCollapsed: s.sidebarCollapsed,
                 authToken: s.authToken,
                 activeView: s.activeView,
+                selectedCandidateJobId: s.selectedCandidateJobId,
             }),
         }
     )
