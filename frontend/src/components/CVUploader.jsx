@@ -131,9 +131,22 @@ export default function CVUploader() {
 
     const handleFile = async (file) => {
         if (!file) return
+        // Basic file validation (1.2)
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            toast.error('Hanya file PDF yang didukung')
+            return
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error('File terlalu besar (maks 10 MB)')
+            return
+        }
         setFileMeta({ name: file.name, size: file.size })
-        await uploadResume(file)
+        const res = await uploadResume(file)
         setIsEditingCV(false)
+        // Auto-navigate to match results after successful upload (2.2 fix)
+        if (res?.seeker_id) {
+            setTimeout(() => navigate('seeker-match'), 1000)
+        }
     }
 
     const skillsCount = profile?.skills?.length ?? 0
