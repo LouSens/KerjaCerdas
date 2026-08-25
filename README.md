@@ -84,15 +84,22 @@ Kami merancang alur pengguna (*user flow*) layaknya prototipe Figma untuk mendem
 ### 🙎‍♂️ Alur Pencari Kerja (Seeker Flow)
 
 ```mermaid
-flowchart LR
+flowchart TD
     classDef page fill:#FF5722,stroke:#0B0B0F,stroke-width:2px,color:#fff,font-weight:bold
     classDef modal fill:#C8F26B,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
-    
+    classDef action fill:#7AE7F0,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
+
     A[Landing Page]:::page -->|Klik Masuk| B[Auth Modal]:::modal
-    B -->|Login/Register| C[Seeker Dashboard]:::page
-    C -->|Klik 'Lihat Semua 5'| D[Match Results]:::page
-    D -->|Klik 'Lihat'| E[Job Detail Modal]:::modal
-    C -->|Klik Peta Skill Gap| F[Skill Gap Analyzer]:::page
+    B -->|Login / Register| C[Seeker Dashboard]:::page
+    
+    C -->|1. Upload / Edit| D[Upload CV & Profil]:::page
+    D -->|AI Auto-Extract| E[Job Match Results]:::page
+    
+    E -->|Klik Kartu| F[Job Detail Modal\n+ Explainable AI 5-Skor]:::modal
+    F -->|Aksi Lamar| G[Lamaran Saya\nMilestone Tracking]:::page
+    
+    C -->|2. Analisis Kebutuhan| H[Skill Gap Analyzer\n+ Kursus Ed-Tech]:::page
+    C -->|3. Validasi Kepercayaan| I[Verifikasi Identitas\nE-KYC & Phone OTP]:::page
 ```
 
 | 1. Landing Page | 2. Login | 3. Daftar Akun | 4. Dasbor Pencari Kerja |
@@ -112,14 +119,26 @@ flowchart LR
 ### 🏢 Alur Perusahaan (Employer Flow)
 
 ```mermaid
-flowchart LR
+flowchart TD
     classDef page fill:#7AE7F0,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
-    classDef action fill:#FFCB05,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
+    classDef modal fill:#FFCB05,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
+    classDef step fill:#C8F26B,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
+
+    A[HR Login / Register]:::modal --> B[Employer Dashboard]:::page
     
-    A[HR Login]:::modal --> B[Employer Dashboard]:::page
-    B -->|Klik Pasang Lowongan| C[Post Job Wizard]:::page
-    C -->|AI Rank Candidates| D[Live Candidates Pool]:::page
-    D -->|Teaser Method| E[Unlock Candidate Contact]:::modal
+    subgraph Onboarding_Timeline ["📋 Alur Onboarding Berjenjang (1 -> 2 -> 3)"]
+        C[Langkah 1:\nProfil Perusahaan]:::step --> D[Langkah 2:\nVerifikasi NPWP DJP]:::step
+        D --> E[Langkah 3:\nPasang Lowongan]:::step
+    end
+    
+    B --> C
+    D -->|Opsi Massal| F[Job Pack Bulk Uploader\nPDF Auto-Parsing]:::page
+    
+    E -->|AI Live Pool Estimate| G[Lowongan Aktif]:::page
+    F --> G
+    
+    G -->|AI Reverse Matching| H[Top Kandidat\nTeaser Method]:::page
+    H -->|Micropayment Rp 50k| I[Pay-to-Unlock Kontak]:::modal
 ```
 
 | 1. Autentikasi HRD | 2. Dasbor Perusahaan | 3. Pasang Lowongan |
@@ -221,47 +240,54 @@ flowchart TD
 
     User((👤 Seeker / Employer)):::user
 
-    subgraph API_Layer ["API Gateway"]
-        FastAPI["⚡ FastAPI / WebSockets"]:::api
+    subgraph API_Layer ["API Gateway & Security Layer"]
+        FastAPI["⚡ FastAPI / ASGI"]:::api
+        Middleware["🛡️ Rate Limiter (Sliding Window)\n+ PII Redaction & Sanitizer"]:::api
+        FastAPI --- Middleware
     end
 
     subgraph LangGraph_Swarm ["🧠 Multi-Agent Swarm (LangGraph)"]
         Supervisor{"👑 Supervisor Node\n(Routing & Synthesis)"}:::supervisor
         
         %% Agents
-        SearchAgent["🔍 SearchJobs"]:::worker
-        ReviewAgent["📄 ResumeReview"]:::worker
-        GapAgent["🎯 SkillGap"]:::worker
+        SearchAgent["🔍 SearchJobs Agent"]:::worker
+        ReviewAgent["📄 ResumeReview Agent"]:::worker
+        GapAgent["🎯 SkillGap Agent"]:::worker
+        AdvisorAgent["💬 CareerAdvisor Agent"]:::worker
         
         GraphState[("💬 Conversational\nMemory / State")]:::state
 
         Supervisor <--> SearchAgent
         Supervisor <--> ReviewAgent
         Supervisor <--> GapAgent
+        Supervisor <--> AdvisorAgent
         
         Supervisor -.-> GraphState
         SearchAgent -.-> GraphState
+        AdvisorAgent -.-> GraphState
     end
 
     subgraph Infrastructure ["Vector & LLM Engine"]
-        Gemini{"✨ Google Gemini\n3.1 Flash"}:::llm
-        PG[("🐘 PostgreSQL\n(pgvector)")]:::db
+        Gemini{"✨ Google Gemini\n3.1 Flash (MRL 768-dim)"}:::llm
+        PG[("🐘 PostgreSQL 16\n(pgvector HNSW ef=64)")]:::db
+        Cache[("⚡ LRU / Redis\nQuery Embeddings Cache")]:::db
         
         Gemini ~~~ PG
+        PG ~~~ Cache
     end
 
     %% Vertical Data Flow
-    User -->|HTTP/SSE| FastAPI
+    User -->|HTTP / SSE Stream| FastAPI
     FastAPI -->|Submit Task| Supervisor
     FastAPI <-->|Stream Response| GraphState
 
     %% Agents to Infrastructure
-    SearchAgent -->|Vector Search| PG
-    GapAgent -->|Read SQL| PG
-
-    ReviewAgent -->|Multimodal Extract| Gemini
-    GapAgent -->|Reasoning| Gemini
-    Supervisor -->|Plan & Route| Gemini
+    SearchAgent -->|HNSW ANN Search| PG
+    GapAgent -->|Read Skills & Courses| PG
+    ReviewAgent -->|Multimodal Parsing| Gemini
+    GapAgent -->|Reasoning & Roadmaps| Gemini
+    Supervisor -->|Intent Classification| Gemini
+    SearchAgent -->|Query Vectors| Cache
 ```
 
 ### 1. Eksekusi Otonom Paralel (Parallel Function Calling)
@@ -407,42 +433,50 @@ KerjaCerdas/
 │   │   └── seed_courses.py   # Data Kursus
 │   └── requirements.txt
 │
-├── frontend/                 # Aplikasi Web React.js (Vite)
+├── frontend/                 # Aplikasi Web React.js (Vite + React Router)
 │   ├── src/
 │   │   ├── components/       # UI Library (Neo-Brutalism)
-│   │   │   ├── _design.jsx           # Komponen dasar desain sistem (Button, Card)
+│   │   │   ├── _design.jsx           # Komponen dasar desain sistem (Button, Card, Tag)
 │   │   │   ├── SeekerDashboard.jsx   # Dasbor utama pencari kerja
 │   │   │   ├── SeekerMatchResults.jsx# UI visualisasi skor kecocokan vektor
 │   │   │   ├── SeekerSearch.jsx      # Dual-Track Manual Search
 │   │   │   ├── SkillGapPanel.jsx     # Panel rekomendasi kursus Ed-Tech
+│   │   │   ├── ApplicationsPage.jsx  # Pelacakan status lamaran milestone
 │   │   │   ├── FloatingAdvisor.jsx   # Antarmuka chat interaktif dengan Swarm
+│   │   │   ├── JobDetailModal.jsx    # Detail lowongan + Explainable AI Breakdown
 │   │   │   ├── EmployerDashboard.jsx # Analitik kolam kandidat untuk HRD
 │   │   │   ├── EmployerCandidates.jsx# AI Shortlist & tombol "Unlock Kontak"
 │   │   │   ├── EmployerHelpPanel.jsx # Panel panduan rekrutmen untuk HRD
-│   │   │   ├── EmployerPostJob.jsx   # Form pembuatan lowongan instan
+│   │   │   ├── EmployerPostJob.jsx   # Form pembuatan lowongan (Timeline Step)
+│   │   │   ├── EmployerProfile.jsx   # Pengaturan data profil perusahaan
+│   │   │   ├── JobPackUploader.jsx   # Bulk PDF job parser dengan drag-drop
 │   │   │   ├── CVUploader.jsx        # Komponen unggah PDF kandidat
+│   │   │   ├── VerificationDashboard.jsx # E-KYC KTP, Ijazah, NPWP, dan Phone OTP
+│   │   │   ├── PricingPage.jsx       # Halaman harga B2B/B2C & ATS Enterprise
 │   │   │   ├── AuthModal.jsx         # Popup Login/Register terintegrasi
 │   │   │   ├── OnboardingWizard.jsx  # Alur onboarding pengguna baru
 │   │   │   ├── PublicHeader.jsx      # Navigasi utama
+│   │   │   ├── Footer.jsx            # Footer aplikasi
 │   │   │   └── LandingHero.jsx       # Halaman pendaratan publik
 │   │   ├── services/
-│   │   │   └── api.js        # Wrapper fetch API dengan auto-logout 401
+│   │   │   └── api.js        # Wrapper fetch API dengan auto-logout 401 & auth header
 │   │   ├── store/
-│   │   │   └── useStore.js   # State Management global (Zustand)
-│   │   └── App.jsx
+│   │   │   └── useStore.js   # State Management global (Zustand) + Router Bridge
+│   │   └── App.jsx           # Root layout & React Router routing table
 │   └── package.json
 │
 ├── database/                 # Basis Data
 │   └── init.sql              # Dump awal PostgreSQL (pgvector)
 │
 ├── docs/                     # Dokumentasi Resmi & Presentasi
-│   ├── PROPOSAL_FINAL.md     # Proposal Bisnis Lengkap
-│   ├── VERIFICATION_DEMO.md  # Skenario Demo Produk & Panduan Presentasi
-│   ├── BUSINESS_MODEL.md     # Dokumen Detail Keuangan & Arus Kas
-│   ├── ROADMAP_TECH_STACK.md # Roadmap Infrastruktur Skala Korporasi
+│   ├── PROPOSAL.md           # Proposal Solusi Inovasi & Bisnis Lengkap
+│   ├── PRODUCT_FEATURES.md   # Deskripsi Detail Fitur Utama Produk
+│   ├── BUSINESS_MODEL.md     # Dokumen Detail Keuangan, Arus Kas & Anggaran Pre-Seed
+│   ├── TECHNICAL_ROADMAP.md  # Roadmap Teknis, A/B Testing & Skalabilitas Cloud
+│   ├── DEMO_GUIDE.md         # Panduan Live Demo & Daftar Akun Pengujian
 │   ├── API_SPEC.md           # Spesifikasi API Lengkap (semua endpoint + schema)
 │   ├── SEQUENCE_DIAGRAMS.md  # 7 Diagram Alur Mermaid (Auth, AI, E-KYC, dll.)
-│   └── PRODUCT_FEATURES.md   # Deskripsi Detail 4 Fitur Utama
+│   └── internals/            # Dokumentasi Teknis Internal Modul (00-09)
 ```
 
 ---
@@ -453,11 +487,11 @@ Semua panduan demonstrasi, proposal korporat, dokumen finansial, dan pemetaan ar
 
 | Dokumen | Deskripsi | Tautan |
 |---|---|---|
-| **Proposal 3rd Submission** | Draft proposal kompetisi terbaru — mencerminkan state sistem saat ini dan rencana ke depan. | [PROPOSAL_3RD.md](docs/PROPOSAL_3RD.md) |
-| **Proposal 2nd Submission** | Proposal kompetisi sebelumnya — problem, solusi, validasi pasar, dan strategi produk. | [PROPOSAL_2ND.md](docs/PROPOSAL_2ND.md) |
-| **Panduan Live Demo** | Skrip presentasi rinci (*step-by-step*) simulasi alur pencari kerja dan pewawancara untuk demonstrasi. | [VERIFICATION_DEMO.md](docs/VERIFICATION_DEMO.md) |
-| **Laporan Finansial & Bisnis** | Model keuntungan (Profit Model), proyeksi arus kas, *Unit Economics*, dan *Pro Forma Income Statement*. | [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) |
-| **Roadmap Arsitektur** | Transformasi infrastruktur *Cloud SQL, PostgreSQL pgvector, Vertex AI*, dan arsitektur data pasca-MVP. | [ROADMAP_TECH_STACK.md](docs/ROADMAP_TECH_STACK.md) |
+| **Proposal Solusi & Bisnis** | Proposal solusi inovasi lengkap — problem, validasi pengguna, arsitektur, pemetaan fitur, dan rencana eksekusi. | [PROPOSAL.md](docs/PROPOSAL.md) |
+| **Fitur Produk** | Uraian mendalam kapabilitas AI, Explainable AI, Phone OTP, Job Pack Uploader, dan pelacakan lamaran. | [PRODUCT_FEATURES.md](docs/PRODUCT_FEATURES.md) |
+| **Laporan Finansial & Bisnis** | Model keuntungan (Profit Model), budget awal pilot bulan 1 (Rp 3,85jt/bln), peta pemicu upgrade infrastruktur, dan proyeksi realistis 3 tahun. | [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) |
+| **Peta Jalan Teknis & A/B Testing** | Arsitektur A/B testing, mitigasi dependensi vendor, integrasi mitra, dan roadmap skalabilitas cloud. | [TECHNICAL_ROADMAP.md](docs/TECHNICAL_ROADMAP.md) |
+| **Panduan Live Demo & Akun** | Skrip presentasi rinci (*step-by-step*) beserta daftar seluruh akun uji coba (*pre-seeded credentials*). | [DEMO_GUIDE.md](docs/DEMO_GUIDE.md) |
 | **Spesifikasi API** | Kontrak lengkap semua endpoint FastAPI: skema request/response, rate limit, middleware, dan error codes. | [API_SPEC.md](docs/API_SPEC.md) |
 | **Diagram Alur (Sequence)** | 7 diagram Mermaid yang mendokumentasikan alur kerja kritis: Auth, AI Agent, CV Upload, E-KYC, dan lainnya. | [SEQUENCE_DIAGRAMS.md](docs/SEQUENCE_DIAGRAMS.md) |
 
