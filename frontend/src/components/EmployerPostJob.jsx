@@ -90,6 +90,24 @@ export default function EmployerPostJob() {
                 </div>
             </header>
 
+            {/* Step Timeline */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => navigate('employer-profile')}>
+                    <span style={{ width: 24, height: 24, borderRadius: '50%', background: KC.lime, color: KC.ink, fontWeight: 900, display: 'grid', placeItems: 'center', fontSize: 12, border: `1.5px solid ${KC.ink}` }}>1</span>
+                    <span style={{ fontSize: 13, fontWeight: 800 }}>Profil Perusahaan</span>
+                </div>
+                <div style={{ flex: 1, height: 2, background: KC.lime }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => navigate('employer-verification')}>
+                    <span style={{ width: 24, height: 24, borderRadius: '50%', background: KC.lime, color: KC.ink, fontWeight: 900, display: 'grid', placeItems: 'center', fontSize: 12, border: `1.5px solid ${KC.ink}` }}>2</span>
+                    <span style={{ fontSize: 13, fontWeight: 800 }}>Verifikasi NPWP</span>
+                </div>
+                <div style={{ flex: 1, height: 2, background: KC.orange }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 24, height: 24, borderRadius: '50%', background: KC.orange, color: '#fff', fontWeight: 900, display: 'grid', placeItems: 'center', fontSize: 12, border: `1.5px solid ${KC.ink}` }}>3</span>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: KC.ink }}>Detail Lowongan</span>
+                </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 }}>
                 <BrutalCard color="#fff" padding={28}>
                     <h2 style={{ fontSize: 18, fontWeight: 900, margin: '0 0 4px' }}>1. Detail Posisi</h2>

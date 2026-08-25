@@ -50,8 +50,9 @@ export default function PricingPage() {
                         period="/bulan"
                         features={['Plugin ATS (Workday/SAP)', 'Headhunter AI Copilot', 'Unlimited AI Matching', 'Dedicated Account Manager']}
                         accent="bg-kc-pink"
-                        cta="Hubungi Sales (Coming Soon)"
-                        onCta={() => toast('Fitur Enterprise akan segera hadir!')}
+                        cta="Hubungi Sales"
+                        comingSoon
+                        onCta={() => toast('✨ Fitur Enterprise akan segera hadir! Kami akan menghubungi Anda.', { duration: 4000 })}
                     />
                 </div>
 
@@ -69,9 +70,14 @@ export default function PricingPage() {
     )
 }
 
-function PricingCard({ tier, price, period, features, accent, featured, cta, onCta }) {
+function PricingCard({ tier, price, period, features, accent, featured, cta, onCta, comingSoon }) {
     return (
-        <div className={`border-2 border-kc-dark p-5 flex flex-col ${featured ? 'bg-kc-dark text-white' : 'bg-white'}`}>
+        <div className={`border-2 border-kc-dark p-5 flex flex-col relative ${featured ? 'bg-kc-dark text-white' : 'bg-white'}`}>
+            {comingSoon && (
+                <span style={{ position: 'absolute', top: 8, right: 8, fontSize: 9, fontWeight: 900, background: '#f97316', color: '#fff', padding: '2px 6px', borderRadius: 4, letterSpacing: 0.5 }}>
+                    COMING SOON
+                </span>
+            )}
             <div className={`${accent} w-full h-2 border border-kc-dark mb-4`}></div>
             <p className="font-mono text-[10px] uppercase tracking-widest text-kc-gray">{tier}</p>
             <div className="mt-2 mb-4">
@@ -84,13 +90,14 @@ function PricingCard({ tier, price, period, features, accent, featured, cta, onC
                 ))}
             </ul>
             <button
+                id={`pricing-cta-${tier.replace(/\s+/g, '-').toLowerCase()}`}
                 onClick={onCta}
                 className={`mt-4 w-full text-xs font-bold py-2.5 border-2 transition-colors ${featured
                         ? 'bg-kc-orange text-white border-white hover:bg-white hover:text-kc-dark'
                         : 'bg-kc-dark text-white border-kc-dark hover:bg-kc-orange'
                     }`}
             >
-                {cta}
+                {comingSoon ? `${cta} (Coming Soon)` : cta}
             </button>
         </div>
     )

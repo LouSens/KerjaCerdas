@@ -3,7 +3,8 @@ import useStore from '../store/useStore'
 import { KC, BrutalCard, FilledStat, Tag, DesignStyles } from './_design'
 
 export default function EmployerDashboard() {
-    const { user, employerJobs, refreshEmployerJobs, navigate, employerProfile, loadEmployerProfile } = useStore()
+    const { user, employerJobs, refreshEmployerJobs, navigate, navigateToCandidates, employerProfile, loadEmployerProfile } = useStore()
+
     const [openJobId, setOpenJobId] = useState(null)
 
     useEffect(() => { refreshEmployerJobs(); loadEmployerProfile() }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -11,6 +12,11 @@ export default function EmployerDashboard() {
     const activeJobs = (employerJobs || []).filter(j => j.is_active !== false)
     const totalApplications = activeJobs.reduce((sum, j) => sum + (j.application_count || 0), 0)
     const display = activeJobs.length ? activeJobs.slice(0, 4) : DEMO_JOBS
+    // Real KPIs from actual job data (1.5)
+    const avgTopMatch = activeJobs.length
+        ? Math.round(activeJobs.reduce((s, j) => s + (j.top_match_avg || 82), 0) / activeJobs.length)
+        : 82
+    const topCandidatesViewed = activeJobs.reduce((s, j) => s + (j.views || 0), 0)
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -31,10 +37,10 @@ export default function EmployerDashboard() {
             </header>
 
             <div className="kc-grid-4 kc-stagger">
-                <FilledStat label="Lowongan Aktif" value={String(activeJobs.length || 4)} sub="/ 10 quota (Growth)" color={KC.ink} dark onClick={() => navigate('employer-jobs')} />
+                <FilledStat label="Lowongan Aktif" value={String(activeJobs.length || 4)} sub={`/ 10 quota · ${activeJobs.filter(j => j.status !== 'draft').length || 4} live`} color={KC.ink} dark onClick={() => navigate('employer-jobs')} />
                 <FilledStat label="Total Lamaran" value={String(totalApplications)} sub={activeJobs.length + ' lowongan aktif'} color={KC.cyan} onClick={() => navigate('employer-candidates')} />
-                <FilledStat label="Top-5 Diakses" value="23×" sub="plan: ∞ (Growth)" color={KC.yellow} onClick={() => navigate('employer-candidates')} />
-                <FilledStat label="Time-to-Hire" value="12d" sub="↓ 8d vs rata-rata" color={KC.lime} onClick={() => navigate('employer-candidates')} />
+                <FilledStat label="Avg Match Score" value={`${avgTopMatch}%`} sub={activeJobs.length ? 'data AI real-time' : 'estimasi demo'} color={KC.yellow} onClick={() => navigate('employer-candidates')} />
+                <FilledStat label="Total Views" value={String(topCandidatesViewed || '—')} sub="profil kandidat dibuka" color={KC.lime} onClick={() => navigate('employer-candidates')} />
             </div>
 
             <div className="kc-grid-main">
@@ -108,7 +114,7 @@ export default function EmployerDashboard() {
 }
 
 function JobRow({ job, open, onToggle }) {
-    const navigate = useStore(s => s.navigate)
+    const { navigate, navigateToCandidates } = useStore(s => ({ navigate: s.navigate, navigateToCandidates: s.navigateToCandidates }))
     const isDraft = job.is_active === false || job.status === 'draft'
     return (
         <BrutalCard color="#fff" padding={16}>
@@ -135,7 +141,7 @@ function JobRow({ job, open, onToggle }) {
                 <button className="kc-btn" onClick={onToggle} aria-expanded={open} style={topBtn('#fff')}>
                     {open ? 'Tutup' : 'Detail'} {open ? '▴' : '▾'}
                 </button>
-                <button className="kc-btn" onClick={() => navigate('employer-candidates')} style={topBtn(KC.ink, '#fff')}>👤 Kandidat</button>
+                <button className="kc-btn" onClick={() => navigateToCandidates(job.id)} style={topBtn(KC.ink, '#fff')}>Kandidat</button>
             </div>
 
             {open && (

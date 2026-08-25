@@ -27,10 +27,11 @@ const DEMO_CANDIDATES = [
 ]
 
 export default function EmployerCandidates() {
-    const { employerJobs, refreshEmployerJobs } = useStore()
+    const { employerJobs, refreshEmployerJobs, selectedCandidateJobId } = useStore()
     const [candidates, setCandidates] = useState([])
     const [loading, setLoading] = useState(false)
-    const [selectedJobId, setSelectedJobId] = useState(null)
+    // Prefer the job ID passed from the dashboard, fallback to first job
+    const [selectedJobId, setSelectedJobId] = useState(selectedCandidateJobId || null)
     const [cvModalOpen, setCvModalOpen] = useState(null)
     const [usedDemo, setUsedDemo] = useState(false)
     const [filter, setFilter] = useState({
@@ -42,7 +43,11 @@ export default function EmployerCandidates() {
     const [trigger, setTrigger] = useState(0)
 
     useEffect(() => { refreshEmployerJobs() }, []) // eslint-disable-line react-hooks/exhaustive-deps
-    useEffect(() => { if (employerJobs.length && !selectedJobId) setSelectedJobId(employerJobs[0].id) }, [employerJobs]) // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        if (employerJobs.length && !selectedJobId) {
+            setSelectedJobId(selectedCandidateJobId || employerJobs[0].id)
+        }
+    }, [employerJobs, selectedCandidateJobId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!selectedJobId) { setCandidates(DEMO_CANDIDATES); setUsedDemo(true); return }
