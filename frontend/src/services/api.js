@@ -226,3 +226,30 @@ export const fetchExperimentAssignments = () =>
 
 // ── Health ──────────────────────────────────────────────────────────────────
 export const healthCheck = () => request('/health')
+
+// ── Pay-to-Unlock candidate contact (3.5) ───────────────────────────────────
+export const unlockCandidate = (jobId, seekerId, paymentToken = 'demo') =>
+    request(`${API_BASE}/employer/jobs/${jobId}/unlock/${seekerId}`, {
+        method: 'POST',
+        body: JSON.stringify({ payment_token: paymentToken }),
+    })
+
+// ── Phone OTP (3.4) ─────────────────────────────────────────────────────────
+export const sendOTP = (phone) =>
+    request(`${API_BASE}/verify/otp/send`, {
+        method: 'POST',
+        body: JSON.stringify({ phone }),
+    })
+
+export const verifyOTP = (phone, code) =>
+    request(`${API_BASE}/verify/otp/verify`, {
+        method: 'POST',
+        body: JSON.stringify({ phone, code }),
+    })
+
+// ── Employer: update application status (Kanban) ────────────────────────────
+export const updateApplicationStatus = (applicationId, status) =>
+    request(`${API_BASE}/employer/applications/${applicationId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+    })

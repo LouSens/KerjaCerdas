@@ -1,14 +1,31 @@
-"""Mock e-KYC + SIVIL diploma verification."""
+"""Mock e-KYC + SIVIL diploma verification + phone OTP (demo mode).
+
+Phone OTP (demo):  The generated code is returned in the JSON response itself
+so testers can verify their phone number without any external SMS/WA provider.
+In production: replace the code reveal with Twilio / Fonnte WA Gateway API.
+Budget note: Twilio SMS ~$0.01/SMS, Fonnte WA ~Rp 200/pesan.
+"""
 
 from __future__ import annotations
 
+import random
+import string
+import time
 import uuid
 
 from backend.app.api.dependencies import get_current_user
 from backend.app.api.services.identity_verifier import MockIdentityVerificationService
 from backend.app.db.models import User
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+
+# ── In-memory OTP store (demo mode) ─────────────────────────────────────────
+# Key: user_id + phone, Value: { code, expires_at, attempts }
+# Replace with Redis in production.
+_OTP_STORE: dict[str, dict] = {}
+_OTP_TTL = 300  # 5 minutes
+_OTP_MAX_ATTEMPTS = 5
+
 
 router = APIRouter(prefix="/verify", tags=["verify"])
 
@@ -105,4 +122,94 @@ async def verify_npwp(req: NpwpReq, current_user: User = Depends(get_current_use
         }
         if ok
         else None,
+    }
+
+
+# ── Phone OTP — send & verify (3.4) ──────────────────────────────────────────
+# Demo mode: OTP code is returned in the API response so testers can verify
+# their number without an SMS/WhatsApp provider.
+# Production upgrade path:
+#   - WhatsApp: Fonnte (fonnte.com) or Meta WA Business API via WABA
+#   - SMS: Twilio Verify API (verify.twilio.com)
+#   Set DEMO_OTP_REVEAL=false in .env once a provider is integrated.
+
+
+class OtpSendReq(BaseModel):
+    phone: str  # E.164 format: +6281234567890
+
+
+class OtpVerifyReq(BaseModel):
+    phone: str
+    code: str
+
+
+def _otp_key(user_id: str, phone: str) -> str:
+    return f"{user_id}:{phone}"
+
+
+@router.post("/otp/send")
+async def send_otp(req: OtpSendReq, current_user: User = Depends(get_current_user)) -> dict:
+    """Generate and 'send' a 6-digit OTP.
+
+    Demo mode: the code is returned in the response body so testers can
+    verify without a real SMS/WA provider. In production, set an env flag
+    to suppress `demo_code` and dispatch via Fonnte / Twilio instead.
+    """
+    phone = req.phone.strip()
+    if not phone.startswith("+"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Phone harus dalam format internasional (+62...)")
+
+    code = "".join(random.choices(string.digits, k=6))
+    key = _otp_key(str(current_user.id), phone)
+    _OTP_STORE[key] = {
+        "code": code,
+        "expires_at": time.time() + _OTP_TTL,
+        "attempts": 0,
+    }
+
+    return {
+        "request_id": str(uuid.uuid4()),
+        "status": "SENT",
+        "phone": phone,
+        "expires_in_seconds": _OTP_TTL,
+        # DEMO ONLY — remove in production when real WA/SMS provider is active
+        "demo_code": code,
+        "message": (
+            f"[DEMO MODE] Kode OTP: {code}. "
+            "Dalam produksi kode akan dikirim via WhatsApp/SMS."
+        ),
+    }
+
+
+@router.post("/otp/verify")
+async def verify_otp(req: OtpVerifyReq, current_user: User = Depends(get_current_user)) -> dict:
+    """Validate the submitted OTP code for the given phone number."""
+    key = _otp_key(str(current_user.id), req.phone.strip())
+    entry = _OTP_STORE.get(key)
+
+    if not entry:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "OTP tidak ditemukan. Kirim ulang kode terlebih dahulu.")
+
+    if time.time() > entry["expires_at"]:
+        del _OTP_STORE[key]
+        raise HTTPException(status.HTTP_410_GONE, "OTP sudah kedaluwarsa. Kirim ulang kode.")
+
+    entry["attempts"] += 1
+    if entry["attempts"] > _OTP_MAX_ATTEMPTS:
+        del _OTP_STORE[key]
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Terlalu banyak percobaan. Kirim ulang kode.")
+
+    if req.code.strip() != entry["code"]:
+        remaining = _OTP_MAX_ATTEMPTS - entry["attempts"]
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Kode OTP salah. {remaining} percobaan tersisa.",
+        )
+
+    del _OTP_STORE[key]
+    return {
+        "request_id": str(uuid.uuid4()),
+        "status": "VERIFIED",
+        "phone": req.phone,
+        "message": "Nomor HP berhasil diverifikasi.",
     }

@@ -267,6 +267,16 @@ async def list_bookmarks(current_user: User = Depends(get_current_user)):
                 "company": emp.company_name if emp else (job.employer_id if job else "—"),
                 "status": app.status,
                 "saved_at": app.created_at.isoformat(),
+                # Enriched fields for SavedJobsPage (1.3)
+                "salary_range": (
+                    f"Rp {int(job.salary_min / 1_000_000)}–{int(job.salary_max / 1_000_000)}jt"
+                    if job and job.salary_min
+                    else None
+                ),
+                "salary_min": job.salary_min if job else None,
+                "salary_max": job.salary_max if job else None,
+                "region_code": job.region_code if job else None,
+                "remote_allowed": job.remote_allowed if job else False,
             }
         )
     return result
@@ -510,10 +520,15 @@ async def get_latest_skill_gap(current_user: User = Depends(get_current_user)):
     courses = [
         c.model_dump() if hasattr(c, "model_dump") else dict(c) for c in latest.recommended_courses
     ]
+    # Resolve target job title from job store (3.3 fix: was always returning None)
+    target_job_title = None
+    if latest.target_job_id:
+        target_job = await repos.jobs.get(latest.target_job_id)
+        target_job_title = target_job.title if target_job else None
     return {
         "seeker_id": seeker_id,
         "target_job_id": latest.target_job_id,
-        "target_job_title": None,
+        "target_job_title": target_job_title,
         "missing_skills": latest.missing_skills,
         "matching_skills": latest.matching_skills,
         "recommended_courses": courses,

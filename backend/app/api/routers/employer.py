@@ -308,3 +308,64 @@ async def find_candidates(
             c["full_name"] = "Hidden Candidate"
 
     return {"job_id": job_id, "total": len(ranked), "candidates": ranked}
+
+
+# ── Pay-to-Unlock candidate contact (3.5) ────────────────────────────────────
+# Stub implementation: in production this validates a real Midtrans/Xendit
+# payment token before revealing the candidate's contact info.
+# Budget note: integrate with Midtrans Snap (free to register, ~1.5% MDR) or
+# Xendit (free API, transaction fee only) for production pay-to-unlock.
+
+_UNLOCKED_CONTACTS: dict[str, set[str]] = {}  # employer_id → set of seeker_ids
+
+
+@router.post("/jobs/{job_id}/unlock/{seeker_id}")
+async def unlock_candidate(
+    job_id: str,
+    seeker_id: str,
+    body: dict | None = None,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Unlock a candidate's full contact info after payment validation.
+
+    In demo mode: accepts any payment_token value and returns mock contact.
+    In production: validate payment_token with Midtrans/Xendit before unlock.
+
+    Returns: { unlocked: true, name, email, phone, unlock_id }
+    """
+    repos = get_repositories()
+    job = await repos.jobs.get(job_id)
+    if not job:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
+
+    employer = await _get_employer(current_user.id)
+    if not employer:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Profil perusahaan tidak ditemukan")
+
+    seeker = await repos.seekers.get(seeker_id)
+    if not seeker:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kandidat tidak ditemukan")
+
+    # Check if already unlocked (idempotent)
+    employer_unlocks = _UNLOCKED_CONTACTS.setdefault(employer.id, set())
+    if seeker_id not in employer_unlocks:
+        # In production: validate payment_token with payment gateway here
+        # payment_token = (body or {}).get("payment_token")
+        # if not _validate_payment(payment_token): raise HTTPException(402, "Payment required")
+        employer_unlocks.add(seeker_id)
+        logger.info("Employer %s unlocked seeker %s for job %s", employer.id, seeker_id, job_id)
+
+    # Resolve the real user record for contact info
+    users = await repos.users.find(lambda u: u.id == seeker.user_id)
+    real_user = users[0] if users else None
+
+    return {
+        "unlocked": True,
+        "seeker_id": seeker_id,
+        "name": seeker.full_name or (real_user.name if real_user else "Kandidat"),
+        "email": real_user.email if real_user else "demo@kerjacerdas.id",
+        "phone": getattr(seeker, "phone", "+628123456789") or "+628123456789",
+        "unlock_id": f"unlock_{employer.id[:8]}_{seeker_id[:8]}",
+        "unlock_cost_idr": 50000,  # Rp 50.000 per unlock
+        "note": "[DEMO] Dalam produksi, verifikasi payment_token Midtrans/Xendit terlebih dahulu.",
+    }
