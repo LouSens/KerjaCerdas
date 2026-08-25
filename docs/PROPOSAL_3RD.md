@@ -36,18 +36,18 @@ Sistem bekerja dengan mengonversi CV dan lowongan menjadi representasi vektor se
 
 ## Progress and Change Log (Maksimal 150 kata)
 
-Sejak 2nd submission, terdapat sepuluh perubahan signifikan menuju MVP v1.0.0:
+Sejak 2nd submission, terdapat sepuluh peningkatan signifikan menuju MVP v1.0.0:
 
-1. **Middleware Security Layer** — Rate Limiter sliding-window per IP (auth: 10 req/60s, agent: 20 req/60s) dan Request Size Limiter (10 MB). *Alasan: temuan kerentanan dari stress testing.*
-2. **Input Sanitization & Prompt Injection Guard** — Modul sanitasi aktif dengan 10 pola regex memblokir injeksi prompt, HTML-escape, dan PII redaction sebelum mencapai LLM.
-3. **Gamification Engine** — Sistem XP, level, streak, dan badge (`profile_complete`, `first_apply`) aktif di setiap aksi pengguna. *Alasan: meningkatkan retensi B2C.*
-4. **Response Enrichment Pipeline** — Setiap respons API kini menyertakan metadata penuh (nama perusahaan, gaji, lokasi) dalam satu panggilan, mengurangi round-trip frontend.
-5. **Security Test Suite** — Validasi otomatis sanitasi input dan keamanan token JWT.
-6. **Token Efficiency Gate & Hallucination Guard** — Menghemat 40% token; mengeliminasi referensi job ID palsu dari output LLM.
-7. **Async Embedding & In-Process LRU Cache** — Latensi turun dari ~3 detik ke <200ms.
-8. **Onboarding Wizard + A/B Testing** — Alur (Welcome → Upload CV → Match) terintegrasi stateless feature flagging.
-9. **Event Tracking & CI/CD 4-fase** — Closed-loop analytics dan GitHub Actions (Linting, Testing, Integrasi DB, Latency Benchmark).
-10. **Kanban Pipeline Employer** — Manajemen status kandidat (Review → Interview → Hire) secara visual.
+1. **Routing & URL Synchronization** — Migrasi penuh ke `react-router-dom` dengan bridge `NavigationSync`, mendukung *deep linking* dan proteksi rute berbasis peran.
+2. **Explainable AI Score Breakdown** — Transparansi 5 komponen skor pencocokan (Semantik 50%, Skill 30%, Lokasi 10%, Gaji 5%, Pengalaman 5%) dengan visual progress bar.
+3. **Application Milestone Tracking** — Halaman pelacakan lamaran visual interaktif (*Tersimpan* → *Melamar* → *Ditinjau* → *Interview* → *Diterima/Ditolak*).
+4. **Job Pack Bulk Uploader** — Ekstraksi banyak posisi sekaligus dari 1 PDF dengan *drag-and-drop*, validasi ukuran <10 MB, dan indikator progres.
+5. **Phone OTP Verification** — Endpoint kirim & verifikasi OTP dengan mode demo (tampil di UI) dan arsitektur integrasi WhatsApp Gateway produksi.
+6. **Employer Step Timeline** — Alur terstruktur (1. Profil Perusahaan → 2. Verifikasi NPWP DJP → 3. Pasang Lowongan).
+7. **Pay-to-Unlock Backend API** — Endpoint monetisasi mikro (`POST /employer/jobs/{id}/unlock/{seeker_id}`) untuk membuka kontak kandidat.
+8. **Token Efficiency Gate & Hallucination Guard** — Menghemat 40% token; mengeliminasi referensi job ID palsu dari output LLM.
+9. **Async Embedding & Dual-Tier Cache** — Caching LRU in-process 512 entri + tabel query embedding persisten di PostgreSQL.
+10. **Middleware Security Layer** — Rate Limiter sliding-window per IP, Request Sanitizer (10 MB), dan PII redaction sesuai UU PDP No.27/2022.
 
 ---
 
@@ -75,8 +75,6 @@ Di setiap siklus rekrutmen — saat HRD membuka lowongan dan menerima ratusan CV
 - Kuesioner HR: >80% pelamar tersaring di tahap awal pada proses rekrutmen yang disurvei.
 - Kutipan HR: *"Yang kita butuh itu bukan lebih banyak pelamar. Kita butuh lebih sedikit pelamar, tapi yang beneran cocok."*
 
-> [TODO] Tambahkan hasil wawancara pengguna eksternal atau survei formal jika sudah tersedia.
-
 ---
 
 ## End-to-end Use Case and Feature-to-Pain Mapping (Maksimal 300 kata)
@@ -85,21 +83,21 @@ Di setiap siklus rekrutmen — saat HRD membuka lowongan dan menerima ratusan CV
 
 **Kondisi Awal:** Budi, lulusan Teknik Informatika, telah mengirim 50 lamaran via portal konvensional tanpa respons. Ia tidak tahu skill mana yang kurang dan menghabiskan berjam-jam setiap minggu menyesuaikan CV secara manual.
 
-**Pemicu:** Budi mendaftar ke KerjaCerdas, mengisi onboarding survey singkat, dan mengunggah CV PDF.
+**Pemicu:** Budi mendaftar ke KerjaCerdas, melengkapi profil, dan mengunggah CV PDF.
 
 **Alur Tindakan:**
 
-1. **CV Upload & AI Extraction** — PyMuPDF mengekstrak teks (max 8.000 karakter); Gemini multimodal mengurai skill, pengalaman, pendidikan menjadi JSON terstruktur. PII (email, telepon) di-redact otomatis sebelum masuk ke LLM. *Pain: eliminasi pengisian manual.*
+1. **CV Upload & AI Extraction** — PyMuPDF mengekstrak teks; Gemini multimodal mengurai skill, pengalaman, pendidikan menjadi JSON terstruktur. PII di-redact otomatis sebelum masuk ke LLM. *Pain: eliminasi pengisian manual.*
 
-2. **Embedding Otomatis (Async)** — Semantic Matching Engine menghasilkan vektor 768-dimensi yang di-upsert ke pgvector HNSW secara asinkron — tanpa memblokir HTTP response. *Pain: sistem bekerja di balik layar tanpa beban pada pengguna.*
+2. **Embedding Otomatis (Async)** — Semantic Matching Engine menghasilkan vektor 768-dimensi yang di-upsert ke pgvector HNSW secara asinkron tanpa memblokir response. *Pain: sistem bekerja di balik layar tanpa beban pada pengguna.*
 
-3. **AI Job Matching** — LangGraph Supervisor mengklasifikasikan intent dan merutekan ke Semantic Matching Engine. Hybrid Ranking menghitung `base_score = 0.60 × cosine + 0.40 × skill_overlap`, ditambah boosts filter aktif. Budi mendapat 5 lowongan teratas dengan skor eksplisit, band (Strong/Possible/Stretch), dan breakdown alasan dalam Bahasa Indonesia. *Pain: relevance mismatch — sistem memahami "React Developer" ≈ "Frontend Engineer".*
+3. **AI Job Matching & Explainability** — Hybrid Ranking menghitung skor kecocokan dengan 5 komponen transparan (Semantik 50%, Skill 30%, Lokasi 10%, Gaji 5%, Pengalaman 5%). Budi dapat melihat rincian kalkulasi skor pada modal detail lowongan. *Pain: relevance mismatch & fenomena AI black-box.*
 
-4. **Skill Gap Analysis** — Skill Gap Agent membandingkan skill Budi dengan `required_skills` lowongan rank #1. Output: skill yang dimiliki (`matching_skills[]`), yang kurang (`missing_skills[]`), dan rekomendasi kursus gratis/berbayar per skill. *Pain: visibility gap — kandidat kini punya peta jalan konkret.*
+4. **Skill Gap Analysis** — Skill Gap Agent membandingkan skill Budi dengan `required_skills` lowongan impian. Output: skill yang dimiliki (`matching_skills[]`), yang kurang (`missing_skills[]`), dan rekomendasi kursus dari mitra EdTech. *Pain: visibility gap — kandidat kini punya peta jalan konkret.*
 
-5. **E-KYC Verification (Demo Mode)** — Budi memverifikasi KTP. Profil mendapat lencana terverifikasi yang terlihat oleh semua HRD. *Pain: trust mismatch — HRD lebih percaya kandidat berverifikasi.*
+5. **E-KYC & Phone OTP Verification** — Budi memverifikasi KTP, Ijazah, dan nomor HP via OTP. Profil mendapat lencana terverifikasi yang terlihat oleh HRD. *Pain: trust mismatch — HRD lebih percaya kandidat berverifikasi.*
 
-6. **Lamar & Gamifikasi** — Budi melamar; sistem memberikan badge `first_apply` dan 50 XP, mendorong engagement berkelanjutan.
+6. **Application Milestone Tracking** — Budi melamar dan memantau status lamaran secara real-time melalui visual pipeline. *Pain: ketidakpastian status lamaran.*
 
 **Peta Fitur → Pain Point:**
 
@@ -107,34 +105,35 @@ Di setiap siklus rekrutmen — saat HRD membuka lowongan dan menerima ratusan CV
 |---|---|
 | CV Upload + Gemini Parse | Friksi pengisian manual, waktu terbuang |
 | Hybrid Semantic Ranking | Relevance mismatch (keyword kaku) |
+| Explainable AI Breakdown | Ketiadaan transparansi alasan penolakan/pencocokan |
 | Skill Gap Agent | Visibility gap — kebutaan kompetensi |
-| Dual-Track Search UI | Kebebasan pilih AI autopilot atau eksplorasi manual |
-| E-KYC Verification (mock) | Trust mismatch — CV tidak terverifikasi |
-| Gamification (XP, Badge) | Retensi dan engagement rendah |
-| Direct Contact Unlock (B2B) | Beban administrasi HRD, screening fatigue |
+| Application Milestone Tracking | Ketidakpastian dan ketiadaan feedback status lamaran |
+| E-KYC & Phone OTP Verification | Trust mismatch — CV palsu & data tidak terverifikasi |
+| Job Pack Bulk Uploader (B2B) | Waktu publikasi lowongan massal yang lambat |
+| Pay-to-Unlock (B2B) | Beban biaya langganan mahal di muka bagi UMKM |
 
 ---
 
 ## Operational Context, Solution Boundary, and Adoption (Maksimal 200 kata)
 
 **Lingkungan Penggunaan:**
-Aplikasi web (React 18 + FastAPI), diakses via browser. Infrastruktur berjalan via Docker Compose (Frontend: port 3000, Backend: port 8000, PostgreSQL+pgvector). Target deployment produksi: Google Cloud Run + Cloud SQL.
+Aplikasi web (React 18 + FastAPI), diakses via browser dengan navigasi `react-router-dom`. Infrastruktur berjalan via Docker Compose (Frontend: port 3000, Backend: port 8000, PostgreSQL+pgvector). Target deployment produksi: Google Cloud Run + Cloud SQL.
 
 **Pihak yang Terlibat:**
-- **Pencari Kerja:** Upload CV, lihat match, analisis gap, bookmark, lamar.
-- **HRD/Employer:** Buat lowongan (auto-embed), lihat AI shortlist (teaser method), unlock kontak, kelola Kanban Pipeline.
+- **Pencari Kerja:** Upload CV, lihat match & score breakdown, analisis gap, bookmark, lacak status lamaran, verifikasi identitas.
+- **HRD/Employer:** Buat profil perusahaan, verifikasi NPWP DJP, upload Job Pack PDF, lihat AI shortlist (teaser method), unlock kontak via Pay-to-Unlock, kelola lowongan.
 - **Mitra EdTech (Rencana):** Dicoding, Coursera, Skill Academy — rekomendasi kursus dari skill gap output.
 
 **Yang Dapat Dilakukan (saat ini):**
-Semantic matching real-time, skill gap analysis, gamifikasi (XP/badge/streak/level), verifikasi identitas (mock E-KYC), streaming AI response, bookmark & riwayat lamaran, Kanban Pipeline Employer, A/B testing, event tracking, rate limiting & sanitasi input.
+Semantic matching real-time, explainable score breakdown, skill gap analysis, pelacakan lamaran visual, verifikasi identitas & OTP (mock/demo), streaming AI response, Job Pack bulk uploader, Employer Step Timeline, Pay-to-Unlock backend API, A/B testing, event tracking, rate limiting & sanitasi input.
 
 **Yang Belum Dapat Dilakukan:**
-Payment gateway nyata (Midtrans/Xendit), E-KYC dengan API pemerintah asli (Dukcapil/SIVIL/DJP), fine-tuning dari feedback loop nyata, integrasi ATS enterprise, onboarding survey conditional logic, Hiring Phase Tracker aktif.
+Payment gateway produksi (Midtrans/Xendit live token), E-KYC dengan API pemerintah langsung (Vida/Privy live B2B agreement), fine-tuning dari feedback loop nyata, integrasi ATS enterprise.
 
 **Hambatan Adopsi & Mitigasi:**
-- *UMKM literasi digital rendah* → Zero Learning Curve: formulir lowongan sederhana, hasil AI diringkas, Direct Contact Unlock via email/telepon familiar.
+- *UMKM literasi digital rendah* → Zero Learning Curve: timeline step terpandu (1 $\rightarrow$ 2 $\rightarrow$ 3), Job Pack bulk uploader, dan Pay-to-Unlock Rp 50.000/kandidat.
 - *Ketergantungan API Gemini* → Graceful degradation: fallback ke anonymous seeker jika embedding gagal; cosine=0 tetap menghasilkan structured ranking.
-- *Kepercayaan terhadap AI* → Setiap skor disertai `explanation` natural language, `matching_skills[]`, dan `missing_skills[]` — bukan angka black-box.
+- *Kepercayaan terhadap AI* → Setiap skor disertai Explainable AI Progress Bar 5 komponen dan `explanation` natural language.
 
 ---
 

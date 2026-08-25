@@ -56,20 +56,24 @@ Sistem telah berevolusi menjadi arsitektur yang tangguh dan siap pakai untuk uji
 
 Setiap komponen dalam aplikasi ini dirancang tidak hanya untuk fungsi teknis, melainkan untuk memberikan nilai bisnis dan *user experience* terbaik.
 
-### 💼 Frontend Components (React & Zustand)
+### 💼 Frontend Components (React 18 & React Router & Zustand)
 | Komponen UI | Fungsi Teknikal | Dampak Bisnis & UX |
 |---|---|---|
-| **`LandingHero` & `PublicHeader`** | Entry point SPA dengan animasi responsif. | Mengkonversi pengunjung (Lead Gen) melalui CVR (Conversion Rate) yang dioptimasi dan copy yang persuasif. |
-| **`CVUploader`** | Menghandle PDF parsing multipart form data ke backend. | Menghilangkan friksi *data entry* manual. Pengguna cukup *drag-and-drop* dan AI Gemini mengekstrak data JSON dalam detik. |
-| **`SeekerDashboard`** | Mengorkestrasi data profil (score, matches) dari `useStore`. | Memberikan umpan balik instan ke kandidat, membangun retensi *Active Users*. |
-| **`SeekerMatchResults`** | Render array `matches` dari vector search + HNSW *distance*. | Menampilkan justifikasi AI secara *explainable*, membuktikan sistem bukan "kotak hitam". |
-| **`JobDetailModal`** | Komponen modal dinamis untuk detail lowongan dan aksi lamar. | *Micro-interaction* cepat tanpa navigasi halaman meminimalisasi *bounce rate*. |
-| **`SkillGapPanel`** | Membandingkan array `skills` pengguna dengan top lowongan (Set Difference). | Strategi agregasi Ed-Tech: menghubungkan pengguna ke kursus/bootcamp partner (potensi komisi referal/affiliate). |
-| **`FloatingAdvisor`** | Interface chatbot dengan *streaming completion* LangGraph. | Memberikan layanan *career coaching* 24/7 berskala massal dengan *Zero Marginal Cost*. |
-| **`EmployerDashboard`** | Dasbor analitik (metrics) pendaftar per lowongan. | Meminimalisasi beban kognitif HRD dengan *funnel view* pelamar yang jelas. |
-| **`EmployerCandidates`** | Menampilkan hasil sortir (*Shortlist*) `ResumeReviewAgent`. | Mendorong monetisasi *Pay-to-Unlock*; perusahaan melihat "Kualitas" lebih dulu sebelum membayar. |
-| **`PricingPage`** | Konfigurasi limit *tiering* dan *paywall*. | Transparansi harga B2B B2C dengan strategi *freemium* untuk akuisisi awal yang agresif. |
-| **`VerificationDashboard`** | Integrasi API E-KYC / SIVIL Kemdikbud (Mocked). | Solusi krisis *Trust* dengan verifikasi KTP/Ijazah, meningkatkan *Employer Confidence* 300%. |
+| **`LandingHero` & `PublicHeader`** | Entry point SPA dengan animasi responsif dan direct route navigation. | Mengkonversi pengunjung (Lead Gen) melalui CVR yang dioptimasi dan copy persuasif. |
+| **`CVUploader`** | Menghandle PDF parsing multipart form data + auto-navigate ke match. | Menghilangkan friksi data entry manual. AI Gemini mengekstrak data JSON dalam detik. |
+| **`SeekerDashboard`** | Mengorkestrasi data profil (trust score, matches) dari `useStore`. | Memberikan umpan balik instan ke kandidat, membangun retensi Active Users. |
+| **`SeekerMatchResults`** | Render array `matches` dari vector search + HNSW distance. | Menyajikan hasil pencocokan berbasis band (Strong, Possible, Stretch). |
+| **`JobDetailModal`** | Modal detail lowongan dengan **Explainable AI Score Breakdown**. | Transparansi 5 komponen skor pencocokan (Semantik, Skill, Lokasi, Gaji, Pengalaman) untuk trust kandidat. |
+| **`ApplicationsPage`** | Visual milestone pipeline status lamaran interaktif. | Menghilangkan ketidakpastian kandidat dengan pelacakan tahapan lamaran real-time. |
+| **`SkillGapPanel`** | Membandingkan array `skills` pengguna dengan top lowongan (Set Difference). | Agregasi Ed-Tech: menghubungkan pengguna ke kursus/bootcamp partner (potensi komisi referal). |
+| **`FloatingAdvisor`** | Interface chatbot dengan streaming completion LangGraph. | Memberikan layanan career coaching 24/7 berskala massal dengan Zero Marginal Cost. |
+| **`EmployerDashboard`** | Dasbor analitik (KPIs) pelamar real-time per lowongan dengan context passing. | Meminimalisasi beban kognitif HRD dengan funnel view pelamar yang jelas. |
+| **`EmployerPostJob`** | Wizard pasang lowongan berjenjang (1: Profil $\rightarrow$ 2: NPWP $\rightarrow$ 3: Lowongan). | Memandu HRD melalui onboarding terstruktur sebelum mempublikasikan lowongan. |
+| **`JobPackUploader`** | Drag-and-drop uploader untuk file PDF berisi kumpulan lowongan massal. | Mereduksi waktu input lowongan dari jam menjadi detik dengan AI auto-parsing. |
+| **`EmployerProfile`** | Formulir informasi legalitas dan identitas institusi perusahaan. | Membangun kredibilitas perusahaan sebelum proses verifikasi NPWP. |
+| **`EmployerCandidates`** | Menampilkan hasil sortir (*Shortlist*) `ResumeReviewAgent`. | Mendorong monetisasi *Pay-to-Unlock* (Rp 50.000/kontak) dengan Teaser Method. |
+| **`PricingPage`** | Konfigurasi limit tiering, paywall, dan ATS enterprise coming soon. | Transparansi harga B2B/B2C dengan strategi freemium untuk akuisisi awal agresif. |
+| **`VerificationDashboard`** | Integrasi E-KYC KTP Dukcapil, Ijazah SIVIL, NPWP DJP, dan Phone OTP. | Solusi krisis Trust dengan verifikasi dokumen terenkripsi AES-256-GCM. |
 
 ---
 

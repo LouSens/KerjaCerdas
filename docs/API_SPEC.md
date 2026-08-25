@@ -355,28 +355,31 @@ Create or overwrite seeker profile. Re-embeds the profile vector via Gemini Embe
 
 ---
 
-### `GET /api/v1/seeker/gamification`
-
-Return XP, level, streak, badges, and completed quests for the logged-in seeker.
-
-```json
-{
-  "xp": 350,
-  "level": 2,
-  "streak_days": 5,
-  "badges": ["profile_complete", "first_apply"],
-  "quests_completed": ["upload_cv", "apply_3_jobs"]
-}
-```
-
----
-
 ### `POST /api/v1/seeker/bookmarks` · `GET /api/v1/seeker/bookmarks` · `DELETE /api/v1/seeker/bookmarks/{job_id}`
 
-Save, list, or remove a saved job. Awards XP on apply actions.
+Save, list, or remove a saved job for the authenticated seeker.
 
 **Save Request:** `{ "job_id": "job-001" }`
 **Save Response `201`:** `{ "id": "uuid", "job_id": "job-001", "status": "saved" }`
+
+**List Response `200` (Enriched for UI Cards):**
+```json
+[
+  {
+    "application_id": "uuid",
+    "job_id": "job-001",
+    "title": "Senior Backend Engineer",
+    "company": "PT KerjaCerdas Nusantara",
+    "status": "saved",
+    "saved_at": "2026-08-26T10:00:00+07:00",
+    "salary_range": "Rp 28–42jt",
+    "salary_min": 28000000,
+    "salary_max": 42000000,
+    "region_code": "3171",
+    "remote_allowed": true
+  }
+]
+```
 
 ---
 
@@ -387,13 +390,11 @@ Submit a job application (idempotent — returns existing record if already appl
 **Request:** `{ "job_id": "job-001", "cover_letter": "..." }`
 **Response `201`:** `{ "application_id": "uuid", "job_id": "job-001", "status": "applied", "already_applied": false }`
 
-Awards 50 XP and `first_apply` badge on first submission.
-
 ---
 
 ### `GET /api/v1/seeker/applications`
 
-Return all job applications for the logged-in seeker with job and employer metadata.
+Return all job applications for the logged-in seeker with interactive milestone progress tracking (`saved` → `applied` → `reviewed` → `interview` → `hired` / `rejected`).
 
 ```json
 [
@@ -403,7 +404,7 @@ Return all job applications for the logged-in seeker with job and employer metad
     "title": "Data Analyst",
     "company": "Bank Mandiri",
     "status": "applied",
-    "applied_at": "2026-06-25T10:00:00+07:00"
+    "applied_at": "2026-08-25T10:00:00+07:00"
   }
 ]
 ```
@@ -431,15 +432,30 @@ Upload a PDF CV. Extracts text via **PyMuPDF**, sends to **Gemini API** for stru
 
 **Errors:** `422` invalid MIME type · `429` rate limited.
 
+### `POST /api/v1/uploads/job-pack`
+
+Upload a bulk Job Pack PDF containing one or multiple job descriptions. AI automatically parses each job, populates skill requirements, salary brackets, and region codes, and publishes them.
+
+**Request:** `multipart/form-data` with field `file` (PDF).
+
+**Response `200`:**
+```json
+{
+  "employer_id": "uuid",
+  "created_job_ids": ["job-001", "job-002"],
+  "summary": { "jobs_count": 2 }
+}
+```
+
 ---
 
 ## Employer Router — `/api/v1/employer`
 
 🔒 **Auth required** — JWT with `role = "employer"`.
 
-### `GET /api/v1/employer/profile` · `PUT /api/v1/employer/profile`
+### `GET /api/v1/employer/profile` · `POST /api/v1/employer/profile`
 
-Get or update the employer company profile (company name, industry, size, logo URL, NPWP).
+Get or update the employer company profile (company name, NPWP, industry, size, region code, website, description).
 
 ---
 
@@ -467,15 +483,35 @@ Job is automatically embedded via `embed_job()` (pgvector) upon creation.
 
 ---
 
-### `GET /api/v1/employer/jobs/{job_id}/candidates`
+### `POST /api/v1/employer/jobs/{job_id}/candidates`
 
-Return AI-ranked candidates for a specific job posting. Uses `ResumeReviewAgent` shortlist. Applies *teaser method*: email/phone fields censored until employer unlocks contact.
+Return AI-ranked candidates for a specific job posting. Uses `SemanticMatcher` reverse ranking. Applies *teaser method*: name is masked (e.g., "Someone at Tokopedia"), contact details censored until unlocked.
 
 ---
 
 ### `POST /api/v1/employer/jobs/{job_id}/unlock/{seeker_id}`
 
-Unlock full contact details for a candidate (Pay-to-Unlock monetization gate — returns `402 Payment Required` in production mode).
+Unlock full contact details (name, email, phone) for a candidate via the Pay-to-Unlock micropayment gate (Rp 50.000 / unlock).
+
+**Request Body (optional):**
+```json
+{
+  "payment_token": "tok_midtrans_sandbox_123"
+}
+```
+
+**Response `200`:**
+```json
+{
+  "unlocked": true,
+  "seeker_id": "uuid",
+  "name": "Budi Santoso",
+  "email": "budi.santoso@example.com",
+  "phone": "+628123456789",
+  "unlock_id": "unlock_emp123_seek456",
+  "unlock_cost_idr": 50000
+}
+```
 
 ---
 
@@ -556,4 +592,55 @@ Verify company NPWP via mock DJP Online.
 
 **Request:** `{ "npwp": "12.345.678.9-012.000", "company_name": "PT Contoh" }`
 
-**Response `200`:** `{ "request_id": "uuid", "status": "VERIFIED", "verified_data": { ... } }`
+**Response `200`:**
+```json
+{
+  "request_id": "uuid",
+  "status": "VERIFIED",
+  "message": "NPWP terverifikasi di DJP Online (mode demo).",
+  "verified_data": {
+    "npwp": "12.345.678.9-012.000",
+    "company_name": "PT Contoh",
+    "status": "AKTIF",
+    "valid_until": "2027-12-31"
+  }
+}
+```
+
+---
+
+### `POST /api/v1/verify/otp/send`
+
+Generate and dispatch a 6-digit OTP for phone/contact verification. In demo mode, `demo_code` is returned in response for testing without third-party vendor expenses. In production, dispatched via Fonnte (WhatsApp Gateway) or Twilio Verify.
+
+**Request:** `{ "phone": "+6281234567890" }`
+
+**Response `200`:**
+```json
+{
+  "request_id": "uuid",
+  "status": "SENT",
+  "phone": "+6281234567890",
+  "expires_in_seconds": 300,
+  "demo_code": "123456",
+  "message": "[DEMO MODE] Kode OTP: 123456. Dalam produksi kode akan dikirim via WhatsApp/SMS."
+}
+```
+
+---
+
+### `POST /api/v1/verify/otp/verify`
+
+Validate the submitted 6-digit OTP code against the active session.
+
+**Request:** `{ "phone": "+6281234567890", "code": "123456" }`
+
+**Response `200`:**
+```json
+{
+  "request_id": "uuid",
+  "status": "VERIFIED",
+  "phone": "+6281234567890",
+  "message": "Nomor HP berhasil diverifikasi."
+}
+```

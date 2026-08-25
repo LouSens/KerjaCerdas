@@ -1,14 +1,14 @@
 # Product Features: KerjaCerdas
 
-Dokumen ini menjelaskan fitur utama dari platform KerjaCerdas, sebagaimana yang siap didemonstrasikan.
+Dokumen ini menjelaskan fitur utama dari platform KerjaCerdas, sebagaimana yang siap didemonstrasikan dan diuji.
 
 ---
 
-## 1. AI Job Matching (Pencocokan Pekerjaan AI)
+## 1. AI Job Matching & Explainable AI Transparency
 
-Fitur ini mengubah cara kandidat mencari pekerjaan dengan menggantikan sistem pencarian *keyword* manual (seperti mengetik "Python Backend Developer") menjadi pencocokan semantik otomatis. Saat kandidat mengunggah CV PDF, model AI Gemini bertugas membaca dan mengekstrak keahlian, pengalaman, serta pendidikan kandidat secara *real-time*, lalu mengubahnya menjadi "Vektor Semantik" berdimensi tinggi.
+Fitur ini mengubah cara kandidat mencari pekerjaan dengan menggantikan sistem pencarian *keyword* manual menjadi pencocokan semantik otomatis. Saat kandidat mengunggah CV PDF, model AI Gemini bertugas membaca dan mengekstrak keahlian, pengalaman, serta pendidikan kandidat secara *real-time*, lalu mengubahnya menjadi Vektor Semantik 768-dimensi.
 
-Vektor ini kemudian dicocokkan dengan seluruh vektor lowongan pekerjaan yang ada di database PostgreSQL menggunakan algoritma **Hybrid Ranking**:
+Vektor ini dicocokkan dengan seluruh lowongan aktif di database PostgreSQL (didukung index HNSW `pgvector`) menggunakan algoritma **Hybrid Ranking**:
 
 ```python
 final_score = (
@@ -20,58 +20,95 @@ final_score = (
 )
 ```
 
-Hasilnya, kandidat langsung mendapatkan rekomendasi pekerjaan dengan persentase skor kecocokan yang sangat akurat, karena sistem memahami konteks keahlian pelamar—bukan sekadar kemiripan kata.
+### 🔍 Transparansi Skor (Explainable AI)
+Kandidat dapat membuka kartu lowongan untuk melihat rincian kalkulasi skor (*Score Breakdown*):
+- **Relevansi Semantik (50%)**: Kecocokan konteks latar belakang CV dengan deskripsi pekerjaan.
+- **Irisan Keahlian (30%)**: Berapa banyak skill wajib yang terpenuhi vs celah (*gap*) yang belum dikuasai.
+- **Lokasi & Remote (10%)**: Dukungan WFH/Remote atau kesesuaian domisili.
+- **Ekspektasi Gaji (5%)**: Rentang anggaran perusahaan dibanding preferensi kandidat.
+- **Validasi Pengalaman (5%)**: Tingkat senioritas kandidat terhadap kualifikasi posisi.
 
-**Komponen terkait:** `CVUploader`, `SeekerDashboard`, `SeekerMatchResults`, `FloatingAdvisor`
-**API:** `POST /api/v1/uploads/cv`, `POST /api/v1/agent/invoke`
-
----
-
-## 2. Proactive Skill Gap Analyzer (Analisis Celah Keahlian Proaktif)
-
-Sistem tidak hanya menolak kandidat jika kemampuannya kurang sesuai, tetapi secara proaktif memberi tahu apa kelemahan mereka. Melalui arsitektur *Multi-Agent Swarm* (agen AI otonom dari LangGraph), sistem akan menganalisis kesenjangan (*gap*) antara spesifikasi lowongan yang dilamar dan keahlian yang tercantum di CV kandidat.
-
-Jika kandidat memiliki skor kecocokan rendah (misalnya kurang menguasai "AWS" atau "Google Analytics"), agen AI akan merinci kelemahan tersebut secara interaktif dan langsung memberikan rekomendasi program *upskilling* spesifik — seperti pelatihan dari Prakerja atau platform Ed-Tech — agar kandidat bisa meningkatkan keahliannya sebelum mencoba melamar kembali.
-
-**Komponen terkait:** `SkillGapPanel`, `FloatingAdvisor`
-**API:** `POST /api/v1/agent/invoke` (dengan `explicit_intent: "skill_gap"`)
+**Komponen terkait:** `CVUploader`, `SeekerDashboard`, `SeekerMatchResults`, `JobDetailModal`, `FloatingAdvisor`  
+**API:** `POST /api/v1/uploads/cv`, `POST /api/v1/agent/invoke`, `GET /api/v1/jobs`
 
 ---
 
-## 3. Employer Dashboard & Direct Contact Unlock (Dasbor Perusahaan & Buka Kontak)
+## 2. Proactive Skill Gap Analyzer (Analisis Celah Keahlian)
 
-Modul ini dirancang untuk menyelesaikan masalah kelelahan administratif (*screening fatigue*) bagi HRD serta menawarkan model monetisasi yang bersahabat bagi UMKM. Saat HRD mengetik rancangan lowongan baru, AI memprediksi ketersediaan jumlah talenta yang cocok secara *real-time* dari *Live Pool* sebelum lowongan diterbitkan.
+Sistem tidak hanya menyortir kandidat, tetapi secara proaktif memberi tahu apa kekurangan mereka terhadap target posisi impian. Melalui arsitektur agen AI otonom, sistem menganalisis kesenjangan (*gap*) antara spesifikasi lowongan dan keahlian yang tercantum di CV.
 
-Setelah lowongan tayang, agen AI sudah menyortir ratusan pelamar ke dalam daftar pendek (*Shortlist*) Top-5 Kandidat Terbaik lengkap dengan ringkasan alasan kecocokannya. Fitur **Kanban Pipeline** memungkinkan HRD memindahkan status kandidat (*Review*, *Wawancara*, *Hire*) dengan antarmuka yang sangat ramah pengguna. Alih-alih mengharuskan HRD atau UMKM membayar biaya berlangganan mahal di muka, platform ini menggunakan sistem transaksi mikro (**Pay-to-Unlock**): profil asli dan skor kandidat disajikan secara transparan, namun akses email/telepon disensor. Perusahaan hanya perlu membayar biaya mikro (misal Rp 50.000) pada saat mereka memutuskan untuk menghubungi kandidat unggulan tersebut.
+Jika kandidat memiliki celah kemampuan (misalnya belum menguasai *Docker* atau *Go Concurrency*), agen AI akan:
+1. Merinci daftar skill yang hilang (*missing skills*).
+2. Memberikan ringkasan rencana pembelajaran terfokus (*action plan*).
+3. Merekomendasikan modul pelatihan/sertifikasi terkurasi dari mitra Ed-Tech (seperti Dicoding, Prakerja) yang dapat langsung diakses.
 
-**Komponen terkait:** `EmployerDashboard`, `EmployerCandidates`, `EmployerPostJob`, `PricingPage`
-**API:** `POST /api/v1/employer/jobs`, `GET /api/v1/employer/jobs/{id}/candidates`, `POST /api/v1/employer/jobs/{id}/unlock/{seeker_id}`
+**Komponen terkait:** `SkillGapPanel`, `FloatingAdvisor`  
+**API:** `POST /api/v1/seeker/skill-gap`, `GET /api/v1/seeker/skill-gap/latest`, `POST /api/v1/agent/invoke`
 
 ---
 
-## 4. E-KYC Identity & Credential Verification (Verifikasi Identitas & Ijazah)
+## 3. Employer Onboarding, Job Pack Uploader & Direct Contact Unlock
 
-Platform ini menyelesaikan krisis kepercayaan (*Trust Crisis*) yang menjangkiti pasar tenaga kerja digital. Kandidat dapat memverifikasi tiga jenis dokumen:
+Modul ini dirancang untuk menyelesaikan beban administratif (*screening fatigue*) bagi HRD serta menawarkan model monetisasi mikro (**Pay-to-Unlock**).
 
-| Dokumen | Integrasi Mock | Field |
+### 📋 Alur Onboarding Berjenjang (Horizontal Step Timeline)
+1. **Langkah 1 (Profil Perusahaan):** Input nama badan usaha, NPWP, industri, ukuran tim, dan deskripsi institusi.
+2. **Langkah 2 (Verifikasi NPWP):** Pencocokan otomatis ke sistem DJP Online untuk memastikan keabsahan legalitas perusahaan.
+3. **Langkah 3 (Pasang Lowongan / Upload Job Pack):** Akses pembuatan lowongan individual atau unggah massal.
+
+### 📄 Job Pack Bulk Uploader (PDF)
+Perusahaan dapat mengunggah 1 dokumen PDF berisi kumpulan banyak posisi sekaligus. AI mengekstrak setiap jabatan, kualifikasi teknis, ekspektasi kompensasi, dan menerbitkannya secara serentak dalam hitungan detik.
+
+### 🔓 Pay-to-Unlock Model
+- Profil kandidat dalam daftar pendek (*Shortlist*) ditampilkan dengan **The Teaser Method** (misal: "Someone at Tokopedia", "Someone from ITB") lengkap dengan skor kecocokan teknis.
+- Perusahaan dapat membuka akses kontak langsung (Nama lengkap, email, nomor HP) dengan tarif mikro **Rp 50.000 / kandidat**, menghilangkan kebutuhan berlangganan jutaan rupiah di muka.
+
+**Komponen terkait:** `EmployerDashboard`, `EmployerJobs`, `EmployerPostJob`, `JobPackUploader`, `EmployerProfile`, `EmployerCandidates`, `PricingPage`  
+**API:** `POST /api/v1/employer/jobs`, `POST /api/v1/uploads/job-pack`, `POST /api/v1/employer/jobs/{id}/candidates`, `POST /api/v1/employer/jobs/{id}/unlock/{seeker_id}`, `GET/POST /api/v1/employer/profile`
+
+---
+
+## 4. E-KYC Identity, Credential & Phone OTP Verification
+
+Platform ini menyelesaikan krisis kepercayaan (*Trust Crisis*) dengan validasi kredensial berlapis:
+
+| Dokumen / Identitas | Integrasi Validasi | Field yang Diperiksa |
 |---|---|---|
-| **KTP / NIK** | Dukcapil E-KYC | NIK (16 digit), Nama Lengkap, Selfie |
-| **Ijazah** | SIVIL Kemdikbud | Nomor Ijazah, Universitas, Jurusan |
-| **NPWP** | DJP Online | NPWP (15 digit), Nama Perusahaan |
+| **KTP / NIK** | Dukcapil E-KYC | NIK (16 digit), Nama Lengkap Sesuai KTP, Tanggal Lahir |
+| **Ijazah Akademik** | SIVIL Kemdikbud | Nomor Ijazah, Nama Perguruan Tinggi, Program Studi |
+| **NPWP Perusahaan** | DJP Online | Nomor Pokok Wajib Pajak (15 digit), Nama Badan Usaha |
+| **Akta Perusahaan** | AHU Kemenkumham | Nomor Akta Pendirian, Nama Notaris |
+| **Nomor HP / WhatsApp** | Phone OTP Gateway | Kode OTP 6-digit via WhatsApp / SMS |
 
-Setelah verifikasi berhasil, profil kandidat mendapatkan **lencana terverifikasi** yang terlihat oleh semua HRD. Seluruh data sensitif disimpan dengan enkripsi **AES-256-GCM** dan proses *redaksi PII* otomatis, memenuhi standar **UU PDP No.27/2022** dan **ISO-27001**. Dalam mode demo, semua endpoint menggunakan layanan mock yang mensimulasikan respons nyata dari API pemerintah.
+### 📱 Phone OTP (Demo & Produksi)
+- **Demo Testing:** Sistem menampilkan kode 6-digit langsung pada respons API / toast notifikasi sehingga pengujian alur verifikasi nomor HP berjalan 100% tanpa biaya vendor.
+- **Produksi:** Terintegrasi langsung dengan WhatsApp Gateway (Fonnte) atau Twilio SMS Verify API.
+- Seluruh data sensitif dilindungi enkripsi **AES-256-GCM** sesuai ketentuan **UU PDP No.27/2022**.
 
-**Komponen terkait:** `VerificationDashboard`
-**API:** `POST /api/v1/verify/identity`, `POST /api/v1/verify/education`, `POST /api/v1/verify/npwp`, `GET /api/v1/verify/documents`
+**Komponen terkait:** `VerificationDashboard`, `EmployerVerification`  
+**API:** `POST /api/v1/verify/identity`, `POST /api/v1/verify/education`, `POST /api/v1/verify/npwp`, `POST /api/v1/verify/otp/send`, `POST /api/v1/verify/otp/verify`, `GET /api/v1/verify/documents`
 
 ---
 
-## 5. Data-Driven UX & Closed-Loop Analytics (A/B Testing & Event Tracking)
+## 5. Interactive Milestone Application Tracking
 
-Sistem ini didesain tidak hanya untuk fungsionalitas, tetapi juga untuk optimalisasi konversi dan pengalaman pengguna menggunakan metrik nyata. Platform dilengkapi dengan:
-- **Onboarding Wizard**: Alur interaktif ramah pengguna bagi kandidat baru (Welcome ➔ Upload CV ➔ Jalankan Match) yang didorong oleh *Stateless Feature Flagging* (A/B Testing) guna mengukur tingkat retensi.
-- **Event Tracking Terintegrasi**: Setiap aksi kritis (seperti melihat lowongan, mengubah profil, melamar) dicatat secara *closed-loop* ke dalam basis data analitik. Data ini akan membentuk *moat* organik untuk melatih ulang AI (*fine-tuning*) berdasarkan *historical hires*, menjadikan algoritma pencocokan semakin presisi tanpa bantuan manual.
-- **Progressive UI & Error Handling**: *Skeleton loader* transisional yang mensimulasikan langkah AI (misal: "Menganalisis skill gap..."), serta penanganan kesalahan dengan sistem Notifikasi Global (Toast) untuk sesi *Auth*, mencegah kebingungan teknis pada pengguna non-IT.
+Pencari kerja dapat melacak progres setiap lamaran pekerjaan secara *real-time* melalui visual timeline tahapan:
+- **Tersimpan** $\rightarrow$ **Melamar** $\rightarrow$ **Ditinjau HRD** $\rightarrow$ **Interview** $\rightarrow$ **Diterima / Ditolak**
 
-**Komponen terkait:** `OnboardingWizard`, State Management (Zustand), API Client (Interceptors)
+Setiap kartu lamaran dilengkapi informasi status, riwayat tanggal lamar, dan catatan transparansi proses seleksi dari perusahaan terkait.
+
+**Komponen terkait:** `ApplicationsPage`, `Sidebar`  
+**API:** `POST /api/v1/seeker/apply`, `GET /api/v1/seeker/applications`, `GET/POST/DELETE /api/v1/seeker/bookmarks`
+
+---
+
+## 6. A/B Testing & Closed-Loop Analytics Architecture
+
+Platform dilengkapi fondasi eksperimentasi produk:
+- **Stateless Feature Flagging:** Menugaskan varian A/B (misal: alur onboarding 3 langkah vs langsung ke dashboard) menggunakan hash deterministik dari `user_id`.
+- **Event Tracking:** Setiap aksi interaktif (`job_viewed`, `cv_uploaded`, `apply_submitted`) dicatat untuk melatih ulang AI (*fine-tuning*) dan mengoptimalkan konversi rekrutmen.
+
+Detail teknis dan rencana anggaran pengembangan lengkap dapat dibaca pada [A/B Testing & Technical Roadmap](AB_TESTING_AND_TECHNICAL_ROADMAP.md).
+
+**Komponen terkait:** `OnboardingWizard`, `useStore`  
 **API:** `GET /api/v1/experiments/assignments`, `POST /api/v1/events/track`
