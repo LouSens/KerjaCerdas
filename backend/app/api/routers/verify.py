@@ -157,7 +157,9 @@ async def send_otp(req: OtpSendReq, current_user: User = Depends(get_current_use
     """
     phone = req.phone.strip()
     if not phone.startswith("+"):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Phone harus dalam format internasional (+62...)")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Phone harus dalam format internasional (+62...)"
+        )
 
     code = "".join(random.choices(string.digits, k=6))
     key = _otp_key(str(current_user.id), phone)
@@ -175,8 +177,7 @@ async def send_otp(req: OtpSendReq, current_user: User = Depends(get_current_use
         # DEMO ONLY — remove in production when real WA/SMS provider is active
         "demo_code": code,
         "message": (
-            f"[DEMO MODE] Kode OTP: {code}. "
-            "Dalam produksi kode akan dikirim via WhatsApp/SMS."
+            f"[DEMO MODE] Kode OTP: {code}. Dalam produksi kode akan dikirim via WhatsApp/SMS."
         ),
     }
 
@@ -188,7 +189,9 @@ async def verify_otp(req: OtpVerifyReq, current_user: User = Depends(get_current
     entry = _OTP_STORE.get(key)
 
     if not entry:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "OTP tidak ditemukan. Kirim ulang kode terlebih dahulu.")
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "OTP tidak ditemukan. Kirim ulang kode terlebih dahulu."
+        )
 
     if time.time() > entry["expires_at"]:
         del _OTP_STORE[key]
@@ -197,7 +200,9 @@ async def verify_otp(req: OtpVerifyReq, current_user: User = Depends(get_current
     entry["attempts"] += 1
     if entry["attempts"] > _OTP_MAX_ATTEMPTS:
         del _OTP_STORE[key]
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Terlalu banyak percobaan. Kirim ulang kode.")
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS, "Terlalu banyak percobaan. Kirim ulang kode."
+        )
 
     if req.code.strip() != entry["code"]:
         remaining = _OTP_MAX_ATTEMPTS - entry["attempts"]

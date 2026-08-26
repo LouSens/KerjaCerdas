@@ -19,99 +19,87 @@ import useStore from '../store/useStore'
 // ─── Markdown helpers (must be defined BEFORE the component) ─────────────────
 
 const parseInline = (text) => {
-    if (!text) return '';
-    // Handle bold markdown '**'
-    // NOTE: every element rendered here MUST have a key unique across the
-    // whole returned array. Flattening segments with per-segment indexes
-    // produced duplicate React keys, which made React duplicate DOM text on
-    // every re-render (one extra copy per keystroke in the input box).
-    const parts = text.split('**');
+    if (!text) return ''
+    // NOTE: every element MUST have a key unique across the whole returned
+    // array. flatMap with per-segment indexes produced duplicate React keys,
+    // which caused React to duplicate DOM text on every re-render (one extra
+    // copy per keystroke in the input box).
+    const parts = text.split('**')
     return parts.map((part, i) => {
-        const isBold = i % 2 === 1;
-        // Inside bold/normal text, handle italics '*'
+        const isBold = i % 2 === 1
         const renderedSubParts = part.split('*').map((subPart, j) => {
-            const isItalic = j % 2 === 1;
+            const isItalic = j % 2 === 1
             if (isItalic) {
-                return <em key={`${i}-${j}`} className="not-italic font-medium text-kc-orange">{subPart}</em>;
+                return <em key={`${i}-${j}`} className="not-italic font-medium text-kc-orange">{subPart}</em>
             }
-            return <span key={`${i}-${j}`}>{subPart}</span>;
-        });
-
+            return <span key={`${i}-${j}`}>{subPart}</span>
+        })
         if (isBold) {
-            return <strong key={i} className="font-extrabold text-kc-dark">{renderedSubParts}</strong>;
+            return <strong key={i} className="font-extrabold text-kc-dark">{renderedSubParts}</strong>
         }
-        return <span key={i}>{renderedSubParts}</span>;
-    });
-};
+        return <span key={i}>{renderedSubParts}</span>
+    })
+}
 
 const renderMarkdown = (text) => {
-    if (!text) return null;
-    const lines = text.split('\n');
+    if (!text) return null
+    const lines = text.split('\n')
     return lines.map((line, idx) => {
-        let cleanLine = line.trim();
+        let cleanLine = line.trim()
         if (cleanLine === '---') {
-            return <hr key={idx} className="border-t border-dashed border-kc-dark my-2" />;
+            return <hr key={idx} className="border-t border-dashed border-kc-dark my-2" />
         }
-        
-        // Match headers of level 1 to 6 (e.g. ### Header)
-        const headerMatch = cleanLine.match(/^(#{1,6})\s+(.*)/);
+
+        const headerMatch = cleanLine.match(/^(#{1,6})\s+(.*)/)
         if (headerMatch) {
-            const level = headerMatch[1].length;
-            const content = headerMatch[2];
+            const level = headerMatch[1].length
+            const content = headerMatch[2]
             if (level === 3) {
-                return <h4 key={idx} className="font-extrabold text-[13px] mt-3 mb-1 uppercase text-kc-dark block">{parseInline(content)}</h4>;
+                return <h4 key={idx} className="font-extrabold text-[13px] mt-3 mb-1 uppercase text-kc-dark block">{parseInline(content)}</h4>
             } else if (level <= 2) {
-                return <h3 key={idx} className="font-extrabold text-sm mt-4 mb-1 text-kc-orange block">{parseInline(content)}</h3>;
+                return <h3 key={idx} className="font-extrabold text-sm mt-4 mb-1 text-kc-orange block">{parseInline(content)}</h3>
             } else {
-                return <h5 key={idx} className="font-bold text-[11px] mt-2 mb-1 text-kc-dark block">{parseInline(content)}</h5>;
+                return <h5 key={idx} className="font-bold text-[11px] mt-2 mb-1 text-kc-dark block">{parseInline(content)}</h5>
             }
         }
 
-        // Match bullet lists starting with - or * followed by one or more spaces
-        const bulletMatch = cleanLine.match(/^[-*]\s+(.*)/);
+        const bulletMatch = cleanLine.match(/^[-*]\s+(.*)/)
         if (bulletMatch) {
             return (
                 <div key={idx} className="flex gap-1.5 ml-2 my-1 items-start">
                     <span className="text-kc-orange">•</span>
                     <span className="flex-1 text-xs">{parseInline(bulletMatch[1])}</span>
                 </div>
-            );
+            )
         }
 
-        // Match numbered lists starting with digits followed by . and one or more spaces
-        const numMatch = cleanLine.match(/^(\d+)\.\s+(.*)/);
+        const numMatch = cleanLine.match(/^(\d+)\.\s+(.*)/)
         if (numMatch) {
             return (
                 <div key={idx} className="flex gap-1.5 ml-2 my-1 items-start">
                     <span className="font-bold text-kc-orange">{numMatch[1]}.</span>
                     <span className="flex-1 text-xs">{parseInline(numMatch[2])}</span>
                 </div>
-            );
+            )
         }
 
-        // Match table rows starting and ending with |
         if (cleanLine.startsWith('|') && cleanLine.endsWith('|')) {
-            const cells = cleanLine.split('|').map(c => c.trim()).filter(c => c !== '');
-            if (cells.every(c => c.match(/^-+$/))) {
-                return null;
-            }
+            const cells = cleanLine.split('|').map(c => c.trim()).filter(c => c !== '')
+            if (cells.every(c => c.match(/^-+$/))) return null
             return (
                 <div key={idx} className="flex gap-3 px-2 py-1 bg-white border-b border-kc-dark text-[10px] font-bold">
                     {cells.map((cell, cidx) => (
                         <div key={cidx} className="flex-1">{parseInline(cell)}</div>
                     ))}
                 </div>
-            );
+            )
         }
 
-        if (cleanLine === '') {
-            return <div key={idx} className="h-2" />;
-        }
-        
-        // Standard text paragraph
-        return <p key={idx} className="my-1 leading-normal text-xs">{parseInline(line)}</p>;
-    });
-};
+        if (cleanLine === '') return <div key={idx} className="h-2" />
+
+        return <p key={idx} className="my-1 leading-normal text-xs">{parseInline(line)}</p>
+    })
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
