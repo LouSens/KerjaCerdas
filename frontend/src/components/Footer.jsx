@@ -20,21 +20,21 @@ export default function Footer() {
 
                     {/* Seeker */}
                     <div>
-                        <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-3">Pencari Kerja</p>
+                        <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-3 font-bold">Pencari Kerja</p>
                         <ul className="space-y-2">
-                            <li><button onClick={() => navigate('home')} className="text-xs text-white/60 hover:text-white transition-colors">Cari Kerja</button></li>
-                            <li><button onClick={() => navigate('home')} className="text-xs text-white/60 hover:text-white transition-colors">Upload CV</button></li>
-                            <li><button onClick={() => navigate('home')} className="text-xs text-white/60 hover:text-white transition-colors">Skill Gap</button></li>
+                            <li><button onClick={() => navigate('home')} className="text-xs text-white/70 hover:text-white transition-colors">Cari Lowongan</button></li>
+                            <li><button onClick={() => openAuthModal('register', 'seeker')} className="text-xs text-white/70 hover:text-white transition-colors">Upload CV & AI Match</button></li>
+                            <li><button onClick={() => openAuthModal('register', 'seeker')} className="text-xs text-white/70 hover:text-white transition-colors">Analisis Skill Gap</button></li>
                         </ul>
                     </div>
 
                     {/* Employer */}
                     <div>
-                        <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-3">Employer</p>
+                        <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-3 font-bold">Employer</p>
                         <ul className="space-y-2">
-                            <li><button onClick={() => navigate('pricing')} className="text-xs text-white/60 hover:text-white transition-colors">Harga</button></li>
-                            <li><button onClick={() => navigate('home')} className="text-xs text-white/60 hover:text-white transition-colors">Pasang Lowongan</button></li>
-                            <li><button onClick={() => navigate('home')} className="text-xs text-white/60 hover:text-white transition-colors">Top Kandidat</button></li>
+                            <li><button onClick={() => navigate('pricing')} className="text-xs text-white/70 hover:text-white transition-colors">Skema Harga</button></li>
+                            <li><button onClick={() => openAuthModal('register', 'employer')} className="text-xs text-white/70 hover:text-white transition-colors">Pasang Lowongan</button></li>
+                            <li><button onClick={() => openAuthModal('register', 'employer')} className="text-xs text-white/70 hover:text-white transition-colors">Shortlist Kandidat</button></li>
                         </ul>
                     </div>
 

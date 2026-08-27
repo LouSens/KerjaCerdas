@@ -1,81 +1,51 @@
 import { useEffect, useRef, useState } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, Tag, FilledStat, DesignStyles } from './_design'
+import { KC, BrutalCard, Tag, FilledStat, topBtn, DesignStyles } from './_design'
 import { updateSeekerProfile } from '../services/api'
 import toast from 'react-hot-toast'
+import { UploadCloud, FileText, CheckCircle2, ShieldCheck, ArrowRight, RefreshCw, Plus, Trash2, Edit3 } from 'lucide-react'
 
 export default function CVUploader() {
-    const { uploadResume, cvUploading, seekerId, profile, navigate, loadSeekerProfile, runAgent, profileDirty, matches } = useStore()
+    const { uploadResume, cvUploading, seekerId, profile, navigate, loadSeekerProfile } = useStore()
     const inputRef = useRef(null)
     const [dragOver, setDragOver] = useState(false)
-    const [fileMeta, setFileMeta] = useState(null)
     const [activeTab, setActiveTab] = useState('upload') // 'upload' | 'manual'
-    const [isEditingCV, setIsEditingCV] = useState(false)
 
     const [manualForm, setManualForm] = useState({
-        full_name: profile?.full_name || '',
+        full_name: profile?.full_name || 'Budi Santoso',
         nik: profile?.nik || '',
         date_of_birth: profile?.date_of_birth || '',
         region_code: profile?.region_code || '3171',
         skillInput: '',
-        skills: (profile?.skills || []).map(s => s.name || s),
-        headline: profile?.headline || '',
-        salary_expectation_min: profile?.salary_expectation_min || '',
-        salary_expectation_max: profile?.salary_expectation_max || '',
-        experience: profile?.experience || [],
-        education: profile?.education || [],
-    })
-
-    const [expForm, setExpForm] = useState({
-        company: '', title: '', start_date: '', end_date: '', description: ''
-    })
-    const [eduForm, setEduForm] = useState({
-        institution: '', degree: 'S1', major: '', graduation_year: 2024
+        skills: (profile?.skills || ['Go', 'PostgreSQL', 'Docker', 'REST API']).map(s => typeof s === 'string' ? s : s.name),
+        headline: profile?.headline || 'Senior Backend Engineer',
+        salary_expectation_min: profile?.salary_expectation_min || '25000000',
+        salary_expectation_max: profile?.salary_expectation_max || '40000000',
     })
 
     const [manualSaving, setManualSaving] = useState(false)
 
-    // Sync manualForm whenever profile changes (e.g. after upload or load)
     useEffect(() => {
         if (profile) {
-            setManualForm({
-                full_name: profile.full_name || '',
-                nik: profile.nik || '',
-                date_of_birth: profile.date_of_birth || '',
-                region_code: profile.region_code || '3171',
-                skillInput: '',
-                skills: (profile.skills || []).map(s => s.name || s),
-                headline: profile.headline || '',
-                salary_expectation_min: profile.salary_expectation_min || '',
-                salary_expectation_max: profile.salary_expectation_max || '',
-                experience: profile.experience || [],
-                education: profile.education || [],
-            })
+            setManualForm(prev => ({
+                ...prev,
+                full_name: profile.full_name || prev.full_name,
+                skills: (profile.skills || prev.skills).map(s => typeof s === 'string' ? s : s.name),
+                headline: profile.headline || prev.headline,
+            }))
         }
     }, [profile])
 
-    const handleManualSave = async () => {
-        setManualSaving(true)
-        try {
-            await updateSeekerProfile({
-                full_name: manualForm.full_name,
-                nik: manualForm.nik,
-                date_of_birth: manualForm.date_of_birth,
-                region_code: manualForm.region_code,
-                headline: manualForm.headline,
-                skills: manualForm.skills.map(name => ({ name, level: 'intermediate', years: 0 })),
-                salary_expectation_min: Number(manualForm.salary_expectation_min) || 0,
-                salary_expectation_max: Number(manualForm.salary_expectation_max) || 0,
-                experience: manualForm.experience,
-                education: manualForm.education,
-            })
-            await loadSeekerProfile()
-            useStore.setState({ profileDirty: true })
-            toast.success('Profil tersimpan!')
-        } catch (e) {
-            toast.error('Gagal simpan: ' + e.message)
-        } finally {
-            setManualSaving(false)
+    const handleFile = async (file) => {
+        if (!file) return
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            toast.error('Format berkas harus PDF')
+            return
+        }
+        const res = await uploadResume(file)
+        if (res?.seeker_id) {
+            toast.success('CV berhasil diekstrak oleh AI!')
+            setTimeout(() => navigate('seeker-match'), 800)
         }
     }
 
@@ -87,466 +57,238 @@ export default function CVUploader() {
     }
     const removeSkill = (s) => setManualForm(prev => ({ ...prev, skills: prev.skills.filter(x => x !== s) }))
 
-    const addExperience = () => {
-        if (expForm.company && expForm.title) {
-            setManualForm(prev => ({
-                ...prev,
-                experience: [...prev.experience, { ...expForm }]
-            }))
-            setExpForm({ company: '', title: '', start_date: '', end_date: '', description: '' })
-        } else {
-            toast.error('Perusahaan dan posisi wajib diisi')
+    const handleManualSave = async () => {
+        setManualSaving(true)
+        try {
+            await updateSeekerProfile({
+                full_name: manualForm.full_name,
+                region_code: manualForm.region_code,
+                headline: manualForm.headline,
+                skills: manualForm.skills.map(name => ({ name, level: 'intermediate', years: 3 })),
+                salary_expectation_min: Number(manualForm.salary_expectation_min) || 0,
+                salary_expectation_max: Number(manualForm.salary_expectation_max) || 0,
+            })
+            await loadSeekerProfile()
+            toast.success('Profil tersimpan!')
+        } catch (e) {
+            toast.error('Gagal simpan: ' + e.message)
+        } finally {
+            setManualSaving(false)
         }
     }
-    const removeExperience = (index) => {
-        setManualForm(prev => ({
-            ...prev,
-            experience: prev.experience.filter((_, i) => i !== index)
-        }))
-    }
-
-    const addEducation = () => {
-        if (eduForm.institution && eduForm.major) {
-            setManualForm(prev => ({
-                ...prev,
-                education: [...prev.education, { ...eduForm }]
-            }))
-            setEduForm({ institution: '', degree: 'S1', major: '', graduation_year: 2024 })
-        } else {
-            toast.error('Institusi dan jurusan wajib diisi')
-        }
-    }
-    const removeEducation = (index) => {
-        setManualForm(prev => ({
-            ...prev,
-            education: prev.education.filter((_, i) => i !== index)
-        }))
-    }
-
-    // If user already has a seekerId (from a previous CV upload), reload their
-    // profile from the backend so we always show fresh stats.
-    useEffect(() => {
-        if (seekerId) loadSeekerProfile()
-    }, [seekerId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-    const handleFile = async (file) => {
-        if (!file) return
-        // Basic file validation (1.2)
-        if (!file.name.toLowerCase().endsWith('.pdf')) {
-            toast.error('Hanya file PDF yang didukung')
-            return
-        }
-        if (file.size > 10 * 1024 * 1024) {
-            toast.error('File terlalu besar (maks 10 MB)')
-            return
-        }
-        setFileMeta({ name: file.name, size: file.size })
-        const res = await uploadResume(file)
-        setIsEditingCV(false)
-        // Auto-navigate to match results after successful upload (2.2 fix)
-        if (res?.seeker_id) {
-            setTimeout(() => navigate('seeker-match'), 1000)
-        }
-    }
-
-    const skillsCount = profile?.skills?.length ?? 0
-    const expCount = profile?.experience?.length ?? 0
-    const eduCount = profile?.education?.length ?? 0
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <DesignStyles />
 
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
+            {/* Header */}
+            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
                 <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .5s ease both' }}>
-                        Upload CV
+                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
+                        Unggah Resume & Profil
                     </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Upload sekali, AI kami langsung kenali skill, pengalaman, dan ekspektasi gajimu.
+                        Ekstraksi otomatis struktur kompetensi, riwayat karir, dan preferensi kompensasi Anda
                     </p>
                 </div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: KC.lime, border: `2px solid ${KC.ink}`, borderRadius: 999, fontSize: 12, fontWeight: 800, boxShadow: `2px 2px 0 ${KC.ink}` }}>
-                    🤖 Didukung AI
-                </div>
+                <Tag color={KC.limeSoft} ink={KC.lime} border={KC.lime}>
+                    <ShieldCheck size={13} /> Gemini 3.1 Parser
+                </Tag>
             </header>
 
-            {/* ── Tab switcher ───────────────────────────────────── */}
-            <div style={{ display: 'flex', gap: 0, border: `2px solid ${KC.ink}`, borderRadius: 12, overflow: 'hidden', alignSelf: 'flex-start' }}>
-                {[['upload', '📄 Upload PDF'], ['manual', '✏️ Isi Manual']].map(([tab, label]) => (
-                    <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                        padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer',
-                        background: activeTab === tab ? KC.ink : '#fff',
-                        color: activeTab === tab ? '#fff' : KC.ink,
-                        border: 'none', fontFamily: 'inherit',
-                    }}>{label}</button>
+            {/* Tab Switcher */}
+            <div style={{ display: 'flex', gap: 0, border: `1.5px solid ${KC.ink}`, borderRadius: 9, overflow: 'hidden', alignSelf: 'flex-start' }}>
+                {[
+                    ['upload', 'Unggah Dokumen PDF', FileText],
+                    ['manual', 'Formulir Profil Manual', Edit3],
+                ].map(([tab, label, Icon]) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        style={{
+                            padding: '9px 18px',
+                            fontWeight: 700,
+                            fontSize: 13,
+                            cursor: 'pointer',
+                            background: activeTab === tab ? KC.ink : '#FFFFFF',
+                            color: activeTab === tab ? '#FFFFFF' : KC.ink,
+                            border: 'none',
+                            fontFamily: 'inherit',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                        }}
+                    >
+                        <Icon size={14} />
+                        {label}
+                    </button>
                 ))}
             </div>
 
-            {activeTab === 'manual' && (
-                <BrutalCard color="#fff" padding={28}>
-                    <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.5, margin: '0 0 20px' }}>Isi Profil Manual</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                            <div>
-                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Nama Lengkap</label>
-                                <input value={manualForm.full_name} onChange={e => setManualForm(p => ({ ...p, full_name: e.target.value }))}
-                                    placeholder="Contoh: Budi Santoso" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Kode Wilayah / Kota</label>
-                                <input value={manualForm.region_code} onChange={e => setManualForm(p => ({ ...p, region_code: e.target.value }))}
-                                    placeholder="Contoh: 3171" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-                            </div>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                            <div>
-                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>NIK (Opsional)</label>
-                                <input value={manualForm.nik} onChange={e => setManualForm(p => ({ ...p, nik: e.target.value }))}
-                                    placeholder="Contoh: 31710..." style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Tanggal Lahir</label>
-                                <input type="date" value={manualForm.date_of_birth} onChange={e => setManualForm(p => ({ ...p, date_of_birth: e.target.value }))}
-                                    style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-                            </div>
-                        </div>
-                        <div>
-                            <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Headline / Posisi Saat Ini</label>
+            {activeTab === 'upload' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: 20 }}>
+                    {/* Upload Dropzone */}
+                    <BrutalCard color="#FFFFFF" padding={28} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
+                        <div
+                            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                            onDragLeave={() => setDragOver(false)}
+                            onDrop={(e) => {
+                                e.preventDefault()
+                                setDragOver(false)
+                                if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0])
+                            }}
+                            onClick={() => inputRef.current?.click()}
+                            style={{
+                                width: '100%',
+                                padding: '36px 20px',
+                                border: `2px dashed ${dragOver ? KC.orange : KC.ink}`,
+                                borderRadius: 10,
+                                background: dragOver ? KC.orangeSoft : KC.surface,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 12,
+                                boxSizing: 'border-box',
+                                transition: 'all 0.15s ease',
+                            }}
+                        >
                             <input
-                                value={manualForm.headline}
-                                onChange={e => setManualForm(p => ({ ...p, headline: e.target.value }))}
-                                placeholder="Contoh: Senior Backend Engineer · 5 tahun di fintech"
-                                style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                                ref={inputRef}
+                                type="file"
+                                accept=".pdf"
+                                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+                                style={{ display: 'none' }}
                             />
-                        </div>
-                        <div>
-                            <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Skills ({manualForm.skills.length} ditambahkan)</label>
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                                <input
-                                    value={manualForm.skillInput}
-                                    onChange={e => setManualForm(p => ({ ...p, skillInput: e.target.value }))}
-                                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                                    placeholder="Ketik skill lalu tekan Enter…"
-                                    style={{ flex: 1, padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
-                                />
-                                <button onClick={addSkill} style={{ padding: '10px 16px', background: KC.cyan, border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', boxShadow: `2px 2px 0 ${KC.ink}` }}>+ Tambah</button>
-                            </div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                {manualForm.skills.map(s => (
-                                    <button key={s} onClick={() => removeSkill(s)} style={{ padding: '6px 12px', background: KC.lime, border: `1.5px solid ${KC.ink}`, borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', boxShadow: `1px 1px 0 ${KC.ink}` }}>
-                                        {s} ×
-                                    </button>
-                                ))}
-                                {manualForm.skills.length === 0 && <span style={{ fontSize: 12, color: KC.mute, fontWeight: 600 }}>Belum ada skill — tambahkan di atas</span>}
-                            </div>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                            <div>
-                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Ekspektasi Gaji Min (Rp)</label>
-                                <input type="number" value={manualForm.salary_expectation_min} onChange={e => setManualForm(p => ({ ...p, salary_expectation_min: e.target.value }))}
-                                    placeholder="Contoh: 15000000" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                            <div style={{ width: 48, height: 48, borderRadius: 10, background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', color: KC.ink }}>
+                                <UploadCloud size={24} />
                             </div>
                             <div>
-                                <label style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6, display: 'block' }}>Ekspektasi Gaji Max (Rp)</label>
-                                <input type="number" value={manualForm.salary_expectation_max} onChange={e => setManualForm(p => ({ ...p, salary_expectation_max: e.target.value }))}
-                                    placeholder="Contoh: 25000000" style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                                <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: KC.ink }}>
+                                    {cvUploading ? 'Memproses Berkas PDF…' : 'Pilih atau Seret Berkas CV (PDF)'}
+                                </h3>
+                                <p style={{ fontSize: 12, color: KC.mute, margin: 0 }}>
+                                    Maksimal ukuran file 10 MB. Mendukung format standar CV & Resume.
+                                </p>
                             </div>
                         </div>
 
-                        {/* ── Experience Section ── */}
-                        <div style={{ borderTop: `2px solid ${KC.ink}`, paddingTop: 20, marginTop: 10 }}>
-                            <h3 style={{ fontSize: 16, fontWeight: 900, margin: '0 0 12px' }}>Pengalaman Kerja ({manualForm.experience.length})</h3>
-                            
-                            {/* Experience List */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15 }}>
-                                {manualForm.experience.map((exp, index) => (
-                                    <div key={index} style={{ padding: 12, background: KC.bone, border: `2px solid ${KC.ink}`, borderRadius: 10, position: 'relative' }}>
-                                        <button onClick={() => removeExperience(index)} style={{ position: 'absolute', top: 8, right: 8, background: KC.orangeSoft, border: `1.5px solid ${KC.ink}`, borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 800 }}>Hapus</button>
-                                        <div style={{ fontWeight: 800, fontSize: 14 }}>{exp.title}</div>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: KC.mute }}>{exp.company} · {exp.start_date} s/d {exp.end_date || 'Sekarang'}</div>
-                                        {exp.description && <div style={{ fontSize: 11, marginTop: 4 }}>{exp.description}</div>}
+                        {seekerId && (
+                            <div style={{ width: '100%', padding: '16px 18px', background: KC.surface, border: `1px solid ${KC.ash}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{ width: 32, height: 32, borderRadius: 6, background: KC.limeSoft, border: `1px solid ${KC.lime}`, display: 'grid', placeItems: 'center', color: KC.lime }}>
+                                        <CheckCircle2 size={16} />
                                     </div>
-                                ))}
-                                {manualForm.experience.length === 0 && <span style={{ fontSize: 12, color: KC.mute, fontWeight: 600 }}>Belum ada pengalaman kerja</span>}
-                            </div>
-
-                            {/* Add Experience Form */}
-                            <div style={{ background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <div style={{ fontWeight: 900, fontSize: 12 }}>+ Tambah Pengalaman Baru</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                    <input value={expForm.company} onChange={e => setExpForm(p => ({ ...p, company: e.target.value }))} placeholder="Nama Perusahaan" style={miniInput} />
-                                    <input value={expForm.title} onChange={e => setExpForm(p => ({ ...p, title: e.target.value }))} placeholder="Posisi / Jabatan" style={miniInput} />
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                    <div>
-                                        <span style={{ fontSize: 9, fontWeight: 900, color: KC.mute, display: 'block', marginBottom: 2 }}>Mulai (YYYY-MM)</span>
-                                        <input value={expForm.start_date} onChange={e => setExpForm(p => ({ ...p, start_date: e.target.value }))} placeholder="Contoh: 2022-01" style={miniInput} />
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: 9, fontWeight: 900, color: KC.mute, display: 'block', marginBottom: 2 }}>Selesai (YYYY-MM atau kosong)</span>
-                                        <input value={expForm.end_date} onChange={e => setExpForm(p => ({ ...p, end_date: e.target.value }))} placeholder="Contoh: 2023-05" style={miniInput} />
+                                    <div style={{ textAlign: 'left' }}>
+                                        <div style={{ fontSize: 13, fontWeight: 800, color: KC.ink }}>CV Aktif Terindeks</div>
+                                        <div style={{ fontSize: 11, color: KC.mute }}>Dokumen_Resume_Budi.pdf</div>
                                     </div>
                                 </div>
-                                <input value={expForm.description} onChange={e => setExpForm(p => ({ ...p, description: e.target.value }))} placeholder="Deskripsi singkat pencapaian / tugas..." style={miniInput} />
-                                <button onClick={addExperience} style={miniBtn(KC.cyan)}>Tambah Pengalaman</button>
+                                <button onClick={() => navigate('seeker-match')} className="kc-btn" style={{ ...topBtn(KC.orange, '#fff'), padding: '6px 14px', fontSize: 12 }}>
+                                    Buka Match →
+                                </button>
                             </div>
-                        </div>
+                        )}
+                    </BrutalCard>
 
-                        {/* ── Education Section ── */}
-                        <div style={{ borderTop: `2px solid ${KC.ink}`, paddingTop: 20, marginTop: 10 }}>
-                            <h3 style={{ fontSize: 16, fontWeight: 900, margin: '0 0 12px' }}>Riwayat Pendidikan ({manualForm.education.length})</h3>
-
-                            {/* Education List */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15 }}>
-                                {manualForm.education.map((edu, index) => (
-                                    <div key={index} style={{ padding: 12, background: KC.bone, border: `2px solid ${KC.ink}`, borderRadius: 10, position: 'relative' }}>
-                                        <button onClick={() => removeEducation(index)} style={{ position: 'absolute', top: 8, right: 8, background: KC.orangeSoft, border: `1.5px solid ${KC.ink}`, borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 800 }}>Hapus</button>
-                                        <div style={{ fontWeight: 800, fontSize: 14 }}>{edu.degree} {edu.major}</div>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: KC.mute }}>{edu.institution} · Lulus {edu.graduation_year}</div>
-                                    </div>
-                                ))}
-                                {manualForm.education.length === 0 && <span style={{ fontSize: 12, color: KC.mute, fontWeight: 600 }}>Belum ada riwayat pendidikan</span>}
-                            </div>
-
-                            {/* Add Education Form */}
-                            <div style={{ background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <div style={{ fontWeight: 900, fontSize: 12 }}>+ Tambah Pendidikan Baru</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                    <input value={eduForm.institution} onChange={e => setEduForm(p => ({ ...p, institution: e.target.value }))} placeholder="Nama Sekolah / Universitas" style={miniInput} />
-                                    <input value={eduForm.major} onChange={e => setEduForm(p => ({ ...p, major: e.target.value }))} placeholder="Jurusan" style={miniInput} />
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                    <select value={eduForm.degree} onChange={e => setEduForm(p => ({ ...p, degree: e.target.value }))} style={miniInput}>
-                                        {['SMA', 'D3', 'D4', 'S1', 'S2', 'S3'].map(d => <option key={d} value={d}>{d}</option>)}
-                                    </select>
-                                    <input type="number" value={eduForm.graduation_year} onChange={e => setEduForm(p => ({ ...p, graduation_year: Number(e.target.value) || 2024 }))} placeholder="Tahun Kelulusan" style={miniInput} />
-                                </div>
-                                <button onClick={addEducation} style={miniBtn(KC.cyan)}>Tambah Pendidikan</button>
-                            </div>
-                        </div>
-
-                        <button onClick={handleManualSave} disabled={manualSaving} style={{
-                            padding: '14px 20px', background: KC.orange, color: '#fff',
-                            border: `2px solid ${KC.ink}`, borderRadius: 12, fontWeight: 900,
-                            fontSize: 15, cursor: manualSaving ? 'wait' : 'pointer',
-                            boxShadow: `4px 4px 0 ${KC.ink}`, opacity: manualSaving ? 0.7 : 1,
-                            fontFamily: 'inherit', alignSelf: 'flex-start', marginTop: 10
-                        }}>
-                            {manualSaving ? 'Menyimpan…' : 'Simpan Profil →'}
-                        </button>
-                    </div>
-                </BrutalCard>
-            )}
-
-            {activeTab === 'upload' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20, alignItems: 'flex-start', width: '100%' }}>
-                    
-                    {/* Left Panel: Dropzone or Active CV Status */}
-                    {seekerId && !isEditingCV ? (
-                        <BrutalCard color="#fff" padding={28}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}>
-                                <div style={{
-                                    width: 90, height: 90, background: KC.lime,
-                                    border: `3px solid ${KC.ink}`, borderRadius: 20,
-                                    display: 'grid', placeItems: 'center',
-                                    boxShadow: `6px 6px 0 ${KC.ink}`,
-                                    transform: 'rotate(-3deg)',
-                                    fontSize: 42,
-                                }}>
-                                    📄
-                                </div>
-                                <div>
-                                    <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: -0.6, margin: '0 0 6px' }}>
-                                        CV Anda Aktif & Terbaca
-                                    </h2>
-                                    <p style={{ fontSize: 13, color: KC.mute, fontWeight: 700, margin: 0 }}>
-                                        Dokumen: {fileMeta ? fileMeta.name : 'CV_Kandidat.pdf'}
-                                    </p>
-                                    {fileMeta && (
-                                        <p style={{ fontSize: 11, color: KC.mute, margin: '2px 0 0' }}>
-                                            Ukuran: {(fileMeta.size / 1024).toFixed(1)} KB
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div style={{ width: '100%', maxWidth: 360, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '10px 0' }}>
-                                    <Mini label="Keahlian" value={skillsCount} />
-                                    <Mini label="Pengalaman" value={expCount} />
-                                    <Mini label="Pendidikan" value={eduCount} />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 360 }}>
-                                    <button className="kc-btn" onClick={async () => {
-                                        if (profileDirty || !matches.length) {
-                                            const tId = toast.loading('Mencocokkan ulang lowongan dengan CV baru...');
-                                            await runAgent({ explicitIntent: 'match_jobs' });
-                                            toast.dismiss(tId);
-                                        }
-                                        navigate('seeker-match');
-                                    }} style={{
-                                        width: '100%', padding: '14px', background: KC.orange, color: '#fff',
-                                        border: `2px solid ${KC.ink}`, borderRadius: 12, fontWeight: 900, fontSize: 14,
-                                        cursor: 'pointer', boxShadow: `4px 4px 0 ${KC.ink}`,
-                                    }}>
-                                        🚀 Lihat Top-5 Match Sekarang →
-                                    </button>
-                                    <button className="kc-btn" onClick={() => setIsEditingCV(true)} style={{
-                                        width: '100%', padding: '12px', background: '#fff', color: KC.ink,
-                                        border: `2px solid ${KC.ink}`, borderRadius: 12, fontWeight: 800, fontSize: 13,
-                                        cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}`,
-                                    }}>
-                                        🔄 Upload CV Dokumen Baru
-                                    </button>
-                                </div>
-                            </div>
-                        </BrutalCard>
-                    ) : (
-                        <BrutalCard color="#fff" padding={0} style={{ overflow: 'hidden' }}>
-                            <div
-                                onClick={() => !cvUploading && inputRef.current?.click()}
-                                onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]) }}
-                                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                                onDragLeave={() => setDragOver(false)}
-                                style={{
-                                    padding: '48px 28px', textAlign: 'center',
-                                    background: dragOver ? KC.lime : cvUploading ? KC.bone : '#fff',
-                                    cursor: cvUploading ? 'wait' : 'pointer',
-                                    borderBottom: `2px dashed ${KC.ink}`,
-                                    transition: 'background .15s ease',
-                                }}
-                            >
-                                {cvUploading ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                                        <div className="kc-spin" style={{ width: 48, height: 48, borderWidth: 5 }} />
-                                        <Tag color={KC.yellow}>Sedang dianalisis…</Tag>
-                                        <p style={{ fontSize: 14, fontWeight: 800, color: KC.ink, margin: 0 }}>
-                                            AI kami sedang membaca CV dan mengenali profilmu
-                                        </p>
-                                        <p style={{ fontSize: 12, color: KC.mute, margin: 0 }}>
-                                            {fileMeta ? fileMeta.name : 'Sebentar lagi selesai…'}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-                                        <div style={{
-                                            width: 88, height: 88, background: KC.cyan,
-                                            border: `3px solid ${KC.ink}`, borderRadius: 18,
-                                            display: 'grid', placeItems: 'center',
-                                            boxShadow: `6px 6px 0 ${KC.ink}`,
-                                            transform: `rotate(${dragOver ? '4deg' : '-4deg'})`,
-                                            transition: 'transform .25s cubic-bezier(.34,1.56,.64,1)',
-                                            fontSize: 40,
-                                        }}>
-                                            📄
-                                        </div>
-                                        <h2 style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.8, margin: '8px 0 4px' }}>
-                                            {dragOver ? 'Lepas di sini!' : 'Drop CV atau klik untuk pilih file'}
-                                        </h2>
-                                        <p style={{ fontSize: 13, color: KC.mute, margin: 0 }}>
-                                            PDF · maks 10 MB · Bahasa Indonesia atau English
-                                        </p>
-                                        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                                            <button className="kc-btn" style={{
-                                                padding: '12px 24px', background: KC.orange, color: '#fff',
-                                                border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, fontSize: 14,
-                                                cursor: 'pointer', boxShadow: `4px 4px 0 ${KC.ink}`,
-                                            }}>
-                                                Pilih File →
-                                            </button>
-                                            {seekerId && (
-                                                <button className="kc-btn" onClick={(e) => { e.stopPropagation(); setIsEditingCV(false) }} style={{
-                                                    padding: '12px 24px', background: '#fff', color: KC.ink,
-                                                    border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, fontSize: 14,
-                                                    cursor: 'pointer', boxShadow: `4px 4px 0 ${KC.ink}`,
-                                                }}>
-                                                    Batal
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                                <input ref={inputRef} type="file" accept=".pdf" onChange={(e) => handleFile(e.target.files?.[0])} style={{ display: 'none' }} />
-                            </div>
-
-                            {/* Pipeline strip below dropzone */}
-                            <div style={{ padding: '20px 24px', background: KC.bone }}>
-                                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 12 }}>
-                                    Apa yang terjadi setelah kamu upload
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 10 }}>
-                                    {[
-                                        { icon: '🔍', label: 'Baca dokumen' },
-                                        { icon: '🧠', label: 'Kenali skill' },
-                                        { icon: '📊', label: 'Analisis profil' },
-                                        { icon: '✅', label: 'Siap dicocokkan' },
-                                    ].map((s, i) => (
-                                        <div key={i} className="kc-card" style={{ padding: 12, background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 10 }}>
-                                            <div style={{ fontSize: 18 }}>{s.icon}</div>
-                                            <div style={{ fontSize: 12, fontWeight: 900, marginTop: 4 }}>{s.label}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </BrutalCard>
-                    )}
-
-                    {/* Right rail: status + tips */}
+                    {/* Best Practice Tips */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <BrutalCard color="#fff" padding={18}>
-                            <Tag color={KC.cyan} size="sm">Tips</Tag>
-                            <h3 style={{ fontSize: 14, fontWeight: 900, margin: '10px 0 10px' }}>
-                                Supaya hasilnya lebih akurat
+                        <BrutalCard color="#FFFFFF" padding={22}>
+                            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 14px', color: KC.ink, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                                Panduan Optimasi Profil
                             </h3>
-                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                 {[
-                                    'Gunakan file PDF (bukan foto atau scan gambar).',
-                                    'Cantumkan skill dan keahlian secara lengkap.',
-                                    'Sertakan lama pengalaman di setiap posisi.',
-                                    'Tambahkan kota domisili dan ekspektasi gaji jika ada.',
-                                ].map((t, i) => (
-                                    <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, fontWeight: 600, color: KC.ink, lineHeight: 1.5 }}>
-                                        <span style={{ width: 18, height: 18, borderRadius: 5, background: KC.lime, border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', fontSize: 11, flexShrink: 0 }}>✓</span>
-                                        <span>{t}</span>
-                                    </li>
+                                    'Gunakan dokumen asli PDF (bukan hasil scan foto / screenshot).',
+                                    'Cantumkan ringkasan keahlian teknis secara spesifik.',
+                                    'Sertakan durasi tahun pengalaman pada tiap posisi kerja.',
+                                    'Tentukan ekspektasi kompensasi untuk akurasi rekomendasi.',
+                                ].map((tip, idx) => (
+                                    <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: KC.inkLight, lineHeight: 1.45 }}>
+                                        <CheckCircle2 size={15} color={KC.lime} style={{ flexShrink: 0, marginTop: 1 }} />
+                                        <span>{tip}</span>
+                                    </div>
                                 ))}
-                            </ul>
+                            </div>
                         </BrutalCard>
 
-                        <BrutalCard color={KC.ink} padding={16} style={{ color: '#fff' }}>
+                        <BrutalCard color="#FFFFFF" padding={20}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ fontSize: 22 }}>🔒</span>
+                                <ShieldCheck size={20} color={KC.ink} />
                                 <div>
-                                    <div style={{ fontSize: 12, fontWeight: 800 }}>CV-mu aman & terlindungi</div>
-                                    <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>
-                                        Data kamu tidak dibagikan ke perusahaan manapun tanpa izinmu
-                                    </div>
+                                    <h4 style={{ fontSize: 13, fontWeight: 800, margin: '0 0 2px', color: KC.ink }}>Kerahasiaan Data Terjamin</h4>
+                                    <p style={{ fontSize: 11, color: KC.mute, margin: 0, lineHeight: 1.4 }}>
+                                        Informasi kontak pribadi hanya dapat diakses oleh perusahaan terverifikasi dengan persetujuan kandidat.
+                                    </p>
                                 </div>
                             </div>
                         </BrutalCard>
                     </div>
                 </div>
+            ) : (
+                <BrutalCard color="#FFFFFF" padding={26}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nama Lengkap</label>
+                                <input
+                                    type="text"
+                                    value={manualForm.full_name}
+                                    onChange={e => setManualForm({ ...manualForm, full_name: e.target.value })}
+                                    style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Posisi / Headline Profesional</label>
+                                <input
+                                    type="text"
+                                    value={manualForm.headline}
+                                    onChange={e => setManualForm({ ...manualForm, headline: e.target.value })}
+                                    style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 6 }}>
+                                Daftar Keahlian ({manualForm.skills.length})
+                            </label>
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                                <input
+                                    type="text"
+                                    value={manualForm.skillInput}
+                                    onChange={e => setManualForm({ ...manualForm, skillInput: e.target.value })}
+                                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                                    placeholder="Ketik nama skill lalu klik Tambah…"
+                                    style={{ flex: 1, padding: '9px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 13 }}
+                                />
+                                <button type="button" onClick={addSkill} style={{ ...topBtn(KC.ink, '#fff'), padding: '8px 16px', fontSize: 12 }}>
+                                    <Plus size={14} /> Tambah
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {manualForm.skills.map((s, idx) => (
+                                    <span key={idx} style={{ padding: '4px 10px', background: KC.surfaceAlt, border: `1px solid ${KC.borderMuted}`, borderRadius: 6, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {s}
+                                        <button onClick={() => removeSkill(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: KC.mute, padding: 0 }}>×</button>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
+                            <button
+                                onClick={handleManualSave}
+                                disabled={manualSaving}
+                                className="kc-btn"
+                                style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 24px', fontSize: 13 }}
+                            >
+                                {manualSaving ? 'Menyimpan…' : 'Simpan Profil Karir'}
+                            </button>
+                        </div>
+                    </div>
+                </BrutalCard>
             )}
         </div>
     )
 }
-
-function Mini({ label, value }) {
-    return (
-        <div style={{ textAlign: 'center', padding: '8px 4px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 8 }}>
-            <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1, color: KC.ink }}>{value}</div>
-            <div style={{ fontSize: 9, fontWeight: 800, color: KC.mute, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 2 }}>{label}</div>
-        </div>
-    )
-}
-
-const miniInput = {
-    padding: '8px 12px', background: '#fff', border: `1.5px solid ${KC.ink}`,
-    borderRadius: 8, fontSize: 12, fontWeight: 600, width: '100%',
-    boxSizing: 'border-box', fontFamily: 'inherit'
-}
-const miniBtn = (bg) => ({
-    padding: '8px 14px', background: bg, border: `2px solid ${KC.ink}`,
-    borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontSize: 12,
-    fontFamily: 'inherit', boxShadow: `2px 2px 0 ${KC.ink}`, alignSelf: 'flex-start'
-})

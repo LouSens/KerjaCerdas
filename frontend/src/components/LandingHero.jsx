@@ -1,171 +1,335 @@
 /* eslint-disable react/no-unescaped-entities */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
+import { submitPartnershipInquiry } from '../services/api'
+import toast from 'react-hot-toast'
 
 // ════════════════════════════════════════════════════════════════════════════
-// KerjaCerdas Landing — Refined Neo-Brutal (Variant A from design canvas)
-// Ported from design bundle: KerjaCerdas Design / landing.jsx (LandingA)
+// KerjaCerdas — Minimalist Enterprise Neobrutalism Landing
+// Designed for Enterprise Clarity, High Contrast, and Zero Clutter
 // ════════════════════════════════════════════════════════════════════════════
 
 const KC = {
-    ink: '#0B0B0F',
-    bone: '#FAF8F2',
+    ink: '#090A0F',
+    bone: '#FAF9F5',
     paper: '#FFFFFF',
-    surface: '#F4F1EA',
-    orange: '#FF5722',
-    orangeSoft: '#FFE0D4',
-    yellow: '#FFCB05',
-    cyan: '#7AE7F0',
-    pink: '#FFB7D5',
-    lime: '#C8F26B',
-    mute: '#6B6760',
-    ash: '#E5E0D6',
+    surface: '#F2EFE9',
+    surfaceAlt: '#E9E5DC',
+    orange: '#FF4800',
+    orangeSoft: '#FFF0EB',
+    yellow: '#FFC800',
+    yellowSoft: '#FFF9E6',
+    cyan: '#00B8D9',
+    cyanSoft: '#E6F8FA',
+    lime: '#B4F51C',
+    limeSoft: '#F4FDE5',
+    mute: '#4A4944',
+    muteLight: '#76746C',
+    ash: '#DDD9D0',
+    border: '#090A0F',
 }
 
-const FONT = '"Plus Jakarta Sans", system-ui, sans-serif'
-const MONO = '"JetBrains Mono", ui-monospace, monospace'
+const FONT = '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif'
+const MONO = '"JetBrains Mono", ui-monospace, SFMono-Regular, monospace'
 
-// ── Styles (responsive + animation + hover) ─────────────────────────────
 const KC_CSS = `
-@keyframes kc-fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes kc-float-a { 0%,100% { transform: rotate(2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-10px); } }
-@keyframes kc-float-b { 0%,100% { transform: rotate(-3deg) translateY(0); } 50% { transform: rotate(-3deg) translateY(-8px); } }
-@keyframes kc-float-c { 0%,100% { transform: rotate(1deg) translateY(0); } 50% { transform: rotate(1deg) translateY(-6px); } }
-@keyframes kc-spin-slow { from { transform: rotate(-8deg); } to { transform: rotate(352deg); } }
-@keyframes kc-pulse { 0%,100% { box-shadow: 5px 5px 0 #0B0B0F; } 50% { box-shadow: 8px 8px 0 #0B0B0F; } }
-@keyframes kc-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-@keyframes kc-wiggle { 0%,100% { transform: rotate(-1.5deg); } 25% { transform: rotate(-3deg); } 75% { transform: rotate(0deg); } }
-@keyframes kc-bounce-in { 0% { opacity: 0; transform: scale(.6) rotate(-12deg); } 60% { transform: scale(1.08) rotate(-6deg); } 100% { opacity: 1; transform: scale(1) rotate(-8deg); } }
-@keyframes kc-avatar-pop { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-@keyframes kc-shine { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap');
 
-.kc-reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); }
-.kc-reveal.kc-in { opacity: 1; transform: translateY(0); }
+@keyframes kc-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes kc-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes kc-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes kc-drawer-slide {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes kc-modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
 
-.kc-fade-up { animation: kc-fade-up 0.7s cubic-bezier(.22,.61,.36,1) both; }
-.kc-fade-up.d1 { animation-delay: .08s; }
-.kc-fade-up.d2 { animation-delay: .18s; }
-.kc-fade-up.d3 { animation-delay: .28s; }
-.kc-fade-up.d4 { animation-delay: .38s; }
+.kc-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.kc-reveal.kc-in {
+  opacity: 1;
+  transform: translateY(0);
+}
 
-.kc-card { transition: transform .2s ease, box-shadow .2s ease; }
-.kc-card:hover { transform: translateY(-4px); box-shadow: 6px 6px 0 #0B0B0F; }
+.kc-fade-up { animation: kc-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.kc-fade-up.d1 { animation-delay: 0.06s; }
+.kc-fade-up.d2 { animation-delay: 0.12s; }
+.kc-fade-up.d3 { animation-delay: 0.18s; }
 
-.kc-card-tilt { transition: transform .3s ease, box-shadow .3s ease; will-change: transform; }
-.kc-card-tilt:hover { transform: translateY(-6px) scale(1.02) !important; box-shadow: 8px 8px 0 #0B0B0F; z-index: 5; animation-play-state: paused; }
+.kc-btn {
+  position: relative;
+  user-select: none;
+  cursor: pointer;
+  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.14s ease, background-color 0.14s ease;
+}
+.kc-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--kc-btn-shadow, #090A0F) !important;
+}
+.kc-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--kc-btn-shadow, #090A0F) !important;
+}
 
-.kc-float-a { animation: kc-float-a 6s ease-in-out infinite; }
-.kc-float-b { animation: kc-float-b 5.5s ease-in-out infinite .3s; }
-.kc-float-c { animation: kc-float-c 7s ease-in-out infinite .6s; }
+.kc-card-static {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.kc-card-static:hover {
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0 #090A0F !important;
+}
 
-.kc-sticker { animation: kc-pulse 3.5s ease-in-out infinite; cursor: pointer; transition: transform .2s ease; }
-.kc-sticker:hover { transform: scale(1.05) rotate(0deg) !important; animation-play-state: paused; }
+.kc-nav-link {
+  position: relative;
+  transition: color 0.15s ease;
+}
+.kc-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 0;
+  height: 2.5px;
+  background: #FF4800;
+  transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.kc-nav-link:hover::after {
+  width: 100%;
+}
 
-.kc-headline-sticker { display: inline-block; animation: kc-wiggle 5s ease-in-out infinite; transform-origin: center; transition: transform .2s ease; }
-.kc-headline-sticker:hover { transform: scale(1.05) rotate(0deg) !important; animation-play-state: paused; }
+.kc-marquee-track {
+  display: flex;
+  gap: 36px;
+  align-items: center;
+  animation: kc-marquee 30s linear infinite;
+  white-space: nowrap;
+  will-change: transform;
+}
+.kc-marquee-container:hover .kc-marquee-track {
+  animation-play-state: paused;
+}
 
-.kc-avatar-stack > div { animation: kc-avatar-pop 2.2s ease-in-out infinite; transition: transform .2s ease; }
-.kc-avatar-stack > div:nth-child(2) { animation-delay: .15s; }
-.kc-avatar-stack > div:nth-child(3) { animation-delay: .3s; }
-.kc-avatar-stack > div:nth-child(4) { animation-delay: .45s; }
-.kc-avatar-stack > div:hover { transform: translateY(-6px) scale(1.15); z-index: 10; }
+/* Layout Containers & Grids */
+.kc-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+.kc-hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 48px;
+  align-items: center;
+}
+.kc-features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+.kc-three-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.kc-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 1140px;
+  margin: 0 auto;
+}
+.kc-trust-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+.kc-faq-grid {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 56px;
+  align-items: start;
+}
+.kc-foot-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr;
+  gap: 36px;
+}
 
-.kc-btn { transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease, background .15s ease, filter .15s ease; position: relative; overflow: hidden; }
-.kc-btn:hover { transform: translate(-3px,-3px) scale(1.02); box-shadow: 7px 7px 0 var(--kc-shadow, #FF5722); filter: brightness(1.05); }
-.kc-btn:active { transform: translate(2px,2px) scale(.98); box-shadow: 1px 1px 0 var(--kc-shadow, #FF5722); }
-.kc-btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%); background-size: 200% 100%; background-position: 200% 0; transition: background-position .6s ease; pointer-events: none; }
-.kc-btn:hover::after { background-position: -200% 0; }
-
-.kc-nav-link { position: relative; transition: color .15s ease; }
-.kc-nav-link::after { content: ''; position: absolute; left: 0; bottom: -6px; width: 0; height: 3px; background: #FF5722; transition: width .25s ease; }
-.kc-nav-link:hover::after { width: 100%; }
-
-.kc-faq { transition: transform .2s ease, box-shadow .2s ease; }
-.kc-faq:hover { transform: translateY(-2px); box-shadow: 4px 4px 0 #0B0B0F; }
-
-.kc-trust-track { display: flex; gap: 36px; align-items: center; animation: kc-marquee 28s linear infinite; }
-.kc-trust-track:hover { animation-play-state: paused; }
-
-.kc-price-card { transition: transform .25s ease, box-shadow .25s ease; }
-.kc-price-card:hover { transform: translateY(-6px); box-shadow: 10px 10px 0 #0B0B0F; }
-.kc-price-card.kc-price-accent:hover { transform: translateY(-18px); box-shadow: 12px 12px 0 #0B0B0F; }
-
-.kc-stage-pad { padding: 72px 64px 80px; }
-.kc-section-pad { padding: 80px 64px; }
-.kc-trust-pad { padding: 24px 64px; }
-.kc-foot-pad { padding: 56px 64px 28px; }
-
-.kc-hero-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 48px; align-items: center; max-width: 1440px; margin: 0 auto; }
-.kc-h1 { font-size: 76px; line-height: .98; letter-spacing: -2.6px; }
-.kc-h2 { font-size: 48px; }
-.kc-cta-h2 { font-size: 64px; }
-.kc-features-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; grid-template-rows: auto auto; gap: 16px; }
-.kc-trust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; max-width: 1440px; margin: 0 auto; }
-.kc-three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-.kc-pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1100px; margin: 0 auto; }
-.kc-faq-grid { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 60px; max-width: 1440px; margin: 0 auto; }
-.kc-foot-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; gap: 36px; margin-bottom: 40px; }
-
+/* Tablet Breakpoints */
 @media (max-width: 1024px) {
-  .kc-stage-pad { padding: 56px 32px 64px; }
-  .kc-section-pad { padding: 64px 32px; }
-  .kc-trust-pad { padding: 18px 32px; }
-  .kc-foot-pad { padding: 48px 32px 24px; }
-  .kc-hero-grid { grid-template-columns: 1fr; gap: 32px; }
-  .kc-h1 { font-size: 56px; letter-spacing: -1.8px; }
-  .kc-h2 { font-size: 36px; letter-spacing: -1px; }
-  .kc-cta-h2 { font-size: 44px; letter-spacing: -1.4px; }
-  .kc-features-grid { grid-template-columns: 1fr 1fr; }
-  .kc-features-grid > :first-child { grid-row: span 1; grid-column: span 2; }
+  .kc-container { padding: 0 24px; }
+  .kc-hero-grid { grid-template-columns: 1fr; gap: 40px; }
+  .kc-pricing-grid { grid-template-columns: 1fr; max-width: 480px; }
   .kc-trust-grid { grid-template-columns: 1fr; gap: 36px; }
-  .kc-faq-grid { grid-template-columns: 1fr; gap: 28px; }
+  .kc-faq-grid { grid-template-columns: 1fr; gap: 32px; }
   .kc-foot-grid { grid-template-columns: 1fr 1fr 1fr; }
   .kc-foot-grid > :first-child { grid-column: span 3; }
 }
 
-@media (max-width: 720px) {
-  .kc-stage-pad { padding: 40px 18px 48px; }
-  .kc-section-pad { padding: 48px 18px; }
-  .kc-trust-pad { padding: 14px 18px; }
-  .kc-foot-pad { padding: 36px 18px 20px; }
-  .kc-h1 { font-size: 40px; letter-spacing: -1.4px; }
-  .kc-h2 { font-size: 28px; letter-spacing: -.6px; }
-  .kc-cta-h2 { font-size: 32px; letter-spacing: -1px; }
-  .kc-features-grid, .kc-three-col, .kc-pricing-grid { grid-template-columns: 1fr; }
-  .kc-features-grid > :first-child { grid-column: span 1; }
-  .kc-foot-grid { grid-template-columns: 1fr 1fr; }
-  .kc-foot-grid > :first-child { grid-column: span 2; }
-  .kc-hero-cluster { display: none; }
-  .kc-nav-links { display: none; }
-  .kc-nav { padding: 14px 18px; }
-  .kc-section-head { flex-direction: column; align-items: flex-start; }
-  .kc-foot-row { flex-direction: column; gap: 6px; }
-  .kc-price-card.kc-price-accent { transform: none; }
-  .kc-trust-strip-static { display: none; }
-  .kc-trust-strip-marquee { display: block; }
+/* Mobile Breakpoints */
+@media (max-width: 768px) {
+  .kc-container { padding: 0 16px; }
+  .kc-nav-desktop { display: none !important; }
+  .kc-nav-mobile-trigger { display: flex !important; }
+  
+  .kc-hero-title {
+    font-size: 32px !important;
+    line-height: 1.2 !important;
+    letter-spacing: -1px !important;
+  }
+  .kc-hero-highlight {
+    margin: 4px 0 !important;
+    padding: 2px 8px !important;
+    display: inline-block !important;
+  }
+  
+  .kc-features-grid, .kc-three-col {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .kc-trust-cards-mobile {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .kc-foot-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 28px 16px !important;
+  }
+  .kc-foot-grid > :first-child {
+    grid-column: span 2 !important;
+  }
 }
 
-.kc-trust-strip-marquee { display: none; overflow: hidden; }
+.kc-metrics-desktop {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding-top: 20px;
+  border-top: 1.5px dashed #DDD9D0;
+}
+
+@media (max-width: 768px) {
+  .kc-metrics-desktop {
+    display: none !important;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .kc-float-a, .kc-float-b, .kc-float-c, .kc-sticker, .kc-trust-track, .kc-fade-up { animation: none !important; }
+  .kc-fade-up, .kc-reveal, .kc-marquee-track {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 `
 
-// ── Primitives ─────────────────────────────────────────────────────────────
+// ── Icons Collection ────────────────────────────────────────────────────────
+const I = {
+    ArrowRight: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+    ),
+    Check: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6L9 17l-5-5" />
+        </svg>
+    ),
+    ShieldCheck: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M9 12l2 2 4-4" />
+        </svg>
+    ),
+    Building: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+            <path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" />
+        </svg>
+    ),
+    Target: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="2" />
+        </svg>
+    ),
+    Layers: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2" />
+            <polyline points="2 17 12 22 22 17" />
+            <polyline points="2 12 12 17 22 12" />
+        </svg>
+    ),
+    Zap: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+    ),
+    User: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+        </svg>
+    ),
+    Lock: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+    ),
+    Plus: ({ s = 16, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+    ),
+    Menu: ({ s = 22, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+    ),
+    Close: ({ s = 22, c = 'currentColor' }) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+    ),
+}
+
+// ── Design Primitives ──────────────────────────────────────────────────────
 function Logo({ size = 28, color = KC.ink, mark = KC.orange }) {
     return (
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontFamily: FONT }}>
             <div style={{
                 width: size, height: size, borderRadius: 8, background: mark,
                 border: `2px solid ${color}`, display: 'grid', placeItems: 'center',
-                boxShadow: `3px 3px 0 ${color}`, transform: 'rotate(-4deg)',
+                boxShadow: `3px 3px 0 ${color}`, transform: 'rotate(-3deg)',
             }}>
                 <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none">
                     <path d="M5 3v18M5 12l9-9M5 12l9 9" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
             </div>
-            <span style={{ fontWeight: 900, fontSize: size * 0.68, letterSpacing: -0.6, color }}>
+            <span style={{ fontWeight: 900, fontSize: size * 0.72, letterSpacing: -0.6, color }}>
                 kerja<span style={{ color: mark }}>cerdas</span>
             </span>
         </div>
@@ -174,178 +338,591 @@ function Logo({ size = 28, color = KC.ink, mark = KC.orange }) {
 
 function BrutalButton({ children, variant = 'primary', size = 'md', icon, full, onClick, style = {} }) {
     const sizes = {
-        sm: { padding: '8px 14px', fontSize: 13 },
-        md: { padding: '12px 20px', fontSize: 15 },
-        lg: { padding: '16px 28px', fontSize: 17 },
+        sm: { padding: '8px 14px', fontSize: 13, radius: 8 },
+        md: { padding: '12px 20px', fontSize: 14, radius: 9 },
+        lg: { padding: '14px 24px', fontSize: 15, radius: 10 },
     }[size]
+
     const variants = {
         primary: { bg: KC.ink, fg: '#fff', border: KC.ink, shadow: KC.orange },
-        secondary: { bg: KC.paper, fg: KC.ink, border: KC.ink, shadow: KC.ink },
         accent: { bg: KC.orange, fg: '#fff', border: KC.ink, shadow: KC.ink },
+        lime: { bg: KC.lime, fg: KC.ink, border: KC.ink, shadow: KC.ink },
+        secondary: { bg: KC.paper, fg: KC.ink, border: KC.ink, shadow: KC.ink },
         ghost: { bg: 'transparent', fg: KC.ink, border: 'transparent', shadow: 'transparent' },
     }[variant]
+
     return (
         <button onClick={onClick} className={variant === 'ghost' ? '' : 'kc-btn'} style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: sizes.padding, fontSize: sizes.fontSize, fontWeight: 800,
             background: variants.bg, color: variants.fg,
             border: `2px solid ${variants.border}`,
-            boxShadow: variant === 'ghost' ? 'none' : `4px 4px 0 ${variants.shadow}`,
-            borderRadius: 10, cursor: 'pointer', letterSpacing: -0.2,
+            boxShadow: variant === 'ghost' ? 'none' : `3.5px 3.5px 0 ${variants.shadow}`,
+            borderRadius: sizes.radius, cursor: 'pointer', letterSpacing: -0.2,
             fontFamily: FONT, width: full ? '100%' : 'auto',
-            '--kc-shadow': variants.shadow, ...style,
+            '--kc-btn-shadow': variants.shadow, ...style,
         }}>
             {children}
-            {icon && <span style={{ display: 'inline-flex' }}>{icon}</span>}
+            {icon && <span style={{ display: 'inline-flex', alignItems: 'center' }}>{icon}</span>}
         </button>
     )
 }
 
-function Tag({ children, color = KC.yellow, ink = KC.ink, size = 'md', icon }) {
-    const pad = size === 'sm' ? '3px 8px' : '5px 10px'
-    const fs = size === 'sm' ? 10 : 12
+function Badge({ children, color = KC.surface, ink = KC.ink, size = 'md', icon, border = KC.ink, style = {} }) {
+    const pad = size === 'sm' ? '2px 7px' : '4px 10px'
+    const fs = size === 'sm' ? 11 : 12
     return (
         <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, padding: pad,
+            display: 'inline-flex', alignItems: 'center', gap: 5, padding: pad,
             fontSize: fs, fontWeight: 800, background: color, color: ink,
-            border: `1.5px solid ${ink}`, borderRadius: 999,
-            letterSpacing: 0.4, textTransform: 'uppercase', fontFamily: FONT,
+            border: `1.5px solid ${border}`, borderRadius: 6,
+            letterSpacing: 0.2, fontFamily: FONT, ...style,
         }}>
             {icon}{children}
         </span>
     )
 }
 
-function BrutalCard({ children, color = '#fff', shadow = KC.ink, padding = 20, style = {}, className = 'kc-card' }) {
+function BrutalCard({ children, bg = '#fff', shadow = KC.ink, padding = 22, border = KC.ink, radius = 12, style = {}, className = 'kc-card-static' }) {
     return (
         <div className={className} style={{
-            background: color, border: `2px solid ${KC.ink}`,
-            borderRadius: 14, padding, boxShadow: `4px 4px 0 ${shadow}`, ...style,
-        }}>{children}</div>
+            background: bg, border: `2px solid ${border}`,
+            borderRadius: radius, padding,
+            boxShadow: `4px 4px 0 ${shadow}`,
+            ...style,
+        }}>
+            {children}
+        </div>
     )
 }
 
-function Section({ children, bg = '#fff', style = {}, id, className = '' }) {
+function Section({ children, bg = '#FAF9F5', style = {}, id, className = '' }) {
     return (
-        <section id={id} className={`kc-section-pad kc-reveal ${className}`} style={{ background: bg, borderTop: `2px solid ${KC.ink}`, ...style }}>
-            {children}
+        <section id={id} className={`kc-reveal ${className}`} style={{
+            background: bg,
+            borderTop: `2px solid ${KC.ink}`,
+            padding: '72px 0',
+            ...style,
+        }}>
+            <div className="kc-container">
+                {children}
+            </div>
         </section>
     )
 }
 
-const I = {
-    Arrow: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke={c} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-    ),
-    Sparkle: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 5.2 5.2 1.8-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16z" fill={c} /></svg>
-    ),
-    Building: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" stroke={c} strokeWidth="2" /><path d="M9 8h2M9 12h2M9 16h2M14 8h2M14 12h2M14 16h2" stroke={c} strokeWidth="2" strokeLinecap="round" /></svg>
-    ),
-    Check: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-12" stroke={c} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-    ),
-    Cash: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke={c} strokeWidth="2" /><circle cx="12" cy="12" r="3" stroke={c} strokeWidth="2" /></svg>
-    ),
-    Clock: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="2" /><path d="M12 7v5l3 2" stroke={c} strokeWidth="2" strokeLinecap="round" /></svg>
-    ),
-    Star: ({ s = 18, c = 'currentColor', f = 'none' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill={f}><path d="M12 3l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.9 6.1 21l1.2-6.5L2.5 9.9 9.1 9 12 3z" stroke={c} strokeWidth="2" strokeLinejoin="round" /></svg>
-    ),
-    User: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={c} strokeWidth="2" /><path d="M4 21a8 8 0 0116 0" stroke={c} strokeWidth="2" /></svg>
-    ),
-    Bolt: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 10-13h-7l1-7z" fill={c} /></svg>
-    ),
-    ChartBar: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" stroke={c} strokeWidth="2.2" strokeLinecap="round" /></svg>
-    ),
-    Robot: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><rect x="4" y="7" width="16" height="13" rx="2" stroke={c} strokeWidth="2" /><circle cx="9" cy="13" r="1.5" fill={c} /><circle cx="15" cy="13" r="1.5" fill={c} /><path d="M12 3v4M8 17h8" stroke={c} strokeWidth="2" strokeLinecap="round" /></svg>
-    ),
-    Briefcase: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2" stroke={c} strokeWidth="2" /><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" stroke={c} strokeWidth="2" /><path d="M3 12h18" stroke={c} strokeWidth="2" /></svg>
-    ),
-    Shield: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z" stroke={c} strokeWidth="2" strokeLinejoin="round" /><path d="M9 12l2 2 4-4" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-    ),
-    Lock: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><rect x="4" y="11" width="16" height="10" rx="2" stroke={c} strokeWidth="2" /><path d="M8 11V8a4 4 0 018 0v3" stroke={c} strokeWidth="2" /></svg>
-    ),
-    Plus: ({ s = 18, c = 'currentColor' }) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke={c} strokeWidth="2.6" strokeLinecap="round" /></svg>
-    ),
-}
+// ── Interactive Enterprise & Partner Inquiry Modal ────────────────────────────
+function InquiryModal({ isOpen, onClose, initialType = 'Enterprise & HR' }) {
+    const [type, setType] = useState(initialType)
+    const [name, setName] = useState('')
+    const [org, setOrg] = useState('')
+    const [email, setEmail] = useState('')
+    const [notes, setNotes] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [submitted, setSubmitted] = useState(false)
 
-function ScoreDonut({ value = 87, size = 56, color = KC.orange, label = 'match', textColor = KC.ink }) {
-    const r = (size - 8) / 2
-    const c = 2 * Math.PI * r
-    const off = c - (value / 100) * c
+    useEffect(() => {
+        if (initialType) setType(initialType)
+        setSubmitted(false)
+    }, [initialType, isOpen])
+
+    if (!isOpen) return null
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        setLoading(true)
+        try {
+            await submitPartnershipInquiry({
+                category: type,
+                name: name.trim(),
+                organization: org.trim(),
+                email: email.trim(),
+                message: notes.trim(),
+            })
+            setSubmitted(true)
+            toast.success('Permohonan kemitraan berhasil dikirim!')
+        } catch (err) {
+            toast.error(err?.message || 'Gagal mengirim permohonan. Coba lagi.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
-        <div style={{ position: 'relative', width: size, height: size, fontFamily: FONT }}>
-            <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx={size / 2} cy={size / 2} r={r} stroke={KC.ash} strokeWidth="6" fill="none" />
-                <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth="6" fill="none"
-                    strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', lineHeight: 1 }}>
-                <div>
-                    <div style={{ fontWeight: 900, fontSize: size * 0.32, color: textColor }}>{value}<span style={{ fontSize: size * 0.18 }}>%</span></div>
-                    {label && <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: textColor, opacity: 0.7, marginTop: 1 }}>{label}</div>}
+        <div style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(9, 10, 15, 0.7)',
+            backdropFilter: 'blur(5px)',
+            display: 'grid', placeItems: 'center', padding: 16,
+            animation: 'kc-fade-in 0.2s ease',
+        }} onClick={onClose}>
+            <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    background: '#FAF9F5', border: `2px solid ${KC.ink}`,
+                    borderRadius: 14, padding: '24px', maxWidth: 500, width: '100%',
+                    boxShadow: `6px 6px 0 ${KC.ink}`,
+                    animation: 'kc-modal-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both',
+                    fontFamily: FONT, color: KC.ink, maxHeight: '90vh', overflowY: 'auto',
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                    <Badge color={KC.orange} ink="#fff" icon={<I.Building s={13} c="#fff" />}>
+                        Portal Kemitraan
+                    </Badge>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            background: '#fff', border: `2px solid ${KC.ink}`,
+                            borderRadius: 6, width: 28, height: 28, cursor: 'pointer',
+                            boxShadow: `2px 2px 0 ${KC.ink}`, display: 'grid', placeItems: 'center',
+                        }}
+                        aria-label="Tutup"
+                    >
+                        <I.Close s={16} c={KC.ink} />
+                    </button>
                 </div>
+
+                {!submitted ? (
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div>
+                            <h3 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.5, margin: '0 0 4px 0' }}>
+                                Hubungi Tim Kemitraan
+                            </h3>
+                            <p style={{ fontSize: 13, color: KC.mute, lineHeight: 1.5, margin: 0 }}>
+                                Ajukan integrasi kampus, sertifikasi alumni, atau kebutuhan rekrutmen korporasi.
+                            </p>
+                        </div>
+
+                        {/* Partnership Type Selector */}
+                        <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 6, color: KC.ink }}>
+                                Kategori:
+                            </label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                                {[
+                                    'Institusi & Kampus',
+                                    'Partner Pelatihan',
+                                    'Enterprise & HR',
+                                    'Karier / Internal',
+                                ].map((t) => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setType(t)}
+                                        style={{
+                                            padding: '7px 8px', fontSize: 11, fontWeight: 800,
+                                            background: type === t ? KC.ink : '#fff',
+                                            color: type === t ? '#fff' : KC.ink,
+                                            border: `1.5px solid ${KC.ink}`, borderRadius: 6,
+                                            cursor: 'pointer', textAlign: 'center',
+                                            boxShadow: type === t ? `2px 2px 0 ${KC.orange}` : 'none',
+                                        }}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Inputs */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
+                                    Nama Lengkap *
+                                </label>
+                                <input
+                                    required
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="Nama Anda"
+                                    style={{
+                                        width: '100%', padding: '9px 10px', background: '#fff',
+                                        border: `1.5px solid ${KC.ink}`, borderRadius: 6, fontSize: 13,
+                                        fontWeight: 600, fontFamily: FONT, outline: 'none',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
+                                    Organisasi / Kampus *
+                                </label>
+                                <input
+                                    required
+                                    value={org}
+                                    onChange={(e) => setOrg(e.target.value)}
+                                    placeholder="Nama Lembaga"
+                                    style={{
+                                        width: '100%', padding: '9px 10px', background: '#fff',
+                                        border: `1.5px solid ${KC.ink}`, borderRadius: 6, fontSize: 13,
+                                        fontWeight: 600, fontFamily: FONT, outline: 'none',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
+                                Email Resmi *
+                            </label>
+                            <input
+                                required
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="email@lembaga.ac.id atau email@perusahaan.com"
+                                style={{
+                                    width: '100%', padding: '9px 10px', background: '#fff',
+                                    border: `1.5px solid ${KC.ink}`, borderRadius: 6, fontSize: 13,
+                                    fontWeight: 600, fontFamily: FONT, outline: 'none',
+                                    boxSizing: 'border-box',
+                                }}
+                            />
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
+                                Keterangan Singkat
+                            </label>
+                            <textarea
+                                rows={2}
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                placeholder="Jelaskan kebutuhan kerja sama..."
+                                style={{
+                                    width: '100%', padding: '9px 10px', background: '#fff',
+                                    border: `1.5px solid ${KC.ink}`, borderRadius: 6, fontSize: 13,
+                                    fontWeight: 600, fontFamily: FONT, outline: 'none',
+                                    resize: 'none', boxSizing: 'border-box',
+                                }}
+                            />
+                        </div>
+
+                        <BrutalButton variant="primary" full size="md" disabled={loading} icon={<I.ArrowRight s={14} c="#fff" />}>
+                            {loading ? 'Mengirim...' : 'Kirim Permohonan Kemitraan'}
+                        </BrutalButton>
+
+                        <div style={{ fontSize: 11, color: KC.mute, textAlign: 'center', paddingTop: 6 }}>
+                            Kontak langsung: <b>sales@kerjacerdas.id</b>
+                        </div>
+                    </form>
+                ) : (
+                    <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                        <div style={{
+                            width: 52, height: 52, borderRadius: '50%', background: KC.lime,
+                            border: `2px solid ${KC.ink}`, display: 'grid', placeItems: 'center',
+                            margin: '0 auto 14px', boxShadow: `3px 3px 0 ${KC.ink}`,
+                        }}>
+                            <I.Check s={28} c={KC.ink} />
+                        </div>
+                        <h3 style={{ fontSize: 20, fontWeight: 900, margin: '0 0 6px 0' }}>
+                            Permohonan Terkirim
+                        </h3>
+                        <p style={{ fontSize: 13, color: KC.mute, lineHeight: 1.55, maxWidth: 380, margin: '0 auto 20px' }}>
+                            Terima kasih, <b>{name}</b> ({org}). Tim KerjaCerdas akan mempelajari permohonan kemitraan kategori <b>{type}</b> dan menghubungi email <b>{email}</b> dalam kurun waktu 1x24 jam kerja.
+                        </p>
+                        <BrutalButton variant="primary" size="sm" onClick={onClose}>
+                            Selesai
+                        </BrutalButton>
+                    </div>
+                )}
             </div>
         </div>
     )
 }
 
-// ── NavBar ────────────────────────────────────────────────────────────────
-const NAV_OFFSET = 90 // sticky nav height + breathing room
+// ── Navigation Bar & Mobile Drawer ──────────────────────────────────────────
+function Navigation({ onMasuk, onDaftar, onAbout, onPricing }) {
+    const [mobileOpen, setMobileOpen] = useState(false)
 
-function scrollToSection(id) {
-    const el = document.getElementById(id)
-    if (!el) return
-    const y = el.getBoundingClientRect().top + window.scrollY - NAV_OFFSET
-    window.scrollTo({ top: y, behavior: 'smooth' })
-}
+    const scrollTo = (id) => {
+        setMobileOpen(false)
+        const el = document.getElementById(id)
+        if (!el) return
+        const y = el.getBoundingClientRect().top + window.scrollY - 76
+        window.scrollTo({ top: y, behavior: 'smooth' })
+    }
 
-function NavBar({ onMasuk, onDaftar, onAbout }) {
-    const click = (id) => (e) => { e.preventDefault(); scrollToSection(id) }
     return (
-        <nav className="kc-nav" style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '20px 64px', background: '#fff',
-            borderBottom: `2px solid ${KC.ink}`, fontFamily: FONT,
-            position: 'sticky', top: 0, zIndex: 50,
-        }}>
-            <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }} style={{ textDecoration: 'none' }}>
-                <Logo size={32} />
-            </a>
-            <div className="kc-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 28, fontSize: 14, fontWeight: 700 }}>
-                <a className="kc-nav-link" href="#how" onClick={click('how')} style={{ color: KC.ink, textDecoration: 'none', cursor: 'pointer' }}>Cara Kerja</a>
-                <a className="kc-nav-link" href="#fitur" onClick={click('fitur')} style={{ color: KC.ink, textDecoration: 'none', cursor: 'pointer' }}>Fitur</a>
-                <a className="kc-nav-link" href="#harga" onClick={click('harga')} style={{ color: KC.ink, textDecoration: 'none', cursor: 'pointer' }}>Harga Employer</a>
-                <a className="kc-nav-link" href="#tentang" onClick={(e) => { e.preventDefault(); onAbout() }} style={{ color: KC.ink, textDecoration: 'none', cursor: 'pointer' }}>Tentang</a>
-            </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-                <BrutalButton variant="secondary" size="sm" onClick={onMasuk}>Masuk</BrutalButton>
-                <BrutalButton variant="primary" size="sm" icon={<I.Arrow s={14} c="#fff" />} onClick={onDaftar}>Daftar Gratis</BrutalButton>
-            </div>
-        </nav>
+        <>
+            <nav style={{
+                position: 'sticky', top: 0, zIndex: 60,
+                background: '#FFFFFF',
+                borderBottom: `2px solid ${KC.ink}`,
+                fontFamily: FONT,
+            }}>
+                <div className="kc-container" style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    height: 68,
+                }}>
+                    <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }} style={{ textDecoration: 'none' }}>
+                        <Logo size={30} />
+                    </a>
+
+                    {/* Desktop Navigation Links */}
+                    <div className="kc-nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 32, fontSize: 14, fontWeight: 700 }}>
+                        <a className="kc-nav-link" href="#how" onClick={(e) => { e.preventDefault(); scrollTo('how') }} style={{ color: KC.ink, textDecoration: 'none' }}>Cara Kerja</a>
+                        <a className="kc-nav-link" href="#fitur" onClick={(e) => { e.preventDefault(); scrollTo('fitur') }} style={{ color: KC.ink, textDecoration: 'none' }}>Fitur</a>
+                        <a className="kc-nav-link" href="#harga" onClick={(e) => { e.preventDefault(); scrollTo('harga') }} style={{ color: KC.ink, textDecoration: 'none' }}>Harga</a>
+                        <a className="kc-nav-link" href="#tentang" onClick={(e) => { e.preventDefault(); onAbout() }} style={{ color: KC.ink, textDecoration: 'none' }}>Tentang</a>
+                    </div>
+
+                    {/* Desktop Auth Actions */}
+                    <div className="kc-nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <BrutalButton variant="secondary" size="sm" onClick={onMasuk}>Masuk</BrutalButton>
+                        <BrutalButton variant="primary" size="sm" icon={<I.ArrowRight s={13} c="#fff" />} onClick={onDaftar}>Coba Gratis</BrutalButton>
+                    </div>
+
+                    {/* Mobile Hamburger Trigger */}
+                    <button
+                        onClick={() => setMobileOpen(true)}
+                        className="kc-nav-mobile-trigger"
+                        style={{
+                            display: 'none', background: '#fff', border: `2px solid ${KC.ink}`,
+                            borderRadius: 6, padding: 7, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}`,
+                        }}
+                        aria-label="Open Navigation Menu"
+                    >
+                        <I.Menu s={20} c={KC.ink} />
+                    </button>
+                </div>
+            </nav>
+
+            {/* Mobile Drawer Overlay */}
+            {mobileOpen && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 100,
+                    background: 'rgba(9, 10, 15, 0.65)',
+                }} onClick={() => setMobileOpen(false)}>
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            position: 'absolute', top: 0, right: 0, bottom: 0,
+                            width: 'min(300px, 84vw)', background: '#FAF9F5',
+                            borderLeft: `2px solid ${KC.ink}`,
+                            boxShadow: `-5px 0 0 ${KC.ink}`,
+                            padding: '22px', display: 'flex', flexDirection: 'column',
+                            animation: 'kc-drawer-slide 0.2s cubic-bezier(0.16, 1, 0.3, 1) both',
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+                            <Logo size={24} />
+                            <button
+                                onClick={() => setMobileOpen(false)}
+                                style={{
+                                    background: '#fff', border: `2px solid ${KC.ink}`,
+                                    borderRadius: 6, padding: 5, cursor: 'pointer',
+                                    boxShadow: `2px 2px 0 ${KC.ink}`,
+                                }}
+                            >
+                                <I.Close s={16} c={KC.ink} />
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, fontFamily: FONT }}>
+                            {['how:Cara Kerja', 'fitur:Fitur', 'harga:Harga'].map(item => {
+                                const [id, label] = item.split(':')
+                                return (
+                                    <button
+                                        key={id}
+                                        onClick={() => scrollTo(id)}
+                                        style={{
+                                            textAlign: 'left', padding: '10px 12px', background: '#fff',
+                                            border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800,
+                                            fontSize: 14, cursor: 'pointer', boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                                        }}
+                                    >
+                                        {label}
+                                    </button>
+                                )
+                            })}
+                            <button
+                                onClick={() => { setMobileOpen(false); onAbout() }}
+                                style={{
+                                    textAlign: 'left', padding: '10px 12px', background: '#fff',
+                                    border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800,
+                                    fontSize: 14, cursor: 'pointer', boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                                }}
+                            >
+                                Tentang
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 'auto', paddingTop: 16, borderTop: `1.5px dashed ${KC.ash}` }}>
+                            <BrutalButton variant="secondary" full size="sm" onClick={() => { setMobileOpen(false); onMasuk() }}>Masuk</BrutalButton>
+                            <BrutalButton variant="primary" full size="sm" icon={<I.ArrowRight s={13} c="#fff" />} onClick={() => { setMobileOpen(false); onDaftar() }}>Daftar Gratis</BrutalButton>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     )
 }
 
+// ── Clean Interactive Live Candidate Match Card (Hero Right Panel) ─────────────
+function CleanHeroPreview() {
+    const [tab, setTab] = useState('match') // 'match' | 'gap'
+
+    return (
+        <div style={{ width: '100%', maxWidth: 480, margin: '0 auto' }}>
+            <BrutalCard bg="#fff" padding={20} shadow={KC.ink} radius={12} style={{ border: `2px solid ${KC.ink}` }}>
+                {/* Top Clean Switcher */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    paddingBottom: 12, borderBottom: `1.5px solid ${KC.surfaceAlt}`, marginBottom: 16,
+                }}>
+                    <div style={{ display: 'inline-flex', background: KC.surface, padding: 3, borderRadius: 7, border: `1.5px solid ${KC.ink}` }}>
+                        <button
+                            onClick={() => setTab('match')}
+                            style={{
+                                padding: '4px 10px', fontSize: 11, fontWeight: 800, borderRadius: 5,
+                                border: 'none', cursor: 'pointer', fontFamily: FONT,
+                                background: tab === 'match' ? KC.ink : 'transparent',
+                                color: tab === 'match' ? '#fff' : KC.mute,
+                            }}
+                        >
+                            Hasil Pencocokan
+                        </button>
+                        <button
+                            onClick={() => setTab('gap')}
+                            style={{
+                                padding: '4px 10px', fontSize: 11, fontWeight: 800, borderRadius: 5,
+                                border: 'none', cursor: 'pointer', fontFamily: FONT,
+                                background: tab === 'gap' ? KC.ink : 'transparent',
+                                color: tab === 'gap' ? '#fff' : KC.mute,
+                            }}
+                        >
+                            Peta Skill Gap
+                        </button>
+                    </div>
+
+                    <Badge color={KC.limeSoft} ink={KC.ink} size="sm">
+                        Top 1 Shortlist
+                    </Badge>
+                </div>
+
+                {tab === 'match' ? (
+                    <div>
+                        {/* Profile Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                    width: 42, height: 42, borderRadius: 10, background: KC.cyan,
+                                    border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center',
+                                    fontWeight: 900, fontSize: 15, color: KC.ink, flexShrink: 0,
+                                }}>
+                                    RP
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 15, fontWeight: 800, color: KC.ink }}>Rina Paramitha</span>
+                                        <span style={{ background: KC.lime, fontSize: 9, fontWeight: 900, padding: '1px 5px', borderRadius: 4, border: `1px solid ${KC.ink}`, color: KC.ink }}>
+                                            VERIFIED
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: KC.mute, marginTop: 1 }}>
+                                        Senior Backend Engineer · 5 thn
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Match Score Badge */}
+                            <div style={{
+                                background: KC.orange, color: '#fff', padding: '6px 12px',
+                                borderRadius: 8, border: `1.5px solid ${KC.ink}`, textAlign: 'center',
+                                flexShrink: 0,
+                            }}>
+                                <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>94%</div>
+                                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase' }}>Match</div>
+                            </div>
+                        </div>
+
+                        {/* Semantic Assessment */}
+                        <div style={{ marginTop: 12, background: KC.surface, padding: '10px 12px', borderRadius: 8, border: `1px solid ${KC.ash}` }}>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: KC.muteLight, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>
+                                Analisis Keselarasan AI
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: KC.ink, lineHeight: 1.5 }}>
+                                "Kandidat memiliki penguasaan mendalam pada arsitektur microservices Go dan throughput tinggi, sesuai dengan spesifikasi lowongan Backend Lead."
+                            </div>
+                        </div>
+
+                        {/* Skill Badges */}
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 12 }}>
+                            <Badge color={KC.limeSoft} size="sm">Golang</Badge>
+                            <Badge color={KC.limeSoft} size="sm">PostgreSQL</Badge>
+                            <Badge color={KC.limeSoft} size="sm">Kubernetes</Badge>
+                            <Badge color={KC.yellowSoft} size="sm">Kafka</Badge>
+                            <Badge color={KC.surface} size="sm">+2 Skill</Badge>
+                        </div>
+
+                        {/* Bottom Detail */}
+                        <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px solid ${KC.ash}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontWeight: 700 }}>
+                            <span style={{ color: KC.mute }}>Gaji: <b style={{ color: KC.ink }}>Rp 32 - 45 jt/bln</b></span>
+                            <span style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <I.Check s={13} c="#059669" /> Rekomendasi Interview
+                            </span>
+                        </div>
+                    </div>
+                ) : (
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: KC.ink }}>Celah Kompetensi vs Posisi Target</span>
+                            <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: KC.orange }}>Gap: -6%</span>
+                        </div>
+
+                        {[
+                            { name: 'Go Backend & Concurrency', val: '98%', color: KC.lime },
+                            { name: 'System Architecture & High Load', val: '92%', color: KC.lime },
+                            { name: 'Distributed Caching (Redis)', val: '86%', color: KC.yellow },
+                            { name: 'Observability & Monitoring', val: '76%', color: KC.orange },
+                        ].map((s, i) => (
+                            <div key={i} style={{ marginBottom: 8 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, marginBottom: 2, color: KC.ink }}>
+                                    <span>{s.name}</span>
+                                    <span style={{ fontFamily: MONO, fontWeight: 800 }}>{s.val}</span>
+                                </div>
+                                <div style={{ height: 5, background: KC.surfaceAlt, borderRadius: 3, overflow: 'hidden' }}>
+                                    <div style={{ width: s.val, height: '100%', background: s.color, borderRadius: 3 }} />
+                                </div>
+                            </div>
+                        ))}
+
+                        <div style={{ marginTop: 12, padding: '8px 10px', background: KC.yellowSoft, borderRadius: 6, border: `1px solid ${KC.yellow}`, fontSize: 11, fontWeight: 700, color: KC.ink }}>
+                            💡 Rekomendasi: Selesaikan modul <i>Cloud-Native Observability</i> untuk meningkatkan skor ke 99%.
+                        </div>
+                    </div>
+                )}
+            </BrutalCard>
+        </div>
+    )
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Main Landing Hero Component
 // ════════════════════════════════════════════════════════════════════════════
 export default function LandingHero() {
     const { openAuthModal, navigate } = useStore()
     const [howTab, setHowTab] = useState('seeker')
     const [faqOpen, setFaqOpen] = useState(0)
+    const [inquiryModal, setInquiryModal] = useState({ open: false, type: 'Enterprise & HR' })
 
-    // Scroll-triggered reveal for all .kc-reveal sections
+    // Scroll reveal observer & hash scroll on load
     useEffect(() => {
+        const hash = window.location.hash
+        if (hash) {
+            const id = hash.replace('#', '')
+            setTimeout(() => {
+                const el = document.getElementById(id)
+                if (el) {
+                    const y = el.getBoundingClientRect().top + window.scrollY - 76
+                    window.scrollTo({ top: y, behavior: 'smooth' })
+                }
+            }, 150)
+        }
+
         const els = document.querySelectorAll('.kc-reveal')
         if (!('IntersectionObserver' in window)) {
             els.forEach(el => el.classList.add('kc-in'))
@@ -358,7 +935,7 @@ export default function LandingHero() {
                     io.unobserve(e.target)
                 }
             })
-        }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' })
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' })
         els.forEach(el => io.observe(el))
         return () => io.disconnect()
     }, [])
@@ -367,385 +944,607 @@ export default function LandingHero() {
     const onDaftar = () => openAuthModal('register', 'seeker')
     const onEmployer = () => openAuthModal('register', 'employer')
     const onAbout = () => navigate('about')
-    const onContactSales = () => { window.location.href = 'mailto:sales@kerjacerdas.id?subject=Hubungi%20Sales%20-%20KerjaCerdas%20Scale' }
-    const PRICING_ACTIONS = {
-        Starter: onEmployer,        // free employer register
-        Growth: onEmployer,        // 14-day trial signup
-        Scale: onContactSales,    // enterprise sales contact
+    const onPricing = () => {
+        const el = document.getElementById('harga')
+        if (el) {
+            const y = el.getBoundingClientRect().top + window.scrollY - 76
+            window.scrollTo({ top: y, behavior: 'smooth' })
+        }
+    }
+    
+    const openInquiry = (category) => {
+        setInquiryModal({ open: true, type: category })
     }
 
     const HOW_SEEKER = [
-        { n: '01', t: 'Upload CV atau isi profil', d: 'Upload PDF, CV dibaca otomatis oleh AI. Atau isi webform pendek — 3 menit selesai.', c: KC.cyan, ic: <I.User s={22} /> },
-        { n: '02', t: 'AI cari yang cocok', d: 'AI membandingkan profilmu dengan ribuan lowongan secara akurat. Output: top-5 paling pas.', c: KC.yellow, ic: <I.Sparkle s={22} /> },
-        { n: '03', t: 'Tutup gap, lamar, kerja', d: 'Skill gap advisor kasih rekomendasi kursus terbaik. Apply 1-klik.', c: KC.lime, ic: <I.Bolt s={22} /> },
+        {
+            num: '01',
+            title: 'Ekstraksi CV Cerdas',
+            desc: 'Unggah file PDF atau lengkapi profil ringkas. AI mengekstraksi keahlian dan pengalaman kerja dalam hitungan detik.',
+            accent: KC.cyan,
+            icon: <I.User s={20} c={KC.ink} />,
+        },
+        {
+            num: '02',
+            title: 'Matching Multi-Dimensi',
+            desc: 'Algoritma mengevaluasi kecocokan skill, tingkat senioritas, dan kompensasi untuk menghasilkan Top-5 lowongan terakurat.',
+            accent: KC.yellow,
+            icon: <I.Target s={20} c={KC.ink} />,
+        },
+        {
+            num: '03',
+            title: 'Tutup Skill Gap & Lamar',
+            desc: 'Dapatkan rekomendasi kurikulum singkat untuk menutup celah kompetensi, lalu ajukan lamaran langsung tanpa spam.',
+            accent: KC.lime,
+            icon: <I.Zap s={20} c={KC.ink} />,
+        },
     ]
+
     const HOW_EMPLOYER = [
-        { n: '01', t: 'Pasang lowongan', d: 'Tulis JD singkat. AI bantu nyaranin skill, level, dan estimasi gaji wajar.', c: KC.cyan, ic: <I.Briefcase s={22} /> },
-        { n: '02', t: 'Top-5 kandidat otomatis', d: 'Reverse matching: tiap posting tampil top-5 kandidat semantik.', c: KC.yellow, ic: <I.Sparkle s={22} /> },
-        { n: '03', t: 'Screening 80% lebih cepat', d: 'Skill heatmap, kandidat verified, langsung kontak via email/chat.', c: KC.lime, ic: <I.Bolt s={22} /> },
+        {
+            num: '01',
+            title: 'Pasang Kriteria Lowongan',
+            desc: 'Masukkan deskripsi pekerjaan. AI menyempurnakan parameter kompetensi, level pengalaman, dan benchmark gaji pasar.',
+            accent: KC.cyan,
+            icon: <I.Building s={20} c={KC.ink} />,
+        },
+        {
+            num: '02',
+            title: 'Shortlist Otomatis (Top-5)',
+            desc: 'Mesin pencocokan menyaring database talenta dan menampilkan kandidat terverifikasi dengan keselarasan tertinggi.',
+            accent: KC.yellow,
+            icon: <I.ShieldCheck s={20} c={KC.ink} />,
+        },
+        {
+            num: '03',
+            title: 'Efisiensi Screening 80%',
+            desc: 'Evaluasi kandidat melalui peta skill dan rekam jejak e-KYC. Buka kontak resmi dan undang wawancara tanpa hambatan.',
+            accent: KC.lime,
+            icon: <I.Target s={20} c={KC.ink} />,
+        },
     ]
-    const howData = howTab === 'seeker' ? HOW_SEEKER : HOW_EMPLOYER
 
     const FAQS = [
-        { q: 'Beneran gratis buat job seeker?', a: 'Iya. Semua fitur — matching, skill gap, advisor, verifikasi — gratis selamanya. Kami profit dari sisi employer.' },
-        { q: 'Data KTP dan ijazah saya aman?', a: 'Disimpan dengan standar keamanan tinggi, server di Indonesia, hanya dipakai sekali untuk verifikasi. Setelahnya cuma kelihatan badge ✓ Verified.' },
-        { q: 'Bagaimana AI menentukan match?', a: 'AI membaca detail profil & job description, lalu mencocokkan otomatis berdasarkan skill, lokasi, gaji, dan industri.' },
-        { q: 'Bisa cancel langganan kapan aja?', a: 'Bisa. Tier Growth & Scale: monthly, cancel anytime, no pertanyaan. Sisa hari aktif sampai akhir periode.' },
+        {
+            q: 'Apakah platform ini sepenuhnya gratis untuk pencari kerja?',
+            a: 'Ya, 100% gratis. Seluruh fitur utama — pencocokan AI, analisis skill gap, konsultasi advisor karier, hingga verifikasi dokumen — dapat diakses tanpa biaya seumur hidup.',
+        },
+        {
+            q: 'Bagaimana standar keamanan dan kerahasiaan data saya?',
+            a: 'Data dokumen seperti KTP, ijazah, dan NPWP dienkripsi menggunakan standar perbankan di pusat data lokal Indonesia. Dokumen mentah tidak pernah diekspos ke publik dan hanya digunakan untuk validasi status terverifikasi.',
+        },
+        {
+            q: 'Bagaimana cara kerja algoritma pencocokan KerjaCerdas?',
+            a: 'Mesin pencocokan berbasis semantic vector membandingkan deskripsi pekerjaan dengan profil talenta secara multi-dimensi (skill teknis, pengalaman riil, kompensasi yang diharapkan, dan preferensi kerja) bukan sekadar pencarian kata kunci acak.',
+        },
+        {
+            q: 'Apakah perusahaan dapat membatalkan langganan kapan saja?',
+            a: 'Tentu. Paket Growth dan Pay-per-Unlock bersifat fleksibel tanpa kontrak mengikat. Anda dapat menyesuaikan penggunaan kuota unlock sesuai kebutuhan rekrutmen tim.',
+        },
     ]
 
     return (
-        <div style={{ background: KC.bone, fontFamily: FONT, color: KC.ink, minHeight: '100vh' }}>
+        <div style={{ background: '#FAF9F5', fontFamily: FONT, color: KC.ink, minHeight: '100vh', overflowX: 'hidden' }}>
             <style>{KC_CSS}</style>
-            <NavBar onMasuk={onMasuk} onDaftar={onDaftar} onAbout={onAbout} />
 
-            {/* ── HERO ── */}
-            <section className="kc-stage-pad" style={{ position: 'relative', overflow: 'hidden' }}>
+            {/* Navigation */}
+            <Navigation
+                onMasuk={onMasuk}
+                onDaftar={onDaftar}
+                onAbout={onAbout}
+                onPricing={onPricing}
+            />
+
+            {/* Inquiry Modal */}
+            <InquiryModal
+                isOpen={inquiryModal.open}
+                onClose={() => setInquiryModal({ open: false, type: '' })}
+                initialType={inquiryModal.type}
+            />
+
+            {/* ── HERO SECTION ── */}
+            <header className="kc-container" style={{ paddingTop: 52, paddingBottom: 64 }}>
                 <div className="kc-hero-grid">
                     <div>
-                    <span className="kc-fade-up"><Tag color={KC.yellow} icon={<I.Sparkle s={12} />}>Smart Job Matching · Bahasa Indonesia</Tag></span>
-                    <h1 className="kc-h1 kc-fade-up d1" style={{ fontWeight: 900, margin: '20px 0 12px' }}>
-                        Kerja yang<br />
-                        <span className="kc-headline-sticker" style={{ background: KC.orange, color: '#fff', padding: '0 14px', boxShadow: `6px 6px 0 ${KC.ink}`, border: `3px solid ${KC.ink}`, marginTop: 6, cursor: 'pointer' }}>Match Akurat.</span><br />
-                        Bukan asal lempar CV.
-                    </h1>
-                    <p className="kc-fade-up d2" style={{ fontSize: 18, lineHeight: 1.55, color: KC.mute, maxWidth: 520, margin: '20px 0 28px' }}>
-                        AI Matching tingkat lanjut dari CV-mu, peta skill gap dengan rekomendasi kursus, dan advisor karier AI 24 jam.
-                        HR langsung dapat top-5 kandidat tiap lowongan — efisien & profesional.
-                    </p>
-                    <div className="kc-fade-up d3" style={{ display: 'flex', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
-                        <BrutalButton variant="primary" size="lg" icon={<I.Arrow s={16} c="#fff" />} onClick={onDaftar}>Cari Kerja Sekarang</BrutalButton>
-                        <BrutalButton variant="secondary" size="lg" icon={<I.Building s={16} />} onClick={onEmployer}>Saya HR / Employer</BrutalButton>
-                    </div>
-                    <div className="kc-fade-up d4" style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 13, fontWeight: 700, color: KC.mute }}>
-                        <div className="kc-avatar-stack" style={{ display: 'flex' }}>
-                            {[KC.cyan, KC.lime, KC.pink, KC.yellow].map((c, i) => (
-                                <div key={i} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: `2px solid ${KC.ink}`, marginLeft: i ? -10 : 0, display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 900 }}>
-                                    {['R', 'A', 'D', 'M'][i]}
-                                </div>
-                            ))}
+                        {/* Innovation Pill Tag */}
+                        <div className="kc-fade-up">
+                            <Badge color="#fff" ink={KC.ink} border={KC.ink}>
+                                Platform AI Matching Kerja Indonesia
+                            </Badge>
                         </div>
-                        <span><b style={{ color: KC.ink }}>Demo MVP</b> — Mesin pencocokan AI siap diuji coba</span>
-                    </div>
-                    <div className="kc-fade-up d4" style={{ display: 'flex', gap: 24, marginTop: 32, paddingTop: 24, borderTop: `2px dashed ${KC.ash}`, flexWrap: 'wrap' }}>
-                        <div>
-                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.orange, letterSpacing: -1 }}>~80%</div>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Target Efisiensi Waktu</div>
+
+                        {/* Main Value Headline */}
+                        <h1 className="kc-hero-title kc-fade-up d1" style={{
+                            fontSize: 52, fontWeight: 900, lineHeight: 1.15, letterSpacing: -1.8,
+                            margin: '18px 0 14px', color: KC.ink,
+                        }}>
+                            Perekrutan Talenta yang<br />
+                            <span className="kc-hero-highlight" style={{
+                                background: KC.orange, color: '#fff', padding: '2px 12px',
+                                border: `2px solid ${KC.ink}`, boxShadow: `3.5px 3.5px 0 ${KC.ink}`,
+                                borderRadius: 7, display: 'inline-block', verticalAlign: 'middle',
+                                margin: '4px 0',
+                            }}>
+                                Akurat & Terverifikasi.
+                            </span><br />
+                            Bukan spekulasi lempar CV.
+                        </h1>
+
+                        {/* Subtitle */}
+                        <p className="kc-fade-up d2" style={{
+                            fontSize: 16, lineHeight: 1.6, color: KC.mute, maxWidth: 520,
+                            margin: '0 0 26px 0',
+                        }}>
+                            Hubungkan kebutuhan rekrutmen perusahaan dengan talenta terbaik melalui pencocokan berbasis kompetensi, skill gap transparan, dan dokumen e-KYC valid.
+                        </p>
+
+                        {/* Dual Action CTAs */}
+                        <div className="kc-fade-up d3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
+                            <BrutalButton variant="primary" size="lg" icon={<I.ArrowRight s={15} c="#fff" />} onClick={onDaftar}>
+                                Cari Lowongan Kerja
+                            </BrutalButton>
+                            <BrutalButton variant="secondary" size="lg" icon={<I.Building s={15} c={KC.ink} />} onClick={onEmployer}>
+                                Pasang Lowongan HR
+                            </BrutalButton>
                         </div>
-                        <div>
-                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.ink, letterSpacing: -1 }}>Sangat Cepat</div>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Kecepatan Pencocokan AI</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: 28, fontWeight: 900, color: KC.ink, letterSpacing: -1 }}>Siap Integrasi</div>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>Dapat Terhubung Sistem HR</div>
-                        </div>
-                    </div>
-                    </div>
 
-                    {/* Hero card cluster */}
-                    <div className="kc-hero-cluster" style={{ position: 'relative', height: 520 }}>
-                        <BrutalCard className="kc-card-tilt kc-float-a" color="#fff" padding={20} style={{ position: 'absolute', top: 28, right: 24, width: 360, transform: 'rotate(2deg)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                <ScoreDonut value={92} size={60} />
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: KC.mute, textTransform: 'uppercase' }}>Best match</div>
-                                    <div style={{ fontSize: 17, fontWeight: 900, lineHeight: 1.1, marginTop: 2 }}>Senior Backend Engineer</div>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: KC.mute, marginTop: 2 }}>Startup XYZ · Jakarta · Hybrid</div>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
-                                <Tag color={KC.lime} size="sm">Go</Tag>
-                                <Tag color={KC.lime} size="sm">PostgreSQL</Tag>
-                                <Tag color={KC.lime} size="sm">gRPC</Tag>
-                                <Tag color={KC.orangeSoft} size="sm">+2 to learn</Tag>
-                            </div>
-                            <div style={{ marginTop: 14, padding: '10px 12px', background: KC.bone, border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 11, fontWeight: 700, color: KC.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <I.Cash s={14} /> Rp 28-42 jt/bulan · 4-7 thn exp
-                            </div>
-                        </BrutalCard>
-
-                        <BrutalCard className="kc-card-tilt kc-float-b" color={KC.cyan} padding={16} style={{ position: 'absolute', top: 260, right: 200, width: 260, transform: 'rotate(-3deg)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ width: 40, height: 40, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 8, display: 'grid', placeItems: 'center' }}>
-                                    <I.Check s={20} />
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: 13, fontWeight: 900 }}>CV_RinaP.pdf</div>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: KC.ink, opacity: 0.7 }}>Selesai · 14 skill ditemukan</div>
-                                </div>
-                            </div>
-                        </BrutalCard>
-
-                        <BrutalCard className="kc-card-tilt kc-float-c" color={KC.yellow} padding={16} style={{ position: 'absolute', top: 380, right: 60, width: 280, transform: 'rotate(1deg)' }}>
-                            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase' }}>Skill gap → kursus</div>
-                            <div style={{ fontSize: 14, fontWeight: 900, marginTop: 4, lineHeight: 1.2 }}>"Kafka untuk Backend" · Dicoding</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 11, fontWeight: 700 }}>
-                                <I.Clock s={12} /> 12 jam <span>·</span> <I.Star s={12} f={KC.ink} /> 4.8
-                            </div>
-                        </BrutalCard>
-
-                        <div className="kc-sticker" style={{ position: 'absolute', top: -8, left: 8, width: 110, height: 110, background: KC.orange, border: `3px solid ${KC.ink}`, borderRadius: '50%', display: 'grid', placeItems: 'center', boxShadow: `5px 5px 0 ${KC.ink}`, transform: 'rotate(-8deg)', color: '#fff', textAlign: 'center', lineHeight: 1, cursor: 'pointer' }}>
+                        {/* Minimalist Metrics Strip - Desktop ONLY (Full 3 KPIs, hidden completely on mobile) */}
+                        <div className="kc-metrics-desktop kc-fade-up d3">
                             <div>
-                                <div style={{ fontSize: 24, fontWeight: 900 }}>Top 5%</div>
-                                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 4 }}>Kandidat<br />Terbaik</div>
+                                <div style={{ fontSize: 24, fontWeight: 900, color: KC.orange, letterSpacing: -0.8, fontFamily: MONO }}>
+                                    &lt; 8 Detik
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: KC.mute, marginTop: 2 }}>
+                                    Waktu Pencocokan AI
+                                </div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: 24, fontWeight: 900, color: KC.ink, letterSpacing: -0.8, fontFamily: MONO }}>
+                                    94%
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: KC.mute, marginTop: 2 }}>
+                                    Akurasi Keselarasan Skill
+                                </div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: 24, fontWeight: 900, color: KC.ink, letterSpacing: -0.8, fontFamily: MONO }}>
+                                    100%
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: KC.mute, marginTop: 2 }}>
+                                    Profil Terverifikasi e-KYC
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            {/* ── TRUST STRIP ── */}
-            <section className="kc-trust-pad" style={{ borderTop: `2px solid ${KC.ink}`, borderBottom: `2px solid ${KC.ink}`, background: '#fff' }}>
-                <div className="kc-trust-strip-static" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, maxWidth: 1440, margin: '0 auto' }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: KC.mute, whiteSpace: 'nowrap' }}>
-                        Infrastruktur Siap Untuk Skala →
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 36, flex: 1, justifyContent: 'space-around', opacity: 0.85 }}>
-                        {['UMKM', 'Corporate', 'MNC', 'Tech Startup', 'Headhunter', 'BUMN', 'Institusi'].map(n => (
-                            <div key={n} style={{ fontFamily: MONO, fontSize: 16, fontWeight: 700, letterSpacing: -0.5, color: KC.ink, transition: 'color .2s, transform .2s', cursor: 'default' }} onMouseEnter={e => { e.currentTarget.style.color = KC.orange; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseLeave={e => { e.currentTarget.style.color = KC.ink; e.currentTarget.style.transform = 'none' }}>{n}</div>
-                        ))}
+                    {/* Right Interactive Clean Card */}
+                    <div className="kc-fade-up d2">
+                        <CleanHeroPreview />
                     </div>
                 </div>
-                <div className="kc-trust-strip-marquee">
-                    <div className="kc-trust-track">
-                        {[...Array(2)].flatMap((_, k) => ['UMKM', 'Corporate', 'MNC', 'Tech Startup', 'Headhunter', 'BUMN', 'Institusi'].map(n => (
-                            <div key={`${k}-${n}`} style={{ fontFamily: MONO, fontSize: 14, fontWeight: 700, letterSpacing: -0.5, color: KC.ink, whiteSpace: 'nowrap' }}>{n}</div>
-                        )))}
-                    </div>
-                </div>
-            </section>
+            </header>
 
-            {/* ── HOW IT WORKS ── */}
-            <Section id="how" bg={KC.bone}>
-                <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-                    <div className="kc-section-head" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 36, gap: 16, flexWrap: 'wrap' }}>
-                        <div>
-                            <Tag color={KC.pink}>cara kerja</Tag>
-                            <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.4, margin: '12px 0 4px' }}>Tiga langkah. Beneran.</h2>
-                            <p style={{ fontSize: 16, color: KC.mute, maxWidth: 540 }}>Nggak ada form 20 halaman. Upload, dapet match, langsung lamar.</p>
+            {/* ── CLIENT ECOSYSTEM STRIP ── */}
+            <section style={{
+                borderTop: `2px solid ${KC.ink}`, borderBottom: `2px solid ${KC.ink}`,
+                background: '#fff', padding: '16px 0', overflow: 'hidden',
+            }}>
+                <div style={{
+                    maxWidth: 1280, margin: '0 auto', padding: '0 20px',
+                    display: 'flex', alignItems: 'center', gap: 20,
+                }}>
+                    <div style={{
+                        fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase',
+                        color: KC.muteLight, whiteSpace: 'nowrap', borderRight: `1.5px solid ${KC.ash}`,
+                        paddingRight: 16,
+                    }}>
+                        Ekosistem Pengguna
+                    </div>
+
+                    <div className="kc-marquee-container" style={{
+                        flex: 1, overflow: 'hidden',
+                        maskImage: 'linear-gradient(to right, transparent, black 6%, black 94%, transparent)',
+                        WebkitMaskImage: 'linear-gradient(to right, transparent, black 6%, black 94%, transparent)',
+                    }}>
+                        <div className="kc-marquee-track">
+                            {[...Array(2)].flatMap((_, rep) => [
+                                'BUMN Digital', 'Tech Scaleup', 'SaaS Enterprise', 'Tier-1 Headhunter',
+                                'Banking & Fintech', 'Konsultan Teknologi', 'Startup Unicorn', 'Retail MNC'
+                            ].map((item, idx) => (
+                                <div key={`${rep}-${idx}`} style={{
+                                    fontFamily: MONO, fontSize: 13, fontWeight: 700,
+                                    color: KC.ink, letterSpacing: -0.2, display: 'inline-flex',
+                                    alignItems: 'center', gap: 10,
+                                }}>
+                                    <span>{item}</span>
+                                    <span style={{ color: KC.ash }}>/</span>
+                                </div>
+                            )))}
                         </div>
-                        <div style={{ display: 'inline-flex', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, padding: 4, boxShadow: `3px 3px 0 ${KC.ink}` }}>
-                            {['seeker', 'employer'].map(k => {
-                                const active = howTab === k
-                                return (
-                                    <button key={k} onClick={() => setHowTab(k)} style={{
-                                        padding: '8px 16px', fontSize: 13, fontWeight: 800,
+                    </div>
+                </div>
+            </section>
+
+            {/* ── HOW IT WORKS SECTION ── */}
+            <Section id="how" bg="#FAF9F5">
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 36, flexWrap: 'wrap', gap: 16 }}>
+                    <div>
+                        <Badge color={KC.yellow} ink={KC.ink}>Cara Kerja</Badge>
+                        <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1.2, margin: '12px 0 4px', lineHeight: 1.1, color: KC.ink }}>
+                            Tiga Langkah Sederhana
+                        </h2>
+                        <p style={{ fontSize: 15, color: KC.mute, maxWidth: 500, margin: 0 }}>
+                            Proses rekrutmen dan pencarian kerja yang transparan, terstruktur, dan bebas hambatan.
+                        </p>
+                    </div>
+
+                    {/* Role Tab Toggle */}
+                    <div style={{
+                        display: 'inline-flex', background: '#fff', border: `2px solid ${KC.ink}`,
+                        borderRadius: 8, padding: 3, boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                    }}>
+                        {['seeker', 'employer'].map((tab) => {
+                            const active = howTab === tab
+                            return (
+                                <button
+                                    key={tab}
+                                    onClick={() => setHowTab(tab)}
+                                    style={{
+                                        padding: '7px 16px', fontSize: 12, fontWeight: 800,
                                         background: active ? KC.ink : 'transparent',
                                         color: active ? '#fff' : KC.mute,
-                                        borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: FONT,
-                                    }}>
-                                        {k === 'seeker' ? 'Untuk Job Seeker' : 'Untuk Employer'}
-                                    </button>
-                                )
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="kc-three-col">
-                        {howData.map(s => (
-                            <BrutalCard key={s.n} color="#fff" padding={24}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                                    <div style={{ width: 44, height: 44, background: s.c, border: `2px solid ${KC.ink}`, borderRadius: 10, display: 'grid', placeItems: 'center' }}>{s.ic}</div>
-                                    <div style={{ fontFamily: MONO, fontSize: 14, fontWeight: 800, color: KC.mute }}>{s.n}</div>
-                                </div>
-                                <h3 style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.15 }}>{s.t}</h3>
-                                <p style={{ fontSize: 14, color: KC.mute, lineHeight: 1.55, marginTop: 8 }}>{s.d}</p>
-                            </BrutalCard>
-                        ))}
+                                        borderRadius: 6, border: 'none', cursor: 'pointer',
+                                        fontFamily: FONT, transition: 'all 0.15s ease',
+                                    }}
+                                >
+                                    {tab === 'seeker' ? 'Untuk Job Seeker' : 'Untuk Employer / HR'}
+                                </button>
+                            )
+                        })}
                     </div>
                 </div>
-            </Section>
 
-            {/* ── FEATURES BENTO ── */}
-            <Section id="fitur" bg="#fff">
-                <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-                    <div style={{ marginBottom: 36 }}>
-                        <Tag color={KC.cyan}>fitur inti</Tag>
-                        <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.4, margin: '12px 0 4px' }}>Empat senjata utama.</h2>
-                        <p style={{ fontSize: 16, color: KC.mute, maxWidth: 540 }}>Semua berjalan di atas teknologi AI mutakhir yang menjamin privasi dan keamanan data Anda.</p>
-                    </div>
-                    <div className="kc-features-grid">
-                        <BrutalCard color={KC.orange} padding={28} style={{ gridRow: 'span 2', color: '#fff', display: 'flex', flexDirection: 'column' }}>
-                            <Tag color="#fff" ink={KC.ink}>★ matching engine</Tag>
-                            <h3 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -1, lineHeight: 1.05, marginTop: 14 }}>Top-5 job match.<br />Bukan top-500 CV acak.</h3>
-                            <p style={{ fontSize: 14, lineHeight: 1.55, opacity: 0.92, marginTop: 12, marginBottom: 18 }}>
-                                Menggunakan teknologi AI cerdas. Skor dihitung dari kecocokan skill, level, lokasi, gaji, dan industri.
-                                Setiap match dijelasin: <i>kenapa cocok, apa yang kurang</i>.
-                            </p>
-                            <div style={{ background: 'rgba(0,0,0,0.5)', border: '2px solid #fff', borderRadius: 10, padding: 14, marginTop: 'auto' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <ScoreDonut value={89} size={48} color="#fff" textColor="#fff" />
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: 14, fontWeight: 900 }}>Product Designer · Startup X</div>
-                                        <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85 }}>"Pengalaman fintech-mu selaras dengan core product kami."</div>
-                                    </div>
+                {/* 3 Step Cards */}
+                <div className="kc-three-col">
+                    {(howTab === 'seeker' ? HOW_SEEKER : HOW_EMPLOYER).map((step) => (
+                        <BrutalCard key={step.num} bg="#fff" padding={22}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                                <div style={{
+                                    width: 40, height: 40, borderRadius: 10, background: step.accent,
+                                    border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center',
+                                    boxShadow: `2px 2px 0 ${KC.ink}`,
+                                }}>
+                                    {step.icon}
                                 </div>
+                                <span style={{ fontFamily: MONO, fontSize: 15, fontWeight: 900, color: KC.muteLight }}>
+                                    {step.num}
+                                </span>
                             </div>
+                            <h3 style={{ fontSize: 18, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.25, margin: '0 0 8px 0', color: KC.ink }}>
+                                {step.title}
+                            </h3>
+                            <p style={{ fontSize: 13, color: KC.mute, lineHeight: 1.55, margin: 0 }}>
+                                {step.desc}
+                            </p>
                         </BrutalCard>
-
-                        {[
-                            { c: KC.lime, ic: <I.ChartBar s={22} />, tag: 'free', t: 'Skill Gap Coach', d: 'Bandingin profilmu vs JD. Platform akan merekomendasikan intervensi pelatihan (Micro-learning/Course).' },
-                            { c: KC.cyan, ic: <I.Robot s={22} />, tag: '24/7', t: 'Career Gap Advisor', d: 'Ada kekosongan masa kerja? AI merancang simulasi interview dan menyusun ulang ringkasan kualifikasimu.' },
-                            { c: KC.yellow, ic: <I.Briefcase s={22} />, tag: 'HR & MNC', t: 'Integrasi Sistem HR', d: 'Dirancang untuk dapat terhubung langsung ke sistem HR perusahaan seperti Workday/SAP untuk kemudahan proses rekrutmen.' },
-                            { c: KC.pink, ic: <I.Shield s={22} />, tag: 'trust', t: 'Verifikasi KTP & Ijazah', d: 'Infrastruktur e-KYC (mockup) untuk mencegah penipuan profil. CV anonim sampai perusahaan melakukan unlock.' },
-                        ].map((f, i) => (
-                            <BrutalCard key={i} color={f.c} padding={22}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ width: 44, height: 44, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, display: 'grid', placeItems: 'center' }}>{f.ic}</div>
-                                    <Tag color="#fff" size="sm">{f.tag}</Tag>
-                                </div>
-                                <h3 style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.6, marginTop: 12 }}>{f.t}</h3>
-                                <p style={{ fontSize: 13, color: KC.ink, opacity: 0.78, lineHeight: 1.5, marginTop: 6 }}>{f.d}</p>
-                            </BrutalCard>
-                        ))}
-                    </div>
+                    ))}
                 </div>
             </Section>
 
-            {/* ── TRUST / PRIVACY ── */}
+            {/* ── CORE FEATURES GRID ── */}
+            <Section id="fitur" bg="#fff">
+                <div style={{ marginBottom: 36 }}>
+                    <Badge color={KC.cyan} ink={KC.ink}>Fitur Utama</Badge>
+                    <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1.2, margin: '12px 0 4px', lineHeight: 1.1, color: KC.ink }}>
+                        Keunggulan Platform KerjaCerdas
+                    </h2>
+                    <p style={{ fontSize: 15, color: KC.mute, maxWidth: 540, margin: 0 }}>
+                        Infrastruktur cerdas untuk mempercepat proses seleksi tanpa mengorbankan kualitas kandidat.
+                    </p>
+                </div>
+
+                <div className="kc-features-grid">
+                    {[
+                        {
+                            title: 'Pencocokan Semantik (Vector Matching)',
+                            desc: 'Mencocokkan keahlian riil dan deskripsi pekerjaan secara multi-dimensi untuk menghasilkan daftar Top-5 kandidat terakurat.',
+                            accent: KC.orange,
+                            icon: <I.Target s={20} c="#fff" />,
+                        },
+                        {
+                            title: 'Pemetaan Skill Gap & Rekomendasi Kursus',
+                            desc: 'Menganalisis celah kompetensi terhadap kriteria posisi impian dan menyarankan modul pelatihan relevan.',
+                            accent: KC.lime,
+                            icon: <I.Layers s={20} c={KC.ink} />,
+                        },
+                        {
+                            title: 'Verifikasi Dokumen e-KYC Terenkripsi',
+                            desc: 'Validasi resmi KTP, ijazah Kemendikbud SIVIL, dan NPWP untuk menciptakan ekosistem kerja yang terpercaya.',
+                            accent: KC.yellow,
+                            icon: <I.ShieldCheck s={20} c={KC.ink} />,
+                        },
+                        {
+                            title: 'Siap Integrasi Sistem HR Perusahaan',
+                            desc: 'Mendukung koneksi ke sistem HR korporasi (Workday, SAP, Greenhouse) untuk alur kerja rekrutmen terpadu.',
+                            accent: KC.cyan,
+                            icon: <I.Building s={20} c={KC.ink} />,
+                        },
+                    ].map((feat, idx) => (
+                        <BrutalCard key={idx} bg="#FAF9F5" padding={22}>
+                            <div style={{
+                                width: 40, height: 40, borderRadius: 10, background: feat.accent,
+                                border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center',
+                                boxShadow: `2px 2px 0 ${KC.ink}`, marginBottom: 14,
+                            }}>
+                                {feat.icon}
+                            </div>
+                            <h3 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, margin: '0 0 6px 0', color: KC.ink }}>
+                                {feat.title}
+                            </h3>
+                            <p style={{ fontSize: 13, color: KC.mute, lineHeight: 1.55, margin: 0 }}>
+                                {feat.desc}
+                            </p>
+                        </BrutalCard>
+                    ))}
+                </div>
+            </Section>
+
+            {/* ── TRUST & PRIVACY ── */}
             <Section bg={KC.ink} style={{ color: '#fff' }}>
                 <div className="kc-trust-grid">
                     <div>
-                        <Tag color={KC.orange} ink="#fff">trust & privacy</Tag>
-                        <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.4, margin: '14px 0 14px', lineHeight: 1.05 }}>
-                            Data terenkripsi.<br />Hanya buat verifikasi.
+                        <Badge color={KC.orange} ink="#fff" border="#fff" icon={<I.Lock s={12} c="#fff" />}>
+                            Keamanan Data
+                        </Badge>
+                        <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1.2, margin: '14px 0 12px', lineHeight: 1.15 }}>
+                            Data Terenkripsi.<br />Hanya untuk Verifikasi.
                         </h2>
-                        <p style={{ fontSize: 16, color: '#fff', opacity: 0.75, lineHeight: 1.6, maxWidth: 520 }}>
-                            KTP, ijazah, dan NPWP <b>nggak pernah</b> ditampilin ke user lain — bahkan HR. Kami pakai cuma sekali buat verifikasi identitas, lalu disimpan dengan aman di server Indonesia.
-                            Setelah verifikasi sukses, akunmu dapet badge <span style={{ background: KC.lime, color: KC.ink, padding: '1px 8px', borderRadius: 4, fontWeight: 900, fontSize: 13 }}>✓ VERIFIED</span> — itu doang yang publik.
+                        <p style={{ fontSize: 14, color: '#D1D5DB', lineHeight: 1.6, maxWidth: 480, margin: '0 0 20px 0' }}>
+                            Dokumen sensitif seperti KTP, Ijazah, dan NPWP <b>tidak pernah dipublikasikan</b> ke pihak luar. Sistem hanya melakukan validasi satu kali untuk menerbitkan badge <span style={{ background: KC.lime, color: KC.ink, padding: '1px 6px', borderRadius: 4, fontWeight: 800, fontSize: 11 }}>VERIFIED</span>.
                         </p>
-                        <div style={{ display: 'flex', gap: 24, marginTop: 28, fontSize: 13, fontWeight: 700, flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><I.Check s={16} c={KC.lime} /> Standar Keamanan Tinggi</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><I.Check s={16} c={KC.lime} /> Server di Indonesia</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><I.Check s={16} c={KC.lime} /> Resmi & Terpercaya</div>
+
+                        <div style={{ display: 'flex', gap: 16, fontSize: 12, fontWeight: 700, flexWrap: 'wrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                <I.Check s={14} c={KC.lime} /> Pusat Data Lokal Indonesia
+                            </span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                <I.Check s={14} c={KC.lime} /> Enkripsi End-to-End
+                            </span>
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    {/* Responsive Trust Document Cards */}
+                    <div className="kc-trust-cards-mobile" style={{
+                        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+                        width: '100%',
+                    }}>
                         {[
-                            { who: 'Job Seeker', what: 'KTP + Ijazah', icon: <I.User s={22} c="#fff" />, c: KC.orange },
-                            { who: 'Employer', what: 'NPWP + Akta', icon: <I.Building s={22} c="#fff" />, c: KC.cyan },
-                        ].map((b, i) => (
-                            <div key={i} style={{ background: '#1a1a20', border: '2px solid #fff', borderRadius: 12, padding: 18 }}>
-                                <div style={{ width: 44, height: 44, background: b.c, border: '2px solid #fff', borderRadius: 10, display: 'grid', placeItems: 'center', marginBottom: 12 }}>{b.icon}</div>
-                                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', opacity: 0.6 }}>{b.who}</div>
-                                <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4 }}>{b.what}</div>
-                                <div style={{ fontSize: 11, marginTop: 10, padding: '6px 8px', background: 'rgba(0,0,0,0.5)', borderRadius: 6, color: KC.lime, fontWeight: 700 }}>
-                                    status: aman
-                                </div>
-                            </div>
-                        ))}
-                        <BrutalCard color={KC.bone} shadow="#fff" padding={18} style={{ gridColumn: 'span 2', color: KC.ink }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                <I.Lock s={28} />
-                                <div>
-                                    <div style={{ fontSize: 14, fontWeight: 900 }}>Kamu pegang kontrol penuh</div>
-                                    <div style={{ fontSize: 12, color: KC.mute, marginTop: 2 }}>Hapus dokumen kapan aja dari Settings → Privasi. Audit log tersedia.</div>
-                                </div>
-                            </div>
-                        </BrutalCard>
-                    </div>
-                </div>
-            </Section>
-
-            {/* ── PRICING ── */}
-            <Section id="harga" bg="#fff">
-                <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-                    <div style={{ textAlign: 'center', marginBottom: 40 }}>
-                        <Tag color={KC.yellow}>harga untuk employer</Tag>
-                        <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.4, margin: '12px 0 6px' }}>Job seeker selalu gratis.<br />Bos bayar sesuai kebutuhan.</h2>
-                    </div>
-                    <div className="kc-pricing-grid">
-                        {[
-                            { name: 'Basic', price: 'Gratis', sub: '', cta: 'Posting Gratis', highlight: false, color: '#fff', perks: ['Pasang lowongan selamanya', 'AI Shortlist (Top 5)', 'Penilaian Kecerdasan AI', 'Verifikasi profil dasar'] },
-                            { name: 'Pay-per-Unlock', price: '50rb', sub: '/ 10 kandidat', cta: 'Coba Unlock', highlight: true, color: KC.orange, perks: ['Buka kontak asli 10 kandidat', 'Lihat CV PDF lengkap', 'KTP & NPWP Verified', 'Ijazah/SIVIL Verified', 'Bebas penipuan'] },
-                            { name: 'Enterprise', price: 'Custom', sub: '', cta: 'Hubungi Sales', highlight: false, color: KC.ink, perks: ['Terintegrasi Sistem HR (Workday, SAP)', 'Asisten AI untuk Headhunter', 'Pencarian AI Tanpa Batas', 'Dedicated Account Manager', 'SLA 99.9%'] },
-                        ].map((p, i) => {
-                            const dark = p.color === KC.ink
-                            const accent = p.highlight
-                            const isText = p.price === 'Gratis' || p.price === 'Custom'
-                            return (
-                                <div key={i} className={`kc-price-card${accent ? ' kc-price-accent' : ''}`} style={{
-                                    background: p.color, color: dark || accent ? '#fff' : KC.ink,
-                                    border: `2px solid ${KC.ink}`, borderRadius: 16, padding: 28,
-                                    boxShadow: accent ? `8px 8px 0 ${KC.ink}` : `4px 4px 0 ${KC.ink}`,
-                                    transform: accent ? 'translateY(-12px)' : 'none', position: 'relative',
-                                    display: 'flex', flexDirection: 'column'
+                            {
+                                role: 'Untuk Pencari Kerja',
+                                docs: 'KTP & Ijazah S1 (SIVIL)',
+                                desc: 'Verifikasi identitas & integritas pendidikan.',
+                                accent: KC.orange,
+                                icon: <I.User s={18} c="#fff" />,
+                            },
+                            {
+                                role: 'Untuk Employer',
+                                docs: 'NPWP & Akta Perusahaan',
+                                desc: 'Verifikasi legalitas badan usaha resmi.',
+                                accent: KC.cyan,
+                                icon: <I.Building s={18} c="#fff" />,
+                            },
+                        ].map((card, idx) => (
+                            <div key={idx} style={{
+                                background: '#14151D', border: '1.5px solid rgba(255,255,255,0.2)',
+                                borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column',
+                            }}>
+                                <div style={{
+                                    width: 36, height: 36, borderRadius: 8, background: card.accent,
+                                    border: '1.5px solid #fff', display: 'grid', placeItems: 'center',
+                                    marginBottom: 10,
                                 }}>
-                                    {accent && <div style={{ position: 'absolute', top: -16, right: 20, background: KC.yellow, border: `2px solid ${KC.ink}`, padding: '4px 10px', fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase', borderRadius: 999, color: KC.ink, transform: 'rotate(4deg)', boxShadow: `2px 2px 0 ${KC.ink}` }}>paling laku</div>}
-                                    <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.7 }}>{p.name}</div>
-                                    <div style={{ marginTop: 8, marginBottom: 18, display: 'flex', alignItems: 'baseline' }}>
-                                        {!isText && <span style={{ fontSize: 16, fontWeight: 700, opacity: 0.7, marginRight: 6 }}>Rp</span>}
-                                        <span style={{ fontSize: isText ? 42 : 56, fontWeight: 900, letterSpacing: -2, lineHeight: 1 }}>{p.price}</span>
-                                        {p.sub && <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.7, marginLeft: 6 }}>{p.sub}</span>}
-                                    </div>
-                                    <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px 0', display: 'flex', flexDirection: 'column', gap: 9, flex: 1 }}>
-                                        {p.perks.map((perk, j) => (
-                                            <li key={j} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 600 }}>
-                                                <I.Check s={14} c={dark || accent ? '#fff' : KC.ink} /> {perk}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <div style={{ marginTop: 'auto' }}>
-                                        <BrutalButton variant={dark ? 'accent' : (accent ? 'secondary' : 'primary')} size="md" full onClick={PRICING_ACTIONS[p.name] || onEmployer}>{p.cta}</BrutalButton>
-                                    </div>
+                                    {card.icon}
                                 </div>
-                            )
-                        })}
-                    </div>
-                </div>
-            </Section>
-
-            {/* ── USE CASES ── */}
-            <Section bg={KC.bone}>
-                <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-                    <div style={{ marginBottom: 36 }}>
-                        <Tag color={KC.lime}>use cases</Tag>
-                        <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.4, margin: '12px 0 4px' }}>Simulasi Penggunaan Sistem</h2>
-                    </div>
-                    <div className="kc-three-col" style={{ gap: 18 }}>
-                        {[
-                            { q: 'Sistem dapat menekan kelelahan melamar (Application Fatigue) dengan memproses kecocokan secara otonom sebelum user mengirim CV.', who: 'Skenario Pencari Kerja', role: 'Career Entry / Mid-level', c: KC.cyan },
-                            { q: 'Platform dirancang untuk menyaring (Screening) pelamar yang bervolume tinggi menjadi Top 5 daftar pendek berkualitas secara instan.', who: 'Skenario Rekrutmen', role: 'Tim HR & Headhunter', c: KC.yellow },
-                            { q: 'Integrasi agen AI pembimbing memungkinkan kandidat memetakan kelemahan teknis mereka menjadi kurikulum studi yang terstruktur.', who: 'Skenario Skill Gap', role: 'Pengembangan Talenta', c: KC.pink },
-                        ].map((t, i) => (
-                            <BrutalCard key={i} color={t.c} padding={24}>
-                                <I.Star s={20} f={KC.ink} />
-                                <p style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.45, margin: '12px 0 18px', letterSpacing: -0.2 }}>{t.q}</p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', border: `2px solid ${KC.ink}`, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 13 }}>{i + 1}</div>
-                                    <div>
-                                        <div style={{ fontSize: 13, fontWeight: 900 }}>{t.who}</div>
-                                        <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>{t.role}</div>
-                                    </div>
+                                <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: '#9CA3AF' }}>
+                                    {card.role}
                                 </div>
-                            </BrutalCard>
+                                <div style={{ fontSize: 14, fontWeight: 900, color: '#fff', margin: '3px 0 4px' }}>
+                                    {card.docs}
+                                </div>
+                                <div style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.45 }}>
+                                    {card.desc}
+                                </div>
+                            </div>
                         ))}
+
+                        <div style={{
+                            gridColumn: '1 / -1', background: '#1A1B24', border: '1.5px solid rgba(255,255,255,0.15)',
+                            borderRadius: 8, padding: 12, fontSize: 11, color: '#D1D5DB', lineHeight: 1.5,
+                        }}>
+                            🔒 <b>Kontrol Penuh:</b> Dokumen mentah dapat dihapus kapan saja melalui pengaturan akun.
+                        </div>
                     </div>
                 </div>
             </Section>
 
-            {/* ── FAQ ── */}
-            <Section bg="#fff">
+            {/* ── PRICING SECTION ── */}
+            <Section id="harga" bg="#fff">
+                <div style={{ textAlign: 'center', marginBottom: 36 }}>
+                    <Badge color={KC.yellow} ink={KC.ink}>Skema Harga</Badge>
+                    <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1.2, margin: '12px 0 6px', lineHeight: 1.1, color: KC.ink }}>
+                        Gratis untuk Talenta. Transparan untuk HR.
+                    </h2>
+                    <p style={{ fontSize: 15, color: KC.mute, maxWidth: 520, margin: '0 auto' }}>
+                        Pencari kerja tidak dipungut biaya. Perusahaan hanya membayar sesuai kebutuhan perekrutan.
+                    </p>
+                </div>
+
+                <div className="kc-pricing-grid">
+                    {[
+                        {
+                            name: 'Starter',
+                            price: 'Gratis',
+                            period: 'selamanya',
+                            desc: 'Cocok untuk eksplorasi dan pemasangan lowongan dasar.',
+                            highlight: false,
+                            bg: '#FAF9F5',
+                            color: KC.ink,
+                            btnVariant: 'secondary',
+                            cta: 'Pasang Lowongan',
+                            perks: [
+                                'Posting lowongan tanpa batas',
+                                'AI Shortlist Top-5 kandidat',
+                                'Skor keselarasan kompetensi',
+                                'Verifikasi profil dasar',
+                            ],
+                            action: onEmployer,
+                        },
+                        {
+                            name: 'Pay-per-Unlock',
+                            price: '50rb',
+                            period: '/ 10 kandidat',
+                            desc: 'Pilihan populer bagi tim yang aktif mewawancarai talenta siap kerja.',
+                            highlight: true,
+                            bg: KC.orange,
+                            color: '#fff',
+                            btnVariant: 'lime',
+                            cta: 'Mulai Rekrut',
+                            perks: [
+                                'Buka kontak 10 kandidat resmi',
+                                'Akses CV PDF & portofolio lengkap',
+                                'KTP & NPWP Terverifikasi',
+                                'Validasi Ijazah SIVIL resmi',
+                                'Garansi bebas ghosting',
+                            ],
+                            action: onEmployer,
+                        },
+                        {
+                            name: 'Enterprise Scale',
+                            price: 'Custom',
+                            period: 'sesuai kebutuhan',
+                            desc: 'Solusi terintegrasi untuk korporasi, BUMN, dan agensi rekrutmen.',
+                            highlight: false,
+                            bg: KC.ink,
+                            color: '#fff',
+                            btnVariant: 'accent',
+                            cta: 'Konsultasi Enterprise',
+                            perks: [
+                                'Konektor API ke Workday & SAP',
+                                'Alur screening kustom',
+                                'Dedicated Account Manager',
+                                'Akses API bulk vector match',
+                                'Perjanjian SLA 99.9%',
+                            ],
+                            action: () => openInquiry('Enterprise & HR'),
+                        },
+                    ].map((tier, idx) => (
+                        <div key={idx} style={{
+                            background: tier.bg, color: tier.color,
+                            border: `2px solid ${KC.ink}`, borderRadius: 12,
+                            padding: 24, display: 'flex', flexDirection: 'column',
+                            boxShadow: tier.highlight ? `6px 6px 0 ${KC.ink}` : `3.5px 3.5px 0 ${KC.ink}`,
+                            position: 'relative',
+                        }}>
+                            {tier.highlight && (
+                                <div style={{
+                                    position: 'absolute', top: -12, right: 16, background: KC.yellow,
+                                    border: `1.5px solid ${KC.ink}`, padding: '3px 10px', fontSize: 10,
+                                    fontWeight: 900, textTransform: 'uppercase', borderRadius: 999,
+                                    color: KC.ink, boxShadow: `2px 2px 0 ${KC.ink}`,
+                                }}>
+                                    Paling Diminati
+                                </div>
+                            )}
+
+                            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', opacity: 0.85 }}>
+                                {tier.name}
+                            </div>
+
+                            <div style={{ margin: '10px 0 8px', display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                                {tier.price !== 'Gratis' && tier.price !== 'Custom' && (
+                                    <span style={{ fontSize: 16, fontWeight: 800, opacity: 0.85 }}>Rp</span>
+                                )}
+                                <span style={{ fontSize: 38, fontWeight: 900, letterSpacing: -1.5, lineHeight: 1, fontFamily: MONO }}>
+                                    {tier.price}
+                                </span>
+                                <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
+                                    {tier.period}
+                                </span>
+                            </div>
+
+                            <p style={{ fontSize: 12, lineHeight: 1.5, opacity: 0.85, margin: '0 0 16px 0' }}>
+                                {tier.desc}
+                            </p>
+
+                            <div style={{ height: 1, background: tier.highlight || tier.color === '#fff' ? 'rgba(255,255,255,0.2)' : KC.ash, marginBottom: 16 }} />
+
+                            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px 0', display: 'flex', flexDirection: 'column', gap: 9, flex: 1 }}>
+                                {tier.perks.map((perk, pIdx) => (
+                                    <li key={pIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, fontWeight: 600 }}>
+                                        <span style={{ display: 'inline-flex', marginTop: 1 }}>
+                                            <I.Check s={13} c={tier.highlight ? '#fff' : (tier.color === '#fff' ? KC.lime : KC.ink)} />
+                                        </span>
+                                        <span>{perk}</span>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <BrutalButton variant={tier.btnVariant} full size="md" onClick={tier.action}>
+                                {tier.cta}
+                            </BrutalButton>
+                        </div>
+                    ))}
+                </div>
+            </Section>
+
+            {/* ── FAQ SECTION ── */}
+            <Section bg="#FAF9F5">
                 <div className="kc-faq-grid">
                     <div>
-                        <Tag color={KC.orange} ink="#fff">FAQ</Tag>
-                        <h2 className="kc-h2" style={{ fontWeight: 900, letterSpacing: -1.2, margin: '12px 0 12px', lineHeight: 1.05 }}>Pertanyaan yang sering ditanya.</h2>
-                        <p style={{ fontSize: 15, color: KC.mute, lineHeight: 1.6 }}>Belum nemu jawabnya? Tanya advisor AI kami — gratis, 24/7.</p>
-                        <BrutalButton variant="primary" size="md" style={{ marginTop: 18 }} icon={<I.Arrow s={14} c="#fff" />} onClick={onDaftar}>Tanya Advisor</BrutalButton>
+                        <Badge color={KC.orange} ink="#fff">FAQ</Badge>
+                        <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -1.2, margin: '12px 0 8px', lineHeight: 1.1, color: KC.ink }}>
+                            Pertanyaan Umum
+                        </h2>
+                        <p style={{ fontSize: 14, color: KC.mute, lineHeight: 1.55, margin: '0 0 18px 0' }}>
+                            Pertanyaan seputar pencocokan AI, verifikasi data, atau integrasi lowongan kerja.
+                        </p>
+                        <BrutalButton variant="primary" size="md" icon={<I.ArrowRight s={13} c="#fff" />} onClick={onDaftar}>
+                            Mulai Sekarang
+                        </BrutalButton>
                     </div>
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {FAQS.map((f, i) => {
-                            const open = faqOpen === i
+                        {FAQS.map((faq, idx) => {
+                            const isOpen = faqOpen === idx
                             return (
-                                <div key={i} className="kc-faq" style={{ background: KC.bone, border: `2px solid ${KC.ink}`, borderRadius: 12, padding: 18, boxShadow: open ? `4px 4px 0 ${KC.ink}` : 'none' }}>
-                                    <div onClick={() => setFaqOpen(open ? -1 : i)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                                        <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: -0.3 }}>{f.q}</div>
-                                        <span style={{ display: 'inline-flex', transition: 'transform .25s ease', transform: open ? 'rotate(45deg)' : 'rotate(0)' }}><I.Plus s={18} /></span>
+                                <div
+                                    key={idx}
+                                    style={{
+                                        background: '#fff', border: `1.5px solid ${KC.ink}`,
+                                        borderRadius: 10, padding: 16,
+                                        boxShadow: isOpen ? `3px 3px 0 ${KC.ink}` : 'none',
+                                        transition: 'all 0.15s ease',
+                                    }}
+                                >
+                                    <div
+                                        onClick={() => setFaqOpen(isOpen ? -1 : idx)}
+                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', gap: 10 }}
+                                    >
+                                        <span style={{ fontSize: 14, fontWeight: 800, color: KC.ink }}>
+                                            {faq.q}
+                                        </span>
+                                        <span style={{
+                                            display: 'inline-flex', transform: isOpen ? 'rotate(45deg)' : 'none',
+                                            transition: 'transform 0.15s ease', flexShrink: 0,
+                                        }}>
+                                            <I.Plus s={18} c={KC.ink} />
+                                        </span>
                                     </div>
-                                    <div style={{ overflow: 'hidden', maxHeight: open ? 200 : 0, transition: 'max-height .3s ease, margin-top .3s ease', marginTop: open ? 8 : 0 }}>
-                                        <p style={{ fontSize: 13, color: KC.mute, lineHeight: 1.6, margin: 0 }}>{f.a}</p>
-                                    </div>
+                                    {isOpen && (
+                                        <p style={{ fontSize: 13, color: KC.mute, lineHeight: 1.6, margin: '10px 0 0 0', paddingTop: 8, borderTop: `1px solid ${KC.ash}` }}>
+                                            {faq.a}
+                                        </p>
+                                    )}
                                 </div>
                             )
                         })}
@@ -753,71 +1552,100 @@ export default function LandingHero() {
                 </div>
             </Section>
 
-            {/* ── BIG CTA ── */}
-            <Section bg={KC.orange} style={{ color: '#fff', textAlign: 'center' }}>
-                <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-                    <h2 className="kc-cta-h2" style={{ fontWeight: 900, letterSpacing: -2, margin: 0, lineHeight: 0.98 }}>Udah cukup nge-spam lamaran.</h2>
-                    <p style={{ fontSize: 20, opacity: 0.92, marginTop: 16, marginBottom: 32 }}>Daftar dalam 2 menit. CV-mu langsung di-parse, top-5 match keluar dalam 8 detik.</p>
-                    <div style={{ display: 'inline-flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
-                        <BrutalButton variant="secondary" size="lg" icon={<I.Arrow s={16} />} style={{ boxShadow: `6px 6px 0 ${KC.ink}` }} onClick={onDaftar}>Daftar Gratis</BrutalButton>
-                        <BrutalButton variant="primary" size="lg" style={{ background: KC.ink, boxShadow: `6px 6px 0 ${KC.yellow}` }} onClick={onEmployer}>Demo untuk HR →</BrutalButton>
+            {/* ── BOTTOM CTA ── */}
+            <section style={{
+                background: KC.orange, color: '#fff', padding: '60px 0',
+                borderTop: `2px solid ${KC.ink}`, borderBottom: `2px solid ${KC.ink}`,
+                textAlign: 'center',
+            }}>
+                <div className="kc-container">
+                    <h2 style={{
+                        fontSize: 'clamp(26px, 4vw, 44px)', fontWeight: 900, letterSpacing: -1.5,
+                        lineHeight: 1.1, margin: '0 0 12px 0',
+                    }}>
+                        Mulai Rekrutmen yang Akurat Hari Ini.
+                    </h2>
+                    <p style={{ fontSize: 16, maxWidth: 560, margin: '0 auto 24px', opacity: 0.95, lineHeight: 1.55 }}>
+                        Daftar dalam 2 menit. Dapatkan kurasi Top-5 match berbasis kecocokan kompetensi riil.
+                    </p>
+
+                    <div style={{ display: 'inline-flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                        <BrutalButton variant="secondary" size="lg" icon={<I.ArrowRight s={15} c={KC.ink} />} onClick={onDaftar}>
+                            Daftar Sebagai Talenta
+                        </BrutalButton>
+                        <BrutalButton variant="primary" size="lg" style={{ background: KC.ink, boxShadow: `4px 4px 0 ${KC.yellow}` }} onClick={onEmployer}>
+                            Demo Solusi Rekruter →
+                        </BrutalButton>
                     </div>
                 </div>
-            </Section>
+            </section>
 
             {/* ── FOOTER ── */}
-            <footer className="kc-foot-pad" style={{ background: KC.ink, color: '#fff' }}>
-                <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-                    <div className="kc-foot-grid">
+            <footer style={{ background: KC.ink, color: '#fff', padding: '52px 0 28px' }}>
+                <div className="kc-container">
+                    <div className="kc-foot-grid" style={{ marginBottom: 36 }}>
                         <div>
-                            <Logo size={28} color="#fff" mark={KC.orange} />
-                            <p style={{ fontSize: 13, opacity: 0.6, lineHeight: 1.6, marginTop: 14, maxWidth: 280 }}>
-                                Platform AI matching kerja untuk pasar Indonesia. Menghubungkan talenta lokal dengan peluang karir terbaik secara cerdas.
+                            <Logo size={26} color="#fff" mark={KC.orange} />
+                            <p style={{ fontSize: 12, color: '#9CA3AF', lineHeight: 1.6, marginTop: 12, maxWidth: 260 }}>
+                                Platform kecerdasan rekrutmen dan pemetaan kompetensi karier untuk ekosistem kerja modern Indonesia.
                             </p>
                         </div>
+
                         {[
-                            { t: 'Produk', items: ['Cara Kerja', 'Fitur', 'Verifikasi', 'Harga'] },
-                            { t: 'Untuk', items: ['Job Seeker', 'Employer / HR', 'Kampus & Lembaga', 'Partner Kursus'] },
-                            { t: 'Perusahaan', items: ['Tentang Kami', 'Karier', 'Blog', 'Kontak'] },
-                            { t: 'Legal', items: ['Privasi', 'Syarat', 'Keamanan', 'Status'] },
-                        ].map(col => (
-                            <div key={col.t}>
-                                <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.5, marginBottom: 12 }}>{col.t}</div>
+                            { title: 'Produk', items: [
+                                { label: 'Cara Kerja', fn: () => { const el = document.getElementById('how'); if (el) { const y = el.getBoundingClientRect().top + window.scrollY - 76; window.scrollTo({ top: y, behavior: 'smooth' }) } } },
+                                { label: 'Fitur', fn: () => { const el = document.getElementById('fitur'); if (el) { const y = el.getBoundingClientRect().top + window.scrollY - 76; window.scrollTo({ top: y, behavior: 'smooth' }) } } },
+                                { label: 'Harga', fn: () => { const el = document.getElementById('harga'); if (el) { const y = el.getBoundingClientRect().top + window.scrollY - 76; window.scrollTo({ top: y, behavior: 'smooth' }) } } },
+                            ]},
+                            { title: 'Solusi', items: [
+                                { label: 'Untuk Talenta', fn: onDaftar },
+                                { label: 'Untuk HR / Employer', fn: onEmployer },
+                                { label: 'Institusi & Kampus', fn: () => openInquiry('Institusi & Kampus') },
+                                { label: 'Partner Pelatihan', fn: () => openInquiry('Partner Pelatihan') },
+                            ]},
+                            { title: 'Perusahaan', items: [
+                                { label: 'Tentang Kami', fn: () => navigate('about') },
+                                { label: 'Karier', fn: () => openInquiry('Karier / Internal') },
+                                { label: 'Hubungi Sales', fn: () => openInquiry('Enterprise & HR') },
+                            ]},
+                            { title: 'Legal', items: [
+                                { label: 'Kebijakan Privasi', fn: () => navigate('privacy') },
+                                { label: 'Syarat & Ketentuan', fn: () => navigate('privacy') },
+                                { label: 'Keamanan Data', fn: () => navigate('privacy') },
+                            ]},
+                        ].map((col, cIdx) => (
+                            <div key={cIdx}>
+                                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: '#9CA3AF', marginBottom: 12 }}>
+                                    {col.title}
+                                </div>
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {col.items.map(it => {
-                                        const handlers = {
-                                            'Cara Kerja': () => scrollToSection('how'),
-                                            'Fitur': () => scrollToSection('fitur'),
-                                            'Verifikasi': () => scrollToSection('fitur'),
-                                            'Harga': () => navigate('pricing'),
-                                            'Job Seeker': onDaftar,
-                                            'Employer / HR': onEmployer,
-                                            'Kampus & Lembaga': onContactSales,
-                                            'Partner Kursus': onContactSales,
-                                            'Tentang Kami': () => navigate('about'),
-                                            'Karier': onContactSales,
-                                            'Blog': () => navigate('about'),
-                                            'Kontak': onContactSales,
-                                            'Privasi': () => navigate('privacy'),
-                                            'Syarat': () => navigate('privacy'),
-                                            'Keamanan': () => navigate('privacy'),
-                                            'Status': () => window.open('https://status.kerjacerdas.id', '_blank'),
-                                        }
-                                        const handler = handlers[it] || (() => { })
-                                        return (
-                                            <li key={it} style={{ fontSize: 13, fontWeight: 600 }}>
-                                                <a onClick={handler} className="kc-foot-link" style={{ color: '#fff', opacity: 0.7, textDecoration: 'none', cursor: 'pointer', transition: 'opacity .15s, color .15s' }}
-                                                    onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = KC.orange }}
-                                                    onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.color = '#fff' }}>{it}</a>
-                                            </li>
-                                        )
-                                    })}
+                                    {col.items.map((item, iIdx) => (
+                                        <li key={iIdx}>
+                                            <button
+                                                onClick={item.fn}
+                                                style={{
+                                                    background: 'none', border: 'none', padding: 0, color: '#D1D5DB',
+                                                    fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                                                    fontFamily: FONT, transition: 'color 0.15s ease',
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.color = KC.orange}
+                                                onMouseLeave={(e) => e.currentTarget.style.color = '#D1D5DB'}
+                                            >
+                                                {item.label}
+                                            </button>
+                                        </li>
+                                    ))}
                                 </ul>
                             </div>
                         ))}
                     </div>
-                    <div className="kc-foot-row" style={{ borderTop: '1px solid rgba(255,255,255,0.13)', paddingTop: 22, display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: 0.6, flexWrap: 'wrap', gap: 12 }}>
-                        <span>© 2026 KerjaCerdas Indonesia</span>
+
+                    <div style={{
+                        borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: 20,
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        fontSize: 11, color: '#9CA3AF', flexWrap: 'wrap', gap: 10,
+                    }}>
+                        <span>© 2026 KerjaCerdas Indonesia. Seluruh hak cipta dilindungi.</span>
                     </div>
                 </div>
             </footer>

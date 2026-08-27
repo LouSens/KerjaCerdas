@@ -13,7 +13,6 @@ import OnboardingWizard from './components/OnboardingWizard'
 // Public views
 import LandingHero from './components/LandingHero'
 import PrivacyPolicyPage from './components/PrivacyPolicyPage'
-import PricingPage from './components/PricingPage'
 import AboutPage from './components/AboutPage'
 
 // Seeker views
@@ -38,7 +37,7 @@ import EmployerProfile from './components/EmployerProfile'
 // ── Route map: view key ↔ URL path ─────────────────────────────────────────
 export const VIEW_TO_PATH = {
     'home':                  '/',
-    'pricing':               '/harga',
+    'pricing':               '/',
     'about':                 '/tentang',
     'privacy':               '/privasi',
     'seeker-dashboard':      '/dashboard',
@@ -116,7 +115,6 @@ function AppShell({ children }) {
 
     return (
         <div className="flex">
-            <AuthModal />
             {showOnboarding && (
                 <OnboardingWizard onClose={() => {
                     // Wizard closed — stay on current page
@@ -146,12 +144,13 @@ export default function App() {
     return (
         <div className="min-h-screen bg-kc-cream font-sans text-kc-dark">
             <NavigationSync />
+            <AuthModal />
 
             <Routes>
                 {/* ── Public routes ───────────────────────────────────────────── */}
                 <Route path="/" element={<LandingHero />} />
-                <Route path="/harga" element={<><PublicHeader /><main className="pt-20"><PricingPage /></main><Footer /></>} />
-                <Route path="/tentang" element={<><PublicHeader /><main className="pt-20"><AboutPage /></main><Footer /></>} />
+                <Route path="/harga" element={<Navigate to="/" replace />} />
+                <Route path="/tentang" element={<AboutPage />} />
                 <Route path="/privasi" element={<><PublicHeader /><main className="pt-20"><PrivacyPolicyPage /></main><Footer /></>} />
 
                 {/* ── Seeker routes ─────────────────────────── */}
@@ -232,9 +231,6 @@ export default function App() {
                         <AppShell><EmployerProfile /></AppShell>
                     </ProtectedRoute>
                 } />
-
-                {/* ── Pricing & About accessible while logged in ── */}
-                <Route path="/harga" element={<PricingPage />} />
 
                 {/* ── Catch-all → home ──────────────────────── */}
                 <Route path="*" element={<Navigate to="/" replace />} />
