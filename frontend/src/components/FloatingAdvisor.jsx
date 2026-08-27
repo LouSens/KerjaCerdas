@@ -1,41 +1,28 @@
 /**
  * FloatingAdvisor — Seeker-only AI career chat bubble.
- *
- * FIX: renderMarkdown and parseInline were defined AFTER the component
- * using `const` (arrow functions), which are NOT hoisted. This caused a
- * ReferenceError / blank render when the AI response was shown.
- * Both helpers are now defined ABOVE the component so they are available
- * at parse time.
- *
- * Personalization: after CV upload, the advisor greeting references the
- * seeker's name (from store.profile) and skills so the LLM context passed
- * to /agent/invoke includes the seeker's actual profile, making every
- * answer personalized to their CV and the current job postings.
+ * Redesigned with Enterprise Neobrutalism styling, prompt suggestion chips, and responsive layout.
  */
 import { useEffect, useRef } from 'react'
-import { X, Send, Loader2, Bot } from 'lucide-react'
+import { X, Send, Loader2, Sparkles, Bot, CheckCircle2, MessageSquare, ArrowRight, User } from 'lucide-react'
 import useStore from '../store/useStore'
+import { KC, DesignStyles } from './_design'
 
-// ─── Markdown helpers (must be defined BEFORE the component) ─────────────────
+// ─── Markdown helpers ─────────────────────────────────────────────────────────
 
 const parseInline = (text) => {
     if (!text) return ''
-    // NOTE: every element MUST have a key unique across the whole returned
-    // array. flatMap with per-segment indexes produced duplicate React keys,
-    // which caused React to duplicate DOM text on every re-render (one extra
-    // copy per keystroke in the input box).
     const parts = text.split('**')
     return parts.map((part, i) => {
         const isBold = i % 2 === 1
         const renderedSubParts = part.split('*').map((subPart, j) => {
             const isItalic = j % 2 === 1
             if (isItalic) {
-                return <em key={`${i}-${j}`} className="not-italic font-medium text-kc-orange">{subPart}</em>
+                return <em key={`${i}-${j}`} style={{ color: KC.orange, fontStyle: 'normal', fontWeight: 600 }}>{subPart}</em>
             }
             return <span key={`${i}-${j}`}>{subPart}</span>
         })
         if (isBold) {
-            return <strong key={i} className="font-extrabold text-kc-dark">{renderedSubParts}</strong>
+            return <strong key={i} style={{ fontWeight: 800, color: KC.ink }}>{renderedSubParts}</strong>
         }
         return <span key={i}>{renderedSubParts}</span>
     })
@@ -47,28 +34,33 @@ const renderMarkdown = (text) => {
     return lines.map((line, idx) => {
         let cleanLine = line.trim()
         if (cleanLine === '---') {
-            return <hr key={idx} className="border-t border-dashed border-kc-dark my-2" />
+            return <hr key={idx} style={{ border: 'none', borderTop: `1px dashed ${KC.borderMuted}`, margin: '8px 0' }} />
         }
 
         const headerMatch = cleanLine.match(/^(#{1,6})\s+(.*)/)
         if (headerMatch) {
             const level = headerMatch[1].length
             const content = headerMatch[2]
-            if (level === 3) {
-                return <h4 key={idx} className="font-extrabold text-[13px] mt-3 mb-1 uppercase text-kc-dark block">{parseInline(content)}</h4>
-            } else if (level <= 2) {
-                return <h3 key={idx} className="font-extrabold text-sm mt-4 mb-1 text-kc-orange block">{parseInline(content)}</h3>
-            } else {
-                return <h5 key={idx} className="font-bold text-[11px] mt-2 mb-1 text-kc-dark block">{parseInline(content)}</h5>
+            if (level <= 2) {
+                return (
+                    <h3 key={idx} style={{ fontSize: 13, fontWeight: 900, color: KC.orange, margin: '8px 0 4px', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                        {parseInline(content)}
+                    </h3>
+                )
             }
+            return (
+                <h4 key={idx} style={{ fontSize: 12, fontWeight: 800, color: KC.ink, margin: '6px 0 2px' }}>
+                    {parseInline(content)}
+                </h4>
+            )
         }
 
         const bulletMatch = cleanLine.match(/^[-*]\s+(.*)/)
         if (bulletMatch) {
             return (
-                <div key={idx} className="flex gap-1.5 ml-2 my-1 items-start">
-                    <span className="text-kc-orange">•</span>
-                    <span className="flex-1 text-xs">{parseInline(bulletMatch[1])}</span>
+                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, margin: '3px 0 3px 4px', fontSize: 12, lineHeight: 1.45 }}>
+                    <span style={{ color: KC.orange, fontWeight: 900 }}>•</span>
+                    <span style={{ flex: 1, color: KC.ink }}>{parseInline(bulletMatch[1])}</span>
                 </div>
             )
         }
@@ -76,9 +68,9 @@ const renderMarkdown = (text) => {
         const numMatch = cleanLine.match(/^(\d+)\.\s+(.*)/)
         if (numMatch) {
             return (
-                <div key={idx} className="flex gap-1.5 ml-2 my-1 items-start">
-                    <span className="font-bold text-kc-orange">{numMatch[1]}.</span>
-                    <span className="flex-1 text-xs">{parseInline(numMatch[2])}</span>
+                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, margin: '3px 0 3px 4px', fontSize: 12, lineHeight: 1.45 }}>
+                    <span style={{ fontWeight: 800, color: KC.orange }}>{numMatch[1]}.</span>
+                    <span style={{ flex: 1, color: KC.ink }}>{parseInline(numMatch[2])}</span>
                 </div>
             )
         }
@@ -87,19 +79,25 @@ const renderMarkdown = (text) => {
             const cells = cleanLine.split('|').map(c => c.trim()).filter(c => c !== '')
             if (cells.every(c => c.match(/^-+$/))) return null
             return (
-                <div key={idx} className="flex gap-3 px-2 py-1 bg-white border-b border-kc-dark text-[10px] font-bold">
+                <div key={idx} style={{ display: 'flex', gap: 8, padding: '4px 8px', background: '#FFFFFF', border: `1px solid ${KC.ash}`, borderRadius: 4, fontSize: 11, fontWeight: 700, margin: '4px 0' }}>
                     {cells.map((cell, cidx) => (
-                        <div key={cidx} className="flex-1">{parseInline(cell)}</div>
+                        <div key={cidx} style={{ flex: 1 }}>{parseInline(cell)}</div>
                     ))}
                 </div>
             )
         }
 
-        if (cleanLine === '') return <div key={idx} className="h-2" />
+        if (cleanLine === '') return <div key={idx} style={{ height: 6 }} />
 
-        return <p key={idx} className="my-1 leading-normal text-xs">{parseInline(line)}</p>
+        return <p key={idx} style={{ margin: '4px 0', fontSize: 12, lineHeight: 1.5, color: KC.ink }}>{parseInline(line)}</p>
     })
 }
+
+const QUICK_PROMPTS = [
+    'Skill apa yang perlu saya tingkatkan untuk posisi Backend?',
+    'Bagaimana cara meningkatkan skor kecocokan saya?',
+    'Rekomendasikan lowongan paling relevan untuk profil saya',
+]
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -124,93 +122,263 @@ export default function FloatingAdvisor() {
     const hasCV = Boolean(seekerId || profile?.skills?.length > 0)
     const topSkills = (profile?.skills || []).slice(0, 3).map(s => s.name || s).join(', ')
 
-    // Personalized placeholder based on CV state
     const placeholder = hasCV
-        ? `Tanya tentang ${topSkills ? topSkills + '...' : 'karier kamu…'}`
-        : 'Upload CV dulu agar saran lebih personal…'
+        ? `Tanya seputar ${topSkills ? topSkills + '…' : 'karir Anda…'}`
+        : 'Ketik pertanyaan karir atau upload CV Anda…'
 
-    const submit = (e) => {
-        e?.preventDefault()
-        if (!advisorInput.trim() || agentLoading) return
-        // Pass explicit 'advise' intent so the backend routes to run_advisor
-        // with full seeker context (skills from CV + top job matches)
-        runAgent({ message: advisorInput, explicitIntent: 'advise' })
+    const submit = (e, customMsg = null) => {
+        if (e) e.preventDefault()
+        const text = customMsg || advisorInput
+        if (!text.trim() || agentLoading) return
+        runAgent({ message: text, explicitIntent: 'advise' })
     }
 
     return (
         <>
+            <DesignStyles />
+
             {/* Bubble toggle button */}
             <button
+                id="floating-advisor-toggle-btn"
                 onClick={toggleFloatingAdvisor}
-                className={`fixed bottom-6 right-6 z-40 w-14 h-14 bg-kc-dark text-white border-2 border-kc-dark shadow-brutal grid place-items-center hover:bg-kc-orange transition-colors ${
-                    floatingAdvisorOpen ? '' : 'animate-pulse'
-                }`}
+                style={{
+                    position: 'fixed',
+                    bottom: 24,
+                    right: 24,
+                    zIndex: 999,
+                    height: 52,
+                    padding: floatingAdvisorOpen ? '0 16px' : '0 20px',
+                    background: floatingAdvisorOpen ? '#FFFFFF' : KC.ink,
+                    color: floatingAdvisorOpen ? KC.ink : '#FFFFFF',
+                    border: `2px solid ${KC.ink}`,
+                    borderRadius: 14,
+                    boxShadow: `3px 3px 0 ${KC.ink}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    cursor: 'pointer',
+                    fontWeight: 800,
+                    fontSize: 13,
+                    fontFamily: 'inherit',
+                    transition: 'all 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translate(-2px, -2px)'
+                    e.currentTarget.style.boxShadow = `5px 5px 0 ${KC.ink}`
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translate(0, 0)'
+                    e.currentTarget.style.boxShadow = `3px 3px 0 ${KC.ink}`
+                }}
                 aria-label="AI Career Advisor"
-                title={hasCV ? 'Tanya AI Advisor kamu' : 'Upload CV dulu untuk saran personal'}
             >
-                {floatingAdvisorOpen ? <X size={20} /> : <Bot size={20} />}
+                {floatingAdvisorOpen ? (
+                    <>
+                        <X size={18} />
+                        <span>Tutup Chat</span>
+                    </>
+                ) : (
+                    <>
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: KC.orange, border: `1px solid ${KC.ink}`, display: 'grid', placeItems: 'center', color: '#FFFFFF' }}>
+                            <Sparkles size={15} />
+                        </div>
+                        <span>AI Advisor</span>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: KC.lime, boxShadow: `0 0 6px ${KC.lime}` }} />
+                    </>
+                )}
             </button>
 
             {/* Chat panel */}
             <div
-                className={`fixed bottom-24 right-6 z-40 w-[360px] max-w-[calc(100vw-2rem)] h-[480px] max-h-[calc(100vh-7rem)]
-                            bg-white border-2 border-kc-dark shadow-brutal flex flex-col origin-bottom-right
-                            transition-all duration-200 ${
-                    floatingAdvisorOpen
-                        ? 'opacity-100 scale-100 pointer-events-auto'
-                        : 'opacity-0 scale-90 pointer-events-none'
-                }`}
+                style={{
+                    position: 'fixed',
+                    bottom: 88,
+                    right: 24,
+                    zIndex: 999,
+                    width: 390,
+                    maxWidth: 'calc(100vw - 32px)',
+                    height: 530,
+                    maxHeight: 'calc(100vh - 110px)',
+                    background: '#FFFFFF',
+                    border: `2px solid ${KC.ink}`,
+                    borderRadius: 14,
+                    boxShadow: `5px 5px 0 ${KC.ink}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                    opacity: floatingAdvisorOpen ? 1 : 0,
+                    transform: floatingAdvisorOpen ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(20px)',
+                    pointerEvents: floatingAdvisorOpen ? 'auto' : 'none',
+                }}
             >
-                <header className="px-4 py-3 border-b-2 border-kc-dark flex items-center gap-3 bg-kc-cream">
-                    <div className="w-7 h-7 bg-kc-cyan border border-kc-dark flex items-center justify-center">
-                        <Bot size={14} className="text-kc-dark" />
+                {/* Header */}
+                <header style={{ padding: '14px 16px', background: KC.surface, borderBottom: `1.5px solid ${KC.ink}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 8, background: KC.orange, border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', color: '#FFFFFF' }}>
+                            <Sparkles size={16} />
+                        </div>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 14, fontWeight: 900, color: KC.ink }}>Career Advisor AI</span>
+                                <span style={{ padding: '1px 6px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 4, fontSize: 9, fontWeight: 800, color: '#047857' }}>
+                                    ONLINE
+                                </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: KC.mute, marginTop: 1 }}>
+                                {hasCV ? `Terhubung ke Profil (${profile?.skills?.length || 4} keahlian)` : 'Mode Konsultasi Umum'}
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex-1">
-                        <p className="text-sm font-bold text-kc-dark leading-tight">Career Advisor</p>
-                        <p className="text-[10px] font-mono text-kc-gray leading-tight">
-                            {hasCV ? `Berdasarkan CV kamu · ${profile?.skills?.length || 0} skill` : 'Upload CV untuk saran personal'}
-                        </p>
-                    </div>
-                    {!hasCV && (
-                        <span className="text-[10px] font-bold text-kc-orange border border-kc-orange px-1.5 py-0.5">
-                            Tanpa CV
-                        </span>
-                    )}
+                    <button
+                        onClick={toggleFloatingAdvisor}
+                        style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 6,
+                            border: `1.5px solid ${KC.ink}`,
+                            background: '#FFFFFF',
+                            cursor: 'pointer',
+                            display: 'grid',
+                            placeItems: 'center',
+                            color: KC.ink,
+                        }}
+                    >
+                        <X size={15} />
+                    </button>
                 </header>
 
-                <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-                    {advisorLog.map((m, i) => (
-                        <div
-                            key={i}
-                            className={`w-fit rounded-xl text-xs leading-relaxed px-3 py-2 max-w-[85%] border-2 border-kc-dark ${
-                                m.role === 'user'
-                                    ? 'ml-auto bg-kc-dark text-white rounded-br-sm'
-                                    : 'mr-auto bg-kc-cream text-kc-dark rounded-bl-sm'
-                            }`}
-                        >
-                            {m.role === 'user' ? m.content : renderMarkdown(m.content)}
+                {/* Messages Body */}
+                <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, background: '#FFFFFF' }}>
+                    {advisorLog.length === 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 'auto', marginBottom: 'auto' }}>
+                            <div style={{ padding: '16px', background: KC.surface, border: `1.5px solid ${KC.ink}`, borderRadius: 10, boxShadow: `2px 2px 0 ${KC.ink}` }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                    <Sparkles size={16} color={KC.orange} />
+                                    <h4 style={{ fontSize: 13, fontWeight: 800, margin: 0, color: KC.ink }}>Konsultasi Karir Cerdas</h4>
+                                </div>
+                                <p style={{ fontSize: 12, color: KC.inkLight, lineHeight: 1.5, margin: 0 }}>
+                                    Halo! Saya asisten AI KerjaCerdas. Tanyakan rekomendasi posisi, evaluasi resume, atau strategi peningkatan skill gap Anda.
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.mute }}>
+                                    Contoh Pertanyaan Cepat:
+                                </span>
+                                {QUICK_PROMPTS.map((prompt, pIdx) => (
+                                    <button
+                                        key={pIdx}
+                                        onClick={() => submit(null, prompt)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            background: '#FFFFFF',
+                                            border: `1.5px solid ${KC.ink}`,
+                                            borderRadius: 8,
+                                            boxShadow: `1.5px 1.5px 0 ${KC.ink}`,
+                                            textAlign: 'left',
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            color: KC.ink,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: 8,
+                                            transition: 'all 0.1s ease',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = KC.orangeSoft}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = '#FFFFFF'}
+                                    >
+                                        <span>{prompt}</span>
+                                        <ArrowRight size={12} color={KC.orange} style={{ flexShrink: 0 }} />
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    ))}
+                    ) : (
+                        advisorLog.map((m, i) => {
+                            const isUser = m.role === 'user'
+                            return (
+                                <div
+                                    key={i}
+                                    style={{
+                                        alignSelf: isUser ? 'flex-end' : 'flex-start',
+                                        maxWidth: '85%',
+                                        padding: '10px 14px',
+                                        background: isUser ? KC.ink : KC.surface,
+                                        color: isUser ? '#FFFFFF' : KC.ink,
+                                        border: `1.5px solid ${KC.ink}`,
+                                        borderRadius: isUser ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                                        boxShadow: isUser ? `2px 2px 0 ${KC.borderMuted}` : `2px 2px 0 ${KC.ink}`,
+                                        fontSize: 12,
+                                        lineHeight: 1.5,
+                                        wordBreak: 'break-word',
+                                    }}
+                                >
+                                    {isUser ? m.content : renderMarkdown(m.content)}
+                                </div>
+                            )
+                        })
+                    )}
+
                     {agentLoading && (
-                        <div className="flex items-center gap-2 text-[10px] text-kc-gray font-mono">
-                            <Loader2 size={12} className="animate-spin" /> Memproses…
+                        <div style={{ alignSelf: 'flex-start', padding: '8px 12px', background: KC.surface, border: `1.5px solid ${KC.ink}`, borderRadius: '12px 12px 12px 2px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, color: KC.mute }}>
+                            <Loader2 size={13} className="animate-spin" color={KC.orange} />
+                            <span>AI sedang menganalisis data karir…</span>
                         </div>
                     )}
                 </div>
 
-                <form onSubmit={submit} className="p-3 border-t-2 border-kc-dark flex items-center gap-2 bg-kc-cream">
+                {/* Input Footer */}
+                <form
+                    onSubmit={submit}
+                    style={{
+                        padding: '12px 14px',
+                        background: KC.surface,
+                        borderTop: `1.5px solid ${KC.ink}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                    }}
+                >
                     <input
                         value={advisorInput}
                         onChange={(e) => setAdvisorInput(e.target.value)}
                         placeholder={placeholder}
-                        className="flex-1 px-3 py-2 border-2 border-kc-dark text-xs bg-white focus:outline-none focus:border-kc-orange"
+                        style={{
+                            flex: 1,
+                            padding: '10px 12px',
+                            background: '#FFFFFF',
+                            border: `1.5px solid ${KC.ink}`,
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            fontFamily: 'inherit',
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                        }}
                     />
                     <button
                         type="submit"
                         disabled={agentLoading || !advisorInput.trim()}
-                        className="w-9 h-9 bg-kc-dark text-white border-2 border-kc-dark grid place-items-center disabled:opacity-40 hover:bg-kc-orange transition-colors"
+                        style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 8,
+                            background: KC.orange,
+                            border: `1.5px solid ${KC.ink}`,
+                            boxShadow: `2px 2px 0 ${KC.ink}`,
+                            color: '#FFFFFF',
+                            display: 'grid',
+                            placeItems: 'center',
+                            cursor: (agentLoading || !advisorInput.trim()) ? 'not-allowed' : 'pointer',
+                            opacity: (agentLoading || !advisorInput.trim()) ? 0.5 : 1,
+                            flexShrink: 0,
+                            transition: 'all 0.1s ease',
+                        }}
                     >
-                        <Send size={14} />
+                        <Send size={15} />
                     </button>
                 </form>
             </div>

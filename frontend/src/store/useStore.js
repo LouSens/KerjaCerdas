@@ -589,4 +589,8 @@ const useStore = create(
     )
 )
 
+if (typeof window !== 'undefined') {
+    window.useStore = useStore
+}
+
 export default useStore

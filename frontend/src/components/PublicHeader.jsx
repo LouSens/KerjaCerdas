@@ -112,6 +112,7 @@ export default function PublicHeader() {
                     {/* Auth buttons */}
                     <div className="kc-nav-desktop" style={{ alignItems: 'center', gap: 8 }}>
                         <button
+                            id="nav-login-btn"
                             onClick={() => openAuthModal('login')}
                             style={{
                                 padding: '7px 14px', fontSize: 13, fontWeight: 800,
@@ -123,6 +124,7 @@ export default function PublicHeader() {
                             Masuk
                         </button>
                         <button
+                            id="nav-register-btn"
                             onClick={() => openAuthModal('register', 'seeker')}
                             style={{
                                 padding: '7px 14px', fontSize: 13, fontWeight: 800,

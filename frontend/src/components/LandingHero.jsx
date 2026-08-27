@@ -336,7 +336,7 @@ function Logo({ size = 28, color = KC.ink, mark = KC.orange }) {
     )
 }
 
-function BrutalButton({ children, variant = 'primary', size = 'md', icon, full, onClick, style = {} }) {
+function BrutalButton({ children, onClick, variant = 'primary', size = 'md', full = false, icon, style = {}, disabled = false, id }) {
     const sizes = {
         sm: { padding: '8px 14px', fontSize: 13, radius: 8 },
         md: { padding: '12px 20px', fontSize: 14, radius: 9 },
@@ -352,14 +352,14 @@ function BrutalButton({ children, variant = 'primary', size = 'md', icon, full, 
     }[variant]
 
     return (
-        <button onClick={onClick} className={variant === 'ghost' ? '' : 'kc-btn'} style={{
+        <button id={id} disabled={disabled} onClick={onClick} className={variant === 'ghost' ? '' : 'kc-btn'} style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: sizes.padding, fontSize: sizes.fontSize, fontWeight: 800,
             background: variants.bg, color: variants.fg,
             border: `2px solid ${variants.border}`,
             boxShadow: variant === 'ghost' ? 'none' : `3.5px 3.5px 0 ${variants.shadow}`,
-            borderRadius: sizes.radius, cursor: 'pointer', letterSpacing: -0.2,
-            fontFamily: FONT, width: full ? '100%' : 'auto',
+            borderRadius: sizes.radius, cursor: disabled ? 'not-allowed' : 'pointer', letterSpacing: -0.2,
+            fontFamily: FONT, width: full ? '100%' : 'auto', opacity: disabled ? 0.6 : 1,
             '--kc-btn-shadow': variants.shadow, ...style,
         }}>
             {children}
@@ -671,8 +671,8 @@ function Navigation({ onMasuk, onDaftar, onAbout, onPricing }) {
 
                     {/* Desktop Auth Actions */}
                     <div className="kc-nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <BrutalButton variant="secondary" size="sm" onClick={onMasuk}>Masuk</BrutalButton>
-                        <BrutalButton variant="primary" size="sm" icon={<I.ArrowRight s={13} c="#fff" />} onClick={onDaftar}>Coba Gratis</BrutalButton>
+                        <BrutalButton id="nav-login-btn" variant="secondary" size="sm" onClick={onMasuk}>Masuk</BrutalButton>
+                        <BrutalButton id="nav-register-btn" variant="primary" size="sm" icon={<I.ArrowRight s={13} c="#fff" />} onClick={onDaftar}>Coba Gratis</BrutalButton>
                     </div>
 
                     {/* Mobile Hamburger Trigger */}
