@@ -127,6 +127,7 @@ flowchart TD
     A --> G["📈 Analisis Skill Gap\n(Rekomendasi Kursus Ed-Tech)"]:::page
     A --> H["🔎 Pencarian Cepat Multi-Filter"]:::page
     A --> I["🛡️ Verifikasi E-KYC &\nIjazah SIVIL Dikti"]:::action
+    A --> J["💬 Konsultasi AI Career Advisor\n(Tanya Jawab & Rekomendasi Karir)"]:::ai
 ```
 
 | 6. Dasbor Analitik Pencari Kerja | 7. Hasil Pencocokan AI (Top Matches) | 8. Explainable AI Score Modal |
@@ -140,6 +141,10 @@ flowchart TD
 | 12. Pelacakan Lamaran Saya | 13. Verifikasi Identitas E-KYC | 14. Ekstraksi CV PDF Cerdas |
 |:---:|:---:|:---:|
 | <img src="docs/assets/12_seeker_applications.png" width="380" alt="Application Tracker"> | <img src="docs/assets/13_seeker_verification.png" width="380" alt="Verification Dashboard"> | <img src="docs/assets/14_seeker_cv_upload.png" width="380" alt="CV Extraction"> |
+
+| 22. Konsultasi Interaktif AI Career Advisor (Tanya Jawab & Rekomendasi Karir) |
+|:---:|
+| <img src="docs/assets/22_ai_career_advisor.png" width="450" alt="AI Career Advisor Dialog"> |
 
 ---
 
