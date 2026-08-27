@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import hashlib
 
-from backend.app.api.dependencies import get_current_user
+from backend.app.api.dependencies import get_current_user_optional
 from fastapi import APIRouter, Depends
 
 router = APIRouter(prefix="/experiments", tags=["experiments"])
@@ -79,14 +79,12 @@ def get_variant(user_id: str, experiment: str) -> str:
 
 
 @router.get("/assignments")
-async def get_assignments(current_user=Depends(get_current_user)):
-    """Return the full variant assignment map for the logged-in user.
+async def get_assignments(current_user=Depends(get_current_user_optional)):
+    """Return the full variant assignment map for the logged-in user or anonymous session.
 
-    Frontend should call this once after login and store results in the
-    Zustand store under `experiments`. Every component reads its variant
-    from there — no further API calls needed.
+    Frontend stores results in Zustand store under `experiments`.
     """
-    user_id = str(current_user.id)
+    user_id = str(current_user.id) if current_user else "anonymous"
     return {exp: get_variant(user_id, exp) for exp in EXPERIMENTS}
 
 

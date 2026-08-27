@@ -178,4 +178,4 @@ async def init_db() -> None:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(ModelsBase.metadata.create_all)
         await _migrate_verification_logs_schema(conn)
-    logger.info("✅ Database tables created / verified")
+    logger.info("[DB] Database tables created / verified successfully")

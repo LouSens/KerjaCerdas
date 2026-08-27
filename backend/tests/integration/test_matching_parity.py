@@ -116,7 +116,9 @@ async def _seed() -> None:
             ]
         )
 
-        def seeker(suffix: str, skills: list[str], emb, emb_model) -> tuple[m.User, m.SeekerProfile]:
+        def seeker(
+            suffix: str, skills: list[str], emb, emb_model
+        ) -> tuple[m.User, m.SeekerProfile]:
             u = m.User(
                 id=f"{TAG}-su-{suffix}",
                 email=f"{TAG}-{suffix}@example.com",
@@ -174,7 +176,9 @@ async def test_rank_jobs_db_path_matches_in_memory() -> None:
     all_jobs = await store.get_repositories().jobs.list()
 
     db_results = _job_results_by_id(await matcher.rank_jobs_for_seeker(seeker, top_k=500))
-    mem_results = _job_results_by_id(await matcher.rank_jobs_for_seeker(seeker, all_jobs, top_k=500))
+    mem_results = _job_results_by_id(
+        await matcher.rank_jobs_for_seeker(seeker, all_jobs, top_k=500)
+    )
 
     assert set(db_results) == set(mem_results)
     for jid, db_r in db_results.items():
@@ -226,7 +230,9 @@ async def test_rank_jobs_falls_back_to_full_scan_when_ann_fails(monkeypatch) -> 
     monkeypatch.setattr(store, "semantic_search_jobs", _ann_fails)
 
     db_results = _job_results_by_id(await matcher.rank_jobs_for_seeker(seeker, top_k=500))
-    mem_results = _job_results_by_id(await matcher.rank_jobs_for_seeker(seeker, all_jobs, top_k=500))
+    mem_results = _job_results_by_id(
+        await matcher.rank_jobs_for_seeker(seeker, all_jobs, top_k=500)
+    )
 
     assert set(db_results) == set(mem_results)
     for jid, db_r in db_results.items():

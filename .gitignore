@@ -54,3 +54,7 @@ frontend/node_modules
 
 # UI Design Cache
 .design-cache/
+
+# Local Data & Scratch
+backend/data/
+scripts/fix_*.py

@@ -178,7 +178,9 @@ async def test_agent_endpoint_survives_total_quota_exhaustion():
     )
 
     repos = SimpleNamespace(
-        seekers=SimpleNamespace(get=AsyncMock(return_value=seeker), find=AsyncMock(return_value=[seeker])),
+        seekers=SimpleNamespace(
+            get=AsyncMock(return_value=seeker), find=AsyncMock(return_value=[seeker])
+        ),
         jobs=SimpleNamespace(get_many=AsyncMock(return_value=[job])),
         employers=SimpleNamespace(
             get=AsyncMock(return_value=SimpleNamespace(company_name="PT Test"))

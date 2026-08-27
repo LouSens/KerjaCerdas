@@ -35,6 +35,7 @@ from backend.app.api.routers.auth import router as auth_router
 from backend.app.api.routers.employer import router as employer_router  # prefix=/employer
 from backend.app.api.routers.events import router as events_router
 from backend.app.api.routers.experiments import router as experiments_router
+from backend.app.api.routers.inquiries import router as inquiries_router
 from backend.app.api.routers.jobs import router as jobs_router
 from backend.app.api.routers.karirhub import router as karirhub_router
 from backend.app.api.routers.seeker import router as seeker_router
@@ -129,6 +130,7 @@ for r in (
     karirhub_router,
     events_router,
     experiments_router,
+    inquiries_router,
     admin_router,
 ):
     app.include_router(r, prefix="/api/v1")

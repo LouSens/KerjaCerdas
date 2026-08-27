@@ -244,3 +244,18 @@ class Event(Base):
     ab_variant: Mapped[str | None] = mapped_column(String(30), nullable=True)
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
+class PartnershipInquiry(Base, TimestampedMixin):
+    """Stores partnership, campus integration, training, and enterprise inquiries."""
+
+    __tablename__ = "partnership_inquiries"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    organization: Mapped[str] = mapped_column(String(150), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    message: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    notes: Mapped[str] = mapped_column(Text, default="")
