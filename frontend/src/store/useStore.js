@@ -24,6 +24,7 @@ import {
     removeBookmark,
     loginUser,
     registerUser,
+    setAuthToken,
     fetchApplications,
     applyToJob,
     fetchEmployerProfile,
@@ -99,6 +100,7 @@ const useStore = create(
             login: async (email, password) => {
                 const res = await loginUser({ email, password })
                 const { access_token, user } = res
+                setAuthToken(access_token)
                 const resolvedRole = user.role
                 const homeView = resolvedRole === 'employer'
                     ? 'employer-dashboard'
@@ -114,9 +116,11 @@ const useStore = create(
                     matches: [],
                     applications: [],
                 })
-                toast.success(`Selamat datang, ${user.name}!`)
+                const displayName = (user.name || '').trim() || (resolvedRole === 'employer' ? 'Tim HR' : 'Pencari Kerja')
+                toast.success(`Selamat datang, ${displayName}!`, { id: 'auth-success' })
 
                 const store = get()
+                store.navigate(homeView)
                 if (resolvedRole === 'seeker') {
                     store.syncSavedJobs()
                     store.loadSeekerProfile()
@@ -132,6 +136,7 @@ const useStore = create(
             register: async (name, email, password, role) => {
                 const res = await registerUser({ name, email, password, role })
                 const { access_token, user } = res
+                setAuthToken(access_token)
                 const homeView = user.role === 'employer' ? 'employer-dashboard' : 'seeker-dashboard'
                 set({
                     isAuthenticated: true,
@@ -144,16 +149,20 @@ const useStore = create(
                     matches: [],
                     applications: [],
                 })
-                toast.success(`Akun ${user.role} dibuat — selamat datang ${user.name}!`)
+                const displayName = (user.name || '').trim() || (user.role === 'employer' ? 'Tim HR' : 'Pencari Kerja')
+                toast.success(`Akun dibuat — selamat datang, ${displayName}!`, { id: 'auth-success' })
+                const store = get()
+                store.navigate(homeView)
                 if (user.role === 'employer') {
-                    get().refreshEmployerJobs()
-                    get().loadEmployerProfile()
+                    store.refreshEmployerJobs()
+                    store.loadEmployerProfile()
                 }
-                get().loadExperiments()
+                store.loadExperiments()
                 return res
             },
 
             logout: () => {
+                setAuthToken(null)
                 set({
                     isAuthenticated: false,
                     userRole: null,
@@ -182,6 +191,20 @@ const useStore = create(
 
             navigate: (view) => {
                 const { isAuthenticated, userRole, openAuthModal } = get()
+                if (view === 'pricing') {
+                    set({ activeView: 'home' })
+                    if (_routerNavigate) {
+                        _routerNavigate('/')
+                    }
+                    setTimeout(() => {
+                        const el = document.getElementById('harga')
+                        if (el) {
+                            const y = el.getBoundingClientRect().top + window.scrollY - 76
+                            window.scrollTo({ top: y, behavior: 'smooth' })
+                        }
+                    }, 120)
+                    return
+                }
                 if (PUBLIC_VIEWS.has(view)) {
                     set({ activeView: view })
                     if (_routerNavigate && VIEW_TO_PATH[view]) {
@@ -557,6 +580,11 @@ const useStore = create(
                 activeView: s.activeView,
                 selectedCandidateJobId: s.selectedCandidateJobId,
             }),
+            onRehydrateStorage: () => (state) => {
+                if (state?.authToken) {
+                    setAuthToken(state.authToken)
+                }
+            },
         }
     )
 )

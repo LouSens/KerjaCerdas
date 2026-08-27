@@ -10,11 +10,31 @@ import toast from 'react-hot-toast'
 
 const API_BASE = '/api/v1'
 
+let _inMemoryToken = null
+
+export function setAuthToken(token) {
+    _inMemoryToken = token || null
+}
+
 export function _authHeader() {
+    if (_inMemoryToken) {
+        return { Authorization: `Bearer ${_inMemoryToken}` }
+    }
     try {
-        const raw = localStorage.getItem('kerjacerdas-v3')
-        const token = raw ? JSON.parse(raw)?.state?.authToken : null
-        return token ? { Authorization: `Bearer ${token}` } : {}
+        const rawV4 = localStorage.getItem('kerjacerdas-v4')
+        const tokenV4 = rawV4 ? JSON.parse(rawV4)?.state?.authToken : null
+        if (tokenV4) {
+            _inMemoryToken = tokenV4
+            return { Authorization: `Bearer ${tokenV4}` }
+        }
+
+        const rawV3 = localStorage.getItem('kerjacerdas-v3')
+        const tokenV3 = rawV3 ? JSON.parse(rawV3)?.state?.authToken : null
+        if (tokenV3) {
+            _inMemoryToken = tokenV3
+            return { Authorization: `Bearer ${tokenV3}` }
+        }
+        return {}
     } catch {
         return {}
     }
@@ -30,16 +50,21 @@ async function request(path, opts = {}) {
         ...opts,
     })
     if (!res.ok) {
-        // Auto-logout on token expiry
-        if (res.status === 401) {
+        const isAuthEndpoint = path.includes('/auth/login') || path.includes('/auth/register')
+
+        // Auto-logout on token expiry for authenticated routes only (debounced by toast ID)
+        if (res.status === 401 && !isAuthEndpoint) {
             try {
-                toast.error('Sesi Anda telah berakhir, silakan login kembali.')
+                const hadToken = Boolean(_authHeader()?.Authorization)
+                if (hadToken) {
+                    toast.error('Sesi Anda telah berakhir, silakan masuk kembali.', { id: 'session-expired' })
+                }
                 const { default: useStore } = await import('../store/useStore')
                 useStore.getState().logout()
             } catch { /* ignore if store unavailable */ }
         }
-        if (res.status === 403) {
-            toast.error('Akses ditolak: Anda tidak memiliki izin.')
+        if (res.status === 403 && !isAuthEndpoint) {
+            toast.error('Akses ditolak: Anda tidak memiliki izin.', { id: 'forbidden-access' })
         }
         // Try to surface FastAPI's `detail` so the UI can show real messages.
         let detail = `${res.status} ${res.statusText}`
@@ -253,3 +278,16 @@ export const updateApplicationStatus = (applicationId, status) =>
         method: 'PATCH',
         body: JSON.stringify({ status }),
     })
+
+// ── Partnership & Enterprise Inquiries ──────────────────────────────────────
+export const submitPartnershipInquiry = (data) =>
+    request(`${API_BASE}/inquiries`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+
+export const fetchPartnershipInquiries = (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request(`${API_BASE}/inquiries${qs ? `?${qs}` : ''}`)
+}
+

@@ -14,6 +14,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import {
     _authHeader,
+    setAuthToken,
     loginUser,
     registerUser,
     fetchJobs,
@@ -28,22 +29,33 @@ afterAll(() => server.close())
 // ── _authHeader ─────────────────────────────────────────────────────────────
 
 describe('_authHeader', () => {
-    afterEach(() => localStorage.clear())
+    afterEach(() => {
+        localStorage.clear()
+        setAuthToken(null)
+    })
 
     it('returns empty object when no token stored', () => {
         expect(_authHeader()).toEqual({})
     })
 
-    it('returns Bearer header when token present', () => {
+    it('returns Bearer header when token present in v4', () => {
         localStorage.setItem(
-            'kerjacerdas-v3',
+            'kerjacerdas-v4',
             JSON.stringify({ state: { authToken: 'abc123' } }),
         )
         expect(_authHeader()).toEqual({ Authorization: 'Bearer abc123' })
     })
 
+    it('returns Bearer header when token present in v3 fallback', () => {
+        localStorage.setItem(
+            'kerjacerdas-v3',
+            JSON.stringify({ state: { authToken: 'def456' } }),
+        )
+        expect(_authHeader()).toEqual({ Authorization: 'Bearer def456' })
+    })
+
     it('handles malformed localStorage gracefully', () => {
-        localStorage.setItem('kerjacerdas-v3', 'NOT_JSON')
+        localStorage.setItem('kerjacerdas-v4', 'NOT_JSON')
         expect(_authHeader()).toEqual({})
     })
 })
