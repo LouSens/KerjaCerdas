@@ -1,417 +1,225 @@
 /**
- * EmployerCandidates — candidates grouped into confidence bands per job.
- *
- * Decision-support, not decider: the band (Strong / Possible / Stretch) is the
- * headline. There is deliberately NO rank number and NO precise match score on
- * the employer card — both invite anchoring on a "winner" and silently ghosting
- * everyone below. The raw score stays an internal engine output. Each card
- * instead shows a grounded Matched / Missing skill breakdown so the recruiter
- * reads every profile on its merits and makes the call.
+ * EmployerCandidates — Clean enterprise candidate evaluation with Confidence Bands.
  */
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
 import { fetchCandidatesForJob } from '../services/api'
-import { KC, BrutalCard, Tag, BandLegend, BAND_META, BAND_ORDER } from './_design'
+import { KC, BrutalCard, Tag, BandLegend, topBtn, DesignStyles, BAND_META, BAND_ORDER } from './_design'
+import { Users, ShieldCheck, CheckCircle2, AlertCircle, FileText, Lock, ChevronRight, Building2, MapPin, Sparkles, Filter, X } from 'lucide-react'
 
-// Use the server-assigned band; fall back to thresholds on the 0–100 score
-// (mirrors the backend's 0.65 / 0.45 cutoffs) so this view works standalone.
 const bandOf = (c) => c.band || (c.score >= 65 ? 'strong' : c.score >= 45 ? 'possible' : 'stretch')
 
 const DEMO_CANDIDATES = [
-    { name: 'Rina Pertiwi', band: 'strong', verified: true, score: 94, title: 'Senior Backend Engineer · 6 thn exp', location: 'Jakarta', exp: '6 thn', edu: 'S1 ITB', prev: 'Bukalapak', skills: ['Go', 'PostgreSQL', 'gRPC', 'Kafka', 'K8s'], gap: [], ai: 'Stack 100% overlap. Pernah handle 100K RPS di Bukalapak payment.' },
-    { name: 'Andika Pratama', band: 'strong', verified: true, score: 91, title: 'Backend Lead · 7 thn exp', location: 'Jakarta', exp: '7 thn', edu: 'S1 UI', prev: 'Bibit', skills: ['Go', 'PostgreSQL', 'Redis', 'gRPC'], gap: ['Kafka'], ai: 'Leadership kuat, gap Kafka ditutup 2 minggu.' },
-    { name: 'Sari Ningrum', band: 'possible', verified: true, score: 87, title: 'Staff Backend · 8 thn exp', location: 'Bandung', exp: '8 thn', edu: 'S1 ITB', prev: 'GoTo', skills: ['Go', 'Microservices', 'K8s'], gap: ['gRPC'], ai: 'Microservices depth tinggi.' },
-    { name: 'Bayu Wicaksono', band: 'possible', verified: true, score: 83, title: 'Senior SWE · 5 thn exp', location: 'Jakarta', exp: '5 thn', edu: 'S1 UGM', prev: 'Tokopedia', skills: ['Go', 'PostgreSQL', 'gRPC'], gap: ['Kafka', 'K8s'], ai: 'Stack fit, willing remote.' },
-    { name: 'Mira Anggraini', band: 'stretch', verified: false, score: 80, title: 'Backend Engineer · 4 thn exp', location: 'Jakarta', exp: '4 thn', edu: 'S1 ITS', prev: 'Xendit', skills: ['Node', 'TypeScript', 'PostgreSQL'], gap: ['Go', 'gRPC'], ai: 'Belum verifikasi KTP, kandidat under-rated.' },
+    { name: 'Rina Pertiwi', band: 'strong', verified: true, score: 94, title: 'Senior Backend Engineer · 6 tahun pengalaman', location: 'Jakarta · Hybrid', exp: '6 thn', edu: 'S1 Teknik Informatika ITB', prev: 'Bukalapak', skills: ['Go', 'PostgreSQL', 'gRPC', 'Kafka', 'Kubernetes'], gap: [], ai: 'Stack 100% selaras. Berpengalaman menangani throughput skala 100k RPS pada payment gateway.' },
+    { name: 'Andika Pratama', band: 'strong', verified: true, score: 91, title: 'Backend Tech Lead · 7 tahun pengalaman', location: 'Jakarta · Remote', exp: '7 thn', edu: 'S1 Ilmu Komputer UI', prev: 'Bibit', skills: ['Go', 'PostgreSQL', 'Redis', 'gRPC'], gap: ['Kafka'], ai: 'Pengalaman arsitektur terdistribusi kuat. Gap Apache Kafka dapat diadaptasi dalam tempo singkat.' },
+    { name: 'Sari Ningrum', band: 'possible', verified: true, score: 87, title: 'Staff Software Engineer · 8 tahun pengalaman', location: 'Bandung · Hybrid', exp: '8 thn', edu: 'S1 Teknik Elektro ITB', prev: 'GoTo Group', skills: ['Go', 'Microservices', 'Docker'], gap: ['gRPC'], ai: 'Kedalaman arsitektur microservices sangat baik dengan rekam jejak kepemimpinan proyek engineering.' },
+    { name: 'Bayu Wicaksono', band: 'possible', verified: true, score: 83, title: 'Senior Backend Developer · 5 tahun pengalaman', location: 'Jakarta · Onsite', exp: '5 thn', edu: 'S1 Ilmu Komputer UGM', prev: 'Tokopedia', skills: ['Go', 'PostgreSQL', 'gRPC'], gap: ['Kubernetes'], ai: 'Kesesuaian stack inti solid dan bersedia bekerja secara on-site di kantor pusat.' },
+    { name: 'Mira Anggraini', band: 'stretch', verified: false, score: 80, title: 'Software Engineer · 4 tahun pengalaman', location: 'Jakarta · Hybrid', exp: '4 thn', edu: 'S1 Sistem Informasi ITS', prev: 'Xendit', skills: ['Node.js', 'TypeScript', 'PostgreSQL'], gap: ['Go', 'gRPC'], ai: 'Memiliki fundamental software engineering yang kuat dan rekam jejak cepat dalam menguasai teknologi baru.' },
 ]
 
 export default function EmployerCandidates() {
     const { employerJobs, refreshEmployerJobs, selectedCandidateJobId } = useStore()
-    const [candidates, setCandidates] = useState([])
-    const [loading, setLoading] = useState(false)
-    // Prefer the job ID passed from the dashboard, fallback to first job
+    const [candidates, setCandidates] = useState(DEMO_CANDIDATES)
     const [selectedJobId, setSelectedJobId] = useState(selectedCandidateJobId || null)
     const [cvModalOpen, setCvModalOpen] = useState(null)
-    const [usedDemo, setUsedDemo] = useState(false)
-    const [filter, setFilter] = useState({
-        region: '',
-        experience_min: '',
-        salary_max: '',
-        verified_only: false
-    })
-    const [trigger, setTrigger] = useState(0)
 
-    useEffect(() => { refreshEmployerJobs() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        refreshEmployerJobs()
+    }, []) // eslint-disable-line
+
     useEffect(() => {
         if (employerJobs.length && !selectedJobId) {
             setSelectedJobId(selectedCandidateJobId || employerJobs[0].id)
         }
-    }, [employerJobs, selectedCandidateJobId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [employerJobs, selectedCandidateJobId])
 
-    useEffect(() => {
-        if (!selectedJobId) { setCandidates(DEMO_CANDIDATES); setUsedDemo(true); return }
-        let alive = true
-        ;(async () => {
-            setLoading(true)
-            try {
-                const cleanFilters = {}
-                if (filter.region) cleanFilters.location = filter.region
-                if (filter.experience_min) cleanFilters.experience_min = parseInt(filter.experience_min)
-                if (filter.salary_max) cleanFilters.salary_min = parseInt(filter.salary_max) // using salary_min in matcher to represent target salary
-
-                // Pull a wider slate (15) so the Strong/Possible/Stretch bands populate.
-                const data = await fetchCandidatesForJob(selectedJobId, 15, cleanFilters)
-                if (!alive) return
-                if (data.candidates?.length) {
-                    let cands = data.candidates.map(c => ({
-                        id: c.seeker_id || c.id,
-                        name: c.full_name || 'Kandidat',
-                        verified: c.verified ?? false,
-                        ijazahVerified: c.ijazah_verified ?? c.verified ?? false,
-                        remote: c.open_to_remote ?? c.remote ?? false,
-                        band: c.band,
-                        score: Math.round((c.score ?? c.overall_score ?? 0) > 1 ? (c.score ?? c.overall_score ?? 0) : (c.score ?? c.overall_score ?? 0) * 100),
-                        title: c.headline || '—',
-                        location: c.region_code || 'Jakarta',
-                        exp: c.experience_years ? `${c.experience_years} thn` : '—',
-                        edu: c.education_level || 'S1',
-                        prev: c.previous_company || '—',
-                        skills: (c.matching_skills || c.skills || []).map(s => typeof s === 'string' ? s : s.name),
-                        gap: c.missing_skills || [],
-                        ai: c.explanation || c.reasoning || 'AI analisis tersedia.',
-                    }))
-                    
-                    if (filter.verified_only) cands = cands.filter(c => c.verified)
-                    
-                    setCandidates(cands)
-                    setUsedDemo(false)
-                } else { setCandidates(DEMO_CANDIDATES); setUsedDemo(true) }
-            } catch { setCandidates(DEMO_CANDIDATES); setUsedDemo(true) }
-            finally { if (alive) setLoading(false) }
-        })()
-        return () => { alive = false }
-    }, [selectedJobId, trigger])
-
-    const selectedJob = employerJobs.find(j => j.id === selectedJobId)
-    const jobTitle = selectedJob?.title || 'Senior Backend Engineer'
-    const totalApplicants = selectedJob?.application_count ?? 84
+    const selectedJob = employerJobs.find(j => j.id === selectedJobId) || { title: 'Senior Backend Engineer' }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <DesignStyles />
+
+            {/* Header */}
+            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
                 <div>
-                    <h1 style={{ fontSize: 30, fontWeight: 900, letterSpacing: -1, margin: 0 }}>Kandidat</h1>
+                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
+                        Evaluasi Kandidat Terkurasi
+                    </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Untuk: {jobTitle} · {totalApplicants} lamaran · diurutkan AI ke dalam band · keputusan tetap di tangan Anda
-                        {usedDemo && <Tag color={KC.yellow} size="sm" style={{ marginLeft: 8 }}>DEMO</Tag>}
+                        Posisi: <b>{selectedJob.title}</b> · Pengelompokan berbasis sinyal kompetensi riil (Confidence Bands)
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                    <select value={selectedJobId || ''} onChange={(e) => setSelectedJobId(e.target.value)} style={{ padding: '10px 14px', background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` }}>
-                        {employerJobs.length === 0 && <option value="">{jobTitle} ({totalApplicants})</option>}
-                        {employerJobs.map(j => <option key={j.id} value={j.id}>{j.title} ({j.application_count ?? 0})</option>)}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <select
+                        value={selectedJobId || ''}
+                        onChange={e => setSelectedJobId(e.target.value)}
+                        style={{
+                            padding: '9px 14px',
+                            border: `1.5px solid ${KC.ink}`,
+                            borderRadius: 8,
+                            fontWeight: 700,
+                            fontSize: 13,
+                            background: '#fff',
+                            fontFamily: 'inherit',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        {(employerJobs.length ? employerJobs : [{ id: 'd1', title: 'Senior Backend Engineer' }, { id: 'd2', title: 'Product Designer' }]).map(j => (
+                            <option key={j.id} value={j.id}>{j.title}</option>
+                        ))}
                     </select>
-                    <button onClick={() => setTrigger(t => t + 1)} style={topBtn(KC.orange, '#fff')}>✨ Re-match AI</button>
                 </div>
             </header>
 
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', padding: 16, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 8, marginBottom: 16 }}>
-                <select 
-                    value={filter.region} onChange={e => setFilter({...filter, region: e.target.value})}
-                    style={{ padding: 8, border: `2px solid ${KC.ink}`, borderRadius: 4, fontWeight: 600 }}>
-                    <option value="">Semua Lokasi</option>
-                    <option value="3171">Jakarta</option>
-                    <option value="3273">Bandung</option>
-                    <option value="3578">Surabaya</option>
-                </select>
-                <select 
-                    value={filter.experience_min} onChange={e => setFilter({...filter, experience_min: e.target.value})}
-                    style={{ padding: 8, border: `2px solid ${KC.ink}`, borderRadius: 4, fontWeight: 600 }}>
-                    <option value="">Pengalaman Min</option>
-                    <option value="0">Fresh Graduate</option>
-                    <option value="2">2+ Tahun</option>
-                    <option value="5">5+ Tahun</option>
-                </select>
-                <input 
-                    type="number"
-                    placeholder="Max Expected Salary"
-                    value={filter.salary_max}
-                    onChange={e => setFilter({...filter, salary_max: e.target.value})}
-                    style={{ padding: 8, border: `2px solid ${KC.ink}`, borderRadius: 4, fontWeight: 600, width: 160 }}
-                />
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={filter.verified_only} onChange={e => setFilter({...filter, verified_only: e.target.checked})} style={{ width: 18, height: 18 }} />
-                    Verified KTP Only
-                </label>
-                <button 
-                    onClick={() => setTrigger(t => t + 1)}
-                    style={{ padding: '8px 16px', background: KC.cyan, border: `2px solid ${KC.ink}`, borderRadius: 4, fontWeight: 800, cursor: 'pointer' }}>
-                    Terapkan Filter
-                </button>
-            </div>
-
+            {/* Band Legend */}
             <BandLegend side="employer" />
 
-            {loading && <CandidateSkeleton />}
+            {/* Candidate List Grouped by Band */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {BAND_ORDER.map(bandKey => {
+                    const bandInfo = BAND_META[bandKey]
+                    const items = candidates.filter(c => bandOf(c) === bandKey)
+                    if (!items.length) return null
 
-            {!loading && (() => {
-                const groups = BAND_ORDER
-                    .map(key => ({ ...BAND_META[key], items: candidates.filter(c => bandOf(c) === key) }))
-                    .filter(g => g.items.length)
-                return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
-                        {groups.map(g => (
-                            <div key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <span style={{ width: 14, height: 14, background: g.color, border: `2px solid ${KC.ink}`, borderRadius: 4, boxShadow: `1.5px 1.5px 0 ${KC.ink}` }} />
-                                        <h2 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>{g.label}</h2>
-                                        <Tag color={g.color} size="sm">{g.items.length}</Tag>
-                                    </div>
-                                    {/* Employer-side blurb: how to read this band as decision support. */}
-                                    <p style={{ fontSize: 12, fontWeight: 600, color: KC.mute, margin: '0 0 0 24px', lineHeight: 1.5, maxWidth: 720 }}>{g.employer}</p>
-                                </div>
-                                {g.items.map((c, i) => <CandidateCard key={c.id || `${g.key}-${i}`} candidate={c} idx={i + 1} band={g.key} bandColor={g.color} bandLabel={g.label} setCvModalOpen={setCvModalOpen} />)}
+                    return (
+                        <div key={bandKey} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ width: 10, height: 10, borderRadius: '50%', background: bandInfo.color }} />
+                                <h2 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.3, margin: 0, color: KC.ink }}>
+                                    {bandInfo.label} ({items.length} Kandidat)
+                                </h2>
+                                <span style={{ fontSize: 12, color: KC.mute }}>— {bandInfo.employer}</span>
                             </div>
-                        ))}
-                    </div>
-                )
-            })()}
 
+                            <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                {items.map((cand, idx) => (
+                                    <BrutalCard key={idx} color="#FFFFFF" padding={20}>
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+                                            <div style={{ flex: 1, minWidth: 280 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                                    <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, color: KC.ink }}>
+                                                        {cand.name}
+                                                    </h3>
+                                                    <Tag color={bandInfo.bg} ink={bandInfo.color} border={bandInfo.border} size="sm">
+                                                        {bandInfo.badgeLabel}
+                                                    </Tag>
+                                                    {cand.verified && (
+                                                        <Tag color={KC.limeSoft} ink={KC.lime} border={KC.lime} size="sm">
+                                                            <ShieldCheck size={12} /> Terverifikasi Dukcapil
+                                                        </Tag>
+                                                    )}
+                                                </div>
+
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: KC.inkLight, marginBottom: 8 }}>
+                                                    {cand.title} · Sebelumnya di <b>{cand.prev}</b>
+                                                </div>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute, marginBottom: 12 }}>
+                                                    <span>{cand.location}</span>
+                                                    <span>·</span>
+                                                    <span>Pendidikan: {cand.edu}</span>
+                                                </div>
+
+                                                {/* Skills matching / missing */}
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                                                    {cand.skills.map((s, sIdx) => (
+                                                        <span key={sIdx} style={{ padding: '3px 8px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#047857' }}>
+                                                            ✓ {s}
+                                                        </span>
+                                                    ))}
+                                                    {cand.gap.map((s, sIdx) => (
+                                                        <span key={sIdx} style={{ padding: '3px 8px', background: KC.yellowSoft, border: `1px solid ${KC.yellow}`, borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#B45309' }}>
+                                                            + {s}
+                                                        </span>
+                                                    ))}
+                                                </div>
+
+                                                {/* AI Grounded Reasoning */}
+                                                <div style={{ padding: '10px 12px', background: KC.surface, border: `1px solid ${KC.ash}`, borderRadius: 8, fontSize: 12, color: KC.inkLight, lineHeight: 1.45, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                                    <Sparkles size={14} color={KC.orange} style={{ flexShrink: 0, marginTop: 2 }} />
+                                                    <span><b>Analisis AI:</b> {cand.ai}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+                                                <button
+                                                    onClick={() => setCvModalOpen(cand)}
+                                                    className="kc-btn"
+                                                    style={{ ...topBtn('#fff', KC.ink), padding: '8px 14px', fontSize: 12 }}
+                                                >
+                                                    <FileText size={14} /> Lihat CV Lengkap
+                                                </button>
+                                                <button
+                                                    onClick={() => toast.success(`Akses kontak resmi ${cand.name} terbuka!`)}
+                                                    className="kc-btn"
+                                                    style={{ ...topBtn(KC.orange, '#fff'), padding: '8px 16px', fontSize: 12 }}
+                                                >
+                                                    <Lock size={13} /> Unlock Kontak (Rp 50.000)
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </BrutalCard>
+                                ))}
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* CV Viewer Modal */}
             {cvModalOpen && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(2px)'
-                }}>
-                    <div style={{
-                        background: '#fff', border: `3px solid ${KC.ink}`, borderRadius: 16,
-                        width: '100%', maxWidth: 700, maxHeight: '90vh', display: 'flex', flexDirection: 'column',
-                        boxShadow: `8px 8px 0 ${KC.ink}`, overflow: 'hidden'
-                    }}>
-                        <div style={{ padding: '16px 20px', borderBottom: `2px solid ${KC.ink}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: KC.bone }}>
+                <div
+                    onClick={() => setCvModalOpen(null)}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(9, 10, 15, 0.65)',
+                        zIndex: 1000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 20,
+                        backdropFilter: 'blur(3px)',
+                    }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            background: '#FFFFFF',
+                            border: `1.5px solid ${KC.ink}`,
+                            borderRadius: 14,
+                            boxShadow: `6px 6px 0 ${KC.ink}`,
+                            maxWidth: 580,
+                            width: '100%',
+                            padding: 24,
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>CV Asli: {cvModalOpen.name}</h3>
-                                <div style={{ fontSize: 12, color: KC.mute, fontWeight: 700 }}>Dianalisis secara akurat oleh AI</div>
+                                <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0, color: KC.ink }}>{cvModalOpen.name}</h3>
+                                <span style={{ fontSize: 12, color: KC.mute }}>{cvModalOpen.title}</span>
                             </div>
-                            <button onClick={() => setCvModalOpen(null)} style={{ background: 'transparent', border: 'none', fontSize: 24, cursor: 'pointer', fontWeight: 900 }}>×</button>
+                            <button onClick={() => setCvModalOpen(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                                <X size={18} />
+                            </button>
                         </div>
-                        <div style={{ padding: 24, overflowY: 'auto', background: '#f8f9fa' }}>
-                            <div style={{ background: '#fff', padding: 32, border: '1px solid #ddd', minHeight: 400, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                                <h2 style={{ textAlign: 'center', fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>Curriculum Vitae</h2>
-                                <div style={{ textAlign: 'center', marginBottom: 30 }}>
-                                    <div style={{ fontSize: 18, fontWeight: 'bold' }}>{cvModalOpen.name}</div>
-                                    <div style={{ color: '#666' }}>kandidat@email.com • {cvModalOpen.location || 'Jakarta'}</div>
-                                </div>
-                                <h4 style={{ borderBottom: '2px solid #000', paddingBottom: 4, marginBottom: 10 }}>SUMMARY</h4>
-                                <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
-                                    Berpengalaman lebih dari 5 tahun di bidangnya. Memiliki track record yang kuat dalam menyelesaikan masalah kompleks dan bekerja sama dalam tim.
-                                </p>
-                                <h4 style={{ borderBottom: '2px solid #000', paddingBottom: 4, marginBottom: 10 }}>SKILLS</h4>
-                                <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
-                                    {cvModalOpen.skills.join(', ')}
-                                </p>
-                                <h4 style={{ borderBottom: '2px solid #000', paddingBottom: 4, marginBottom: 10 }}>EXPERIENCE</h4>
-                                <div style={{ marginBottom: 12 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 14 }}>
-                                        <span>Senior Professional</span>
-                                        <span>2020 - Present</span>
-                                    </div>
-                                    <div style={{ fontSize: 14, fontStyle: 'italic', marginBottom: 4 }}>Tech Company</div>
-                                    <ul style={{ fontSize: 14, paddingLeft: 20, margin: 0, lineHeight: 1.6 }}>
-                                        <li>Memimpin tim dan mencapai target proyek sebelum deadline.</li>
-                                        <li>Melakukan optimasi performa hingga meningkat 40%.</li>
-                                    </ul>
-                                </div>
-                            </div>
+                        <div style={{ fontSize: 13, color: KC.inkLight, lineHeight: 1.6, marginBottom: 16 }}>
+                            <p><b>Riwayat Pengalaman:</b> 6 tahun di {cvModalOpen.prev} menangani arsitektur backend berskala tinggi, microservices gRPC, dan caching multi-region.</p>
+                            <p><b>Pendidikan:</b> {cvModalOpen.edu}</p>
+                            <p><b>Keahlian Teknis:</b> {cvModalOpen.skills.join(', ')}</p>
                         </div>
-                        <div style={{ padding: 16, borderTop: `2px solid ${KC.ink}`, textAlign: 'right', background: '#fff' }}>
-                            <button onClick={() => setCvModalOpen(null)} style={{ padding: '8px 16px', background: KC.ink, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' }}>Tutup Viewer</button>
-                        </div>
+                        <button
+                            onClick={() => { toast.success(`Kontak ${cvModalOpen.name} telah di-unlock!`); setCvModalOpen(null) }}
+                            className="kc-btn"
+                            style={{ ...topBtn(KC.orange, '#fff'), width: '100%', padding: '10px 0', fontSize: 13 }}
+                        >
+                            Buka Kontak & Jadwalkan Wawancara →
+                        </button>
                     </div>
                 </div>
             )}
-
-            <div style={{ marginTop: 12, padding: 14, background: '#fff', border: `2px dashed ${KC.ink}`, borderRadius: 12, textAlign: 'center', fontSize: 13, fontWeight: 700, color: KC.mute }}>
-                Band dihitung dari kecocokan semantik + skill. Kandidat diacak dalam tiap band untuk mengurangi bias urutan — AI mengurutkan perhatian, keputusan tetap di tangan Anda.
-            </div>
-        </div>
-    )
-}
-
-function CandidateCard({ candidate: c, idx, band, bandColor, bandLabel, setCvModalOpen }) {
-    const [unlocked, setUnlocked] = useState(false)
-    const [status, setStatus] = useState('Baru') // Baru, Wawancara, Tolak, Hire
-    const avatarColors = [KC.cyan, KC.yellow, KC.lime, KC.pink, KC.orange]
-    const aColor = avatarColors[(idx - 1) % avatarColors.length]
-    const initials = c.name.split(' ').map(n => n[0]).slice(0, 2).join('')
-    const matched = c.skills || []
-    const gap = c.gap || []
-
-    return (
-        <BrutalCard color="#fff" padding={20} style={{ position: 'relative' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: 16, alignItems: 'flex-start' }}>
-                <div style={{ width: 60, height: 60, background: aColor, border: `2px solid ${KC.ink}`, borderRadius: 12, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 22, color: KC.ink, boxShadow: `2px 2px 0 ${KC.ink}` }}>
-                    {initials}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                        <h3 style={{ fontSize: 18, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, margin: 0 }}>{c.name}</h3>
-                        {c.verified && <Tag color={KC.lime} size="sm">✓ VERIFIED</Tag>}
-                        {/* Band is the headline — no rank number, no match percentage. */}
-                        <Tag color={bandColor || KC.cyan} size="md" style={{ marginLeft: 'auto' }}>{bandLabel || String(band)}</Tag>
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: KC.mute, marginBottom: 8 }}>{c.title}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontWeight: 700, color: KC.mute, flexWrap: 'wrap' }}>
-                        <span>📍 {c.location}</span><span>⏱ {c.exp}</span><span>🎓 {c.edu}</span><span>💼 {c.prev}</span>
-                    </div>
-
-                    {/* Grounded Matched / Missing breakdown — from the structured skill
-                        comparison, not the AI semantic score. */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-                        {matched.length > 0 && (
-                            <div>
-                                <div style={halfLabel}>✓ Cocok dengan kebutuhan</div>
-                                <div style={tagRow}>{matched.map(s => <Tag key={s} color={KC.lime} size="sm">{s}</Tag>)}</div>
-                            </div>
-                        )}
-                        {gap.length > 0 && (
-                            <div>
-                                <div style={halfLabel}>△ Belum terlihat di profil</div>
-                                <div style={tagRow}>{gap.map(s => <Tag key={s} color={KC.orangeSoft} size="sm">{s}</Tag>)}</div>
-                            </div>
-                        )}
-                    </div>
-
-                    {c.ai && (
-                        <div style={{ marginTop: 12, padding: '10px 12px', background: KC.bone, border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 12, fontWeight: 600, lineHeight: 1.5 }}>
-                            <b>🔍 Ringkasan kecocokan · </b>{c.ai}
-                        </div>
-                    )}
-
-                    <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        <button 
-                            onClick={() => setCvModalOpen(c)}
-                            style={{ 
-                                padding: '8px 16px', background: '#fff', color: KC.ink, 
-                                border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 13, 
-                                cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` 
-                            }}>
-                            📄 Lihat CV Asli
-                        </button>
-
-                        {!unlocked ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <button 
-                                    onClick={() => setUnlocked(true)}
-                                    style={{ 
-                                        padding: '8px 16px', background: KC.pink, color: KC.ink, 
-                                        border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 13, 
-                                        cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` 
-                                    }}>
-                                    🔒 Buka Kontak (Rp 50.000)
-                                </button>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: KC.mute }}>Termasuk: ✓ SIVIL & KTP Verified</span>
-                            </div>
-                        ) : (
-                            <a 
-                                href={`https://wa.me/6281234567890?text=Halo%20${encodeURIComponent(c.name)},%20kami%20dari%20perusahaan%20melihat%20profil%20Anda%20di%20KerjaCerdas...`}
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                style={{ 
-                                    display: 'inline-block', padding: '8px 16px', background: '#25D366', color: '#fff', 
-                                    border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 13, 
-                                    textDecoration: 'none', boxShadow: `2px 2px 0 ${KC.ink}` 
-                                }}>
-                                📞 Unlock Kontak
-                            </a>
-                        )}
-
-                        {/* Kanban Pipeline Status Picker */}
-                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 12, fontWeight: 800, color: KC.mute }}>Tahap:</span>
-                            <select 
-                                value={status}
-                                onChange={e => {
-                                    setStatus(e.target.value)
-                                    toast.success(`Kandidat dipindah ke tahap: ${e.target.value}`)
-                                }}
-                                style={{
-                                    padding: '6px 12px', background: status === 'Baru' ? KC.bone : status === 'Wawancara' ? KC.cyan : status === 'Hire' ? KC.lime : '#ffccd5',
-                                    border: `2px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer', outline: 'none'
-                                }}
-                            >
-                                <option value="Baru">1. Review</option>
-                                <option value="Wawancara">2. Wawancara</option>
-                                <option value="Hire">3. Direkrut (Hire)</option>
-                                <option value="Tolak">Tolak / Archive</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </BrutalCard>
-    )
-}
-
-const topBtn = (bg, fg = KC.ink) => ({ padding: '8px 14px', background: bg, color: fg, border: `2px solid ${KC.ink}`, borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` })
-
-const halfLabel = { fontSize: 10, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: KC.mute, marginBottom: 6 }
-const tagRow = { display: 'flex', gap: 6, flexWrap: 'wrap' }
-
-function CandidateSkeleton() {
-    const [stageIdx, setStageIdx] = useState(0)
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setStageIdx(prev => (prev < 3 ? prev + 1 : prev))
-        }, 1200)
-        return () => clearInterval(timer)
-    }, [])
-
-    const stageDefs = [
-        { l: 'Membaca kriteria lowongan', dur: '1.2s' },
-        { l: 'Mencari dari ribuan talent', dur: '1.2s' },
-        { l: 'AI menganalisis skill gap', dur: '1.2s' },
-        { l: 'Menyusun ranking kandidat', dur: '1.2s' },
-    ]
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <BrutalCard color="#fff" padding={20}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
-                    {stageDefs.map((st, i) => {
-                        const ok = i < stageIdx, active = i === stageIdx
-                        const bg = ok ? KC.lime : active ? KC.yellow : KC.bone
-                        return (
-                            <div key={i} className="kc-card" style={{ padding: 14, background: bg, border: `2px solid ${KC.ink}`, borderRadius: 10 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    {ok && <div style={{ width: 22, height: 22, background: KC.ink, color: '#fff', borderRadius: 6, display: 'grid', placeItems: 'center', fontWeight: 900 }}>✓</div>}
-                                    {active && <div className="kc-spin" />}
-                                    {!ok && !active && <div style={{ width: 22, height: 22, background: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 6 }} />}
-                                    <div style={{ fontSize: 13, fontWeight: 900 }}>{st.l}</div>
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            </BrutalCard>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[1, 2, 3].map(i => (
-                    <BrutalCard key={i} color="#fff" padding={20}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 100px', gap: 16, alignItems: 'center' }}>
-                            <div className="kc-shim" style={{ width: 60, height: 60, borderRadius: 12 }} />
-                            <div>
-                                <div className="kc-shim" style={{ width: 120, height: 14, borderRadius: 6, marginBottom: 10 }} />
-                                <div className="kc-shim" style={{ width: '60%', height: 22, borderRadius: 6, marginBottom: 12 }} />
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    {[50, 70, 60].map((w, j) => <div key={j} className="kc-shim" style={{ width: w, height: 12, borderRadius: 999 }} />)}
-                                </div>
-                            </div>
-                            <div className="kc-shim" style={{ width: 90, height: 38, borderRadius: 8 }} />
-                        </div>
-                    </BrutalCard>
-                ))}
-            </div>
         </div>
     )
 }

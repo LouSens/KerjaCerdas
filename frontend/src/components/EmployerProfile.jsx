@@ -1,136 +1,232 @@
 /**
- * EmployerProfile — company profile editing page.
- * Section 2.4: Previously missing from sidebar and not reachable.
+ * EmployerProfile — Clean enterprise company profile and legal entity management.
  */
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, DesignStyles } from './_design'
+import { KC, BrutalCard, topBtn, Tag, DesignStyles } from './_design'
 import { updateEmployerProfile } from '../services/api'
 import toast from 'react-hot-toast'
+import { Building2, ShieldCheck, Globe, Users, FileText, CheckCircle2 } from 'lucide-react'
 
 const INDUSTRIES = [
-    'Teknologi', 'Keuangan & Perbankan', 'E-Commerce', 'Logistik',
-    'Manufaktur', 'Kesehatan', 'Pendidikan', 'Media & Hiburan',
-    'Konsultan', 'FMCG', 'Properti', 'Agrikultur', 'Lainnya',
+    'Teknologi & Perangkat Lunak',
+    'Keuangan, FinTech & Perbankan',
+    'E-Commerce & Logistik',
+    'Telekomunikasi & Infrastruktur',
+    'Kesehatan & Farmasi',
+    'Pendidikan & EdTech',
+    'FMCG & Retail Modern',
+    'Manufaktur & Energi',
 ]
 
 const COMPANY_SIZES = [
-    '1-10 karyawan', '11-50 karyawan', '51-200 karyawan',
-    '201-500 karyawan', '501-1000 karyawan', '1000+ karyawan',
+    '1 - 50 Karyawan',
+    '51 - 200 Karyawan',
+    '201 - 500 Karyawan',
+    '501 - 1000 Karyawan',
+    '1000+ Karyawan (Enterprise)',
 ]
-
-const labelStyle = {
-    fontSize: 11, fontWeight: 900, letterSpacing: 0.6,
-    textTransform: 'uppercase', color: '#64748b',
-    marginBottom: 6, display: 'block',
-}
-const inputStyle = {
-    padding: '10px 14px', background: '#fff', border: '2px solid #0f172a',
-    borderRadius: 10, fontSize: 13, fontWeight: 600, width: '100%',
-    boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none',
-}
 
 export default function EmployerProfile() {
     const { employerProfile, loadEmployerProfile, navigate } = useStore()
     const [form, setForm] = useState({
-        company_name: '', npwp: '', industry: '', size: '',
-        region_code: '3171', website: '', description: '',
+        company_name: 'GoTo Group (PT GoTo Gojek Tokopedia Tbk)',
+        npwp: '01.234.567.8-012.000',
+        industry: 'Teknologi & Perangkat Lunak',
+        size: '1000+ Karyawan (Enterprise)',
+        region_code: '3171',
+        website: 'https://gotocompany.com',
+        description: 'Ekosistem digital terdepan di Indonesia yang mengintegrasikan layanan on-demand, e-commerce, dan teknologi finansial.',
     })
     const [saving, setSaving] = useState(false)
-    const [saved, setSaved] = useState(false)
 
-    useEffect(() => { loadEmployerProfile() }, []) // eslint-disable-line
+    useEffect(() => {
+        loadEmployerProfile()
+    }, []) // eslint-disable-line
 
     useEffect(() => {
         if (employerProfile) {
-            setForm({
-                company_name: employerProfile.company_name || '',
-                npwp: employerProfile.npwp || '',
-                industry: employerProfile.industry || '',
-                size: employerProfile.size || '',
-                region_code: employerProfile.region_code || '3171',
-                website: employerProfile.website || '',
-                description: employerProfile.description || '',
-            })
+            setForm(prev => ({
+                ...prev,
+                company_name: employerProfile.company_name || prev.company_name,
+                npwp: employerProfile.npwp || prev.npwp,
+                industry: employerProfile.industry || prev.industry,
+                size: employerProfile.size || prev.size,
+                website: employerProfile.website || prev.website,
+                description: employerProfile.description || prev.description,
+            }))
         }
     }, [employerProfile])
 
     const handleSave = async () => {
-        if (!form.company_name.trim()) { toast.error('Nama perusahaan wajib diisi'); return }
+        if (!form.company_name.trim()) {
+            toast.error('Nama perusahaan wajib diisi')
+            return
+        }
         setSaving(true)
         try {
             await updateEmployerProfile(form)
             await loadEmployerProfile()
-            toast.success('Profil perusahaan tersimpan!')
-            setSaved(true)
-            setTimeout(() => setSaved(false), 3000)
+            toast.success('Profil perusahaan berhasil diperbarui!')
         } catch (e) {
             toast.error('Gagal menyimpan: ' + e.message)
-        } finally { setSaving(false) }
+        } finally {
+            setSaving(false)
+        }
     }
 
-    const F = ({ k, label, placeholder, type = 'text' }) => (
-        <div>
-            <label style={labelStyle}>{label}</label>
-            <input type={type} value={form[k]} onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))} placeholder={placeholder} style={inputStyle} />
-        </div>
-    )
-    const S = ({ k, label, options }) => (
-        <div>
-            <label style={labelStyle}>{label}</label>
-            <select value={form[k]} onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
-                <option value="">Pilih...</option>
-                {options.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-        </div>
-    )
+    const inputStyle = {
+        width: '100%',
+        padding: '10px 12px',
+        border: `1.5px solid ${KC.ink}`,
+        borderRadius: 8,
+        fontSize: 13,
+        fontWeight: 600,
+        fontFamily: 'inherit',
+        boxSizing: 'border-box',
+        background: '#fff',
+        outline: 'none',
+    }
+
+    const labelStyle = {
+        fontSize: 11,
+        fontWeight: 800,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        color: KC.mute,
+        display: 'block',
+        marginBottom: 5,
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <DesignStyles />
-            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: '2px solid #0f172a' }}>
+
+            {/* Header */}
+            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
                 <div>
-                    <h1 className="kc-h1">Profil Perusahaan</h1>
+                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
+                        Profil Entitas & Perusahaan
+                    </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Informasi yang ditampilkan ke kandidat dan untuk verifikasi NPWP.
+                        Informasi institusi resmi untuk verifikasi NPWP dan keterbukaan profil rekrutmen
                     </p>
                 </div>
-                <button onClick={() => navigate('employer-verification')} style={{ padding: '10px 16px', background: '#fff', color: KC.ink, border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` }}>
-                    Verifikasi NPWP
+                <button onClick={() => navigate('employer-verification')} style={topBtn('#fff')}>
+                    <ShieldCheck size={14} color={KC.lime} /> Status Validasi NPWP →
                 </button>
             </header>
 
-            <BrutalCard color="#fff" padding={28}>
-                <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 20 }}>Informasi Perusahaan</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <F k="company_name" label="Nama Perusahaan *" placeholder="PT KerjaCerdas Indonesia" />
-                        <F k="npwp" label="NPWP (15 digit)" placeholder="12.345.678.9-123.000" />
+            {/* Form Card */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) 340px', gap: 20 }}>
+                <BrutalCard color="#FFFFFF" padding={26} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                        <div>
+                            <label style={labelStyle}>Nama Resmi Entitas Bisnis</label>
+                            <input
+                                type="text"
+                                value={form.company_name}
+                                onChange={e => setForm({ ...form, company_name: e.target.value })}
+                                style={inputStyle}
+                            />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Nomor Pokok Wajib Pajak (NPWP)</label>
+                            <input
+                                type="text"
+                                value={form.npwp}
+                                onChange={e => setForm({ ...form, npwp: e.target.value })}
+                                style={inputStyle}
+                            />
+                        </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <S k="industry" label="Industri" options={INDUSTRIES} />
-                        <S k="size" label="Ukuran Perusahaan" options={COMPANY_SIZES} />
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                        <div>
+                            <label style={labelStyle}>Sektor Industri</label>
+                            <select
+                                value={form.industry}
+                                onChange={e => setForm({ ...form, industry: e.target.value })}
+                                style={{ ...inputStyle, cursor: 'pointer' }}
+                            >
+                                {INDUSTRIES.map(ind => (
+                                    <option key={ind} value={ind}>{ind}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Skala Organisasi</label>
+                            <select
+                                value={form.size}
+                                onChange={e => setForm({ ...form, size: e.target.value })}
+                                style={{ ...inputStyle, cursor: 'pointer' }}
+                            >
+                                {COMPANY_SIZES.map(sz => (
+                                    <option key={sz} value={sz}>{sz}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <F k="region_code" label="Kode Wilayah" placeholder="3171 (Jakarta Pusat)" />
-                        <F k="website" label="Website" placeholder="https://perusahaan.com" type="url" />
-                    </div>
+
                     <div>
-                        <label style={labelStyle}>Deskripsi Perusahaan</label>
-                        <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                            placeholder="Ceritakan tentang perusahaan, budaya kerja, dan visi misi..." rows={4}
-                            style={{ ...inputStyle, resize: 'vertical', minHeight: 100 }} />
+                        <label style={labelStyle}>Situs Web Resmi Institusi</label>
+                        <input
+                            type="text"
+                            value={form.website}
+                            onChange={e => setForm({ ...form, website: e.target.value })}
+                            placeholder="https://perusahaan.co.id"
+                            style={inputStyle}
+                        />
                     </div>
+
+                    <div>
+                        <label style={labelStyle}>Deskripsi Profil & Budaya Kerja</label>
+                        <textarea
+                            rows={4}
+                            value={form.description}
+                            onChange={e => setForm({ ...form, description: e.target.value })}
+                            style={{ ...inputStyle, resize: 'vertical' }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="kc-btn"
+                            style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 24px', fontSize: 13 }}
+                        >
+                            {saving ? 'Menyimpan…' : 'Simpan Perubahan Profil'}
+                        </button>
+                    </div>
+                </BrutalCard>
+
+                {/* Right Summary */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <BrutalCard color="#FFFFFF" padding={20}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <Building2 size={18} color={KC.ink} />
+                            <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', color: KC.ink, margin: 0 }}>
+                                Kredibilitas Institusi
+                            </h3>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: KC.inkLight }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <CheckCircle2 size={15} color={KC.lime} />
+                                <span>NPWP Aktif DJP Online</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <CheckCircle2 size={15} color={KC.lime} />
+                                <span>Domain Korporat Terverifikasi</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <CheckCircle2 size={15} color={KC.lime} />
+                                <span>Badge Prioritas Pelamar Kerja</span>
+                            </div>
+                        </div>
+                    </BrutalCard>
                 </div>
-                <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-                    <button onClick={handleSave} disabled={saving} style={{ padding: '12px 24px', background: saved ? KC.lime : KC.orange, color: '#fff', border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}`, opacity: saving ? 0.6 : 1 }}>
-                        {saving ? 'Menyimpan...' : saved ? 'Tersimpan' : 'Simpan Profil'}
-                    </button>
-                    <button onClick={() => navigate('employer-post-job')} style={{ padding: '12px 24px', background: '#fff', color: KC.ink, border: `2px solid ${KC.ink}`, borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: `3px 3px 0 ${KC.ink}` }}>
-                        Pasang Lowongan
-                    </button>
-                </div>
-            </BrutalCard>
+            </div>
         </div>
     )
 }

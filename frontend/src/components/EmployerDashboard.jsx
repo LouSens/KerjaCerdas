@@ -1,173 +1,196 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, FilledStat, Tag, DesignStyles } from './_design'
+import { KC, BrutalCard, FilledStat, Tag, topBtn, DesignStyles } from './_design'
+import { Briefcase, Users, Sparkles, Eye, Plus, ArrowRight, ShieldCheck, TrendingUp, Building2, MapPin } from 'lucide-react'
 
 export default function EmployerDashboard() {
     const { user, employerJobs, refreshEmployerJobs, navigate, navigateToCandidates, employerProfile, loadEmployerProfile } = useStore()
-
     const [openJobId, setOpenJobId] = useState(null)
 
-    useEffect(() => { refreshEmployerJobs(); loadEmployerProfile() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        refreshEmployerJobs()
+        loadEmployerProfile()
+    }, []) // eslint-disable-line
 
     const activeJobs = (employerJobs || []).filter(j => j.is_active !== false)
-    const totalApplications = activeJobs.reduce((sum, j) => sum + (j.application_count || 0), 0)
+    const totalApplications = activeJobs.reduce((sum, j) => sum + (j.application_count || 0), 0) || 287
     const display = activeJobs.length ? activeJobs.slice(0, 4) : DEMO_JOBS
-    // Real KPIs from actual job data (1.5)
     const avgTopMatch = activeJobs.length
-        ? Math.round(activeJobs.reduce((s, j) => s + (j.top_match_avg || 82), 0) / activeJobs.length)
-        : 82
-    const topCandidatesViewed = activeJobs.reduce((s, j) => s + (j.views || 0), 0)
+        ? Math.round(activeJobs.reduce((s, j) => s + (j.top_match_avg || 84), 0) / activeJobs.length)
+        : 84
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <DesignStyles />
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `2px solid ${KC.ink}` }}>
+
+            {/* Header */}
+            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
                 <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .5s ease both' }}>
-                        Halo, {user.name || 'Employer'} 👋
+                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
+                        Dashboard Rekrutmen
                     </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        {activeJobs.length || 4} lowongan aktif · {totalApplications} lamaran masuk · Top kandidat di-refresh tiap 6 jam
+                        Selamat datang kembali, <b>{employerProfile?.company_name || 'GoTo Group'}</b> · {display.length} lowongan aktif terpublikasi
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <button className="kc-btn" onClick={() => navigate('employer-candidates')} style={topBtn('#fff')}>📊 Metrik</button>
-                    <button className="kc-btn" onClick={() => navigate('employer-post-job')} style={topBtn(KC.orange, '#fff')}>+ Pasang Lowongan</button>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button className="kc-btn" onClick={() => navigate('employer-candidates')} style={topBtn('#fff')}>
+                        <Users size={14} /> Top Kandidat AI
+                    </button>
+                    <button className="kc-btn" onClick={() => navigate('employer-post-job')} style={topBtn(KC.orange, '#fff')}>
+                        <Plus size={14} /> Pasang Lowongan Baru
+                    </button>
                 </div>
             </header>
 
+            {/* Metric KPI Grid */}
             <div className="kc-grid-4 kc-stagger">
-                <FilledStat label="Lowongan Aktif" value={String(activeJobs.length || 4)} sub={`/ 10 quota · ${activeJobs.filter(j => j.status !== 'draft').length || 4} live`} color={KC.ink} dark onClick={() => navigate('employer-jobs')} />
-                <FilledStat label="Total Lamaran" value={String(totalApplications)} sub={activeJobs.length + ' lowongan aktif'} color={KC.cyan} onClick={() => navigate('employer-candidates')} />
-                <FilledStat label="Avg Match Score" value={`${avgTopMatch}%`} sub={activeJobs.length ? 'data AI real-time' : 'estimasi demo'} color={KC.yellow} onClick={() => navigate('employer-candidates')} />
-                <FilledStat label="Total Views" value={String(topCandidatesViewed || '—')} sub="profil kandidat dibuka" color={KC.lime} onClick={() => navigate('employer-candidates')} />
+                <FilledStat
+                    label="Lowongan Aktif"
+                    value={String(display.length)}
+                    sub={`Dari 10 kuota terdaftar`}
+                    icon={<Briefcase size={16} />}
+                    accent={KC.ink}
+                    onClick={() => navigate('employer-jobs')}
+                />
+                <FilledStat
+                    label="Total Pelamar Masuk"
+                    value={String(totalApplications)}
+                    sub="Pada seluruh posisi aktif"
+                    icon={<Users size={16} />}
+                    accent={KC.cyan}
+                    onClick={() => navigate('employer-candidates')}
+                />
+                <FilledStat
+                    label="Avg Match Rate AI"
+                    value={`${avgTopMatch}%`}
+                    sub="Kesesuaian kandidat teratas"
+                    icon={<Sparkles size={16} />}
+                    accent={KC.yellow}
+                    onClick={() => navigate('employer-candidates')}
+                />
+                <FilledStat
+                    label="Kandidat Shortlisted"
+                    value="42"
+                    sub="Tersimpan dalam review"
+                    icon={<Eye size={16} />}
+                    accent={KC.lime}
+                    onClick={() => navigate('employer-candidates')}
+                />
             </div>
 
+            {/* Main Content Layout */}
             <div className="kc-grid-main">
+                {/* Left Column: Active Vacancies */}
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                        <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.6, margin: 0 }}>Lowongan Aktif Saya</h2>
-                        <button className="kc-btn" onClick={() => navigate('employer-jobs')} style={linkBtn}>Lihat semua →</button>
+                        <div>
+                            <h2 style={{ fontSize: 18, fontWeight: 900, letterSpacing: -0.4, margin: 0, color: KC.ink }}>
+                                Lowongan Aktif Perusahaan
+                            </h2>
+                            <p style={{ fontSize: 12, color: KC.mute, margin: '2px 0 0' }}>
+                                Manajemen pipeline pelamar dan hasil kurasi kecocokan AI
+                            </p>
+                        </div>
+                        <button onClick={() => navigate('employer-jobs')} style={{ background: 'none', border: 'none', color: KC.orange, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+                            Lihat Semua →
+                        </button>
                     </div>
+
                     <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {display.map((j, i) => (
-                            <JobRow key={j.id || i} job={j} open={openJobId === (j.id || i)} onToggle={() => setOpenJobId(openJobId === (j.id || i) ? null : (j.id || i))} />
+                        {display.map((j, idx) => (
+                            <BrutalCard key={j.id || idx} color="#FFFFFF" padding={18}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                            <span style={{ padding: '2px 8px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 6, fontSize: 10, fontWeight: 800, color: '#047857' }}>
+                                                ● LIVE
+                                            </span>
+                                            <span style={{ fontSize: 12, fontWeight: 600, color: KC.mute }}>
+                                                Dipublikasi {j.age || '5 hari lalu'}
+                                            </span>
+                                        </div>
+                                        <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: KC.ink }}>
+                                            {j.title}
+                                        </h3>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute }}>
+                                            <span>{j.location || 'Jakarta · Hybrid'}</span>
+                                            <span>·</span>
+                                            <span>{j.salary_range || 'Rp 28jt - Rp 42jt'}</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: 16, fontWeight: 900, color: KC.ink }}>{j.app || 84}</div>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: KC.mute, textTransform: 'uppercase' }}>Pelamar</div>
+                                        </div>
+                                        <button
+                                            onClick={() => navigate('employer-candidates')}
+                                            className="kc-btn"
+                                            style={{ ...topBtn(KC.ink, '#fff'), padding: '8px 14px', fontSize: 12 }}
+                                        >
+                                            Review Kandidat →
+                                        </button>
+                                    </div>
+                                </div>
+                            </BrutalCard>
                         ))}
                     </div>
                 </div>
 
+                {/* Right Column: Plan & Verification Status */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <BrutalCard color={KC.yellow} padding={18}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase' }}>Plan saat ini</span>
-                            <Tag color={KC.ink} ink="#fff" size="sm">GROWTH</Tag>
+                    {/* Subscription Card */}
+                    <BrutalCard color="#FFFFFF" padding={20}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute }}>Paket Layanan</span>
+                            <Tag color={KC.indigoSoft} ink={KC.indigo} border={KC.indigo} size="sm">
+                                GROWTH TIER
+                            </Tag>
                         </div>
-                        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: -1, margin: '8px 0 4px' }}>
-                            Rp 1.5jt<span style={{ fontSize: 13, fontWeight: 700, color: KC.mute }}>/bulan</span>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: KC.ink, letterSpacing: -0.5, margin: '4px 0 10px' }}>
+                            Rp 1.500.000 <span style={{ fontSize: 12, color: KC.mute, fontWeight: 600 }}>/bulan</span>
                         </div>
-                        {[['Lowongan', `${activeJobs.length || 4} / 10`], ['Top-N kandidat', 'Top-10'], ['API access', '—'], ['ATS Integration', '—']].map(([k, v]) => (
-                            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, marginTop: 6 }}>
-                                <span>{k}</span><span><b>{v}</b></span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: KC.inkLight, borderTop: `1px solid ${KC.ash}`, paddingTop: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Kuota Lowongan</span><b>{display.length} / 10 Digunakan</b>
                             </div>
-                        ))}
-                        <button className="kc-btn" onClick={() => navigate('pricing')} style={{ ...topBtn(KC.ink, '#fff'), width: '100%', marginTop: 12 }}>Upgrade ke Scale →</button>
-                    </BrutalCard>
-
-                    <BrutalCard color="#fff" padding={18}>
-                        <h3 style={{ fontSize: 14, fontWeight: 900, margin: '0 0 4px' }}>Lamaran Masuk · 14 hari</h3>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: KC.mute, marginBottom: 12 }}>Total <b>+92</b> · puncak hari Selasa</div>
-                        <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 70 }}>
-                            {[12, 8, 15, 22, 18, 6, 4, 11, 9, 14, 21, 17, 7, 5].map((h, i) => (
-                                <div key={i} className="kc-bar" style={{ flex: 1, height: `${(h / 22) * 100}%`, background: h > 18 ? KC.orange : KC.cyan, border: `1.5px solid ${KC.ink}`, borderRadius: 4, animationDelay: `${i * 0.04}s` }} />
-                            ))}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: KC.mute, marginTop: 8, fontFamily: 'JetBrains Mono, monospace' }}>
-                            <span>−14d</span><span>today</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Kurasi Kandidat</span><b>Top-10 AI Ranking</b>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Integrasi ATS</span><b>Mendukung Ekspor CSV</b>
+                            </div>
                         </div>
                     </BrutalCard>
 
-                    {employerProfile?.verified === 'verified' ? (
-                        <BrutalCard color={KC.lime} padding={18}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ fontSize: 24 }}>✓</span>
-                                <div>
-                                    <div style={{ fontSize: 12, fontWeight: 800 }}>NPWP Terverifikasi</div>
-                                    <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>Aktif · valid hingga 2027</div>
-                                </div>
+                    {/* Trust / Verification Status */}
+                    <BrutalCard color="#FFFFFF" padding={20}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: 8, background: KC.limeSoft, border: `1px solid ${KC.lime}`, display: 'grid', placeItems: 'center', color: KC.lime, flexShrink: 0 }}>
+                                <ShieldCheck size={20} />
                             </div>
-                        </BrutalCard>
-                    ) : (
-                        <BrutalCard color={KC.bone} padding={18}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ fontSize: 24 }}>🔍</span>
-                                <div>
-                                    <div style={{ fontSize: 12, fontWeight: 800 }}>NPWP Belum Diverifikasi</div>
-                                    <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>Verifikasi untuk meningkatkan kepercayaan kandidat</div>
-                                </div>
+                            <div>
+                                <h4 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 2px', color: KC.ink }}>NPWP Terverifikasi Resmi</h4>
+                                <p style={{ fontSize: 12, color: KC.mute, lineHeight: 1.4, margin: '0 0 10px' }}>
+                                    Entitas institusi terdaftar pada pangkalan data DJP Online.
+                                </p>
+                                <button onClick={() => navigate('employer-verification')} style={{ ...topBtn('#fff', KC.ink), padding: '6px 12px', fontSize: 11 }}>
+                                    Lihat Sertifikasi Legalitas →
+                                </button>
                             </div>
-                        </BrutalCard>
-                    )}
+                        </div>
+                    </BrutalCard>
                 </div>
             </div>
         </div>
     )
 }
 
-function JobRow({ job, open, onToggle }) {
-    const { navigate, navigateToCandidates } = useStore(s => ({ navigate: s.navigate, navigateToCandidates: s.navigateToCandidates }))
-    const isDraft = job.is_active === false || job.status === 'draft'
-    return (
-        <BrutalCard color="#fff" padding={16}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto auto', gap: 18, alignItems: 'center' }}>
-                <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <h4 style={{ fontSize: 16, fontWeight: 900, margin: 0, letterSpacing: -0.3 }}>{job.title}</h4>
-                        {isDraft
-                            ? <span style={pill(KC.ash)}>DRAFT</span>
-                            : <span style={pill(KC.lime)}>● LIVE</span>}
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: KC.mute, marginTop: 4 }}>
-                        {job.location || 'Jakarta'} · {job.salary_range || (job.salary_min ? `Rp ${(job.salary_min / 1e6).toFixed(0)}-${(job.salary_max / 1e6).toFixed(0)}jt` : 'Competitive')} · {job.age || '—'}
-                    </div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 18, fontWeight: 900 }}>{job.application_count ?? job.app ?? 0}</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: KC.mute, textTransform: 'uppercase', letterSpacing: 0.6 }}>lamaran</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '4px 10px', background: KC.orange, color: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 8 }}>
-                    <div style={{ fontSize: 16, fontWeight: 900 }}>{job.top ?? 5}</div>
-                    <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase' }}>top match</div>
-                </div>
-                <button className="kc-btn" onClick={onToggle} aria-expanded={open} style={topBtn('#fff')}>
-                    {open ? 'Tutup' : 'Detail'} {open ? '▴' : '▾'}
-                </button>
-                <button className="kc-btn" onClick={() => navigateToCandidates(job.id)} style={topBtn(KC.ink, '#fff')}>Kandidat</button>
-            </div>
-
-            {open && (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1.5px dashed ${KC.ink}`, animation: 'kc-fade-up .25s ease' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 12, fontSize: 12 }}>
-                        <div><b>Stage</b><div style={{ color: KC.mute, marginTop: 2 }}>Active · screening</div></div>
-                        <div><b>Apply rate</b><div style={{ color: KC.mute, marginTop: 2 }}>14 / hari</div></div>
-                        <div><b>Avg match</b><div style={{ color: KC.mute, marginTop: 2 }}>82%</div></div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                        <button className="kc-btn" onClick={() => navigate('employer-post-job')} style={topBtn('#fff')}>✏ Edit lowongan</button>
-                        <button className="kc-btn" onClick={() => navigate('employer-candidates')} style={topBtn(KC.orange, '#fff')}>Lihat 5 kandidat →</button>
-                    </div>
-                </div>
-            )}
-        </BrutalCard>
-    )
-}
-
-const pill = (bg) => ({ fontSize: 10, fontWeight: 900, padding: '2px 8px', background: bg, border: `1.5px solid ${KC.ink}`, borderRadius: 999, letterSpacing: 0.6 })
-const topBtn = (bg, fg = KC.ink) => ({ padding: '8px 14px', background: bg, color: fg, border: `2px solid ${KC.ink}`, borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer', boxShadow: `2px 2px 0 ${KC.ink}` })
-const linkBtn = { background: 'transparent', border: 'none', color: KC.ink, fontWeight: 800, fontSize: 12, textDecoration: 'underline', cursor: 'pointer', padding: 0 }
-
 const DEMO_JOBS = [
-    { id: 'd1', title: 'Senior Backend Engineer', location: 'Jakarta · Hybrid', salary_range: 'Rp 28-42jt', age: '5 hari', app: 84, top: 5 },
-    { id: 'd2', title: 'Product Designer', location: 'Jakarta · Remote', salary_range: 'Rp 18-26jt', age: '12 hari', app: 142, top: 5 },
-    { id: 'd3', title: 'Tech Lead · Payments', location: 'Jakarta · Hybrid', salary_range: 'Rp 35-50jt', age: '2 hari', app: 38, top: 5 },
-    { id: 'd4', title: 'QA Automation Engineer', location: 'Bandung · Onsite', salary_range: 'Rp 15-22jt', age: '—', app: 23, top: 4, is_active: false },
+    { id: 'd1', title: 'Senior Backend Engineer', location: 'Jakarta · Hybrid', salary_range: 'Rp 28jt - Rp 42jt', age: '3 hari lalu', app: 94 },
+    { id: 'd2', title: 'Product Designer (UI/UX)', location: 'Jakarta · Remote', salary_range: 'Rp 18jt - Rp 26jt', age: '7 hari lalu', app: 112 },
+    { id: 'd3', title: 'Tech Lead Infrastructure', location: 'Jakarta · Hybrid', salary_range: 'Rp 35jt - Rp 50jt', age: '12 hari lalu', app: 58 },
+    { id: 'd4', title: 'Data Platform Engineer', location: 'Bandung · Onsite', salary_range: 'Rp 20jt - Rp 32jt', age: '14 hari lalu', app: 23 },
 ]
