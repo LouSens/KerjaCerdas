@@ -34,7 +34,7 @@
 
 ## 📌 Platform Overview
 
-**KerjaCerdas** memecahkan masalah ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja melalui pendekatan AI semantik. Untuk melihat detail latar belakang masalah dan perbedaan dengan portal konvensional, silakan baca [Business Proposal](docs/PROPOSAL_2ND.md).
+**KerjaCerdas** memecahkan masalah ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja melalui pendekatan AI semantik. Untuk melihat detail latar belakang masalah dan perbedaan dengan portal konvensional, silakan baca [Business Proposal](docs/PROPOSAL.md).
 
 ## 🎯 Fitur Utama
 
@@ -77,77 +77,110 @@ Setiap komponen dalam aplikasi ini dirancang tidak hanya untuk fungsi teknis, me
 
 ---
 
-## 📸 UI / UX Prototype Flow (Live Demo)
+## 📸 UI / UX Prototype Flow & Screenshots (Live Interface)
 
-Kami merancang alur pengguna (*user flow*) layaknya prototipe Figma untuk mendemonstrasikan pengalaman pengguna (UX) yang mulus dan minim friksi.
+Platform **KerjaCerdas** mengadopsi arsitektur desain **Modern Neobrutalism** yang bersih, profesional, berani (*high-contrast*), dan mudah dinavigasi tanpa *visual clutter*. Di bawah ini adalah peta alur lengkap (*user flow*) interaktif untuk **Pencari Kerja (Job Seeker)** dan **Perusahaan / Rekruter (Employer / HR)** beserta tangkapan layar antarmuka langsung (*live screenshots*).
 
-### 🙎‍♂️ Alur Pencari Kerja (Seeker Flow)
+---
+
+### 🌐 1. Landing & Public Onboarding Flow
 
 ```mermaid
-flowchart TD
-    classDef page fill:#FF5722,stroke:#0B0B0F,stroke-width:2px,color:#fff,font-weight:bold
-    classDef modal fill:#C8F26B,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
-    classDef action fill:#7AE7F0,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
+flowchart LR
+    classDef public fill:#FF4800,stroke:#090A0F,stroke-width:2.5px,color:#fff,font-weight:bold
+    classDef modal fill:#C8F26B,stroke:#090A0F,stroke-width:2.5px,color:#090A0F,font-weight:bold
+    classDef portal fill:#00D2D3,stroke:#090A0F,stroke-width:2.5px,color:#090A0F,font-weight:bold
 
-    A[Landing Page]:::page -->|Klik Masuk| B[Auth Modal]:::modal
-    B -->|Login / Register| C[Seeker Dashboard]:::page
-    
-    C -->|1. Upload / Edit| D[Upload CV & Profil]:::page
-    D -->|AI Auto-Extract| E[Job Match Results]:::page
-    
-    E -->|Klik Kartu| F[Job Detail Modal\n+ Explainable AI 5-Skor]:::modal
-    F -->|Aksi Lamar| G[Lamaran Saya\nMilestone Tracking]:::page
-    
-    C -->|2. Analisis Kebutuhan| H[Skill Gap Analyzer\n+ Kursus Ed-Tech]:::page
-    C -->|3. Validasi Kepercayaan| I[Verifikasi Identitas\nE-KYC & Phone OTP]:::page
+    A["🏠 Landing Hero\n(Interactive Match Preview)"]:::public --> B["✨ Fitur Utama &\nArsitektur Nilai"]:::public
+    A --> C["💳 Skema Harga &\nTiering Transparan"]:::public
+    A -->|Tombol Masuk / Coba Gratis| D["🔐 Dual-Role Auth Modal"]:::modal
+    D -->|Kategori: Pencari Kerja| E["👨‍💼 Portal Pencari Kerja\n(Seeker Dashboard)"]:::portal
+    D -->|Kategori: Employer / HR| F["🏢 Portal Perusahaan\n(Employer Hub)"]:::portal
 ```
 
-| 1. Landing Page | 2. Login | 3. Daftar Akun | 4. Dasbor Pencari Kerja |
-|:---:|:---:|:---:|:---:|
-| <img src="docs/assets/screenshot_8.jpg" width="250"> | <img src="docs/assets/screenshot_9.jpg" width="250"> | <img src="docs/assets/screenshot_10.jpg" width="250"> | <img src="docs/assets/screenshot_1.jpg" width="250"> |
+| 1. Landing Hero (Neobrutalism) | 2. Keunggulan Platform | 3. Skema Harga Transparan |
+|:---:|:---:|:---:|
+| <img src="docs/assets/01_landing_hero.png" width="380" alt="Landing Hero"> | <img src="docs/assets/02_landing_features.png" width="380" alt="Features"> | <img src="docs/assets/03_pricing_plans.png" width="380" alt="Pricing"> |
 
-| 5. Pencarian Lowongan | 6. Upload CV | 7. Top Match Lowongan | 8. Analisis Skill Gap |
-|:---:|:---:|:---:|:---:|
-| <img src="docs/assets/screenshot_2.jpg" width="250"> | <img src="docs/assets/screenshot_3.jpg" width="250"> | <img src="docs/assets/screenshot_4.jpg" width="250"> | <img src="docs/assets/screenshot_5.jpg" width="250"> |
-
-| 9. Verifikasi Identitas | 10. Lowongan Tersimpan |
+| 4. Modal Autentikasi (Masuk Akun) | 5. Modal Pendaftaran (Daftar Akun) |
 |:---:|:---:|
-| <img src="docs/assets/screenshot_7.jpg" width="250"> | <img src="docs/assets/screenshot_6.jpg" width="250"> |
+| <img src="docs/assets/04_auth_modal_login.png" width="450" alt="Login Modal"> | <img src="docs/assets/05_auth_modal_register.png" width="450" alt="Register Modal"> |
 
-<br>
+---
 
-### 🏢 Alur Perusahaan (Employer Flow)
+### 👨‍💼 2. Alur Pencari Kerja (Seeker Flow)
 
 ```mermaid
 flowchart TD
-    classDef page fill:#7AE7F0,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
-    classDef modal fill:#FFCB05,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
-    classDef step fill:#C8F26B,stroke:#0B0B0F,stroke-width:2px,color:#0B0B0F,font-weight:bold
+    classDef page fill:#FAF9F5,stroke:#090A0F,stroke-width:2px,color:#090A0F,font-weight:bold
+    classDef ai fill:#FF4800,stroke:#090A0F,stroke-width:2px,color:#fff,font-weight:bold
+    classDef modal fill:#C8F26B,stroke:#090A0F,stroke-width:2px,color:#090A0F,font-weight:bold
+    classDef action fill:#00D2D3,stroke:#090A0F,stroke-width:2px,color:#090A0F,font-weight:bold
 
-    A[HR Login / Register]:::modal --> B[Employer Dashboard]:::page
+    A["📊 Dasbor Pencari Kerja\n(Metrik & Top 3 Match)"]:::page --> B["📄 Unggah CV PDF / Edit"]:::page
+    B -->|AI Gemini 3.1 Parser| C["🎯 Hasil Pencocokan AI\n(Semantic & Skill Match)"]:::ai
     
-    subgraph Onboarding_Timeline ["📋 Alur Onboarding Berjenjang (1 -> 2 -> 3)"]
-        C[Langkah 1:\nProfil Perusahaan]:::step --> D[Langkah 2:\nVerifikasi NPWP DJP]:::step
-        D --> E[Langkah 3:\nPasang Lowongan]:::step
+    C -->|Buka Detail| D["🔍 Modal Detail Lowongan\nExplainable AI 5-Dimensi"]:::modal
+    D -->|Lamar Instan| E["📬 Pelacakan Status Lamaran\n(Milestone Timeline)"]:::action
+    D -->|Simpan| F["⭐ Lowongan Tersimpan"]:::page
+    
+    A --> G["📈 Analisis Skill Gap\n(Rekomendasi Kursus Ed-Tech)"]:::page
+    A --> H["🔎 Pencarian Cepat Multi-Filter"]:::page
+    A --> I["🛡️ Verifikasi E-KYC &\nIjazah SIVIL Dikti"]:::action
+```
+
+| 6. Dasbor Analitik Pencari Kerja | 7. Hasil Pencocokan AI (Top Matches) | 8. Explainable AI Score Modal |
+|:---:|:---:|:---:|
+| <img src="docs/assets/06_seeker_dashboard.png" width="380" alt="Seeker Dashboard"> | <img src="docs/assets/07_seeker_job_match.png" width="380" alt="Job Match Results"> | <img src="docs/assets/08_job_detail_modal.png" width="380" alt="Explainable AI Detail"> |
+
+| 9. Analisis Skill Gap & Kursus | 10. Pencarian Cepat & Filter | 11. Lowongan Tersimpan |
+|:---:|:---:|:---:|
+| <img src="docs/assets/09_seeker_skill_gap.png" width="380" alt="Skill Gap Analysis"> | <img src="docs/assets/10_seeker_search.png" width="380" alt="Quick Search"> | <img src="docs/assets/11_seeker_saved_jobs.png" width="380" alt="Saved Jobs"> |
+
+| 12. Pelacakan Lamaran Saya | 13. Verifikasi Identitas E-KYC | 14. Ekstraksi CV PDF Cerdas |
+|:---:|:---:|:---:|
+| <img src="docs/assets/12_seeker_applications.png" width="380" alt="Application Tracker"> | <img src="docs/assets/13_seeker_verification.png" width="380" alt="Verification Dashboard"> | <img src="docs/assets/14_seeker_cv_upload.png" width="380" alt="CV Extraction"> |
+
+---
+
+### 🏢 3. Alur Perusahaan & Rekruter (Employer / HR Flow)
+
+```mermaid
+flowchart TD
+    classDef page fill:#FAF9F5,stroke:#090A0F,stroke-width:2px,color:#090A0F,font-weight:bold
+    classDef step fill:#FFCB05,stroke:#090A0F,stroke-width:2px,color:#090A0F,font-weight:bold
+    classDef ai fill:#FF4800,stroke:#090A0F,stroke-width:2px,color:#fff,font-weight:bold
+    classDef modal fill:#C8F26B,stroke:#090A0F,stroke-width:2px,color:#090A0F,font-weight:bold
+
+    A["🏢 Dasbor Rekrutmen HR\n(KPI & Lowongan Aktif)"]:::page --> B["📋 Kelola Daftar Lowongan"]:::page
+    
+    subgraph Wizard_Pasang ["📝 Alur Pasang Lowongan Terstruktur"]
+        C["1. Profil Lembaga"]:::step --> D["2. Validasi NPWP DJP"]:::step
+        D --> E["3. Form Lowongan &\nEstimasi AI Pool"]:::ai
     end
     
-    B --> C
-    D -->|Opsi Massal| F[Job Pack Bulk Uploader\nPDF Auto-Parsing]:::page
+    A --> C
+    A -->|Impor Banyak Sekaligus| F["📦 Upload Bulk Job Pack (PDF)"]:::page
     
-    E -->|AI Live Pool Estimate| G[Lowongan Aktif]:::page
-    F --> G
+    B -->|Lihat Kandidat AI| G["👥 Evaluasi Top Kandidat\n(Confidence Bands: Strong/Possible/Stretch)"]:::ai
+    G -->|Tinjau Profil Asli| H["📄 CV Viewer Terstruktur"]:::modal
+    G -->|Buka Kontak Resmi| I["💳 Pay-to-Unlock Rp 50.000\n(Grounded Skill Summary)"]:::modal
     
-    G -->|AI Reverse Matching| H[Top Kandidat\nTeaser Method]:::page
-    H -->|Micropayment Rp 50k| I[Pay-to-Unlock Kontak]:::modal
+    A --> J["🏛️ Verifikasi NPWP DJP"]:::page
+    A --> K["🏢 Profil Entitas Bisnis"]:::page
 ```
 
-| 1. Autentikasi HRD | 2. Dasbor Perusahaan | 3. Pasang Lowongan |
+| 15. Dasbor Perusahaan & HR Hub | 16. Manajemen Daftar Lowongan | 17. Wizard Pasang Lowongan (AI Estimator) |
 |:---:|:---:|:---:|
-| <img src="docs/assets/screenshot_11.jpg" width="300"> | <img src="docs/assets/screenshot_12.jpg" width="300"> | <img src="docs/assets/screenshot_13.jpg" width="300"> |
+| <img src="docs/assets/15_employer_dashboard.png" width="380" alt="Employer Dashboard"> | <img src="docs/assets/16_employer_jobs.png" width="380" alt="Employer Jobs"> | <img src="docs/assets/17_employer_post_job.png" width="380" alt="Post Job Wizard"> |
 
-| 4. Daftar Lowongan | 5. Top Kandidat (Teaser) | 6. Verifikasi Dokumen |
+| 18. Bulk Job Pack PDF Uploader | 19. Evaluasi Top Kandidat AI | 20. Verifikasi NPWP Perusahaan |
 |:---:|:---:|:---:|
-| <img src="docs/assets/screenshot_16.jpg" width="300"> | <img src="docs/assets/screenshot_15.jpg" width="300"> | <img src="docs/assets/screenshot_14.jpg" width="300"> |
+| <img src="docs/assets/18_employer_job_pack_upload.png" width="380" alt="Job Pack Upload"> | <img src="docs/assets/19_employer_candidates.png" width="380" alt="Candidates Shortlist"> | <img src="docs/assets/20_employer_verification.png" width="380" alt="Tax Verification"> |
+
+| 21. Profil Entitas & Legalitas Bisnis |
+|:---:|
+| <img src="docs/assets/21_employer_profile.png" width="420" alt="Employer Profile"> |
 
 ---
 
