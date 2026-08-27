@@ -1,265 +1,412 @@
-import { useEffect } from 'react'
-import { Shield, FileText, Eye, Lock, UserCheck, Server, Bell, Mail, Scale, ArrowLeft } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 
-/**
- * PrivacyPolicyPage — Comprehensive privacy policy and terms of service.
- * Covers data handling for both job seekers and employers.
- * Complies with Indonesian data protection regulations (UU PDP No. 27/2022).
- */
+const KC = {
+    ink: '#090A0F',
+    bone: '#FAF9F5',
+    orange: '#FF4800',
+    yellow: '#FFCB05',
+    lime: '#B4F51C',
+    cyan: '#00E5FF',
+    ash: '#DDD9D0',
+    card: '#FFFFFF',
+    border: '#090A0F',
+}
+
+const FONT = '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif'
 
 const SECTIONS = [
     {
-        id: 'intro',
-        icon: Shield,
-        title: 'Pendahuluan',
-        content: `KerjaCerdas ("Platform", "kami") adalah platform AI-powered job matching yang menghubungkan pencari kerja dengan pemberi kerja di seluruh Indonesia. Kebijakan privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, dan melindungi data pribadi Anda sesuai dengan Undang-Undang Pelindungan Data Pribadi (UU PDP) No. 27 Tahun 2022.
-
-Dengan menggunakan layanan kami, Anda menyetujui praktik yang dijelaskan dalam kebijakan ini. Kebijakan ini berlaku untuk semua pengguna, termasuk pencari kerja (job seeker) dan pemberi kerja (employer).`,
+        id: 'pendahuluan',
+        number: '01',
+        title: 'Ruang Lingkup & Kepatuhan Regulasi',
+        badge: 'UU PDP 27/2022',
+        badgeColor: KC.lime,
+        content: [
+            {
+                heading: 'Komitmen Kepatuhan',
+                text: 'KerjaCerdas ("Platform", "kami") berkomitmen penuh untuk melindungi privasi dan integritas data pribadi seluruh pengguna, baik Pencari Kerja (Talenta) maupun Pemberi Kerja (Perusahaan/HRD). Kebijakan ini disusun berdasarkan Undang-Undang Republik Indonesia No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP).'
+            },
+            {
+                heading: 'Peran & Tanggung Jawab',
+                text: 'KerjaCerdas bertindak sebagai Pengendali Data Pribadi (Data Controller) untuk data akun dan analitik platform, serta sebagai Pemroses Data Pribadi (Data Processor) dalam konteks pencocokan kompetensi kandidat dengan kebutuhan rekrutmen mitra perusahaan.'
+            }
+        ]
     },
     {
-        id: 'data-collection',
-        icon: FileText,
-        title: 'Data yang Kami Kumpulkan',
-        content: `**Untuk Pencari Kerja (Job Seeker):**
-• Informasi identitas: nama lengkap, email, dan foto profil
-• Informasi profesional: skill, pengalaman kerja, riwayat pendidikan, dan sertifikasi
-• Preferensi pekerjaan: lokasi, ekspektasi gaji, dan jenis pekerjaan yang diinginkan
-• Data interaksi: riwayat pencarian, lowongan yang disimpan, dan interaksi dengan AI Advisor
-• Data perangkat: alamat IP, jenis browser, dan informasi perangkat
-
-**Untuk Pemberi Kerja (Employer):**
-• Informasi perusahaan: nama perusahaan, alamat, industri, dan nomor registrasi bisnis
-• Informasi kontak: nama PIC, email, dan nomor telepon
-• Data lowongan: deskripsi pekerjaan, persyaratan skill, range gaji, dan lokasi
-• Data interaksi: riwayat pencarian kandidat dan aktivitas platform`,
+        id: 'data-dikumpulkan',
+        number: '02',
+        title: 'Data Pribadi yang Dikumpulkan',
+        badge: 'Data Inventory',
+        badgeColor: KC.cyan,
+        content: [
+            {
+                heading: 'Untuk Pencari Kerja (Talenta)',
+                text: '• Data Identitas & Kontak: Nama lengkap, alamat email aktif, nomor kontak, domisili/wilayah administratif.\n• Data Profesional & Karier: Dokumen CV/Resume (PDF/DOCX), keahlian teknis & non-teknis, riwayat pekerjaan, portfolio, preferensi kerja (gaji ekspektasi, mode kerja WFH/Hybrid/Onsite).\n• Data Kredibilitas & Verifikasi: Nilai hash e-KYC (NIK terenkripsi) dan status verifikasi ijazah perguruan tinggi terdaftar (SIVIL Kemendikbudristek).'
+            },
+            {
+                heading: 'Untuk Pemberi Kerja (Employer / HR)',
+                text: '• Legalitas Entitas: Nama institusi/perusahaan, nomor pokok wajib pajak (NPWP) tervalidasi Ditjen Pajak, alamat kantor, industri usaha.\n• Kontak Person in Charge (PIC): Nama rekruter resmi, email korporat (@nama-perusahaan), nomor telepon kantor.\n• Spesifikasi Pekerjaan: Deskripsi jabatan, batas gaji, persyaratan keahlian, dan kriteria kualifikasi.'
+            }
+        ]
     },
     {
-        id: 'data-usage',
-        icon: Eye,
-        title: 'Penggunaan Data',
-        content: `Data Anda digunakan untuk:
-
-**AI Job Matching:**
-• Menganalisis dan mencocokkan profil pencari kerja dengan lowongan yang tersedia menggunakan algoritma Semantic Search (Supabase pgvector) dan LLM Gemini 3.1
-• Memberikan rekomendasi pekerjaan yang dipersonalisasi berdasarkan skill dan preferensi
-• Mengidentifikasi skill gap dan merekomendasikan kursus atau pelatihan
-
-**Untuk Pemberi Kerja:**
-• Membantu menemukan kandidat yang cocok berdasarkan kebutuhan perusahaan
-• Menampilkan lowongan kepada pencari kerja yang relevan
-• Menyediakan analitik performa lowongan (views, applicants, match rate)
-
-**Peningkatan Layanan:**
-• Melatih dan meningkatkan akurasi model AI matching
-• Menganalisis tren pasar kerja Indonesia
-• Mengembangkan fitur dan layanan baru
-
-Kami **tidak** menjual data pribadi Anda kepada pihak ketiga.`,
+        id: 'pemrosesan-ai',
+        number: '03',
+        title: 'Pemrosesan Algoritma AI & Semantic Match',
+        badge: 'AI Guardrails',
+        badgeColor: KC.yellow,
+        content: [
+            {
+                heading: 'Mekanisme Pencocokan Vektor (pgvector + Gemini)',
+                text: 'Data resume dan lowongan dikonversi menjadi representasi vektor numerik berdimensi 768 menggunakan model Gemini Embedding dengan Matryoshka Representation Learning (MRL). Pencocokan semantik dihitung secara matematis menggunakan kesamaan kosinus (cosine similarity) dan keselarasan keahlian secara lokal di basis data PostgreSQL pgvector kami.'
+            },
+            {
+                heading: 'Kebijakan Nol Retensi untuk Pelatihan Model Pihak Ketiga (Zero AI Training)',
+                text: 'Kami MENJAMIN bahwa berkas CV, dokumen pribadi, dan informasi rahasia lowongan kerja Anda TIDAK PERNAH digunakan untuk melatih model AI publik milik pihak ketiga. Pemrosesan dilakukan dalam sesi inferensi API yang terisolasi dengan enkripsi menyeluruh.'
+            },
+            {
+                heading: 'Larangan Penjualan Data (Zero Monetization of Data)',
+                text: 'KerjaCerdas tidak pernah dan tidak akan pernah menjual, menyewakan, atau memperdagangkan data pribadi pengguna kepada pihak ketiga atau jaringan periklanan mana pun.'
+            }
+        ]
     },
     {
-        id: 'data-protection',
-        icon: Lock,
-        title: 'Perlindungan Data',
-        content: `Kami menerapkan langkah-langkah keamanan teknis dan organisasi untuk melindungi data Anda:
-
-• **Enkripsi**: Semua data ditransmisikan melalui HTTPS/TLS dan disimpan dalam format terenkripsi
-• **Akses terbatas**: Hanya personel yang berwenang yang dapat mengakses data pribadi
-• **Audit keamanan**: Kami melakukan audit keamanan berkala dan penetration testing
-• **Backup terenkripsi**: Data di-backup secara berkala dengan enkripsi AES-256
-• **Verifikasi Identitas**: Bekerja sama dengan Penyelenggara Sertifikasi Elektronik (PSrE) resmi untuk proses e-KYC
-• **Data residency**: Data disimpan di server yang berlokasi di Indonesia sesuai dengan UU PDP
-
-Untuk model AI kami:
-• Data pelatihan dianonimisasi sebelum digunakan
-• Model tidak menyimpan data pribadi individu
-• Kami menggunakan teknik differential privacy untuk melindungi privasi pengguna`,
+        id: 'privasi-kontak',
+        number: '04',
+        title: 'Perlindungan Privasi Kontak (Pay-to-Unlock)',
+        badge: 'Anti-Spam & Privacy',
+        badgeColor: KC.orange,
+        content: [
+            {
+                heading: 'Sistem Masking Kontak Kandidat',
+                text: 'Untuk melindungi privasi pencari kerja dari spam dan penawaran tidak sah, kontak langsung (nomor telepon, email, alamat lengkap) disembunyikan secara default dalam hasil pencarian kandidat.'
+            },
+            {
+                heading: 'Akses Berbayar & Terverifikasi',
+                text: 'Pemberi kerja hanya dapat melihat rincian kontak lengkap setelah akun perusahaannya terverifikasi NPWP dan secara resmi melakukan proses pembukaan kontak (Pay-to-Unlock). Setiap pembukaan kontak dicatat dalam audit log transaksi rekrutmen.'
+            }
+        ]
     },
     {
-        id: 'user-rights',
-        icon: UserCheck,
-        title: 'Hak Pengguna',
-        content: `Sesuai dengan UU PDP No. 27/2022, Anda memiliki hak-hak berikut:
-
-• **Hak akses**: Anda berhak mengetahui dan mengakses data pribadi Anda yang kami simpan
-• **Hak koreksi**: Anda berhak meminta perbaikan data pribadi yang tidak akurat
-• **Hak hapus**: Anda berhak meminta penghapusan data pribadi Anda ("right to be forgotten")
-• **Hak portabilitas**: Anda berhak meminta salinan data Anda dalam format yang terstruktur
-• **Hak keberatan**: Anda berhak menolak pemrosesan data untuk tujuan tertentu
-• **Hak penarikan persetujuan**: Anda dapat menarik persetujuan kapan saja
-
-**Untuk Pemberi Kerja:**
-• Hak mengakses dan mengelola data lowongan yang dipublikasikan
-• Hak menghapus lowongan dan data terkait kandidat
-• Hak mengekspor data rekrutmen
-
-Untuk mengajukan permintaan terkait hak Anda, hubungi kami melalui email: privacy@kerjacerdas.id`,
+        id: 'keamanan-teknis',
+        number: '05',
+        title: 'Standar Keamanan & Enkripsi Data',
+        badge: 'Security Tech',
+        badgeColor: KC.lime,
+        content: [
+            {
+                heading: 'Enkripsi Menyeluruh',
+                text: '• In-Transit: Seluruh transmisi data dienkripsi dengan protokol TLS 1.3 / HTTPS.\n• At-Rest: Basis data dan berkas tersimpan dilindungi dengan algoritma enkripsi standar industri AES-256.\n• Kredensial: Kata sandi pengguna di-hash menggunakan algoritma Bcrypt dengan unique salt per akun.'
+            },
+            {
+                heading: 'Proteksi Token & Session',
+                text: 'Autentikasi menggunakan JSON Web Token (JWT HS256) dengan masa kedaluwarsa 24 jam. Payload JWT diminimalkan tanpa mencantumkan informasi sensitif (PII) untuk mencegah kebocoran data di sisi klien.'
+            },
+            {
+                heading: 'Sanitasi Input & Anti-Prompt Injection',
+                text: 'Seluruh input pengguna disaring secara ketat melalui middleware sanitasi HTML dan regex filter untuk menangkal serangan Cross-Site Scripting (XSS), SQL Injection, dan Prompt Injection pada layer AI.'
+            }
+        ]
     },
     {
-        id: 'data-sharing',
-        icon: Server,
-        title: 'Berbagi Data dengan Pihak Ketiga',
-        content: `Kami dapat membagikan data Anda dengan pihak ketiga dalam kondisi berikut:
-
-• **Penyedia layanan**: Google (Gemini API untuk AI Advisor), cloud hosting provider
-• **Analitik**: Layanan analitik yang dianonimisasi untuk mengukur performa platform
-• **Kewajiban hukum**: Jika diwajibkan oleh hukum, regulasi, atau perintah pengadilan
-• **Persetujuan pengguna**: Ketika Anda secara eksplisit menyetujui berbagi data
-
-**Transparansi untuk kedua sisi:**
-• Pencari kerja: profil Anda hanya terlihat oleh pemberi kerja saat ada kecocokan (match)
-• Pemberi kerja: informasi perusahaan hanya ditampilkan pada lowongan yang dipublikasikan
-• Tidak ada akses data personal tanpa persetujuan eksplisit`,
+        id: 'hak-pengguna',
+        number: '06',
+        title: 'Hak Subjek Data (Hak Pemilik Data)',
+        badge: 'User Rights',
+        badgeColor: KC.cyan,
+        content: [
+            {
+                heading: 'Hak Anda Berdasarkan UU PDP',
+                text: '• Hak Akses & Portabilitas: Mengunduh salinan profil dan data riwayat lamaran Anda dalam format terstruktur.\n• Hak Koreksi & Pembaruan: Memperbarui atau merevisi informasi kompetensi dan CV kapan saja.\n• Hak Penghapusan (Right to be Forgotten): Mengajukan permohonan penutupan akun dan penghapusan data identitas secara permanen dari server aktif kami.\n• Hak Penarikan Persetujuan: Membatasi visibilitas profil dari pencarian rekruter kapan pun Anda inginkan.'
+            }
+        ]
     },
     {
-        id: 'cookies',
-        icon: Bell,
-        title: 'Cookie dan Teknologi Pelacakan',
-        content: `Kami menggunakan cookie dan teknologi serupa untuk:
-
-• **Cookie esensial**: Untuk fungsi dasar platform seperti autentikasi dan sesi
-• **Cookie preferensi**: Untuk menyimpan pengaturan bahasa dan tampilan
-• **Cookie analitik**: Untuk menganalisis pola penggunaan dan meningkatkan layanan
-• **Local Storage**: Untuk menyimpan profil dan preferensi pencarian secara lokal
-
-Anda dapat mengatur preferensi cookie melalui pengaturan browser Anda. Menonaktifkan cookie esensial dapat membatasi fungsionalitas platform.`,
-    },
-    {
-        id: 'terms',
-        icon: Scale,
-        title: 'Syarat dan Ketentuan Penggunaan',
-        content: `**Untuk Pencari Kerja:**
-• Anda bertanggung jawab atas keakuratan informasi yang diberikan dalam profil
-• Dilarang menggunakan platform untuk tujuan penipuan atau menyesatkan
-• Anda setuju bahwa hasil AI matching bersifat rekomendasi dan bukan jaminan pekerjaan
-
-**Untuk Pemberi Kerja:**
-• Lowongan yang diposting harus sesuai dengan peraturan ketenagakerjaan Indonesia (UU Cipta Kerja)
-• Dilarang memposting lowongan diskriminatif (berbasis gender, usia, suku, agama)
-• Informasi gaji dan persyaratan harus akurat dan tidak menyesatkan
-• Anda bertanggung jawab atas kepatuhan terhadap UU Ketenagakerjaan No. 13/2003
-
-**Umum:**
-• Platform berhak menangguhkan atau membatalkan akun yang melanggar ketentuan
-• Kami tidak bertanggung jawab atas keputusan rekrutmen antar pengguna
-• Konten yang dihasilkan oleh AI Advisor bersifat informatif dan bukan nasihat hukum/profesional`,
-    },
-    {
-        id: 'contact',
-        icon: Mail,
-        title: 'Hubungi Kami',
-        content: `Jika Anda memiliki pertanyaan tentang kebijakan privasi ini:
-
-📧 **Email**: [EMAIL_ADDRESS]
-📞 **Telepon**: +62 xxxxxxxxxx
-🏢 **Alamat**: Indonesia
-
-**Data Protection Officer (DPO)**
-Nama: Tim Privasi KerjaCerdas
-Email: [EMAIL_ADDRESS]
-
-Kami berkomitmen untuk merespons permintaan Anda dalam waktu 3×24 jam kerja.
-
-Terakhir diperbarui: 13 Maret 2026`,
-    },
+        id: 'kontak-dpo',
+        number: '07',
+        title: 'Petugas Pelindungan Data (DPO) & Kontak Resmi',
+        badge: 'Official Contact',
+        badgeColor: KC.yellow,
+        content: [
+            {
+                heading: 'Layanan Pengaduan & Konsultasi Privasi',
+                text: 'Apabila Anda memiliki pertanyaan, keberatan, atau ingin menjalankan hak subjek data Anda, silakan menghubungi Tim Petugas Pelindungan Data (Data Protection Officer) kami melalui saluran resmi berikut:'
+            }
+        ],
+        contactInfo: {
+            dpoEmail: 'dpo@kerjacerdas.id',
+            supportEmail: 'privacy@kerjacerdas.id',
+            address: 'Menara Rajawali Lt. 12, Jl. DR. Ide Anak Agung Gde Agung, Mega Kuningan, Jakarta Selatan, DKI Jakarta 12950',
+            sla: 'Maksimal 3 × 24 Jam Kerja'
+        }
+    }
 ]
 
 export default function PrivacyPolicyPage() {
-    const { navigate } = useStore()
+    const { navigate, openAuthModal } = useStore()
+    const [activeSection, setActiveSection] = useState(SECTIONS[0].id)
 
     useEffect(() => {
-        window.scrollTo(0, 0)
+        window.scrollTo({ top: 0, behavior: 'instant' })
     }, [])
 
+    const scrollToSection = (id) => {
+        setActiveSection(id)
+        const el = document.getElementById(`sec-${id}`)
+        if (el) {
+            const y = el.getBoundingClientRect().top + window.scrollY - 85
+            window.scrollTo({ top: y, behavior: 'smooth' })
+        }
+    }
+
     return (
-        <div className="animate-fade-in">
-            {/* Hero */}
-            <div className="border-b border-white/[0.06] bg-gradient-to-b from-brand-500/[0.04] to-transparent">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+        <div style={{ background: KC.bone, color: KC.ink, fontFamily: FONT, minHeight: '100vh' }}>
+            {/* ── HEADER NAVIGATION ── */}
+            <header style={{
+                position: 'sticky', top: 0, left: 0, right: 0, zIndex: 60,
+                background: '#FFFFFF', borderBottom: `2px solid ${KC.border}`,
+            }}>
+                <div style={{
+                    maxWidth: 1280, margin: '0 auto', padding: '0 20px',
+                    height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
                     <button
                         onClick={() => navigate('home')}
-                        className="flex items-center gap-1.5 text-xs font-bold text-ink/60 hover:text-ink mb-8 transition-colors bg-white border-2 border-ink px-4 py-2 rounded-xl shadow-[2px_2px_0px_#111827] hover:shadow-[4px_4px_0px_#111827] hover:-translate-y-0.5 inline-flex"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                        title="Kembali ke Beranda"
+                        aria-label="Kembali ke Beranda"
                     >
-                        <ArrowLeft className="w-4 h-4" strokeWidth={3} />
-                        Kembali ke Beranda
+                        <div style={{
+                            width: 26, height: 26, borderRadius: 7, background: KC.orange,
+                            border: `2px solid ${KC.border}`, display: 'grid', placeItems: 'center',
+                            boxShadow: `2.5px 2.5px 0 ${KC.border}`, transform: 'rotate(-3deg)',
+                        }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <path d="M5 3v18M5 12l9-9M5 12l9 9" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </div>
+                        <span style={{ fontWeight: 900, fontSize: 18, letterSpacing: -0.5, color: KC.ink }}>
+                            kerja<span style={{ color: KC.orange }}>cerdas</span>
+                        </span>
                     </button>
 
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="w-16 h-16 rounded-2xl bg-[#FF90E8] border-[3px] border-ink flex items-center justify-center shadow-[4px_4px_0px_#111827] transform -rotate-3">
-                            <Shield className="w-8 h-8 text-ink" strokeWidth={3} />
-                        </div>
-                        <div>
-                            <h1 className="text-3xl sm:text-4xl font-extrabold text-ink uppercase tracking-tight">
-                                Kebijakan <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-cyan-600">Privasi</span>
-                            </h1>
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                        <button
+                            onClick={() => navigate('about')}
+                            style={{
+                                background: 'none', border: 'none', color: KC.ink,
+                                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
+                            }}
+                            className="hover:text-kc-orange"
+                        >
+                            Tentang Platform
+                        </button>
+                        <button
+                            onClick={() => openAuthModal('login')}
+                            style={{
+                                padding: '6px 14px', fontSize: 13, fontWeight: 800,
+                                background: '#fff', color: KC.ink, border: `1.5px solid ${KC.border}`,
+                                borderRadius: 6, cursor: 'pointer', fontFamily: FONT,
+                                boxShadow: `2px 2px 0 ${KC.border}`,
+                            }}
+                        >
+                            Masuk
+                        </button>
                     </div>
-                    <p className="text-base font-bold text-ink/70 max-w-2xl leading-relaxed">
-                        Transparansi dalam pengelolaan data untuk pencari kerja dan pemberi kerja.
-                        Sesuai dengan UU Pelindungan Data Pribadi (UU PDP) No. 27 Tahun 2022.
+                </div>
+            </header>
+
+            {/* ── HERO BANNER ── */}
+            <section style={{
+                background: '#FFFFFF',
+                borderBottom: `2px solid ${KC.border}`,
+                padding: '48px 20px 40px',
+            }}>
+                <div style={{ maxWidth: 1040, margin: '0 auto' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: KC.lime, border: `1.5px solid ${KC.border}`, borderRadius: 6, fontSize: 12, fontWeight: 800, marginBottom: 14 }}>
+                        <span>🛡️</span>
+                        <span>KEBIJAKAN PRIVASI & TATA KELOLA DATA RESMI</span>
+                    </div>
+                    <h1 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 900, letterSpacing: -0.8, lineHeight: 1.15, marginBottom: 12 }}>
+                        Privasi & Pelindungan Data Pribadi
+                    </h1>
+                    <p style={{ fontSize: 15, color: '#4B5563', lineHeight: 1.6, maxWidth: 760 }}>
+                        Penjelasan komprehensif mengenai bagaimana KerjaCerdas mengumpulkan, memproses melalui algoritma kecerdasan buatan, mengamankan, dan menjaga kerahasiaan data pribadi Anda sesuai dengan <strong>UU PDP No. 27 Tahun 2022</strong>.
                     </p>
 
-                    {/* Quick nav */}
-                    <div className="flex flex-wrap gap-2 mt-8">
-                        {SECTIONS.map(({ id, title }) => (
-                            <a
-                                key={id}
-                                href={`#privacy-${id}`}
-                                className="px-4 py-2 rounded-xl bg-white border-[2px] border-ink text-xs font-black text-ink hover:bg-[#B8FF6D] hover:-translate-y-1 hover:shadow-[4px_4px_0px_#111827] transition-all uppercase tracking-wider"
+                    <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: '#6B7280', flexWrap: 'wrap' }}>
+                        <span>📅 Terakhir Diperbarui: <strong>28 Agustus 2026</strong></span>
+                        <span>•</span>
+                        <span>⚖️ Yurisdiksi: <strong>Republik Indonesia</strong></span>
+                        <span>•</span>
+                        <span>🔒 Status Enkripsi: <strong>AES-256 & TLS 1.3 Aktif</strong></span>
+                    </div>
+
+                    {/* Quick Nav Chips */}
+                    <div style={{ marginTop: 24, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {SECTIONS.map((sec) => (
+                            <button
+                                key={sec.id}
+                                onClick={() => scrollToSection(sec.id)}
+                                style={{
+                                    padding: '6px 12px',
+                                    background: activeSection === sec.id ? KC.ink : '#FAF9F5',
+                                    color: activeSection === sec.id ? '#FFFFFF' : KC.ink,
+                                    border: `1.5px solid ${KC.border}`,
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    fontFamily: FONT,
+                                    boxShadow: activeSection === sec.id ? 'none' : `2px 2px 0 ${KC.border}`,
+                                    transition: 'all 0.12s ease',
+                                }}
                             >
-                                {title}
-                            </a>
+                                {sec.number}. {sec.title.split(' ')[0]}
+                            </button>
                         ))}
                     </div>
                 </div>
-            </div>
+            </section>
 
-            {/* Content */}
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8 relative z-10">
-                {SECTIONS.map(({ id, icon: Icon, title, content }, i) => (
-                    <section
-                        key={id}
-                        id={`privacy-${id}`}
-                        className="bg-white border-[3px] border-ink rounded-[2rem] p-6 sm:p-8 shadow-[8px_8px_0px_#111827] scroll-mt-28"
-                    >
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-12 h-12 rounded-xl bg-[#00E5FF] border-[3px] border-ink flex items-center justify-center shrink-0 shadow-[4px_4px_0px_#111827]">
-                                <Icon className="w-6 h-6 text-ink" strokeWidth={3} />
+            {/* ── MAIN CONTENT SECTIONS ── */}
+            <main style={{ maxWidth: 1040, margin: '0 auto', padding: '40px 20px 60px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+                    {SECTIONS.map((sec) => (
+                        <article
+                            key={sec.id}
+                            id={`sec-${sec.id}`}
+                            style={{
+                                background: KC.card,
+                                border: `2px solid ${KC.border}`,
+                                borderRadius: 12,
+                                padding: '32px 28px',
+                                boxShadow: `4px 4px 0 ${KC.border}`,
+                            }}
+                        >
+                            {/* Section Header */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <span style={{
+                                        width: 32, height: 32, borderRadius: 6, background: KC.ink, color: '#fff',
+                                        display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 13,
+                                    }}>
+                                        {sec.number}
+                                    </span>
+                                    <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>
+                                        {sec.title}
+                                    </h2>
+                                </div>
+                                <span style={{
+                                    padding: '3px 8px', background: sec.badgeColor || KC.lime,
+                                    border: `1.5px solid ${KC.border}`, borderRadius: 4,
+                                    fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
+                                }}>
+                                    {sec.badge}
+                                </span>
                             </div>
-                            <h2 className="text-xl sm:text-2xl font-black text-ink">{title}</h2>
-                        </div>
-                        <div className="text-base text-ink/80 leading-relaxed font-medium">
-                            {content.split('\n').map((line, li) => {
-                                // Bold text rendering
-                                const parts = line.split(/\*\*(.*?)\*\*/g)
-                                return (
-                                    <p key={li} className={line.startsWith('•') ? 'pl-5 relative mb-2' : 'mb-4'}>
-                                        {line.startsWith('•') && <span className="absolute left-0 text-brand-500 font-bold">•</span>}
-                                        {parts.map((part, pi) =>
-                                            pi % 2 === 1
-                                                ? <strong key={pi} className="text-ink font-black">{part}</strong>
-                                                : <span key={pi}>{part.replace(/^• /g, '')}</span>
-                                        )}
-                                    </p>
-                                )
-                            })}
-                        </div>
-                    </section>
-                ))}
 
-                {/* Bottom CTA */}
-                <div className="text-center py-12 relative z-10">
-                    <p className="text-sm font-bold text-ink/70 mb-6 max-w-lg mx-auto">
-                        Dengan menggunakan KerjaCerdas, Anda menyetujui kebijakan privasi dan syarat ketentuan ini.
-                    </p>
-                    <button
-                        onClick={() => navigate('home')}
-                        className="bg-[#FFC900] text-ink border-[3px] border-ink font-black px-8 py-4 rounded-xl shadow-[4px_4px_0px_#111827] hover:-translate-y-1 hover:shadow-[8px_8px_0px_#111827] transition-all"
-                    >
-                        Kembali ke Beranda
-                    </button>
+                            {/* Section Body */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                {sec.content.map((item, idx) => (
+                                    <div key={idx} style={{ background: '#FAF9F5', border: `1.5px solid ${KC.ash}`, borderRadius: 8, padding: 18 }}>
+                                        <h3 style={{ fontSize: 15, fontWeight: 800, color: KC.ink, marginBottom: 8 }}>
+                                            {item.heading}
+                                        </h3>
+                                        <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
+                                            {item.text}
+                                        </p>
+                                    </div>
+                                ))}
+
+                                {sec.contactInfo && (
+                                    <div style={{
+                                        marginTop: 8,
+                                        background: '#FFF9E6',
+                                        border: `2px solid ${KC.border}`,
+                                        borderRadius: 8,
+                                        padding: 20,
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                                        gap: 16,
+                                    }}>
+                                        <div>
+                                            <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', marginBottom: 4 }}>Petugas DPO</div>
+                                            <a href={`mailto:${sec.contactInfo.dpoEmail}`} style={{ fontSize: 13, fontWeight: 800, color: KC.orange, textDecoration: 'none' }}>
+                                                {sec.contactInfo.dpoEmail}
+                                            </a>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', marginBottom: 4 }}>Email Privasi</div>
+                                            <a href={`mailto:${sec.contactInfo.supportEmail}`} style={{ fontSize: 13, fontWeight: 800, color: KC.ink, textDecoration: 'none' }}>
+                                                {sec.contactInfo.supportEmail}
+                                            </a>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', marginBottom: 4 }}>Standar Respon SLA</div>
+                                            <div style={{ fontSize: 13, fontWeight: 800, color: KC.ink }}>
+                                                {sec.contactInfo.sla}
+                                            </div>
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', marginBottom: 4 }}>Alamat Kantor Operasional</div>
+                                            <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
+                                                {sec.contactInfo.address}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </article>
+                    ))}
                 </div>
-            </div>
+
+                {/* Bottom Card */}
+                <div style={{
+                    marginTop: 36,
+                    background: KC.ink,
+                    color: '#fff',
+                    border: `2px solid ${KC.border}`,
+                    borderRadius: 12,
+                    padding: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 20,
+                    boxShadow: `4px 4px 0 ${KC.orange}`,
+                }}>
+                    <div>
+                        <h3 style={{ fontSize: 18, fontWeight: 900, margin: '0 0 6px' }}>
+                            Siap Mencari Karir atau Merekrut Talenta Terverifikasi?
+                        </h3>
+                        <p style={{ fontSize: 13, color: '#9CA3AF', margin: 0 }}>
+                            Nikmati ekosistem rekrutmen berbasis AI yang transparan, aman, dan patuh hukum.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <button
+                            onClick={() => navigate('home')}
+                            style={{
+                                padding: '10px 18px', fontSize: 13, fontWeight: 800,
+                                background: '#fff', color: KC.ink, border: `2px solid #fff`,
+                                borderRadius: 8, cursor: 'pointer', fontFamily: FONT,
+                            }}
+                        >
+                            Jelajahi Platform →
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            {/* ── FOOTER ── */}
+            <footer style={{ background: KC.ink, color: '#fff', padding: '40px 0 24px', borderTop: `2px solid ${KC.border}` }}>
+                <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#9CA3AF' }}>
+                    <span>© 2026 KerjaCerdas Indonesia. Seluruh hak cipta dilindungi.</span>
+                    <span>Kepatuhan UU PDP No. 27/2022 • Enkripsi AES-256</span>
+                </div>
+            </footer>
         </div>
     )
 }
