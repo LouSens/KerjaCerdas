@@ -37,7 +37,7 @@ import EmployerProfile from './components/EmployerProfile'
 // ── Route map: view key ↔ URL path ─────────────────────────────────────────
 export const VIEW_TO_PATH = {
     'home':                  '/',
-    'pricing':               '/',
+    'pricing':               '/harga',
     'about':                 '/tentang',
     'privacy':               '/privasi',
     'seeker-dashboard':      '/dashboard',
@@ -57,9 +57,27 @@ export const VIEW_TO_PATH = {
     'employer-profile':      '/employer/profil',
 }
 
-export const PATH_TO_VIEW = Object.fromEntries(
-    Object.entries(VIEW_TO_PATH).map(([k, v]) => [v, k])
-)
+export const PATH_TO_VIEW = {
+    '/':                     'home',
+    '/harga':                'pricing',
+    '/tentang':              'about',
+    '/privasi':              'privacy',
+    '/dashboard':            'seeker-dashboard',
+    '/lowongan':             'seeker-match',
+    '/skill-gap':            'seeker-skill-gap',
+    '/tersimpan':            'seeker-saved',
+    '/verifikasi':           'seeker-verification',
+    '/profil':               'seeker-profile',
+    '/cari':                 'seeker-search',
+    '/lamaran':              'seeker-applications',
+    '/employer/dashboard':   'employer-dashboard',
+    '/employer/lowongan':    'employer-jobs',
+    '/employer/pasang':      'employer-post-job',
+    '/employer/kandidat':    'employer-candidates',
+    '/employer/verifikasi':  'employer-verification',
+    '/employer/upload':      'employer-upload',
+    '/employer/profil':      'employer-profile',
+}
 
 /**
  * NavigationSync — bridges React Router ↔ Zustand store.

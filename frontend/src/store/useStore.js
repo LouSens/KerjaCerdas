@@ -191,6 +191,14 @@ const useStore = create(
 
             navigate: (view) => {
                 const { isAuthenticated, userRole, openAuthModal } = get()
+                if (view === 'home') {
+                    set({ activeView: 'home' })
+                    if (_routerNavigate) {
+                        _routerNavigate('/')
+                    }
+                    window.scrollTo({ top: 0, behavior: 'instant' })
+                    return
+                }
                 if (view === 'pricing') {
                     set({ activeView: 'home' })
                     if (_routerNavigate) {
