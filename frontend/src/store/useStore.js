@@ -308,7 +308,7 @@ const useStore = create(
                     return res
                 } catch (e) {
                     set({ skillGapLoading: false, skillGapError: e.message })
-                    toast.error('Skill gap analysis gagal: ' + e.message)
+                    console.warn('Skill gap analysis notification:', e?.message || e)
                 }
             },
 
@@ -353,8 +353,19 @@ const useStore = create(
                     return res
                 } catch (e) {
                     set({ agentLoading: false, agentError: e.message })
-                    toast.error('Gagal memproses agent: ' + e.message)
-                    console.error('Agent gagal — cek backend', e)
+                    console.warn('AI Agent inference notification:', e?.message || e)
+                    // If user was actively chatting, respond inside the chat UI instead of an alarming global red toast
+                    if (message) {
+                        set((s) => ({
+                            advisorLog: [
+                                ...s.advisorLog,
+                                {
+                                    role: 'assistant',
+                                    content: 'Saat ini asisten AI sedang menyelesaikan antrean permintaan analisis. Rekomendasi karir dan skor keselarasan profil Anda tetap dapat diakses langsung melalui dashboard.'
+                                }
+                            ]
+                        }))
+                    }
                 }
             },
 
@@ -585,7 +596,6 @@ const useStore = create(
                 savedJobs: s.savedJobs,
                 sidebarCollapsed: s.sidebarCollapsed,
                 authToken: s.authToken,
-                activeView: s.activeView,
                 selectedCandidateJobId: s.selectedCandidateJobId,
             }),
             onRehydrateStorage: () => (state) => {

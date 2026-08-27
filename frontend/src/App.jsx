@@ -84,7 +84,6 @@ export const PATH_TO_VIEW = {
  * Keeps URL and activeView in sync without breaking existing store logic.
  */
 function NavigationSync() {
-    const { activeView, isAuthenticated, userRole, seekerId, profile } = useStore()
     const location = useLocation()
     const reactNavigate = useNavigate()
 
@@ -94,21 +93,13 @@ function NavigationSync() {
         return () => useStore.getState()._setRouterNavigate(null)
     }, [reactNavigate])
 
-    // Sync URL when activeView changes in store
-    useEffect(() => {
-        const targetPath = VIEW_TO_PATH[activeView]
-        if (targetPath && location.pathname !== targetPath) {
-            reactNavigate(targetPath, { replace: true })
-        }
-    }, [activeView]) // eslint-disable-line react-hooks/exhaustive-deps
-
     // Sync activeView when URL changes (browser back/forward, direct navigation)
     useEffect(() => {
         const view = PATH_TO_VIEW[location.pathname]
         if (view && view !== useStore.getState().activeView) {
-            useStore.getState().navigate(view)
+            useStore.setState({ activeView: view })
         }
-    }, [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [location.pathname])
 
     return null
 }
@@ -169,7 +160,7 @@ export default function App() {
                 <Route path="/" element={<LandingHero />} />
                 <Route path="/harga" element={<Navigate to="/" replace />} />
                 <Route path="/tentang" element={<AboutPage />} />
-                <Route path="/privasi" element={<><PublicHeader /><main className="pt-20"><PrivacyPolicyPage /></main><Footer /></>} />
+                <Route path="/privasi" element={<PrivacyPolicyPage />} />
 
                 {/* ── Seeker routes ─────────────────────────── */}
                 <Route path="/dashboard" element={

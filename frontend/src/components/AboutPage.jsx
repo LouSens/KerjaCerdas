@@ -214,30 +214,13 @@ export default function AboutPage() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     height: 64,
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <button
-                            onClick={() => navigate('home')}
-                            className="kc-btn-about"
-                            style={{
-                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                                padding: '7px 10px', fontSize: 12, fontWeight: 800,
-                                background: '#FAF9F5', color: KC.ink, border: `1.5px solid ${KC.ink}`,
-                                borderRadius: 7, cursor: 'pointer', fontFamily: FONT,
-                                boxShadow: `2px 2px 0 ${KC.ink}`,
-                            }}
-                            title="Kembali ke Beranda"
-                            aria-label="Kembali ke Beranda"
-                        >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={KC.ink} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="19" y1="12" x2="5" y2="12"></line>
-                                <polyline points="12 19 5 12 12 5"></polyline>
-                            </svg>
-                            <span className="kc-back-text">Beranda</span>
-                        </button>
-                        <a href="/" onClick={(e) => { e.preventDefault(); navigate('home') }} style={{ textDecoration: 'none' }}>
-                            <Logo size={26} />
-                        </a>
-                    </div>
+                    <button
+                        onClick={() => navigate('home')}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
+                        title="Kembali ke Beranda"
+                    >
+                        <Logo size={26} />
+                    </button>
 
                     {/* Desktop Links */}
                     <div className="kc-nav-desktop" style={{ alignItems: 'center', gap: 28, fontSize: 14, fontWeight: 700 }}>

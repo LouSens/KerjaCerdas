@@ -100,8 +100,8 @@ export default function EmployerDashboard() {
                     <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {display.map((j, idx) => (
                             <BrutalCard key={j.id || idx} color="#FFFFFF" padding={18}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
-                                    <div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+                                    <div style={{ flex: '1 1 200px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                             <span style={{ padding: '2px 8px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 6, fontSize: 10, fontWeight: 800, color: '#047857' }}>
                                                 ● LIVE
@@ -113,14 +113,14 @@ export default function EmployerDashboard() {
                                         <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: KC.ink }}>
                                             {j.title}
                                         </h3>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute, flexWrap: 'wrap' }}>
                                             <span>{j.location || 'Jakarta · Hybrid'}</span>
                                             <span>·</span>
                                             <span>{j.salary_range || 'Rp 28jt - Rp 42jt'}</span>
                                         </div>
                                     </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ fontSize: 16, fontWeight: 900, color: KC.ink }}>{j.app || 84}</div>
                                             <div style={{ fontSize: 10, fontWeight: 700, color: KC.mute, textTransform: 'uppercase' }}>Pelamar</div>
