@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import logging as _logging
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from backend.app.db.models import (
     AIPerformanceLog,
@@ -57,50 +59,44 @@ class PostgresRepository(Generic[TSchema, TModel]):
             return self.schema.model_validate(data)
 
     async def upsert(self, obj: TSchema) -> TSchema:
+        """Atomically insert-or-update using PostgreSQL ON CONFLICT DO UPDATE.
+
+        Falls back to a SELECT+INSERT/UPDATE pattern for SQLite (dev/test mode)
+        since SQLite's ON CONFLICT syntax differs.
+        """
+        data = obj.model_dump()
         async with async_session() as session:
-            # check if exists
-            oid = getattr(obj, "id")
-            if hasattr(self.model, "user_id") and hasattr(obj, "user_id"):
-                user_id_val = getattr(obj, "user_id")
-                stmt = select(self.model).where(
-                    (self.model.id == oid) | (self.model.user_id == user_id_val)
+            # Detect SQLite (dev) vs PostgreSQL (prod)
+            dialect = session.bind.dialect.name if session.bind else "postgresql"
+            if dialect == "postgresql":
+                # Atomic upsert — no TOCTOU race condition
+                stmt = pg_insert(self.model).values(**data)
+                # Build the update dict (all columns except the PK)
+                pk_cols = {c.name for c in self.model.__table__.primary_key.columns}
+                update_dict = {k: v for k, v in data.items() if k not in pk_cols}
+                if update_dict:
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["id"],
+                        set_=update_dict,
+                    )
+                else:
+                    stmt = stmt.on_conflict_do_nothing()
+                await session.execute(stmt)
+                await session.commit()
+            else:
+                # SQLite fallback: SELECT then INSERT/UPDATE
+                oid = getattr(obj, "id")
+                result = await session.execute(
+                    select(self.model).where(self.model.id == oid)
                 )
-            else:
-                stmt = select(self.model).where(self.model.id == oid)
-            result = await session.execute(stmt)
-            rows = result.scalars().all()
-            if len(rows) <= 1:
-                existing = rows[0] if rows else None
-            else:
-                # Multiple matches (e.g. legacy rows sharing a user_id):
-                # prefer the exact id match, otherwise the most recently
-                # updated row, instead of crashing with MultipleResultsFound.
-                existing = next((r for r in rows if r.id == oid), None)
-                if existing is None:
-
-                    def _recency(r):
-                        ts = getattr(r, "updated_at", None) or getattr(r, "created_at", None)
-                        return (ts is not None, ts, r.id)
-
-                    existing = max(rows, key=_recency)
-
-            data = obj.model_dump()
-            if existing:
-                if existing.id != oid:
-                    data["id"] = existing.id
-                    if hasattr(obj, "id"):
-                        try:
-                            obj.id = existing.id
-                        except Exception:
-                            pass
-                for k, v in data.items():
-                    setattr(existing, k, v)
-            else:
-                new_obj = self.model(**data)
-                session.add(new_obj)
-
-            await session.commit()
-            return obj
+                existing = result.scalar_one_or_none()
+                if existing:
+                    for k, v in data.items():
+                        setattr(existing, k, v)
+                else:
+                    session.add(self.model(**data))
+                await session.commit()
+        return obj
 
     async def delete(self, oid: str) -> bool:
         async with async_session() as session:
@@ -141,7 +137,12 @@ class PostgresRepository(Generic[TSchema, TModel]):
             return out
 
     async def find(self, predicate) -> list[TSchema]:
-        """Not efficient for SQL, but maintains the interface from json_store."""
+        """Full-table scan with Python-side predicate.
+
+        DEPRECATED for hot paths — loads the entire table into memory.
+        Use the typed SQL finders below (find_by_user_id, find_by_seeker_id, etc.)
+        for any query called on every authenticated request.
+        """
         all_items = await self.list()
         return [x for x in all_items if predicate(x)]
 
@@ -278,26 +279,117 @@ async def get_query_embedding(cache_key: str) -> list[float] | None:
 
 
 async def save_query_embedding(cache_key: str, model: str, embedding: list[float]) -> None:
-    """Persist a query embedding (idempotent), pruning oldest rows past the cap."""
+    """Persist a query embedding (idempotent), pruning oldest rows past the cap.
+
+    Uses a single batched DELETE instead of N+1 individual deletes.
+    """
     try:
         async with async_session() as session:
             existing = await session.get(QueryEmbedding, cache_key)
             if existing is None:
                 session.add(QueryEmbedding(cache_key=cache_key, model=model, embedding=embedding))
-            # Keep the table bounded: drop the oldest rows beyond the cap.
-            prune_ids = (
+            # Keep the table bounded: delete all rows beyond the cap in one query.
+            subquery = (
                 select(QueryEmbedding.cache_key)
                 .order_by(QueryEmbedding.created_at.desc())
                 .offset(_QUERY_EMBED_TABLE_MAX)
+                .scalar_subquery()
             )
-            rows = (await session.execute(prune_ids)).scalars().all()
-            for key in rows:
-                old = await session.get(QueryEmbedding, key)
-                if old is not None:
-                    await session.delete(old)
+            await session.execute(
+                delete(QueryEmbedding).where(QueryEmbedding.cache_key.in_(subquery))
+            )
             await session.commit()
     except Exception as exc:
         _ann_logger.warning("save_query_embedding failed (%s) — skipping persist", exc)
+
+
+# ── Typed SQL finders for hot paths ──────────────────────────────────────────
+# These replace find(lambda ...) full-table-scans on the most-called queries.
+# Each runs a single indexed SQL query instead of loading the whole table.
+
+_store_logger = _logging.getLogger(__name__)
+
+
+async def find_seeker_by_user_id(user_id: str) -> SeekerSchema | None:
+    """Return a seeker by their auth user_id (indexed, O(1))."""
+    try:
+        async with async_session() as session:
+            stmt = select(SeekerProfile).where(SeekerProfile.user_id == user_id)
+            result = await session.execute(stmt)
+            obj = result.scalar_one_or_none()
+            if not obj:
+                return None
+            data = {c.name: getattr(obj, c.name) for c in SeekerProfile.__table__.columns}
+            if data.get("embedding") is not None:
+                data["embedding"] = list(data["embedding"])
+            return SeekerSchema.model_validate(data)
+    except Exception as exc:
+        _store_logger.warning("find_seeker_by_user_id failed (%s)", exc)
+        return None
+
+
+async def find_employer_by_user_id(user_id: str) -> EmployerSchema | None:
+    """Return an employer by their auth user_id (indexed, O(1))."""
+    try:
+        async with async_session() as session:
+            stmt = select(Employer).where(Employer.user_id == user_id)
+            result = await session.execute(stmt)
+            obj = result.scalar_one_or_none()
+            if not obj:
+                return None
+            data = {c.name: getattr(obj, c.name) for c in Employer.__table__.columns}
+            return EmployerSchema.model_validate(data)
+    except Exception as exc:
+        _store_logger.warning("find_employer_by_user_id failed (%s)", exc)
+        return None
+
+
+async def find_applications_by_seeker_id(seeker_id: str) -> list[ApplicationSchema]:
+    """Return all applications for a seeker (indexed on seeker_id, no full scan)."""
+    try:
+        async with async_session() as session:
+            stmt = select(Application).where(Application.seeker_id == seeker_id)
+            result = await session.execute(stmt)
+            out = []
+            for obj in result.scalars().all():
+                data = {c.name: getattr(obj, c.name) for c in Application.__table__.columns}
+                out.append(ApplicationSchema.model_validate(data))
+            return out
+    except Exception as exc:
+        _store_logger.warning("find_applications_by_seeker_id failed (%s)", exc)
+        return []
+
+
+async def find_gamification_by_seeker_id(seeker_id: str) -> GameSchema | None:
+    """Return gamification stats for a seeker (indexed, O(1))."""
+    try:
+        async with async_session() as session:
+            stmt = select(GamificationStats).where(GamificationStats.seeker_id == seeker_id)
+            result = await session.execute(stmt)
+            obj = result.scalar_one_or_none()
+            if not obj:
+                return None
+            data = {c.name: getattr(obj, c.name) for c in GamificationStats.__table__.columns}
+            return GameSchema.model_validate(data)
+    except Exception as exc:
+        _store_logger.warning("find_gamification_by_seeker_id failed (%s)", exc)
+        return None
+
+
+async def find_skill_gaps_by_seeker_id(seeker_id: str) -> list[SkillGapSchema]:
+    """Return all skill gap results for a seeker (indexed on seeker_id)."""
+    try:
+        async with async_session() as session:
+            stmt = select(SkillGapResult).where(SkillGapResult.seeker_id == seeker_id)
+            result = await session.execute(stmt)
+            out = []
+            for obj in result.scalars().all():
+                data = {c.name: getattr(obj, c.name) for c in SkillGapResult.__table__.columns}
+                out.append(SkillGapSchema.model_validate(data))
+            return out
+    except Exception as exc:
+        _store_logger.warning("find_skill_gaps_by_seeker_id failed (%s)", exc)
+        return []
 
 
 class Repositories:

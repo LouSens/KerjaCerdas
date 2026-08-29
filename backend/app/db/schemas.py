@@ -115,7 +115,7 @@ class SeekerProfile(TimestampedModel):
     user_id: str
     full_name: str
     headline: str = ""
-    nik: str | None = Field(default=None, min_length=16, max_length=16)
+    nik: str | None = Field(default=None, max_length=64)
     nik_verified: VerificationStatus = VerificationStatus.UNVERIFIED
     date_of_birth: str | None = None
     region_code: str  # BPS wilayah

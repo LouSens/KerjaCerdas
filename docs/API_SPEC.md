@@ -26,13 +26,13 @@ Authorization: Bearer <access_token>
 
 Requests traverse the following layers **in order** before reaching any router:
 
-| Layer | Class | Policy |
+| Layer | Class / Handler | Policy |
 |---|---|---|
-| **Rate Limiter** | `RateLimiterMiddleware` | Sliding window per IP — auth: 10 req/60s · agent: 20 req/60s · uploads: 10 req/60s |
-| **Sanitization** | `SanitizationMiddleware` | Rejects `Content-Length > 10 MB`; strips control characters |
-| **Security Headers** | `SecurityHeadersMiddleware` | Attaches `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy` |
-| **CORS** | `CORSMiddleware` | Enabled for frontend origin |
-| **Request Logging** | Internal | Every request logged with UUID, method, path, status, latency ms |
+| **1. Request Logging** | `log_requests` | Generates `X-Request-ID` and logs method, path, status, latency ms |
+| **2. Security Headers** | `security_headers` | Attaches `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Content-Security-Policy` |
+| **3. CORS** | `CORSMiddleware` | Whitelists frontend origin and `*.replit.dev` regex |
+| **4. Rate Limiter** | `RateLimiterMiddleware` | Sliding window per IP — auth: 10 req/60s · agent: 20 req/60s · uploads: 10 req/60s. Memory bounded at 10,000 keys with LRU eviction |
+| **5. Request Size Guard** | `RequestSizeMiddleware` | Rejects payloads exceeding 10 MB (`MAX_BODY_BYTES`) before parsing |
 
 All responses carry `X-Request-ID` for distributed tracing.
 

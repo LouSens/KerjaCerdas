@@ -3,7 +3,7 @@ KerjaCerdas — Input Sanitization Layer
 =======================================
 Pydantic validators and helper functions to protect against:
   1. Prompt injection (LLM jailbreaks embedded in user text)
-  2. XSS / script-injection in string fields
+  2. XSS / script-injection in string fields (without breaking normal text like 'C++ & Python')
   3. Oversized payloads (body-size abuse)
   4. Malicious filenames on upload
 
@@ -18,7 +18,6 @@ ANTIGRAVITY PROTOCOL: RULE-SECURITY-02 — All LLM inputs MUST be sanitized.
 
 from __future__ import annotations
 
-import html
 import logging
 import re
 from typing import Annotated
@@ -26,6 +25,7 @@ from typing import Annotated
 from fastapi import HTTPException, Request, status
 from pydantic import AfterValidator
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from starlette.types import ASGIApp
 
 logger = logging.getLogger(__name__)
@@ -42,17 +42,21 @@ _INJECTION_PATTERNS: list[re.Pattern] = [
     re.compile(r"ignore\s+(all\s+)?previous\s+instructions?", re.I),
     re.compile(r"(system|assistant|user)\s*:\s*", re.I),
     re.compile(r"<\s*(?:script|iframe|object|embed|form|link|meta|style)", re.I),
+    re.compile(r"javascript\s*:", re.I),
     re.compile(r"\\u003c|\\u003e|%3C|%3E", re.I),  # encoded < >
     re.compile(r"jailbreak", re.I),
     re.compile(r"DAN\s*mode", re.I),
     re.compile(r"(pretend|act)\s+as\s+(if\s+you\s+are|a\s+)", re.I),
-    re.compile(r"(\r?\n){5,}"),  # large blank-line bombs
+    re.compile(r"(\r?\n){6,}"),  # large blank-line bombs
     re.compile(r"reveal\s+(your\s+)?(system\s+)?prompt", re.I),
     re.compile(r"(base64|hex)\s*decode", re.I),
 ]
 
 # Characters and sequences that must never reach an LLM context boundary
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+# Dangerous HTML tag pattern to remove without double-encoding ampersands/math
+_DANGEROUS_HTML = re.compile(r"<\/?(?:script|iframe|object|embed|form|input|button|style|meta|link)[^>]*>", re.I)
 
 # Allowed filename characters (alphanumeric, dash, underscore, dot)
 _SAFE_FILENAME = re.compile(r"[^a-zA-Z0-9._\-\s]")
@@ -75,8 +79,8 @@ def sanitize_text(
 
     Steps:
     1. Truncate to `max_length` characters.
-    2. Strip control characters (except \n, \t if allow_newlines).
-    3. HTML-escape angle brackets to prevent XSS in rendered output.
+    2. Strip dangerous control characters (except \n, \t if allow_newlines).
+    3. Strip dangerous HTML/script tags (prevents XSS while avoiding entity double-encoding).
     4. Detect prompt-injection patterns → raise 422.
 
     Returns the sanitized string.
@@ -94,8 +98,8 @@ def sanitize_text(
     else:
         text = re.sub(r"[\x00-\x1f\x7f]", "", text)
 
-    # 3. Escape HTML to neutralise XSS in any rendered context
-    text = html.escape(text, quote=False)
+    # 3. Strip dangerous HTML tags to prevent XSS without corrupting plain text
+    text = _DANGEROUS_HTML.sub("", text)
 
     # 4. Injection detection
     for pattern in _INJECTION_PATTERNS:
@@ -164,7 +168,3 @@ class RequestSizeMiddleware(BaseHTTPMiddleware):
             )
 
         return await call_next(request)
-
-
-# fix missing import for Response in middleware
-from starlette.responses import Response  # noqa: E402

@@ -88,16 +88,13 @@ def _build_engine(database_url: str):
     else:
         connect_args = {}
 
-    engine = create_async_engine(
-        database_url,
-        echo=False,
-        future=True,
-        connect_args=connect_args,
-        pool_pre_ping=True,
-        pool_recycle=300,
-    )
-
     if is_sqlite:
+        engine = create_async_engine(
+            database_url,
+            echo=False,
+            future=True,
+            connect_args=connect_args,
+        )
 
         @event.listens_for(engine.sync_engine, "connect")
         def _enable_fk(dbapi_conn, _):
@@ -105,6 +102,18 @@ def _build_engine(database_url: str):
             cursor = dbapi_conn.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()
+    else:
+        engine = create_async_engine(
+            database_url,
+            echo=False,
+            future=True,
+            connect_args=connect_args,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            pool_size=5,
+            max_overflow=10,
+            pool_timeout=30,
+        )
 
     return engine
 

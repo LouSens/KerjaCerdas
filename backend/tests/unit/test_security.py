@@ -61,7 +61,8 @@ class TestInputSanitization:
     def test_html_angle_brackets_are_escaped(self) -> None:
         result = sanitize_text("<script>alert(1)</script>")
         assert "<script>" not in result
-        assert "&lt;script&gt;" in result
+        assert "</script>" not in result
+        assert "alert(1)" in result
 
     def test_control_chars_stripped(self) -> None:
         evil = "Hello\x00World\x01\x02"

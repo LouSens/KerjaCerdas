@@ -10,7 +10,7 @@ import logging
 
 from backend.app.api.dependencies import get_current_user, require_employer
 from backend.app.db.models import User
-from backend.app.db.postgres_store import get_repositories
+from backend.app.db.postgres_store import find_employer_by_user_id, get_repositories
 from backend.app.db.schemas import EducationLevel, Employer, JobPosting
 from backend.app.services.matching.matcher import SemanticMatcher
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,9 +28,7 @@ router = APIRouter(
 
 
 async def _get_employer(user_id: str) -> Employer | None:
-    repos = get_repositories()
-    results = await repos.employers.find(lambda e: e.user_id == user_id)
-    return results[0] if results else None
+    return await find_employer_by_user_id(user_id)
 
 
 # ── Employer Profile ──────────────────────────────────────────────────────────────────────────

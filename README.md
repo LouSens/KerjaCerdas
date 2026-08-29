@@ -361,6 +361,7 @@ erDiagram
     USERS ||--o| EMPLOYERS : "has_profile"
     USERS ||--o{ CHAT_SESSIONS : "owns_history"
     USERS ||--o{ EVENTS : "logs_analytics"
+    USERS ||--o{ OTPS : "verifies_phone"
     EMPLOYERS ||--o{ JOBS : "posts"
     SEEKERS ||--o{ APPLICATIONS : "submits"
     JOBS ||--o{ APPLICATIONS : "receives"
@@ -378,6 +379,7 @@ erDiagram
         UUID id PK
         UUID user_id FK
         VARCHAR full_name
+        VARCHAR nik "SHA-256 (UU-PDP Compliant)"
         JSONB skills "Extracted via LLM"
         JSONB experience
         VECTOR_768 embedding "HNSW Indexed"
@@ -419,6 +421,14 @@ erDiagram
         VARCHAR event_type "A/B Testing & Funnel"
         JSONB payload
     }
+    OTPS {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR phone
+        VARCHAR code_hash "SHA-256"
+        TIMESTAMP expires_at
+        BOOLEAN verified
+    }
 ```
 
 ---
@@ -437,10 +447,11 @@ KerjaCerdas/
 │   │   │   │   ├── employer.py    # Endpoint perusahaan & kandidat pelamar
 │   │   │   │   ├── events.py      # Analytics event tracking
 │   │   │   │   ├── experiments.py # A/B testing flag retrieval
+│   │   │   │   ├── inquiries.py   # Endpoint kemitraan & enterprise
 │   │   │   │   ├── jobs.py        # Pencarian dan paginasi lowongan
 │   │   │   │   ├── seeker.py      # Profil, bookmark, history aplikasi
-│   │   │   │   ├── uploads.py     # Endpoint Multi-modal PDF Parser
-│   │   │   │   └── verify.py      # E-KYC Dukcapil/SIVIL webhook
+│   │   │   │   ├── uploads.py     # Endpoint Multi-modal PDF Parser (%PDF- validated)
+│   │   │   │   └── verify.py      # E-KYC Dukcapil/SIVIL & DB-backed OTP
 │   │   │   ├── schemas/           # Pydantic validation schemas
 │   │   │   └── services/          # Business logic helpers
 │   │   ├── agents/           # Arsitektur Multi-Agent & LLM

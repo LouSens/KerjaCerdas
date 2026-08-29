@@ -29,7 +29,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from backend.app.api.database import init_db, reconfigure
 from backend.app.api.middleware.rate_limiter import RateLimiterMiddleware
 from backend.app.api.middleware.sanitization import RequestSizeMiddleware
-from backend.app.api.routers.admin import router as admin_router
 from backend.app.api.routers.agent import router as agent_router
 from backend.app.api.routers.auth import router as auth_router
 from backend.app.api.routers.employer import router as employer_router  # prefix=/employer
@@ -37,7 +36,6 @@ from backend.app.api.routers.events import router as events_router
 from backend.app.api.routers.experiments import router as experiments_router
 from backend.app.api.routers.inquiries import router as inquiries_router
 from backend.app.api.routers.jobs import router as jobs_router
-from backend.app.api.routers.karirhub import router as karirhub_router
 from backend.app.api.routers.seeker import router as seeker_router
 from backend.app.api.routers.uploads import router as uploads_router
 from backend.app.api.routers.verify import router as verify_router
@@ -97,13 +95,21 @@ app = FastAPI(
 )
 
 # Middleware is applied in LIFO order (last-added = outermost).
-# Execution order: CORSMiddleware → RateLimiterMiddleware → RequestSizeMiddleware → route
+# Outermost to innermost execution:
+# 1. log_requests & request_id
+# 2. security_headers
+# 3. CORSMiddleware
+# 4. RateLimiterMiddleware
+# 5. RequestSizeMiddleware
+# 6. Route handler
 
 _cors_origins = list(settings.cors_allow_origins)
 _replit_dev = os.environ.get("REPLIT_DEV_DOMAIN")
 if _replit_dev:
     _cors_origins.append(f"https://{_replit_dev}")
 
+app.add_middleware(RequestSizeMiddleware)
+app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -113,12 +119,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Rate limiting — prevents brute-force & DoS
-app.add_middleware(RateLimiterMiddleware)
-
-# Payload size guard — rejects oversized JSON bodies
-app.add_middleware(RequestSizeMiddleware)
-
 for r in (
     auth_router,
     seeker_router,
@@ -127,11 +127,9 @@ for r in (
     uploads_router,
     verify_router,
     agent_router,
-    karirhub_router,
     events_router,
     experiments_router,
     inquiries_router,
-    admin_router,
 ):
     app.include_router(r, prefix="/api/v1")
 

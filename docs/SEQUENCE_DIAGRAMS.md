@@ -249,16 +249,18 @@ sequenceDiagram
     participant SI as SIVIL Mock (Kemdikbud)
     participant DJ as DJP Online Mock (NPWP)
 
-    note over F,VR: All responses are AES-256-GCM encrypted at rest<br/>PII is redacted before storage (UU PDP No.27/2022)
+    note over F,VR: All data handling complies with UU PDP No.27/2022<br/>NIK is hashed via SHA-256; raw identity numbers are never stored in plaintext
 
     %% Step 1 — KTP Identity
     S->>F: Enter NIK (16 digits) + Full Name + optional selfie
     F->>F: Validate NIK length === 16, name non-empty
     F->>VR: POST /api/v1/verify/identity<br/>{nik, full_name, date_of_birth, selfie_image_base64}
+    VR->>VR: Compute SHA-256 hash of NIK
     VR->>ID: verify_identity(nik, full_name)
     ID->>ID: Fuzzy-match name against registry<br/>Compute match_score (0–1)
     alt Match score ≥ 0.7
         ID-->>VR: {is_valid: true, match_score, verification_hash, pii_redacted: true}
+        VR->>DB: Update SeekerProfile (nik=nik_hash, nik_verified='verified')
         VR-->>F: 200 {status: "VERIFIED", match_percentage: 0.97, verification_hash}
         F-->>S: Show green "Identitas Terverifikasi ✓" badge
     else Match failed

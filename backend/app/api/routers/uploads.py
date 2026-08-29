@@ -7,7 +7,11 @@ from __future__ import annotations
 
 from backend.app.api.dependencies import require_employer, require_seeker
 from backend.app.db.models import User
-from backend.app.db.postgres_store import get_repositories
+from backend.app.db.postgres_store import (
+    find_employer_by_user_id,
+    find_seeker_by_user_id,
+    get_repositories,
+)
 from backend.app.db.schemas import (
     Education,
     EducationLevel,
@@ -67,15 +71,17 @@ async def upload_cv(
     blob = await file.read()
     if len(blob) > MAX_PDF_BYTES:
         raise HTTPException(413, f"PDF too large (>{MAX_PDF_BYTES // (1024 * 1024)} MB)")
+    if not blob.startswith(b"%PDF-"):
+        raise HTTPException(400, "Invalid PDF file: Missing %PDF- header signature")
 
     parsed = await parse_cv(blob)
     repos = get_repositories()
 
-    # Find or create a seeker profile for the authenticated user.
+    # Find or create a seeker profile for the authenticated user using fast SQL finder
     user_id = current_user.id
-    existing = await repos.seekers.find(lambda s: s.user_id == user_id)
+    existing = await find_seeker_by_user_id(user_id)
     seeker = (
-        existing[0]
+        existing
         if existing
         else SeekerProfile(
             user_id=user_id,
@@ -120,16 +126,17 @@ async def upload_job_pack(
     blob = await file.read()
     if len(blob) > MAX_PDF_BYTES:
         raise HTTPException(413, "PDF too large")
+    if not blob.startswith(b"%PDF-"):
+        raise HTTPException(400, "Invalid PDF file: Missing %PDF- header signature")
 
     parsed = await parse_job_pack(blob)
     postings = parsed.get("postings", [])
     repos = get_repositories()
 
-    # Resolve the employer profile for the authenticated user.
-    employer_match = await repos.employers.find(lambda e: e.user_id == current_user.id)
-    if not employer_match:
+    # Resolve the employer profile for the authenticated user using fast SQL finder
+    employer = await find_employer_by_user_id(current_user.id)
+    if not employer:
         raise HTTPException(400, "No employer profile for this user")
-    employer = employer_match[0]
 
     matcher = SemanticMatcher()
     created: list[str] = []

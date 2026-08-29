@@ -58,7 +58,7 @@ class SeekerProfile(Base, TimestampedMixin):
     )
     full_name: Mapped[str] = mapped_column(String(255))
     headline: Mapped[str] = mapped_column(String(255), default="")
-    nik: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    nik: Mapped[str | None] = mapped_column(String(64), nullable=True)  # Stores SHA-256 hash of NIK for UU-PDP compliance
     nik_verified: Mapped[str] = mapped_column(String(20), default="unverified")
     date_of_birth: Mapped[str | None] = mapped_column(String(20), nullable=True)
     region_code: Mapped[str] = mapped_column(String(50))
@@ -117,11 +117,24 @@ class Application(Base, TimestampedMixin):
     __tablename__ = "applications"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    job_id: Mapped[str] = mapped_column(String(36), index=True)
-    seeker_id: Mapped[str] = mapped_column(String(36), index=True)
+    job_id: Mapped[str] = mapped_column(String(36), ForeignKey("jobs.id"), index=True)
+    seeker_id: Mapped[str] = mapped_column(String(36), ForeignKey("seekers.id"), index=True)
     status: Mapped[str] = mapped_column(String(50), default="applied")
     cover_letter: Mapped[str] = mapped_column(Text, default="")
     match_score: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+class OTPRecord(Base, TimestampedMixin):
+    """Database-backed OTP store with expiration for distributed/autoscale environments."""
+    __tablename__ = "otps"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    phone: Mapped[str] = mapped_column(String(30), index=True)
+    code_hash: Mapped[str] = mapped_column(String(64))  # SHA-256 hash of 6-digit OTP
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class MatchBundle(Base, TimestampedMixin):

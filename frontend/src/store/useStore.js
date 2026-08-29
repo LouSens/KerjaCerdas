@@ -274,8 +274,11 @@ const useStore = create(
                         },
                         seekerId: data.id,
                     })
-                } catch {
-                    // Profile doesn't exist yet — normal for new users
+                } catch (err) {
+                    // Profile doesn't exist yet (404) is expected for new users
+                    if (err?.status && err.status !== 404) {
+                        console.error('Failed to load seeker profile:', err)
+                    }
                 }
             },
 
@@ -378,7 +381,8 @@ const useStore = create(
                 try {
                     const data = await fetchApplications()
                     set({ applications: Array.isArray(data) ? data : [], applicationsLoading: false })
-                } catch {
+                } catch (err) {
+                    console.error('Failed to load applications:', err)
                     set({ applicationsLoading: false })
                 }
             },
@@ -472,8 +476,10 @@ const useStore = create(
                             savedAt: b.saved_at,
                         }))
                     })
-                } catch {
-                    // Silently ignore
+                } catch (err) {
+                    if (err?.status && err.status !== 404) {
+                        console.error('Failed to sync saved jobs:', err)
+                    }
                 }
             },
 
@@ -523,7 +529,8 @@ const useStore = create(
                 try {
                     const data = await fetchJobs()
                     set({ jobs: data.items || [], jobsLoading: false })
-                } catch {
+                } catch (err) {
+                    console.error('Failed to fetch public jobs:', err)
                     set({ jobsLoading: false })
                 }
             },
@@ -537,7 +544,8 @@ const useStore = create(
                 try {
                     const data = await fetchEmployerJobs()
                     set({ employerJobs: data.items || [], employerJobsLoading: false })
-                } catch {
+                } catch (err) {
+                    console.error('Failed to fetch employer jobs:', err)
                     set({ employerJobsLoading: false })
                 }
             },
@@ -546,8 +554,11 @@ const useStore = create(
                 try {
                     const data = await fetchEmployerProfile()
                     set({ employerProfile: data })
-                } catch {
-                    // Profile might not exist yet
+                } catch (err) {
+                    // Profile might not exist yet (404)
+                    if (err?.status && err.status !== 404) {
+                        console.error('Failed to load employer profile:', err)
+                    }
                 }
             },
 
@@ -557,8 +568,8 @@ const useStore = create(
                 try {
                     const data = await fetchExperimentAssignments()
                     set({ experiments: data || {} })
-                } catch {
-                    // Non-critical
+                } catch (err) {
+                    console.warn('Non-critical: Failed to load experiment assignments:', err)
                 }
             },
             getExperiment: (name) => get().experiments[name] ?? null,
@@ -606,9 +617,5 @@ const useStore = create(
         }
     )
 )
-
-if (typeof window !== 'undefined') {
-    window.useStore = useStore
-}
 
 export default useStore

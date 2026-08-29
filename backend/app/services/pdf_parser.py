@@ -222,17 +222,17 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]:
+    import asyncio
+
     try:
         client = _client()
     except _NoKey:
         logger.warning("Gemini auth missing — using text-heuristic fallback for task=%s", task)
         if task == "cv_parser":
-            return _fallback_extract(pdf_bytes)
+            return await asyncio.to_thread(_fallback_extract, pdf_bytes)
         return _offline_stub(task)
 
     system = build_system_prompt(role=role, task=task)
-
-    import asyncio
 
     def _sync():
         from google.genai import types
@@ -269,7 +269,7 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
     except Exception as e:  # network/SSL/quota/parsing — never crash the upload
         logger.warning("Gemini PDF call failed (task=%s): %s — falling back", task, e)
         if task == "cv_parser":
-            fb = _fallback_extract(pdf_bytes)
+            fb = await asyncio.to_thread(_fallback_extract, pdf_bytes)
             fb["_offline_reason"] = str(e)[:200]
             return fb
         stub = _offline_stub(task)
@@ -283,7 +283,7 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
     except Exception as e:
         logger.error("Gemini returned non-JSON (task=%s): %s", task, e)
         if task == "cv_parser":
-            return _fallback_extract(pdf_bytes)
+            return await asyncio.to_thread(_fallback_extract, pdf_bytes)
         return _offline_stub(task)
 
 

@@ -12,7 +12,13 @@ import logging
 
 from backend.app.api.dependencies import get_current_user, require_seeker
 from backend.app.db.models import User
-from backend.app.db.postgres_store import get_repositories
+from backend.app.db.postgres_store import (
+    find_applications_by_seeker_id,
+    find_gamification_by_seeker_id,
+    find_seeker_by_user_id,
+    find_skill_gaps_by_seeker_id,
+    get_repositories,
+)
 from backend.app.db.schemas import (
     Application,
     ApplicationStatus,
@@ -37,13 +43,12 @@ router = APIRouter(
 
 @router.get("/profile")
 async def get_profile(current_user: User = Depends(get_current_user)):
-    repos = get_repositories()
-    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
-    if not profiles:
+    profile = await find_seeker_by_user_id(current_user.id)
+    if not profile:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, "Profile belum dibuat. Upload CV atau isi manual."
         )
-    return profiles[0]
+    return profile
 
 
 @router.post("/profile", status_code=status.HTTP_201_CREATED)
@@ -58,7 +63,7 @@ async def create_or_update_profile(
     (< 200ms) instead of blocking on the Gemini API call (1–3s).
     """
     repos = get_repositories()
-    existing = await repos.seekers.find(lambda s: s.user_id == current_user.id)
+    profile = await find_seeker_by_user_id(current_user.id)
 
     # Parse inline skills: accept both list[str] and list[Skill]
     raw_skills = data.get("skills", [])
@@ -105,8 +110,7 @@ async def create_or_update_profile(
         elif isinstance(e, Education):
             education.append(e)
 
-    if existing:
-        profile = existing[0]
+    if profile:
         for field in (
             "full_name",
             "headline",
@@ -155,8 +159,8 @@ async def create_or_update_profile(
     background_tasks.add_task(_embed_and_save, profile)
 
     # Ensure gamification record exists
-    gam_list = await repos.gamification.find(lambda g: g.seeker_id == profile.id)
-    if not gam_list:
+    gam = await find_gamification_by_seeker_id(profile.id)
+    if not gam:
         gam = GamificationStats(seeker_id=profile.id)
         # Award first badge for completing profile
         if skills:
@@ -181,14 +185,12 @@ async def create_or_update_profile(
 
 @router.get("/gamification")
 async def get_gamification(current_user: User = Depends(get_current_user)):
-    repos = get_repositories()
-    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
-    if not profiles:
+    profile = await find_seeker_by_user_id(current_user.id)
+    if not profile:
         return {"xp": 0, "level": 1, "streak_days": 0, "badges": []}
-    gam_list = await repos.gamification.find(lambda g: g.seeker_id == profiles[0].id)
-    if not gam_list:
+    g = await find_gamification_by_seeker_id(profile.id)
+    if not g:
         return {"xp": 0, "level": 1, "streak_days": 0, "badges": []}
-    g = gam_list[0]
     return {
         "xp": g.xp,
         "level": max(1, g.xp // 250 + 1),
@@ -212,8 +214,8 @@ async def save_job(
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
 
-    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
-    seeker_id = profiles[0].id if profiles else current_user.id
+    profile = await find_seeker_by_user_id(current_user.id)
+    seeker_id = profile.id if profile else current_user.id
 
     existing = await repos.applications.find(
         lambda a: a.job_id == job_id and a.seeker_id == seeker_id
@@ -229,8 +231,8 @@ async def save_job(
 @router.delete("/bookmarks/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def unsave_job(job_id: str, current_user: User = Depends(get_current_user)):
     repos = get_repositories()
-    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
-    seeker_id = profiles[0].id if profiles else current_user.id
+    profile = await find_seeker_by_user_id(current_user.id)
+    seeker_id = profile.id if profile else current_user.id
 
     apps = await repos.applications.find(
         lambda a: (
@@ -246,13 +248,12 @@ async def unsave_job(job_id: str, current_user: User = Depends(get_current_user)
 async def list_bookmarks(current_user: User = Depends(get_current_user)):
     """Return all saved job bookmarks for the logged-in seeker, enriched with job and employer metadata."""
     repos = get_repositories()
-    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
-    if not profiles:
+    profile = await find_seeker_by_user_id(current_user.id)
+    if not profile:
         return []
-    seeker_id = profiles[0].id
-    apps = await repos.applications.find(
-        lambda a: a.seeker_id == seeker_id and a.status == ApplicationStatus.SAVED
-    )
+    seeker_id = profile.id
+    apps = await find_applications_by_seeker_id(seeker_id)
+    apps = [a for a in apps if a.status == ApplicationStatus.SAVED]
     # Enrich with job titles
     result = []
     for app in apps:
@@ -301,8 +302,8 @@ async def apply_to_job(
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
 
-    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
-    seeker_id = profiles[0].id if profiles else current_user.id
+    profile = await find_seeker_by_user_id(current_user.id)
+    seeker_id = profile.id if profile else current_user.id
 
     existing = await repos.applications.find(
         lambda a: a.job_id == job_id and a.seeker_id == seeker_id
@@ -324,9 +325,8 @@ async def apply_to_job(
     await repos.applications.upsert(app)
 
     # Award XP for applying
-    gam_list = await repos.gamification.find(lambda g: g.seeker_id == seeker_id)
-    if gam_list:
-        gam = gam_list[0]
+    gam = await find_gamification_by_seeker_id(seeker_id)
+    if gam:
         gam.xp += 50
         if "first_apply" not in gam.badges:
             gam.badges.append("first_apply")
@@ -368,13 +368,12 @@ async def analyze_skill_gap(
     repos = get_repositories()
 
     # --- Resolve seeker -------------------------------------------------------
-    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
-    if not profiles:
+    seeker = await find_seeker_by_user_id(current_user.id)
+    if not seeker:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             "Profile belum dibuat. Upload CV atau isi profil terlebih dahulu.",
         )
-    seeker = profiles[0]
 
     # --- Load jobs ------------------------------------------------------------
     jobs = await repos.jobs.list()
@@ -508,11 +507,11 @@ async def analyze_skill_gap(
 async def get_latest_skill_gap(current_user: User = Depends(get_current_user)):
     """Return the most recently computed skill gap result for the seeker, if any."""
     repos = get_repositories()
-    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
-    if not profiles:
+    profile = await find_seeker_by_user_id(current_user.id)
+    if not profile:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile tidak ditemukan.")
-    seeker_id = profiles[0].id
-    gaps = await repos.skill_gaps.find(lambda g: g.seeker_id == seeker_id)
+    seeker_id = profile.id
+    gaps = await find_skill_gaps_by_seeker_id(seeker_id)
     if not gaps:
         return None
     # Return the most recently created
@@ -546,11 +545,11 @@ async def list_applications(current_user: User = Depends(get_current_user)):
     Returns list of { application_id, job_id, title, company, status, applied_at }.
     """
     repos = get_repositories()
-    profiles = await repos.seekers.find(lambda s: s.user_id == current_user.id)
-    if not profiles:
+    profile = await find_seeker_by_user_id(current_user.id)
+    if not profile:
         return []
-    seeker_id = profiles[0].id
-    apps = await repos.applications.find(lambda a: a.seeker_id == seeker_id)
+    seeker_id = profile.id
+    apps = await find_applications_by_seeker_id(seeker_id)
     result = []
     for app in apps:
         job = await repos.jobs.get(app.job_id)

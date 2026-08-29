@@ -2,67 +2,60 @@
 
 ## Project Overview
 
-KerjaCerdas is an AI-powered job matching platform for Indonesia. A FastAPI backend (port 8000) serves a React/Vite frontend (port 5000). Core features: user registration/login, seeker CV upload and profile management, employer job posting, semantic AI matching via Google Gemini embeddings, and a LangGraph ReAct agent for conversational job search. The application is not yet deployed to production.
+KerjaCerdas is an AI-powered job matching platform for Indonesia. A FastAPI backend (port 8000) serves a React/Vite frontend (port 5000 / 3000). Core features: user registration/login, seeker CV upload and profile management, employer job posting, semantic AI matching via Google Gemini embeddings, and a LangGraph ReAct agent for conversational job search.
 
 ## Assets
 
-- **User credentials** — email/bcrypt-hashed passwords in PostgreSQL. Compromise enables account takeover.
-- **Seeker profiles** — full name, skills, salary expectations, resume text, embedding vectors. Contains PII; drives AI match results.
-- **Employer profiles and job postings** — company identity, job descriptions, salary bands. Business-sensitive; integrity critical for trust.
-- **JWT signing secret** — signs all access tokens. Compromise allows minting arbitrary tokens for any user/role.
-- **Gemini API key** — paid AI service. Exposure enables cost abuse.
-- **Application logs** — currently contain email addresses and client IPs; inadvertent PII store.
+- **User credentials** — email and bcrypt-hashed passwords stored in PostgreSQL.
+- **Seeker profiles** — full name, skills, salary expectations, resume text, pgvector embeddings (768-dim). NIK is stored strictly as a SHA-256 hash.
+- **Employer profiles and job postings** — company identity, job descriptions, salary bands.
+- **JWT signing secret** — signs HS256 access tokens. Gated to high-entropy configuration in production.
+- **Gemini API key** — paid AI service, protected by fallback chains and circuit breakers.
+- **Verification & OTP records** — PostgreSQL-backed `otps` table with expiration timestamps and attempt limits.
 
 ## Trust Boundaries
 
-- **Browser → Backend API** — all requests cross here. The backend must authenticate and authorise every mutating or data-returning request. The client is fully untrusted.
-- **Backend → PostgreSQL** — ORM (SQLAlchemy) with parameterised queries; low SQL injection risk.
-- **Backend → Google Gemini API** — outbound calls with API key. Key must never appear in responses or logs.
-- **Public / Authenticated boundary** — job listings and health endpoints are intentionally public; all profile, upload, agent, and verification endpoints must require a valid JWT. Several currently do not (see findings).
-- **Seeker / Employer role boundary** — enforced via `require_seeker` / `require_employer` dependencies on the seeker and employer routers. Upload and agent endpoints currently bypass this boundary entirely.
+- **Browser → Backend API** — all mutating and sensitive data endpoints require valid JWT authentication via Bearer token.
+- **Backend → PostgreSQL** — SQLAlchemy async ORM with parameterized queries, atomic upserts (`ON CONFLICT DO UPDATE`), and connection pooling limits.
+- **Backend → Google Gemini API** — outbound calls with API key via `llm_factory.py` with multi-model fallback chain and circuit breaker.
+- **Public / Authenticated boundary** — job listings (`GET /jobs`) and health endpoints (`GET /health`) are public; all profile, upload, agent, and verification endpoints require a validated JWT.
+- **Seeker / Employer role boundary** — strictly enforced via `require_seeker` and `require_employer` dependencies on respective routers.
 
 ## Scan Anchors
 
-- **Production entry points**: `backend/app/api/main.py` (app factory + middleware), `backend/app/api/routers/` (all route definitions)
-- **Highest-risk areas**: `uploads.py` (no auth — CRITICAL), `agent.py` (no auth — HIGH), `middleware/rate_limiter.py` (IP spoofing bypass — HIGH), `scripts/auth_utils.py` (hardcoded hash — HIGH)
-- **Public surfaces**: `GET /api/v1/jobs`, `GET /health`, `GET /health/detailed`, `GET /api/v1/karirhub/listings`
-- **Authenticated surfaces**: `/api/v1/seeker/*`, `/api/v1/employer/*`, `/api/v1/experiments/assignments`
-- **Currently unauthenticated but should be**: `POST /api/v1/uploads/cv`, `POST /api/v1/uploads/job-pack`, `POST /api/v1/agent/invoke`, `POST /verify/identity`, `POST /verify/education`, `POST /verify/npwp`
-- **Dev-only scripts**: `backend/scripts/` — seed scripts must never run against production DB
+- **Production entry points**: `backend/app/api/main.py` (app factory + middleware stack: `log_requests` → `security_headers` → `CORSMiddleware` → `RateLimiterMiddleware` → `RequestSizeMiddleware`)
+- **Protected mutation surfaces**:
+  - `POST /api/v1/uploads/cv` (`require_seeker`, magic bytes verified)
+  - `POST /api/v1/uploads/job-pack` (`require_employer`, magic bytes verified)
+  - `POST /api/v1/agent/invoke` (`get_current_user`)
+  - `POST /api/v1/verify/identity`, `POST /api/v1/verify/otp/send`, `POST /api/v1/verify/otp/verify` (`get_current_user`)
+- **Public surfaces**: `GET /api/v1/jobs`, `GET /health`
+- **Authenticated surfaces**: `/api/v1/seeker/*`, `/api/v1/employer/*`, `/api/v1/inquiries`
 
-## Threat Categories
+## Threat Categories & Mitigations
 
 ### Spoofing
-
-JWT tokens are issued at login and validated on every protected request via `decode_access_token`. The signing algorithm is HS256 with a server-side secret. In development, the secret is ephemeral (regenerated each restart), which invalidates all tokens on restart but does not affect production.
-
-**Guarantee required**: `JWT_SECRET_KEY` MUST be set to a stable, high-entropy value in any persistent deployment. The app already enforces this in `is_production` mode but Task #4 (set permanent JWT secret) is pending.
+- JWT tokens are issued at login and validated on every protected request via `decode_access_token`.
+- Hardcoded demo password bypasses have been completely removed from `auth.py`. All users must verify against salted bcrypt password hashes.
+- `window.useStore` exposure removed in frontend to prevent token extraction via XSS.
 
 ### Tampering
-
-Several mutating endpoints (`/uploads/cv`, `/uploads/job-pack`) accept a caller-supplied `user_id` with no ownership verification. This allows any caller to overwrite any user's data. Seeker and employer profile endpoints correctly bind mutations to `current_user.id` from the validated JWT.
-
-**Guarantee required**: All endpoints that write user data MUST derive the `user_id` from the authenticated JWT, not from request body/form fields.
+- All upload and profile mutation endpoints derive the target `user_id` directly from the authenticated JWT claims, preventing caller-supplied ID spoofing.
+- Atomic `ON CONFLICT (id) DO UPDATE` in database repository prevents TOCTOU race conditions.
+- Uploaded PDFs are validated against `%PDF-` binary magic bytes in addition to MIME-type headers.
 
 ### Information Disclosure
-
-- Email addresses and client IPs appear in application logs.
-- The `/health/detailed` endpoint reveals database connectivity status, Gemini key presence, and internal scoring thresholds to unauthenticated callers.
-- JWT payloads contain `email` in plaintext (JWTs are not encrypted).
-- The AI agent endpoint (`/agent/invoke`) returns ranked job data, skill gaps, and company salary bands to unauthenticated callers.
-
-**Guarantee required**: Logs MUST use only opaque user IDs for correlation. PII MUST NOT appear in log statements. The detailed health endpoint MUST require auth or be removed. JWT payload MUST contain only the minimum necessary claims (`sub`, `role`, `exp`, `iat`).
+- NIK (National ID) is stored strictly as a one-way SHA-256 hash (`String(64)`), ensuring compliance with Indonesian Personal Data Protection Law (UU-PDP-2022).
+- Detailed health check (`GET /health/detailed`) requires authenticated JWT credentials.
+- Application logs correlate with opaque user IDs and request IDs; PII is stripped from logs.
 
 ### Denial of Service
-
-The in-memory rate limiter is the primary DoS control. Its per-IP limits are bypassed by setting a custom `X-Forwarded-For` header, allowing unlimited requests against auth and agent endpoints.
-
-The agent endpoint triggers LangGraph graph execution and multiple Gemini API calls per request. Without authentication, a single attacker can exhaust the Gemini API quota.
-
-**Guarantee required**: The rate limiter MUST NOT trust `X-Forwarded-For` from untrusted clients. In production, only the value set by the Replit reverse proxy (a trusted hop) should be used. Authentication on `/agent/invoke` is the most effective control.
+- Sliding-window rate limiter protects all endpoints (auth: 10 req/60s, agent: 20 req/60s, general: 60 req/60s).
+- Rate limiter memory is capped at 10,000 active keys with LRU eviction and amortized stale-lock pruning.
+- Gemini LLM calls are protected with fallback model chains and an automatic circuit breaker tripping on consecutive availability errors.
+- PyMuPDF fallback extraction runs in `asyncio.to_thread` to prevent CPU-bound operations from blocking the asyncio event loop.
+- Database connection pools are bounded (`pool_size=5`, `max_overflow=10`, `pool_timeout=30`) to protect against connection exhaustion on serverless Postgres.
 
 ### Elevation of Privilege
-
-The `/uploads/cv` and `/uploads/job-pack` endpoints accept a caller-supplied `user_id` with no authentication, allowing any user to act as any other user. The seeder scripts hardcode a known bcrypt hash and will reset any existing user's password if accidentally run against production.
-
-**Guarantee required**: Upload endpoints MUST require `Depends(get_current_user)` and derive the target `user_id` from the JWT. Seeder scripts MUST be guarded against production execution (e.g. `APP_ENV != production` check).
+- Strictly separated `require_seeker` and `require_employer` dependencies prevent cross-role access.
+- Role boundaries are verified from database state on every token validation.

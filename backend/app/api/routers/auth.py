@@ -9,7 +9,6 @@ store so the user can post jobs immediately without a separate onboarding step.
 """
 
 import logging
-import os
 
 from backend.app.api.database import get_session
 from backend.app.api.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
@@ -19,7 +18,7 @@ from backend.app.api.services.auth_service import (
     verify_password,
 )
 from backend.app.db.models import User
-from backend.app.db.postgres_store import get_repositories
+from backend.app.db.postgres_store import find_employer_by_user_id, get_repositories
 from backend.app.db.schemas import Employer, UserRole
 from backend.app.db.schemas import User as JsonUser
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -86,7 +85,7 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
             region_code="3171",  # default Jakarta — editable
             industry="",
         )
-        existing_emp = await repos.employers.find(lambda e: e.user_id == new_user.id)
+        existing_emp = await find_employer_by_user_id(new_user.id)
         if not existing_emp:
             await repos.employers.upsert(employer)
             logger.info("Auto-created employer profile for user_id=%s", new_user.id)
@@ -125,18 +124,6 @@ async def login_user(request: UserLoginRequest, db: AsyncSession = Depends(get_s
         )
 
     password_ok = verify_password(request.password, user.password_hash)
-    if not password_ok:
-        env_seed_pass = os.environ.get("SEED_DEFAULT_PASSWORD", "").strip()
-        allowed_demo_passwords = {
-            "demo",
-            "demo12345",
-            "KerjaCerdas2026!",
-            "ended-tapering-recollect-empathic-speed-backwater",
-        }
-        if env_seed_pass:
-            allowed_demo_passwords.add(env_seed_pass)
-        if request.password in allowed_demo_passwords:
-            password_ok = True
 
     if not password_ok:
         raise HTTPException(

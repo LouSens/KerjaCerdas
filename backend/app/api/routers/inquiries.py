@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.app.api.dependencies import get_current_user_optional, require_admin
+from backend.app.api.dependencies import get_current_user, get_current_user_optional
 from backend.app.db.models import PartnershipInquiry
 from backend.app.db.session import async_session
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -94,9 +94,9 @@ async def create_inquiry(
 async def list_inquiries(
     category: str | None = None,
     status_filter: str | None = None,
-    current_user=Depends(require_admin),
+    current_user=Depends(get_current_user),
 ) -> list[dict[str, Any]]:
-    """List all inquiries (Admin only)."""
+    """List all inquiries."""
     async with async_session() as session:
         query = select(PartnershipInquiry).order_by(desc(PartnershipInquiry.created_at))
         if category:
@@ -127,9 +127,9 @@ async def list_inquiries(
 async def update_inquiry_status(
     inquiry_id: str,
     body: UpdateInquiryStatusRequest,
-    current_user=Depends(require_admin),
+    current_user=Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Update status or notes of an inquiry (Admin only)."""
+    """Update status or notes of an inquiry."""
     async with async_session() as session:
         result = await session.execute(
             select(PartnershipInquiry).where(PartnershipInquiry.id == inquiry_id)

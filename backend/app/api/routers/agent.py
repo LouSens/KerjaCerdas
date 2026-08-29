@@ -23,7 +23,7 @@ import logging
 from backend.app.api.dependencies import get_current_user
 from backend.app.api.middleware.sanitization import sanitize_text
 from backend.app.db.models import User
-from backend.app.db.postgres_store import get_repositories
+from backend.app.db.postgres_store import find_seeker_by_user_id, get_repositories
 from backend.app.db.schemas import (
     CourseRecommendation,
     MatchResult,
@@ -238,9 +238,9 @@ async def invoke_agent(
 
     # Fall back to the seeker profile owned by the authenticated user (if any).
     if seeker is None:
-        owned = await repos.seekers.find(lambda s: s.user_id == current_user.id)
+        owned = await find_seeker_by_user_id(current_user.id)
         if owned:
-            seeker = owned[0]
+            seeker = owned
         else:
             seeker = _ANONYMOUS_SEEKER
             fallback_used = True
