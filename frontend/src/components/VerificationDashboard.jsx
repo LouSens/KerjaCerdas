@@ -54,7 +54,56 @@ export function VerificationScreen({ role, docsSpec }) {
         }
     }, [profile, employerProfile, isEmployer])
 
+    const handleSendOTP = async () => {
+        let phone = (formData.phone || '').trim()
+        if (!phone) {
+            toast.error('Nomor telepon/WhatsApp wajib diisi')
+            return
+        }
+        if (phone.startsWith('0')) {
+            phone = '+62' + phone.slice(1)
+        } else if (!phone.startsWith('+')) {
+            phone = '+62' + phone
+        }
+        setFormData(prev => ({ ...prev, formattedPhone: phone }))
+        setBusy('phone')
+        try {
+            const res = await sendOTP(phone)
+            setDemoOtp(res.demo_code)
+            setOtpStep('verify')
+            toast.success(res.message || `Kode OTP: ${res.demo_code}`, { duration: 8000, icon: '📱' })
+        } catch (e) {
+            toast.error('Gagal mengirim OTP: ' + e.message)
+        } finally {
+            setBusy(null)
+        }
+    }
+
+    const handleConfirmOTP = async () => {
+        if (!otpInput || otpInput.trim().length !== 6) {
+            toast.error('Masukkan 6 digit kode OTP')
+            return
+        }
+        setBusy('otp_confirm')
+        try {
+            await verifyOTP(formData.formattedPhone, otpInput.trim())
+            toast.success('Nomor WhatsApp / HP berhasil diverifikasi!')
+            setDocs(prev => prev.map(d => d.id === 'phone' ? { ...d, status: 'verified', when: 'Nomor Terverifikasi' } : d))
+            setFormOpen(null)
+            setOtpStep(null)
+            setOtpInput('')
+        } catch (e) {
+            toast.error('Verifikasi OTP gagal: ' + e.message)
+        } finally {
+            setBusy(null)
+        }
+    }
+
     const handleVerify = async (docId) => {
+        if (docId === 'phone') {
+            await handleSendOTP()
+            return
+        }
         setBusy(docId)
         try {
             if (docId === 'ktp') {
@@ -63,9 +112,9 @@ export function VerificationScreen({ role, docsSpec }) {
                     setBusy(null)
                     return
                 }
-                await verifyIdentity({ nik: formData.nik, full_name: formData.full_name || 'Budi Santoso' })
+                await verifyIdentity({ nik: formData.nik, full_name: formData.full_name || profile?.full_name || 'Budi Santoso' })
             } else if (docId === 'ijazah') {
-                await verifyEducation({ ijazah_number: formData.ijazah_number || '12345/ITB/2022', university_name: 'Institut Teknologi Bandung' })
+                await verifyEducation({ ijazah_number: formData.ijazah_number || '12345/ITB/2022', university_name: formData.university_name || 'Institut Teknologi Bandung', major: 'Teknik Informatika' })
             } else if (docId === 'npwp') {
                 await verifyNPWP({ npwp: formData.npwp || '01.234.567.8-012.000', company_name: formData.company_name || 'GoTo Group' })
             }
@@ -225,28 +274,82 @@ export function VerificationScreen({ role, docsSpec }) {
 
                             {formOpen === 'phone' && (
                                 <div>
-                                    <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nomor Telepon / WhatsApp</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Contoh: 081234567890"
-                                        value={formData.phone || ''}
-                                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                                    />
+                                    {otpStep !== 'verify' ? (
+                                        <>
+                                            <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>
+                                                Nomor Telepon / WhatsApp (Format Internasional atau 08...)
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                placeholder="Contoh: 081234567890"
+                                                value={formData.phone || ''}
+                                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                                style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+                                            />
+                                            <p style={{ fontSize: 12, color: KC.mute, margin: '6px 0 0' }}>
+                                                Kode OTP 6-digit akan dibuat untuk memverifikasi kontak Anda.
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                            <div style={{ background: KC.limeSoft, padding: '10px 12px', borderRadius: 8, border: `1px solid ${KC.lime}`, fontSize: 13, color: '#065F46' }}>
+                                                <strong>Kode OTP Terkirim ke {formData.formattedPhone}:</strong><br />
+                                                Gunakan kode demo: <code style={{ fontWeight: 900, fontSize: 15, letterSpacing: 2, background: '#fff', padding: '2px 6px', borderRadius: 4 }}>{demoOtp}</code>
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>
+                                                    Masukkan 6-Digit Kode OTP
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    maxLength={6}
+                                                    placeholder="123456"
+                                                    value={otpInput}
+                                                    onChange={e => setOtpInput(e.target.value)}
+                                                    style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 18, fontWeight: 800, letterSpacing: 4, textAlign: 'center', boxSizing: 'border-box' }}
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handleSendOTP}
+                                                disabled={busy === 'phone'}
+                                                style={{ background: 'none', border: 'none', color: KC.orange, fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                                            >
+                                                Kirim ulang kode OTP
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
                             <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                                <button onClick={() => setFormOpen(null)} style={{ ...topBtn('#fff', KC.ink), flex: 1 }}>
+                                <button
+                                    onClick={() => {
+                                        setFormOpen(null)
+                                        setOtpStep(null)
+                                        setOtpInput('')
+                                    }}
+                                    style={{ ...topBtn('#fff', KC.ink), flex: 1 }}
+                                >
                                     Batal
                                 </button>
-                                <button
-                                    onClick={() => handleVerify(formOpen)}
-                                    disabled={busy === formOpen}
-                                    style={{ ...topBtn(KC.orange, '#fff'), flex: 1 }}
-                                >
-                                    {busy === formOpen ? 'Memverifikasi…' : 'Kirim Validasi'}
-                                </button>
+                                {formOpen === 'phone' && otpStep === 'verify' ? (
+                                    <button
+                                        onClick={handleConfirmOTP}
+                                        disabled={busy === 'otp_confirm'}
+                                        style={{ ...topBtn(KC.orange, '#fff'), flex: 1 }}
+                                    >
+                                        {busy === 'otp_confirm' ? 'Memverifikasi…' : 'Verifikasi OTP'}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => handleVerify(formOpen)}
+                                        disabled={busy === formOpen}
+                                        style={{ ...topBtn(KC.orange, '#fff'), flex: 1 }}
+                                    >
+                                        {busy === formOpen ? 'Memproses…' : (formOpen === 'phone' ? 'Kirim Kode OTP' : 'Kirim Validasi')}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
