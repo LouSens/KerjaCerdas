@@ -33,7 +33,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections import defaultdict, deque
+from collections import deque
 
 from fastapi import Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
