@@ -8,6 +8,7 @@ not drift when a real provider is wired in.
 from __future__ import annotations
 
 import hashlib
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -241,24 +242,57 @@ class TestOtpFlow:
 
 
 class TestOtpDemoCodeExposure:
-    """`demo_code` is returned unconditionally — this pins the risk in a test."""
+    """`demo_code` is only ever returned in an explicitly enabled demo mode."""
 
-    def test_demo_code_is_returned_regardless_of_environment(
+    def test_demo_mode_is_on_outside_production(self, client: TestClient) -> None:
+        from backend.app.config.settings import settings
+
+        assert settings.otp_demo_enabled is True
+
+    def test_production_refuses_to_send_and_leaks_nothing(
         self, client: TestClient, seeker_account: dict, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from backend.app.config.settings import settings
 
         monkeypatch.setattr(settings, "app_env", "production")
+        monkeypatch.setattr(settings, "otp_demo_mode", None)
         resp = client.post(
             "/api/v1/verify/otp/send",
             json={"phone": "+6281299999999"},
             headers=seeker_account["headers"],
         )
-        body = resp.json()
-        assert "demo_code" in body, (
-            "If this ever fails the leak has been fixed — update the test to assert "
-            "demo_code is absent in production."
+        assert resp.status_code == 503, resp.text
+        assert "demo_code" not in resp.text
+        assert not re.search(r"\b\d{6}\b", resp.text), "a 6-digit code leaked into the 503 body"
+
+    def test_production_can_opt_back_in_explicitly(
+        self, client: TestClient, seeker_account: dict, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """OTP_DEMO_MODE=1 is an override someone has to set on purpose."""
+        from backend.app.config.settings import settings
+
+        monkeypatch.setattr(settings, "app_env", "production")
+        monkeypatch.setattr(settings, "otp_demo_mode", True)
+        resp = client.post(
+            "/api/v1/verify/otp/send",
+            json={"phone": "+6281299999999"},
+            headers=seeker_account["headers"],
         )
+        assert resp.status_code == 200
+        assert resp.json()["mode"] == "demo"
+
+    def test_demo_mode_off_outside_production_also_refuses(
+        self, client: TestClient, seeker_account: dict, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from backend.app.config.settings import settings
+
+        monkeypatch.setattr(settings, "otp_demo_mode", False)
+        resp = client.post(
+            "/api/v1/verify/otp/send",
+            json={"phone": "+6281299999999"},
+            headers=seeker_account["headers"],
+        )
+        assert resp.status_code == 503
 
 
 # ── Education / NPWP mocks ───────────────────────────────────────────────────

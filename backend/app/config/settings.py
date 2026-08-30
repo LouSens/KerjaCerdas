@@ -28,6 +28,18 @@ class Settings(BaseSettings):
     jwt_secret_key: str = ""
     jwt_access_token_expire_minutes: int = 1440
 
+    # ── Phone OTP ────────────────────────────────────────────────────────
+    # No SMS/WhatsApp provider is wired in yet. Until one is, /verify/otp/send
+    # can only work by handing the code straight back in its own response,
+    # which is a demo affordance and nothing else: anyone who can call the
+    # endpoint for a phone number also learns the code for it.
+    #
+    # Leave unset and the mode follows the environment — on outside
+    # production, off inside it. Set OTP_DEMO_MODE explicitly to override, so
+    # that returning live OTP codes from a production deployment is always a
+    # decision someone made on purpose rather than a default nobody noticed.
+    otp_demo_mode: bool | None = None
+
     # ── Gemini / Vertex AI — models ──────────────────────────────────────
     # Auth: either set GEMINI_API_KEY (AI Studio) OR set
     # VERTEX_AI_PROJECT + VERTEX_AI_LOCATION (Vertex AI; uses ADC creds).
@@ -87,6 +99,13 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def otp_demo_enabled(self) -> bool:
+        """Whether /verify/otp/send may return the code it just generated."""
+        if self.otp_demo_mode is not None:
+            return self.otp_demo_mode
+        return not self.is_production
 
     @property
     def effective_database_url(self) -> str:

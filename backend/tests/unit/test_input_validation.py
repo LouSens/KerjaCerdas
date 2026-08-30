@@ -1,7 +1,11 @@
-"""Input-validation tests for endpoints that take an untyped `dict` body.
+"""Input-validation tests for the seeker and employer request bodies.
 
-These endpoints bypass Pydantic request models, so every field arrives
-unvalidated. A malformed value must produce a 4xx, never a 500.
+These endpoints used to take an untyped `dict`, so every field arrived
+unvalidated and a malformed value could reach the handler and 500. They now
+declare Pydantic request models: a wrong type is a 422 naming the field, and
+the leniency that was deliberate (a bare string where a list is expected, a
+numeric string, an unparseable graduation year) is preserved by the models
+rather than by hand-written coercion in the handlers.
 """
 
 from __future__ import annotations
@@ -27,7 +31,7 @@ class TestJobCreationValidation:
             {"salary_min": {"nested": 1}},
         ],
     )
-    def test_non_numeric_numbers_return_400(
+    def test_non_numeric_numbers_return_422(
         self, client: TestClient, employer_account: dict, stub_embedder, override: dict
     ) -> None:
         resp = client.post(
@@ -35,8 +39,8 @@ class TestJobCreationValidation:
             json={**BASE_JOB, **override},
             headers=employer_account["headers"],
         )
-        assert resp.status_code == 400, resp.text
-        assert "angka" in resp.json()["detail"]
+        assert resp.status_code == 422, resp.text
+        assert next(iter(override)) in resp.text, "the 422 does not name the bad field"
 
     def test_a_bare_string_skill_is_accepted_as_a_single_entry(
         self, client: TestClient, employer_account: dict, stub_embedder
@@ -53,7 +57,7 @@ class TestJobCreationValidation:
         assert jobs[0]["required_skills"] == ["Python"]
 
     @pytest.mark.parametrize("skills", [[1, 2, 3], {"a": "b"}, 42])
-    def test_non_text_skill_lists_return_400(
+    def test_non_text_skill_lists_return_422(
         self, client: TestClient, employer_account: dict, stub_embedder, skills
     ) -> None:
         resp = client.post(
@@ -61,17 +65,46 @@ class TestJobCreationValidation:
             json={**BASE_JOB, "required_skills": skills},
             headers=employer_account["headers"],
         )
-        assert resp.status_code == 400, resp.text
+        assert resp.status_code == 422, resp.text
 
-    @pytest.mark.parametrize("title", ["", "   ", None])
+    @pytest.mark.parametrize(
+        ("title", "expected"),
+        [
+            ("", 400),  # present and a string, but empty once trimmed
+            ("   ", 400),
+            (None, 422),  # wrong type — rejected by the model
+        ],
+    )
     def test_a_job_cannot_be_created_without_a_title(
-        self, client: TestClient, employer_account: dict, stub_embedder, title
+        self, client: TestClient, employer_account: dict, stub_embedder, title, expected
     ) -> None:
         payload = {**BASE_JOB, "title": title}
         resp = client.post(
             "/api/v1/employer/jobs", json=payload, headers=employer_account["headers"]
         )
-        assert resp.status_code == 400, resp.text
+        assert resp.status_code == expected, resp.text
+
+    def test_a_job_cannot_be_created_with_no_title_field(
+        self, client: TestClient, employer_account: dict, stub_embedder
+    ) -> None:
+        payload = {k: v for k, v in BASE_JOB.items() if k != "title"}
+        resp = client.post(
+            "/api/v1/employer/jobs", json=payload, headers=employer_account["headers"]
+        )
+        assert resp.status_code == 422, resp.text
+        assert "title" in resp.text
+
+    def test_an_unconstrained_company_size_is_rejected(
+        self, client: TestClient, employer_account: dict
+    ) -> None:
+        """`size` is a Literal on the stored model, but the handler wrote it
+        through `setattr`, which skips Pydantic validation entirely."""
+        resp = client.post(
+            "/api/v1/employer/profile",
+            json={"size": "raksasa"},
+            headers=employer_account["headers"],
+        )
+        assert resp.status_code == 422, resp.text
 
     def test_a_valid_job_still_succeeds(
         self, client: TestClient, employer_account: dict, stub_embedder

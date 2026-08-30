@@ -35,6 +35,10 @@ database/*
 reports/
 
 
+# Python virtualenvs
+.venv/
+venv/
+
 # Node (frontend)
 node_modules/
 .next/

@@ -81,6 +81,12 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("JWT_SECRET_KEY must be set in production")
     if not settings.jwt_secret_key:
         logger.warning("JWT_SECRET_KEY missing — using ephemeral dev secret")
+
+    if settings.otp_demo_enabled and settings.is_production:
+        logger.warning(
+            "OTP_DEMO_MODE is on in production — /verify/otp/send returns the "
+            "generated code in its response, so phone verification proves nothing"
+        )
     configure_auth(secret_key=jwt_secret, expire_minutes=settings.jwt_access_token_expire_minutes)
 
     yield

@@ -25,6 +25,18 @@ def application(
     return resp.json()
 
 
+# Legal route from `applied` to each stage — the pipeline only moves forward,
+# so a test that wants an application in a later stage has to walk it there.
+PREREQ: dict[str, list[str]] = {
+    "applied": [],
+    "reviewed": [],
+    "interview": ["reviewed"],
+    "offered": ["reviewed", "interview"],
+    "hired": ["reviewed", "interview", "offered"],
+    "rejected": [],
+}
+
+
 def _set_status(client, employer, app_id, status, note=None):
     body: dict = {"status": status}
     if note is not None:
@@ -34,6 +46,14 @@ def _set_status(client, employer, app_id, status, note=None):
         json=body,
         headers=employer["headers"],
     )
+
+
+def _walk_to(client, employer, app_id, target):
+    """Move an application from `applied` to `target` along legal transitions."""
+    for stage in PREREQ[target]:
+        resp = _set_status(client, employer, app_id, stage)
+        assert resp.status_code == 200, f"prerequisite '{stage}' rejected: {resp.text}"
+    return _set_status(client, employer, app_id, target)
 
 
 class TestApply:
@@ -63,21 +83,52 @@ class TestApply:
         )
         assert resp.status_code == 404
 
-    def test_apply_without_job_id_is_400(
+    def test_apply_without_job_id_is_422(
         self, client: TestClient, seeker_account: dict, seeker_profile: dict
     ) -> None:
+        """`job_id` is a required field on the request model, so a body
+        missing it never reaches the handler."""
         resp = client.post(
             "/api/v1/seeker/apply", json={}, headers=seeker_account["headers"]
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 422
+        assert "job_id" in resp.text
+
+    def test_applying_to_a_bookmarked_job_promotes_the_bookmark(
+        self,
+        client: TestClient,
+        seeker_account: dict,
+        seeker_profile: dict,
+        seeded_job: dict,
+    ) -> None:
+        """`saved -> applied` is the first legal move in the pipeline.
+
+        A bookmark used to make the job impossible to apply for: the handler
+        found the saved record and reported `already_applied`.
+        """
+        saved = client.post(
+            "/api/v1/seeker/bookmarks",
+            json={"job_id": seeded_job["job_id"]},
+            headers=seeker_account["headers"],
+        )
+        assert saved.status_code == 201, saved.text
+
+        resp = client.post(
+            "/api/v1/seeker/apply",
+            json={"job_id": seeded_job["job_id"], "cover_letter": "Saya tertarik."},
+            headers=seeker_account["headers"],
+        )
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["status"] == "applied"
+        assert resp.json()["already_applied"] is False
 
 
 class TestPipelineTransitions:
     @pytest.mark.parametrize("target", PIPELINE)
-    def test_each_stage_can_be_set(
+    def test_each_stage_is_reachable_by_a_legal_walk(
         self, client: TestClient, employer_account: dict, application: dict, target: str
     ) -> None:
-        resp = _set_status(client, employer_account, application["application_id"], target)
+        resp = _walk_to(client, employer_account, application["application_id"], target)
         assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == target
 
@@ -115,7 +166,10 @@ class TestPipelineTransitions:
     def test_indonesian_and_untrimmed_aliases_resolve(
         self, client: TestClient, employer_account: dict, application: dict, alias, expected
     ) -> None:
-        resp = _set_status(client, employer_account, application["application_id"], alias)
+        app_id = application["application_id"]
+        for stage in PREREQ[expected]:
+            assert _set_status(client, employer_account, app_id, stage).status_code == 200
+        resp = _set_status(client, employer_account, app_id, alias)
         assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == expected
 
@@ -220,47 +274,97 @@ class TestEmployerCandidateView:
         assert job["application_count"] == 1
 
 
-class TestPipelineIntegrityGaps:
-    """Transitions the API currently permits that a real ATS would refuse.
+class TestPipelineStateMachine:
+    """The pipeline only moves forward; hired/rejected/withdrawn are terminal."""
 
-    These pin today's behaviour so adding a state machine is a visible change.
-    """
-
-    def test_hired_can_be_walked_backwards(
+    def test_hired_cannot_be_walked_backwards(
         self, client: TestClient, employer_account: dict, application: dict
     ) -> None:
         app_id = application["application_id"]
-        _set_status(client, employer_account, app_id, "hired")
-        back = _set_status(client, employer_account, app_id, "applied")
-        assert back.status_code == 200, "a transition guard now exists — update this test"
-        assert back.json()["status"] == "applied"
+        assert _walk_to(client, employer_account, app_id, "hired").status_code == 200
 
-    def test_rejected_can_be_flipped_to_hired(
+        back = _set_status(client, employer_account, app_id, "reviewed")
+        assert back.status_code == 409, back.text
+
+        current = _set_status(client, employer_account, app_id, "hired")
+        assert current.json()["status"] == "hired", "the hire was overwritten"
+
+    def test_employer_cannot_reset_an_application_to_applied(
+        self, client: TestClient, employer_account: dict, application: dict
+    ) -> None:
+        """`applied` is the seeker's act of applying, not an employer stage."""
+        app_id = application["application_id"]
+        assert _set_status(client, employer_account, app_id, "reviewed").status_code == 200
+        assert _set_status(client, employer_account, app_id, "applied").status_code == 403
+
+    def test_rejected_cannot_be_flipped_to_hired(
         self, client: TestClient, employer_account: dict, application: dict
     ) -> None:
         app_id = application["application_id"]
-        _set_status(client, employer_account, app_id, "rejected")
-        assert _set_status(client, employer_account, app_id, "hired").status_code == 200
+        assert _set_status(client, employer_account, app_id, "rejected").status_code == 200
+        assert _set_status(client, employer_account, app_id, "hired").status_code == 409
 
-    def test_employer_can_hide_an_application_by_setting_saved(
+    def test_a_stage_cannot_be_skipped(
         self, client: TestClient, employer_account: dict, application: dict
     ) -> None:
-        """`saved` is the seeker's private bookmark state; the employer list
-        filters it out, so setting it makes the application disappear."""
-        _set_status(client, employer_account, application["application_id"], "saved")
+        """`applied -> hired` skips the whole pipeline, so it is refused."""
+        resp = _set_status(client, employer_account, application["application_id"], "hired")
+        assert resp.status_code == 409, resp.text
+        assert "offered" not in resp.json()["detail"] or "applied" in resp.json()["detail"]
+
+    def test_rejection_is_reachable_from_every_live_stage(
+        self, client: TestClient, employer_account: dict, application: dict
+    ) -> None:
+        app_id = application["application_id"]
+        for stage in ("reviewed", "interview", "offered"):
+            assert _set_status(client, employer_account, app_id, stage).status_code == 200
+        assert _set_status(client, employer_account, app_id, "rejected").status_code == 200
+
+    def test_resending_the_current_status_is_a_no_op(
+        self, client: TestClient, employer_account: dict, application: dict
+    ) -> None:
+        """A retried request must not 409 just because it already landed."""
+        app_id = application["application_id"]
+        assert _set_status(client, employer_account, app_id, "reviewed").status_code == 200
+        again = _set_status(client, employer_account, app_id, "reviewed")
+        assert again.status_code == 200
+        assert again.json()["status"] == "reviewed"
+
+    def test_employer_cannot_hide_an_application_by_setting_saved(
+        self, client: TestClient, employer_account: dict, application: dict
+    ) -> None:
+        """`saved` is the seeker's private bookmark state. The employer list
+        filters it out, so writing it would make the application disappear."""
+        resp = _set_status(client, employer_account, application["application_id"], "saved")
+        assert resp.status_code == 403, resp.text
+
         items = client.get(
             "/api/v1/employer/applications", headers=employer_account["headers"]
         ).json()["items"]
-        assert all(r["application_id"] != application["application_id"] for r in items)
+        assert any(r["application_id"] == application["application_id"] for r in items)
 
-    def test_note_length_is_unbounded(
+    def test_employer_cannot_withdraw_on_the_seekers_behalf(
+        self, client: TestClient, employer_account: dict, application: dict
+    ) -> None:
+        resp = _set_status(client, employer_account, application["application_id"], "withdrawn")
+        assert resp.status_code == 403, resp.text
+
+    def test_note_length_is_capped(
         self, client: TestClient, employer_account: dict, application: dict
     ) -> None:
         resp = _set_status(
             client, employer_account, application["application_id"], "interview", note="x" * 20_000
         )
-        assert resp.status_code == 200
-        assert len(resp.json()["note"]) == 20_000, "a length cap now exists — update this test"
+        assert resp.status_code == 422, resp.text
+
+    def test_a_note_within_the_cap_is_accepted(
+        self, client: TestClient, employer_account: dict, application: dict
+    ) -> None:
+        resp = _set_status(
+            client, employer_account, application["application_id"], "interview", note="x" * 5_000
+        )
+        assert resp.status_code == 200, resp.text
+        assert len(resp.json()["note"]) == 5_000
 
     def test_note_is_stored_without_sanitization(
         self,

@@ -9,8 +9,15 @@ data lives in data/seekers/ and data/applications/.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 from backend.app.api.dependencies import get_current_user, require_seeker
+from backend.app.api.schemas.seeker import (
+    ApplyRequest,
+    SaveJobRequest,
+    SeekerProfileUpsert,
+    SkillGapRequest,
+)
 from backend.app.db.models import User
 from backend.app.db.postgres_store import (
     find_applications_by_seeker_id,
@@ -51,76 +58,31 @@ async def get_profile(current_user: User = Depends(get_current_user)):
     return profile
 
 
-def _year_or_default(value, default: int = 2024) -> int:
-    """Coerce a graduation year from an untyped body, falling back on garbage.
-
-    The profile body is a bare `dict`, so a non-numeric year used to raise
-    ValueError and 500 the request.
-    """
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-
-
 @router.post("/profile", status_code=status.HTTP_201_CREATED)
 async def create_or_update_profile(
-    data: dict,
+    payload: SeekerProfileUpsert,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
 ):
     """Create or overwrite the seeker profile for the logged-in user.
 
+    The nested skill / experience / education lists are validated by
+    `SeekerProfileUpsert`, which keeps the leniency the hand-rolled parsing
+    had (a skill as a bare string, an unparseable graduation year) while
+    turning genuinely malformed input into a 422 instead of a 500.
+
     Embedding runs in the background so the response is returned immediately
     (< 200ms) instead of blocking on the Gemini API call (1–3s).
     """
+    from backend.app.db.schemas import Education, WorkExperience
+
     repos = get_repositories()
     profile = await find_seeker_by_user_id(current_user.id)
 
-    # Parse inline skills: accept both list[str] and list[Skill]
-    raw_skills = data.get("skills", [])
-    skills: list[Skill] = []
-    for sk in raw_skills:
-        if isinstance(sk, str):
-            skills.append(Skill(name=sk))
-        elif isinstance(sk, dict):
-            skills.append(Skill(**sk))
-        elif isinstance(sk, Skill):
-            skills.append(sk)
-
-    # Parse inline experience
-    from backend.app.db.schemas import Education, EducationLevel, VerificationStatus, WorkExperience
-
-    raw_exp = data.get("experience", [])
-    experience: list[WorkExperience] = []
-    for x in raw_exp:
-        if isinstance(x, dict):
-            experience.append(WorkExperience(**x))
-        elif isinstance(x, WorkExperience):
-            experience.append(x)
-
-    # Parse inline education
-    raw_edu = data.get("education", [])
-    education: list[Education] = []
-    for e in raw_edu:
-        if isinstance(e, dict):
-            raw_deg = (e.get("degree") or "S1").upper()
-            try:
-                deg = EducationLevel(raw_deg)
-            except ValueError:
-                deg = EducationLevel.S1
-            education.append(
-                Education(
-                    institution=e.get("institution", ""),
-                    degree=deg,
-                    major=e.get("major", ""),
-                    graduation_year=_year_or_default(e.get("graduation_year")),
-                    ijazah_number=e.get("ijazah_number"),
-                    sivil_verified=VerificationStatus(e.get("sivil_verified", "unverified")),
-                )
-            )
-        elif isinstance(e, Education):
-            education.append(e)
+    provided = payload.model_fields_set
+    skills = [Skill(**sk.model_dump()) for sk in (payload.skills or [])]
+    experience = [WorkExperience(**x.model_dump()) for x in (payload.experience or [])]
+    education = [Education(**e.model_dump()) for e in (payload.education or [])]
 
     if profile:
         for field in (
@@ -133,26 +95,27 @@ async def create_or_update_profile(
             "resume_text",
             "open_to_remote",
         ):
-            if field in data:
-                setattr(profile, field, data[field])
-        if "skills" in data:
+            value = getattr(payload, field)
+            if field in provided and value is not None:
+                setattr(profile, field, value)
+        if "skills" in provided:
             profile.skills = skills
-        if "experience" in data:
+        if "experience" in provided:
             profile.experience = experience
-        if "education" in data:
+        if "education" in provided:
             profile.education = education
     else:
         profile = SeekerProfile(
             user_id=current_user.id,
-            full_name=data.get("full_name", current_user.name),
-            headline=data.get("headline", ""),
-            region_code=data.get("region_code", "3171"),
+            full_name=payload.full_name or current_user.name,
+            headline=payload.headline or "",
+            region_code=payload.region_code or "3171",
             skills=skills,
             experience=experience,
             education=education,
-            resume_text=data.get("resume_text", ""),
-            salary_expectation_min=data.get("salary_expectation_min", 0),
-            salary_expectation_max=data.get("salary_expectation_max", 0),
+            resume_text=payload.resume_text or "",
+            salary_expectation_min=payload.salary_expectation_min or 0,
+            salary_expectation_max=payload.salary_expectation_max or 0,
         )
 
     # Persist profile immediately so profile is available to other endpoints
@@ -217,10 +180,10 @@ async def get_gamification(current_user: User = Depends(get_current_user)):
 
 @router.post("/bookmarks", status_code=status.HTTP_201_CREATED)
 async def save_job(
-    body: dict,
+    payload: SaveJobRequest,
     current_user: User = Depends(get_current_user),
 ):
-    job_id: str = body.get("job_id", "")
+    job_id = payload.job_id
     repos = get_repositories()
     job = await repos.jobs.get(job_id)
     if not job:
@@ -297,7 +260,7 @@ async def list_bookmarks(current_user: User = Depends(get_current_user)):
 
 @router.post("/apply", status_code=status.HTTP_201_CREATED)
 async def apply_to_job(
-    body: dict,
+    payload: ApplyRequest,
     current_user: User = Depends(get_current_user),
 ):
     """Create a job application (status=applied) for the logged-in seeker.
@@ -306,7 +269,7 @@ async def apply_to_job(
     Returns: { application_id, job_id, status }
     Idempotent — returns existing application if already applied.
     """
-    job_id: str = body.get("job_id", "")
+    job_id = payload.job_id
     if not job_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "job_id diperlukan")
     repos = get_repositories()
@@ -317,24 +280,36 @@ async def apply_to_job(
     profile = await find_seeker_by_user_id(current_user.id)
     seeker_id = profile.id if profile else current_user.id
 
+    _APPLIED_NOTE = "Lamaran terkirim ke sistem rekrutmen institusi dan menunggu peninjauan tim HR."
+
     existing = await repos.applications.find(
         lambda a: a.job_id == job_id and a.seeker_id == seeker_id
     )
     if existing:
-        return {
-            "application_id": existing[0].id,
-            "job_id": job_id,
-            "status": existing[0].status,
-            "already_applied": True,
-        }
-
-    app = Application(
-        job_id=job_id,
-        seeker_id=seeker_id,
-        status=ApplicationStatus.APPLIED,
-        cover_letter=body.get("cover_letter", ""),
-        note="Lamaran terkirim ke sistem rekrutmen institusi dan menunggu peninjauan tim HR.",
-    )
+        app = existing[0]
+        if ApplicationStatus(app.status) != ApplicationStatus.SAVED:
+            return {
+                "application_id": app.id,
+                "job_id": job_id,
+                "status": app.status,
+                "already_applied": True,
+            }
+        # A bookmark is not an application. `saved -> applied` is the first
+        # legal move in the pipeline, so promote the existing record instead
+        # of reporting the job as already applied to — which used to make a
+        # bookmarked job impossible to apply for.
+        app.status = ApplicationStatus.APPLIED
+        app.cover_letter = payload.cover_letter
+        app.note = _APPLIED_NOTE
+        app.updated_at = datetime.now(UTC)
+    else:
+        app = Application(
+            job_id=job_id,
+            seeker_id=seeker_id,
+            status=ApplicationStatus.APPLIED,
+            cover_letter=payload.cover_letter,
+            note=_APPLIED_NOTE,
+        )
     await repos.applications.upsert(app)
 
     # Award XP for applying
@@ -358,7 +333,7 @@ async def apply_to_job(
 
 @router.post("/skill-gap")
 async def analyze_skill_gap(
-    body: dict,
+    payload: SkillGapRequest,
     current_user: User = Depends(get_current_user),
 ):
     """Run AI-powered skill gap analysis for the logged-in seeker.
@@ -411,7 +386,7 @@ async def analyze_skill_gap(
     raw_matches = await matcher.rank_jobs_for_seeker(seeker, jobs)
 
     # Determine target job
-    target_job_id = body.get("target_job_id")
+    target_job_id = payload.target_job_id
     job_index = {j.id: j for j in jobs}
 
     target = None

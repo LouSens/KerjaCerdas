@@ -516,8 +516,9 @@ class SemanticMatcher:
 
         if top_k is None:
             top_k = settings.matching_top_k
-        if filters is None:
-            filters = {}
+        # Same coercion the seeker-side ranking uses: a filter value of the
+        # wrong type must degrade the ranking, not 500 the request.
+        filters = _normalize_filters(filters)
 
         try:
             query_vec = await self._embed_query_cached(_build_job_text(job))
@@ -542,16 +543,13 @@ class SemanticMatcher:
 
             # Hybrid AI Boost based on filters
             loc_boost = 0.0
-            if (
-                filters.get("location")
-                and filters["location"].lower() == (s.region_code or "").lower()
-            ):
+            if filters.get("location") and filters["location"] == (s.region_code or "").lower():
                 loc_boost = 0.15
 
             exp_boost = 0.0
             if filters.get("experience_min"):
                 years_exp = _experience_years(s)
-                if years_exp >= int(filters["experience_min"]):
+                if years_exp >= filters["experience_min"]:
                     exp_boost = 0.10
 
             score = round(0.60 * max(cos, 0.0) + 0.40 * skill + loc_boost + exp_boost, 4)

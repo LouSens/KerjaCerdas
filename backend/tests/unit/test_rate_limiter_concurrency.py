@@ -11,10 +11,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from backend.app.api.middleware.rate_limiter import (
+    _DEFAULT_BUCKET,
     _DEFAULT_LIMIT,
     _MAX_TRACKED_KEYS,
     _ROUTE_LIMITS,
     RateLimiterMiddleware,
+    _get_bucket,
 )
 
 
@@ -81,8 +83,12 @@ class TestLimitSelection:
     def test_path_casing_variant_escapes_the_strict_limit(
         self, limiter: RateLimiterMiddleware
     ) -> None:
-        """Matching is case-sensitive; a differently cased path gets 60/min."""
+        """Matching is case-sensitive; a differently cased path falls through to
+        the default rule. It is still bounded — the default bucket is one
+        counter per IP shared by every unlisted route — but it escapes the
+        10/min brute-force budget, so routing must not depend on casing."""
         assert limiter._get_limit("/api/v1/auth/Login") == _DEFAULT_LIMIT
+        assert _get_bucket("/api/v1/auth/Login")[0] == _DEFAULT_BUCKET
 
     def test_double_slash_prefix_escapes_the_strict_limit(
         self, limiter: RateLimiterMiddleware
@@ -195,7 +201,7 @@ class TestConcurrency:
         await asyncio.gather(
             *(limiter.dispatch(_make_request("/api/v1/jobs"), _ok) for _ in range(30))
         )
-        dq = limiter._windows[("1.2.3.4", "/api/v1/jobs")]
+        dq = limiter._windows[("1.2.3.4", _DEFAULT_BUCKET)]
         assert len(dq) == 30
         assert list(dq) == sorted(dq), "timestamps recorded out of order"
 
@@ -207,29 +213,62 @@ class TestMemoryBounds:
         assert len(limiter._locks) <= _MAX_TRACKED_KEYS
         assert len(limiter._windows) <= _MAX_TRACKED_KEYS
 
-    async def test_eviction_is_fifo_not_lru(self, limiter: RateLimiterMiddleware) -> None:
-        """Eviction drops the oldest *inserted* key even if it is the hottest.
+    async def test_a_throttled_counter_survives_a_key_flood(
+        self, limiter: RateLimiterMiddleware
+    ) -> None:
+        """An attacker must not be able to evict their own 429 out of the map.
 
-        An attacker who is being throttled can therefore flush their own
-        counter by creating _MAX_TRACKED_KEYS fresh keys.
+        Filling the map used to drop the oldest *inserted* key regardless of
+        how hot it was, which handed a throttled caller a fresh budget. Now
+        eviction is LRU and refuses to drop a counter that is currently at its
+        limit.
         """
         hot = ("9.9.9.9", "/api/v1/auth/login")
-        await limiter._get_or_create_key(hot)
         for _ in range(_ROUTE_LIMITS["/api/v1/auth/login"][0]):
             await limiter.dispatch(_make_request("/api/v1/auth/login", ip="9.9.9.9"), _ok)
         assert (
             await limiter.dispatch(_make_request("/api/v1/auth/login", ip="9.9.9.9"), _ok)
         ).status_code == 429
 
-        # Flood with fresh keys to push the hot key out of the map.
+        # Flood the map well past its cap with fresh keys.
         for i in range(_MAX_TRACKED_KEYS + 1):
-            await limiter._get_or_create_key(("9.9.9.9", f"/flood/{i}"))
-        assert hot not in limiter._windows, "hot key survived — eviction is now LRU"
+            await limiter._get_or_create_key((f"10.{i // 65536}.{i // 256 % 256}.{i % 256}", "/f"))
 
-        recovered = await limiter.dispatch(
-            _make_request("/api/v1/auth/login", ip="9.9.9.9"), _ok
-        )
-        assert recovered.status_code == 200, "rate limit was NOT bypassed — update this test"
+        assert hot in limiter._windows, "the throttled counter was evicted"
+        assert (
+            await limiter.dispatch(_make_request("/api/v1/auth/login", ip="9.9.9.9"), _ok)
+        ).status_code == 429, "rate limit was bypassed by flooding the key map"
+
+    async def test_eviction_prefers_expired_windows_over_live_ones(
+        self, limiter: RateLimiterMiddleware, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import backend.app.api.middleware.rate_limiter as rl
+
+        clock = {"t": 1_000.0}
+        monkeypatch.setattr(rl.time, "monotonic", lambda: clock["t"])
+
+        expired = ("1.1.1.1", "/api/v1/auth/login")
+        await limiter.dispatch(_make_request("/api/v1/auth/login", ip="1.1.1.1"), _ok)
+        clock["t"] += _ROUTE_LIMITS["/api/v1/auth/login"][1] + 1
+
+        live = ("2.2.2.2", "/api/v1/auth/login")
+        await limiter.dispatch(_make_request("/api/v1/auth/login", ip="2.2.2.2"), _ok)
+
+        monkeypatch.setattr(rl, "_MAX_TRACKED_KEYS", len(limiter._locks))
+        await limiter._get_or_create_key(("3.3.3.3", "/api/v1/auth/login"))
+
+        assert expired not in limiter._windows, "the expired window was not preferred"
+        assert live in limiter._windows, "a live window was evicted before an expired one"
+
+    async def test_touching_a_key_marks_it_most_recently_used(
+        self, limiter: RateLimiterMiddleware
+    ) -> None:
+        first = ("1.1.1.1", "/a")
+        second = ("2.2.2.2", "/b")
+        await limiter._get_or_create_key(first)
+        await limiter._get_or_create_key(second)
+        await limiter._get_or_create_key(first)  # re-touch the older key
+        assert list(limiter._locks) == [second, first]
 
     async def test_prune_removes_stale_keys(
         self, limiter: RateLimiterMiddleware, monkeypatch: pytest.MonkeyPatch
