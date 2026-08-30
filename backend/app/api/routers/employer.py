@@ -7,6 +7,7 @@ immediately visible to the semantic matcher.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 from backend.app.api.dependencies import get_current_user, require_employer
 from backend.app.db.models import User
@@ -381,7 +382,6 @@ async def list_employer_applications(
 
     Optional query parameter: ?job_id=<job_id> to filter by a specific job.
     """
-    from datetime import datetime, UTC
     repos = get_repositories()
     employer = await _get_employer(current_user.id)
     if not employer:
@@ -436,7 +436,6 @@ async def update_application_status(
     current_user: User = Depends(get_current_user),
 ):
     """Update application stage status and attach employer notes."""
-    from datetime import datetime, UTC
     repos = get_repositories()
     app = await repos.applications.get(application_id)
     if not app:
