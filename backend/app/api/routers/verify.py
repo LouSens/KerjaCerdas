@@ -6,15 +6,14 @@ import string
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from backend.app.api.dependencies import get_current_user
+from backend.app.api.services.identity_verifier import MockIdentityVerificationService
+from backend.app.db.models import OTPRecord, User
+from backend.app.db.postgres_store import find_seeker_by_user_id, get_repositories
+from backend.app.db.session import async_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
-
-from backend.app.api.dependencies import get_current_user
-from backend.app.api.services.identity_verifier import MockIdentityVerificationService
-from backend.app.db.models import OTPRecord, SeekerProfile, User
-from backend.app.db.postgres_store import find_seeker_by_user_id, get_repositories
-from backend.app.db.session import async_session
 
 _OTP_TTL_SECONDS = 300  # 5 minutes
 _OTP_MAX_ATTEMPTS = 5

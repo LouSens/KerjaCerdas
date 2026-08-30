@@ -154,7 +154,6 @@ class PostgresRepository(Generic[TSchema, TModel]):
 # pgvector unavailable / non-Postgres dev DB), they return None so the caller
 # can fall back to in-Python scoring over a full table scan.
 
-import logging as _logging  # noqa: E402  (intentional: placed near ANN scoring section)
 
 _ann_logger = _logging.getLogger(__name__)
 
