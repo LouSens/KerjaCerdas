@@ -40,6 +40,12 @@ export function _authHeader() {
     }
 }
 
+let _onUnauthorized = null
+
+export function setUnauthorizedHandler(fn) {
+    _onUnauthorized = fn
+}
+
 async function request(path, opts = {}) {
     const res = await fetch(path, {
         headers: {
@@ -59,9 +65,12 @@ async function request(path, opts = {}) {
                 if (hadToken) {
                     toast.error('Sesi Anda telah berakhir, silakan masuk kembali.', { id: 'session-expired' })
                 }
-                const { default: useStore } = await import('../store/useStore')
-                useStore.getState().logout()
-            } catch { /* ignore if store unavailable */ }
+                if (typeof _onUnauthorized === 'function') {
+                    _onUnauthorized()
+                } else {
+                    setAuthToken(null)
+                }
+            } catch { /* ignore */ }
         }
         if (res.status === 403 && !isAuthEndpoint) {
             toast.error('Akses ditolak: Anda tidak memiliki izin.', { id: 'forbidden-access' })
