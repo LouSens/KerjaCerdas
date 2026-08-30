@@ -1058,7 +1058,7 @@ async def seed(clear: bool) -> None:
     # await init_db()  # handled by alembic now
 
     if clear:
-        async with async_session_factory() as session:
+        async with async_session_factory():
             # We don't drop tables, just rely on alembic or a fresh db.
             pass
 

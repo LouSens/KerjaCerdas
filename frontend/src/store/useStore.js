@@ -25,6 +25,7 @@ import {
     loginUser,
     registerUser,
     setAuthToken,
+    setUnauthorizedHandler,
     fetchApplications,
     applyToJob,
     fetchEmployerProfile,
@@ -617,5 +618,9 @@ const useStore = create(
         }
     )
 )
+
+setUnauthorizedHandler(() => {
+    useStore.getState().logout()
+})
 
 export default useStore

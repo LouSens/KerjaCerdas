@@ -1,16 +1,14 @@
 import pytest
 from sqlalchemy import select
-
-from backend.app.api.database import async_session_factory
-from backend.app.db.models import User
-
-pytestmark = pytest.mark.asyncio(loop_scope="session")
-
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from backend.app.api import database
+from backend.app.api.database import async_session_factory
 from backend.app.config.settings import settings
+from backend.app.db.models import User
+
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
 @pytest.fixture(autouse=True)

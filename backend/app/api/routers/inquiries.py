@@ -13,7 +13,7 @@ from backend.app.api.dependencies import get_current_user, get_current_user_opti
 from backend.app.db.models import PartnershipInquiry
 from backend.app.db.session import async_session
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import desc, select
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
@@ -34,6 +34,8 @@ class UpdateInquiryStatusRequest(BaseModel):
 
 
 class InquiryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     category: str
     name: str
@@ -43,9 +45,6 @@ class InquiryResponse(BaseModel):
     status: str
     notes: str
     created_at: Any
-
-    class Config:
-        from_attributes = True
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=dict[str, Any])

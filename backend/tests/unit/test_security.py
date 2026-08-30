@@ -459,7 +459,7 @@ class TestSeedAuthUtils:
         with patch("backend.scripts.auth_utils.async_session_factory", new=fake_session_factory):
             from backend.scripts.auth_utils import seed_auth_user
 
-            result = await seed_auth_user("new@example.com", "New User", "seeker")
+            await seed_auth_user("new@example.com", "New User", "seeker")
 
         assert mock_user is not None
         assert mock_user.email == "new@example.com"
@@ -505,7 +505,7 @@ class TestSeedAuthUtils:
         with patch("backend.scripts.auth_utils.async_session_factory", new=fake_session_factory):
             from backend.scripts.auth_utils import seed_auth_user
 
-            result = await seed_auth_user("existing@example.com", "Existing User", "employer")
+            await seed_auth_user("existing@example.com", "Existing User", "employer")
 
         # Role updated, password left intact
         assert existing_user.role == "employer"
