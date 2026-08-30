@@ -61,3 +61,8 @@ scripts/fix_*.py
 scripts/capture_screenshots.py
 scripts/test_*.py
 scripts/audit_*.py
+# Test artifacts
+backend/.coverage
+backend/test.db
+coverage.xml
+.pytest_cache/

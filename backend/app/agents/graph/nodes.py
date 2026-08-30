@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+from urllib.parse import quote_plus
 
 from backend.app.agents.graph.state import AgentState
 from backend.app.db.schemas import CourseRecommendation
@@ -352,18 +353,25 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
         entry = _COURSE_CATALOG.get(skill.lower())
         if entry and entry[0] not in seen:
             seen.add(entry[0])
+            # Keep the catalogued provider — overwriting it misattributed
+            # every curated course (e.g. Coursera ID) to Dicoding.
             name, provider, dur = entry
-            provider = "Dicoding"
         else:
             # Dynamically generate mock course recommendation for missing skill
             name = f"Dicoding Academy — Menjadi {skill.title()} Developer"
             provider = "Dicoding"
             dur = "1 bulan"
 
-        url = f"https://www.google.com/search?q=site:dicoding.com+{skill}"
-        price = "Rp 350.000 · Prakerja OK"
-        rating = 4.8
-        desc = f"Kurikulum resmi terstruktur seputar {skill.title()} lengkap dengan portofolio proyek riil, modul Bahasa Indonesia, dan review code dari mentor expert Dicoding."
+        # Catalog entries carry no verified URL, price or rating, so the copy
+        # stays provider-neutral and the estimate is flagged as unverified
+        # (guardrails.md: "prefix uncertain facts with *belum terverifikasi*").
+        url = f"https://www.google.com/search?q={quote_plus(name + ' ' + provider)}"
+        price = "*belum terverifikasi* — cek langsung di situs penyedia"
+        rating = None
+        desc = (
+            f"Kursus {skill.title()} dari {provider}. Detail harga, durasi dan "
+            "sertifikasi *belum terverifikasi* — konfirmasi di situs penyedia."
+        )
 
         results.append(
             CourseRecommendation(

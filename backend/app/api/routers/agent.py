@@ -18,6 +18,7 @@ MatchResult enrichment:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 
 from backend.app.api.dependencies import get_current_user
@@ -30,12 +31,26 @@ from backend.app.db.schemas import (
     SeekerProfile,
 )
 from backend.app.utils import content_to_text
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from langgraph.errors import GraphRecursionError
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)
+
+def _safe_profile_text(value: str, fallback: str) -> str:
+    """Sanitize a stored profile string for use inside the LLM context.
+
+    Profile fields are written through endpoints that do not sanitize, so they
+    are treated as untrusted here. An injection marker yields `fallback`
+    instead of a 422 — the user should still get their job matches.
+    """
+    try:
+        return sanitize_text(value or "", max_length=200, field_name="profile") or fallback
+    except HTTPException:
+        logger.warning("profile field rejected by sanitizer — using placeholder")
+        return fallback
+
 
 _ANONYMOUS_SEEKER = SeekerProfile(
     user_id="anonymous",
@@ -287,9 +302,18 @@ async def invoke_agent(
 
     app_graph = get_graph()
 
-    # Build context prompt for ReAct agent
-    skills = [s.name for s in seeker.skills] if seeker.skills else []
-    context = f"[Context System]\nProfil Kandidat:\nNama: {seeker.full_name}\nSkill: {skills}\n"
+    # Build context prompt for ReAct agent.
+    # Profile fields are user-authored and are interpolated ABOVE the
+    # <user_input> fence, so they must be sanitized too — otherwise a crafted
+    # full_name or skill is second-order prompt injection into the trusted
+    # half of the context. sanitize_text raises 422 on injection markers, so
+    # fall back to a neutral placeholder rather than failing the whole request.
+    safe_name = _safe_profile_text(seeker.full_name, "Pengguna")
+    skills = [
+        _safe_profile_text(s.name, "") for s in seeker.skills
+    ] if seeker.skills else []
+    skills = [s for s in skills if s]
+    context = f"[Context System]\nProfil Kandidat:\nNama: {safe_name}\nSkill: {skills}\n"
     routing_confidence = 0.7  # inferred from message
     if safe_intent:
         routing_confidence = 1.0  # explicit intent from UI button
@@ -300,8 +324,14 @@ async def invoke_agent(
     context += f"\n<user_input>\n{safe_message}\n</user_input>"
 
     state_in = {"messages": [("user", context)]}
+    # The checkpointer keys conversation memory on thread_id. session_id comes
+    # straight from the client, so it MUST be namespaced by the authenticated
+    # user — otherwise two callers passing the same value share one buffer and
+    # each can read the other's history back out of the model.
+    raw_thread = req.session_id or seeker.id
+    thread_id = f"{current_user.id}:{hashlib.sha256(raw_thread.encode()).hexdigest()[:32]}"
     config = {
-        "configurable": {"thread_id": req.session_id or seeker.id},
+        "configurable": {"thread_id": thread_id},
         "recursion_limit": 10,
     }
     from backend.app.services.llm_factory import LLMBusyError

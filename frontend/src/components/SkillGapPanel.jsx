@@ -167,10 +167,14 @@ export default function SkillGapPanel() {
                                     <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                         <Clock size={12} /> {course.duration}
                                     </span>
-                                    <span>·</span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#D97706' }}>
-                                        <Star size={12} fill="#D97706" /> {course.rating}
-                                    </span>
+                                    {course.rating != null && (
+                                        <>
+                                            <span>·</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#D97706' }}>
+                                                <Star size={12} fill="#D97706" /> {course.rating}
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
                                 <a
                                     href={course.url}

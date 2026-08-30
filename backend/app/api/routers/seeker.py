@@ -51,6 +51,18 @@ async def get_profile(current_user: User = Depends(get_current_user)):
     return profile
 
 
+def _year_or_default(value, default: int = 2024) -> int:
+    """Coerce a graduation year from an untyped body, falling back on garbage.
+
+    The profile body is a bare `dict`, so a non-numeric year used to raise
+    ValueError and 500 the request.
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @router.post("/profile", status_code=status.HTTP_201_CREATED)
 async def create_or_update_profile(
     data: dict,
@@ -102,7 +114,7 @@ async def create_or_update_profile(
                     institution=e.get("institution", ""),
                     degree=deg,
                     major=e.get("major", ""),
-                    graduation_year=int(e.get("graduation_year") or 2024),
+                    graduation_year=_year_or_default(e.get("graduation_year")),
                     ijazah_number=e.get("ijazah_number"),
                     sivil_verified=VerificationStatus(e.get("sivil_verified", "unverified")),
                 )

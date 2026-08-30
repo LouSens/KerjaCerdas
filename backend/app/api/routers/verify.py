@@ -10,6 +10,7 @@ from backend.app.api.dependencies import get_current_user
 from backend.app.api.services.identity_verifier import MockIdentityVerificationService
 from backend.app.db.models import OTPRecord, User
 from backend.app.db.postgres_store import find_seeker_by_user_id, get_repositories
+from backend.app.db.schemas import VerificationStatus
 from backend.app.db.session import async_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -62,7 +63,7 @@ async def verify_identity(req: EkycReq, current_user: User = Depends(get_current
         seeker = await find_seeker_by_user_id(current_user.id)
         if seeker:
             seeker.nik = nik_hash
-            seeker.nik_verified = "verified"
+            seeker.nik_verified = VerificationStatus.VERIFIED
             repos = get_repositories()
             await repos.seekers.upsert(seeker)
 

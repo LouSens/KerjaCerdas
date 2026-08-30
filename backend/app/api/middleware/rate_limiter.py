@@ -51,6 +51,15 @@ _ROUTE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/v1/agent/invoke": (20, 60),
     "/api/v1/uploads/cv": (10, 60),
     "/api/v1/uploads/job-pack": (10, 60),
+    # OTP dispatch costs real money per message — keep it well below the
+    # default so a stolen token cannot be used to SMS-bomb a phone number.
+    "/api/v1/verify/otp/send": (5, 60),
+    # Brute-force guard on top of the per-record attempt counter.
+    "/api/v1/verify/otp/verify": (10, 60),
+    # e-KYC lookups are billed per call once a real provider is wired in.
+    "/api/v1/verify/identity": (10, 60),
+    # Calls Gemini for course recommendations — same cost class as the agent.
+    "/api/v1/seeker/skill-gap": (20, 60),
 }
 _DEFAULT_LIMIT = (60, 60)  # 60 req / 60 s
 

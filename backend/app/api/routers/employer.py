@@ -32,6 +32,36 @@ async def _get_employer(user_id: str) -> Employer | None:
     return await find_employer_by_user_id(user_id)
 
 
+def _as_int(value, field: str, default: int = 0) -> int:
+    """Coerce an untyped request-body value to int, or 400.
+
+    These endpoints take a bare `dict` body, so nothing validates the payload
+    before it reaches here — a raw `int()` turns a typo into a 500.
+    """
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, f"Field '{field}' harus berupa angka."
+        ) from None
+
+
+def _as_str_list(value, field: str) -> list[str]:
+    """Coerce an untyped request-body value to list[str], or 400."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        # A single skill sent as a bare string is a common client mistake.
+        return [value] if value.strip() else []
+    if isinstance(value, list) and all(isinstance(x, str) for x in value):
+        return list(value)
+    raise HTTPException(
+        status.HTTP_400_BAD_REQUEST, f"Field '{field}' harus berupa daftar teks."
+    )
+
+
 # ── Employer Profile ──────────────────────────────────────────────────────────────────────────
 
 
@@ -90,21 +120,29 @@ async def create_job(body: dict, current_user: User = Depends(get_current_user))
     except ValueError:
         edu = EducationLevel.S1
 
+    title = str(body.get("title") or "").strip()
+    if not title:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Judul lowongan wajib diisi.")
+
     work_type = body.get("work_type", "onsite")
     job = JobPosting(
         employer_id=employer.id,
-        title=body.get("title", ""),
-        description=body.get("description", ""),
-        responsibilities=body.get("responsibilities", []),
-        required_skills=body.get("required_skills", []),
-        nice_to_have_skills=body.get("nice_to_have_skills", []),
+        title=title,
+        description=str(body.get("description") or ""),
+        responsibilities=_as_str_list(body.get("responsibilities"), "responsibilities"),
+        required_skills=_as_str_list(body.get("required_skills"), "required_skills"),
+        nice_to_have_skills=_as_str_list(
+            body.get("nice_to_have_skills"), "nice_to_have_skills"
+        ),
         education_min=edu,
-        experience_years_min=int(body.get("experience_years_min", 0)),
+        experience_years_min=_as_int(
+            body.get("experience_years_min"), "experience_years_min"
+        ),
         region_code=body.get("region_code", body.get("location", employer.region_code)),
         remote_allowed=work_type in ("remote", "hybrid") or bool(body.get("remote_allowed", False)),
-        salary_min=int(body.get("salary_min", 0)),
-        salary_max=int(body.get("salary_max", 0)),
-        kbji_code=body.get("kbji_code", ""),
+        salary_min=_as_int(body.get("salary_min"), "salary_min"),
+        salary_max=_as_int(body.get("salary_max"), "salary_max"),
+        kbji_code=str(body.get("kbji_code") or ""),
     )
 
     matcher = SemanticMatcher()
