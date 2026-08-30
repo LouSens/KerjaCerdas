@@ -122,6 +122,7 @@ class Application(Base, TimestampedMixin):
     status: Mapped[str] = mapped_column(String(50), default="applied")
     cover_letter: Mapped[str] = mapped_column(Text, default="")
     match_score: Mapped[float] = mapped_column(Float, default=0.0)
+    note: Mapped[str] = mapped_column(Text, default="")
 
 
 class OTPRecord(Base, TimestampedMixin):

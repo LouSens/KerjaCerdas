@@ -18,6 +18,8 @@ import asyncio
 
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
+    Application,
+    ApplicationStatus,
     Course,
     Education,
     EducationLevel,
@@ -28,6 +30,7 @@ from backend.app.db.schemas import (
     UserRole,
     WorkExperience,
 )
+from backend.app.api.database import init_db
 from backend.app.db.session import async_session as async_session_factory
 from backend.app.services.matching.matcher import SemanticMatcher
 from backend.scripts.auth_utils import seed_auth_user as _seed_auth_user
@@ -1055,7 +1058,7 @@ COURSES = [
 
 
 async def seed(clear: bool) -> None:
-    # await init_db()  # handled by alembic now
+    await init_db()
 
     if clear:
         async with async_session_factory():
@@ -1163,6 +1166,36 @@ async def seed(clear: bool) -> None:
     for c in COURSES:
         await repos.courses.upsert(Course(**c))
     print(f"[courses] {len(COURSES)} created")
+
+    # ── Applications ───────────────────────────────────────────────────────
+    all_jobs = await repos.jobs.list()
+    all_seekers = await repos.seekers.list()
+    app_count = 0
+    if all_jobs and all_seekers:
+        # Seed realistic application lifecycle for first few seekers
+        seed_tuples = [
+            (0, 0, ApplicationStatus.INTERVIEW, "Jadwal wawancara teknis pada Kamis pukul 14:00 WIB via Google Meet. Link telah dikirim ke email."),
+            (0, 1, ApplicationStatus.REVIEWED, "Berkas dan portofolio teknis sedang dalam peninjauan Hiring Manager."),
+            (0, 2, ApplicationStatus.APPLIED, "Lamaran berhasil terkirim dan tersimpan di database instansi rekruter."),
+            (1, 0, ApplicationStatus.HIRED, "Selamat! Anda dinyatakan lolos dan menerima penawaran kerja (Offering Letter)."),
+            (1, 3, ApplicationStatus.INTERVIEW, "Undangan sesi Culture Fit interview dengan Engineering Lead."),
+            (2, 4, ApplicationStatus.REVIEWED, "Profil kompetensi sedang diverifikasi oleh Tim Rekrutmen."),
+        ]
+        for s_idx, j_idx, status_val, note_val in seed_tuples:
+            if s_idx < len(all_seekers) and j_idx < len(all_jobs):
+                s_obj = all_seekers[s_idx]
+                j_obj = all_jobs[j_idx]
+                app_obj = Application(
+                    job_id=j_obj.id,
+                    seeker_id=s_obj.id,
+                    status=status_val,
+                    note=note_val,
+                    cover_letter="Saya sangat tertarik dengan posisi ini dan yakin pengalaman saya relevan.",
+                    match_score=0.88,
+                )
+                await repos.applications.upsert(app_obj)
+                app_count += 1
+    print(f"[applications] {app_count} created")
 
     print("\n[OK] Seed selesai.")
     print(f"  Employers : {len(emp_by_key)}")

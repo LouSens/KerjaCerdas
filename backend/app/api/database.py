@@ -171,6 +171,16 @@ async def _migrate_verification_logs_schema(conn) -> None:
         logger.info("Migrated verification_logs.zk_commitment to verification_hash")
 
 
+async def _migrate_applications_schema(conn) -> None:
+    """Add note column to applications if missing (SQLite & local dev migration)."""
+    column_names = await conn.run_sync(_get_table_columns, "applications")
+    if column_names and "note" not in column_names:
+        await conn.execute(
+            text("ALTER TABLE applications ADD COLUMN note TEXT DEFAULT ''")
+        )
+        logger.info("Migrated applications: added note column")
+
+
 async def init_db() -> None:
     """Create all tables. Called once during application startup."""
     # Import models here so their metadata is registered before create_all.
@@ -187,4 +197,5 @@ async def init_db() -> None:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(ModelsBase.metadata.create_all)
         await _migrate_verification_logs_schema(conn)
+        await _migrate_applications_schema(conn)
     logger.info("[DB] Database tables created / verified successfully")

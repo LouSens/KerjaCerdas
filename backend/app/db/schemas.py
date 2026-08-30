@@ -59,6 +59,7 @@ class ApplicationStatus(str, Enum):
     REVIEWED = "reviewed"
     INTERVIEW = "interview"
     OFFERED = "offered"
+    HIRED = "hired"
     REJECTED = "rejected"
     WITHDRAWN = "withdrawn"
 
@@ -181,6 +182,7 @@ class Application(TimestampedModel):
     status: ApplicationStatus = ApplicationStatus.APPLIED
     cover_letter: str = ""
     match_score: float = 0.0
+    note: str = ""
 
 
 # ── Match results (cached) ────────────────────────────────────────────────────

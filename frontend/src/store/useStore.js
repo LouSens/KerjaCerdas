@@ -28,6 +28,8 @@ import {
     setUnauthorizedHandler,
     fetchApplications,
     applyToJob,
+    fetchEmployerApplications,
+    updateApplicationStatus,
     fetchEmployerProfile,
     updateEmployerProfile,
     trackEvent,
@@ -560,6 +562,35 @@ const useStore = create(
                     if (err?.status && err.status !== 404) {
                         console.error('Failed to load employer profile:', err)
                     }
+                }
+            },
+
+            // ─── Employer Applications & Status Pipeline ─────────────────
+            employerApplications: [],
+            employerApplicationsLoading: false,
+
+            loadEmployerApplications: async (jobId = null) => {
+                set({ employerApplicationsLoading: true })
+                try {
+                    const data = await fetchEmployerApplications(jobId)
+                    set({ employerApplications: data?.items || [], employerApplicationsLoading: false })
+                } catch (err) {
+                    console.error('Failed to load employer applications:', err)
+                    set({ employerApplicationsLoading: false })
+                }
+            },
+
+            changeApplicationStatus: async (applicationId, status, note = '') => {
+                try {
+                    const res = await updateApplicationStatus(applicationId, status, note)
+                    toast.success(`Status lamaran diperbarui ke ${status}`)
+                    // Refresh employer applications and jobs
+                    await get().loadEmployerApplications()
+                    await get().refreshEmployerJobs()
+                    return res
+                } catch (err) {
+                    toast.error('Gagal memperbarui status: ' + (err.message || err))
+                    throw err
                 }
             },
 

@@ -281,11 +281,16 @@ export const verifyOTP = (phone, code) =>
         body: JSON.stringify({ phone, code }),
     })
 
-// ── Employer: update application status (Kanban) ────────────────────────────
-export const updateApplicationStatus = (applicationId, status) =>
+// ── Employer: application management & status transitions ───────────────────
+export const fetchEmployerApplications = (jobId = null) => {
+    const qs = jobId ? `?job_id=${encodeURIComponent(jobId)}` : ''
+    return request(`${API_BASE}/employer/applications${qs}`)
+}
+
+export const updateApplicationStatus = (applicationId, status, note = null) =>
     request(`${API_BASE}/employer/applications/${applicationId}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...(note !== null ? { note } : {}) }),
     })
 
 // ── Partnership & Enterprise Inquiries ──────────────────────────────────────

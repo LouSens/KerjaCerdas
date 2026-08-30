@@ -11,7 +11,7 @@ import logging
 from backend.app.api.dependencies import get_current_user, require_employer
 from backend.app.db.models import User
 from backend.app.db.postgres_store import find_employer_by_user_id, get_repositories
-from backend.app.db.schemas import EducationLevel, Employer, JobPosting
+from backend.app.db.schemas import ApplicationStatus, EducationLevel, Employer, JobPosting
 from backend.app.services.matching.matcher import SemanticMatcher
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -366,4 +366,119 @@ async def unlock_candidate(
         "unlock_id": f"unlock_{employer.id[:8]}_{seeker_id[:8]}",
         "unlock_cost_idr": 50000,  # Rp 50.000 per unlock
         "note": "[DEMO] Dalam produksi, verifikasi payment_token Midtrans/Xendit terlebih dahulu.",
+    }
+
+
+# ── Applicant & Application Management (Real Pipeline) ─────────────────────────
+
+
+@router.get("/applications")
+async def list_employer_applications(
+    job_id: str | None = None,
+    current_user: User = Depends(get_current_user),
+):
+    """Return real applications submitted to this employer's jobs.
+
+    Optional query parameter: ?job_id=<job_id> to filter by a specific job.
+    """
+    from datetime import datetime, UTC
+    repos = get_repositories()
+    employer = await _get_employer(current_user.id)
+    if not employer:
+        return {"total": 0, "items": []}
+
+    my_jobs = await repos.jobs.find(lambda j: j.employer_id == employer.id)
+    my_job_ids = {j.id for j in my_jobs}
+    job_map = {j.id: j for j in my_jobs}
+
+    target_job_ids = {job_id} if job_id and job_id in my_job_ids else my_job_ids
+
+    all_apps = await repos.applications.list()
+    relevant_apps = [a for a in all_apps if a.job_id in target_job_ids and a.status != ApplicationStatus.SAVED]
+
+    enriched = []
+    for app in relevant_apps:
+        job = job_map.get(app.job_id)
+        seeker = await repos.seekers.get(app.seeker_id)
+        users = await repos.users.find(lambda u: u.id == (seeker.user_id if seeker else app.seeker_id))
+        user_record = users[0] if users else None
+
+        skill_names = [getattr(s, "name", str(s)) for s in (getattr(seeker, "skills", []) or [])]
+        applied_dt = getattr(app, "created_at", None)
+        updated_dt = getattr(app, "updated_at", None) or applied_dt
+
+        enriched.append({
+            "id": app.id,
+            "application_id": app.id,
+            "job_id": app.job_id,
+            "job_title": job.title if job else "—",
+            "seeker_id": app.seeker_id,
+            "seeker_name": seeker.full_name if seeker and seeker.full_name else (user_record.name if user_record else "Pelamar"),
+            "seeker_email": user_record.email if user_record else "pelamar@kerjacerdas.id",
+            "seeker_phone": getattr(seeker, "phone", "") or "+628123456789",
+            "headline": getattr(seeker, "headline", "") if seeker else "",
+            "skills": skill_names,
+            "status": app.status,
+            "note": getattr(app, "note", "") or "",
+            "cover_letter": getattr(app, "cover_letter", "") or "",
+            "match_score": getattr(app, "match_score", 0.0) or 0.0,
+            "applied_at": applied_dt.strftime("%Y-%m-%d %H:%M") if hasattr(applied_dt, "strftime") else str(applied_dt)[:16] if applied_dt else "2026-08-26 10:00",
+            "updated_at": updated_dt.strftime("%Y-%m-%d %H:%M") if hasattr(updated_dt, "strftime") else str(updated_dt)[:16] if updated_dt else "2026-08-26 10:00",
+        })
+
+    return {"total": len(enriched), "items": enriched}
+
+
+@router.patch("/applications/{application_id}/status")
+async def update_application_status(
+    application_id: str,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """Update application stage status and attach employer notes."""
+    from datetime import datetime, UTC
+    repos = get_repositories()
+    app = await repos.applications.get(application_id)
+    if not app:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lamaran tidak ditemukan")
+
+    employer = await _get_employer(current_user.id)
+    if not employer:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Profil perusahaan tidak ditemukan")
+
+    job = await repos.jobs.get(app.job_id)
+    if not job or job.employer_id != employer.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Anda tidak memiliki izin mengelola lamaran ini")
+
+    if "status" in body:
+        new_status_str = str(body["status"]).lower().strip()
+        try:
+            app.status = ApplicationStatus(new_status_str)
+        except ValueError:
+            if new_status_str in ("hired", "accepted", "diterima"):
+                app.status = ApplicationStatus.HIRED
+            elif new_status_str in ("interview", "wawancara"):
+                app.status = ApplicationStatus.INTERVIEW
+            elif new_status_str in ("reviewed", "ditinjau"):
+                app.status = ApplicationStatus.REVIEWED
+            elif new_status_str in ("rejected", "ditolak"):
+                app.status = ApplicationStatus.REJECTED
+            elif new_status_str in ("applied", "terkirim"):
+                app.status = ApplicationStatus.APPLIED
+            else:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Status '{new_status_str}' tidak valid")
+
+    if "note" in body:
+        app.note = str(body["note"]).strip()
+
+    app.updated_at = datetime.now(UTC)
+    await repos.applications.upsert(app)
+    logger.info("Application %s updated to status=%s note=%s by employer=%s", app.id, app.status, app.note, employer.id)
+
+    return {
+        "id": app.id,
+        "application_id": app.id,
+        "status": app.status,
+        "note": app.note,
+        "updated_at": app.updated_at.isoformat(),
     }

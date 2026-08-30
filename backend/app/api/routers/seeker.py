@@ -321,6 +321,7 @@ async def apply_to_job(
         seeker_id=seeker_id,
         status=ApplicationStatus.APPLIED,
         cover_letter=body.get("cover_letter", ""),
+        note="Lamaran terkirim ke sistem rekrutmen institusi dan menunggu peninjauan tim HR.",
     )
     await repos.applications.upsert(app)
 
@@ -334,9 +335,11 @@ async def apply_to_job(
 
     logger.info("Application created: seeker %s → job %s", seeker_id, job_id)
     return {
+        "id": app.id,
         "application_id": app.id,
         "job_id": job_id,
         "status": app.status,
+        "note": app.note,
         "already_applied": False,
     }
 
@@ -542,7 +545,7 @@ async def get_latest_skill_gap(current_user: User = Depends(get_current_user)):
 async def list_applications(current_user: User = Depends(get_current_user)):
     """Return all job applications for the logged-in seeker with job metadata.
 
-    Returns list of { application_id, job_id, title, company, status, applied_at }.
+    Returns list of { id, application_id, job_id, title, company, status, note, applied_at, updated_at }.
     """
     repos = get_repositories()
     profile = await find_seeker_by_user_id(current_user.id)
@@ -554,14 +557,37 @@ async def list_applications(current_user: User = Depends(get_current_user)):
     for app in apps:
         job = await repos.jobs.get(app.job_id)
         emp = await repos.employers.get(job.employer_id) if job else None
+
+        # Determine note from DB or provide informative default by status
+        note_val = getattr(app, "note", "") or ""
+        if not note_val:
+            if app.status == ApplicationStatus.APPLIED:
+                note_val = "Lamaran terkirim ke sistem rekrutmen institusi dan menunggu peninjauan tim HR."
+            elif app.status == ApplicationStatus.REVIEWED:
+                note_val = "Berkas dan profil portofolio Anda sedang dalam proses peninjauan aktif oleh Hiring Manager."
+            elif app.status == ApplicationStatus.INTERVIEW:
+                note_val = "Kandidat lolos ke tahap wawancara teknis. Tim HR akan menghubungi untuk koordinasi jadwal."
+            elif app.status in (ApplicationStatus.HIRED, ApplicationStatus.OFFERED):
+                note_val = "Selamat! Anda dinyatakan lolos dan menerima penawaran kerja (Offering). Silakan cek email terdaftar."
+            elif app.status == ApplicationStatus.REJECTED:
+                note_val = "Terima kasih atas partisipasi Anda. Proses rekrutmen untuk posisi ini telah selesai."
+            else:
+                note_val = "Status lamaran tersimpan dalam sistem."
+
+        applied_dt = getattr(app, "created_at", None)
+        updated_dt = getattr(app, "updated_at", None) or applied_dt
+
         result.append(
             {
+                "id": app.id,
                 "application_id": app.id,
                 "job_id": app.job_id,
                 "title": job.title if job else "—",
                 "company": emp.company_name if emp else "—",
                 "status": app.status,
-                "applied_at": app.created_at.isoformat(),
+                "note": note_val,
+                "applied_at": applied_dt.strftime("%Y-%m-%d") if hasattr(applied_dt, "strftime") else str(applied_dt)[:10] if applied_dt else "2026-08-26",
+                "updated_at": updated_dt.strftime("%Y-%m-%d") if hasattr(updated_dt, "strftime") else str(updated_dt)[:10] if updated_dt else "2026-08-26",
             }
         )
     return result
