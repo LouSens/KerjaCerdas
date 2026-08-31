@@ -38,6 +38,7 @@ from pydantic import BaseModel, Field
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)
 
+
 def _safe_profile_text(value: str, fallback: str) -> str:
     """Sanitize a stored profile string for use inside the LLM context.
 
@@ -309,9 +310,7 @@ async def invoke_agent(
     # half of the context. sanitize_text raises 422 on injection markers, so
     # fall back to a neutral placeholder rather than failing the whole request.
     safe_name = _safe_profile_text(seeker.full_name, "Pengguna")
-    skills = [
-        _safe_profile_text(s.name, "") for s in seeker.skills
-    ] if seeker.skills else []
+    skills = [_safe_profile_text(s.name, "") for s in seeker.skills] if seeker.skills else []
     skills = [s for s in skills if s]
     context = f"[Context System]\nProfil Kandidat:\nNama: {safe_name}\nSkill: {skills}\n"
     routing_confidence = 0.7  # inferred from message

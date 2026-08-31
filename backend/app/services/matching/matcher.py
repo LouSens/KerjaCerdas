@@ -41,20 +41,48 @@ def cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb)
 
 
+_CANONICAL_SKILL_MAP: dict[str, str] = {
+    "react.js": "react",
+    "reactjs": "react",
+    "node.js": "node",
+    "nodejs": "node",
+    "vue.js": "vue",
+    "vuejs": "vue",
+    "next.js": "nextjs",
+    "next": "nextjs",
+    "postgresql": "postgres",
+    "postgres": "postgres",
+    "golang": "go",
+    "k8s": "kubernetes",
+    "js": "javascript",
+    "ts": "typescript",
+    "py": "python",
+}
+
+
+def _normalize_skill(name: str) -> str:
+    cleaned = (name or "").strip().lower()
+    return _CANONICAL_SKILL_MAP.get(cleaned, cleaned)
+
+
 def _skill_overlap(seeker_names: list[str], required: list[str]) -> float:
-    """Fraction of required skills the seeker has (case-insensitive)."""
+    """Fraction of required skills the seeker has (case-insensitive & canonicalized)."""
     if not required:
         return 1.0
-    s = {x.lower() for x in seeker_names}
-    r = {x.lower() for x in required}
+    s = {_normalize_skill(x) for x in seeker_names if x}
+    r = {_normalize_skill(x) for x in required if x}
+    if not r:
+        return 1.0
     return len(s & r) / len(r)
 
 
 def _experience_years(seeker: SeekerProfile) -> float:
-    """Sum actual years from work experience entries."""
+    """Sum actual calendar years from work experience entries by merging overlapping intervals."""
     from datetime import date
 
-    total = 0.0
+    intervals: list[tuple[date, date]] = []
+    fallback_years = 0.0
+
     for exp in seeker.experience:
         try:
             sy, sm = (int(p) for p in (exp.start_date + "-01").split("-")[:2])
@@ -64,10 +92,26 @@ def _experience_years(seeker: SeekerProfile) -> float:
                 end = date(ey, em, 1)
             else:
                 end = date.today()
-            total += max(0, (end - start).days / 365.25)
+            if end >= start:
+                intervals.append((start, end))
         except Exception:
-            total += 1.0  # safe fallback: count the entry as 1 year
-    return total
+            fallback_years += 1.0  # safe fallback for unparseable entry
+
+    if not intervals:
+        return fallback_years
+
+    # Merge overlapping intervals
+    intervals.sort(key=lambda x: x[0])
+    merged: list[tuple[date, date]] = [intervals[0]]
+    for current in intervals[1:]:
+        prev_start, prev_end = merged[-1]
+        if current[0] <= prev_end:
+            merged[-1] = (prev_start, max(prev_end, current[1]))
+        else:
+            merged.append(current)
+
+    total_days = sum((end - start).days for start, end in merged)
+    return round(total_days / 365.25 + fallback_years, 2)
 
 
 def _build_seeker_text(p: SeekerProfile) -> str:

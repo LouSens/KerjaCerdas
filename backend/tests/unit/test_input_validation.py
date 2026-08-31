@@ -51,9 +51,9 @@ class TestJobCreationValidation:
             headers=employer_account["headers"],
         )
         assert resp.status_code == 201, resp.text
-        jobs = client.get(
-            "/api/v1/employer/jobs", headers=employer_account["headers"]
-        ).json()["items"]
+        jobs = client.get("/api/v1/employer/jobs", headers=employer_account["headers"]).json()[
+            "items"
+        ]
         assert jobs[0]["required_skills"] == ["Python"]
 
     @pytest.mark.parametrize("skills", [[1, 2, 3], {"a": "b"}, 42])
@@ -148,20 +148,14 @@ class TestProfileValidation:
             json={
                 "full_name": "Budi",
                 "region_code": "3171",
-                "education": [
-                    {"institution": "UI", "major": "TI", "graduation_year": "2021"}
-                ],
+                "education": [{"institution": "UI", "major": "TI", "graduation_year": "2021"}],
             },
             headers=seeker_account["headers"],
         )
-        profile = client.get(
-            "/api/v1/seeker/profile", headers=seeker_account["headers"]
-        ).json()
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
         assert profile["education"][0]["graduation_year"] == 2021
 
-    @pytest.mark.parametrize(
-        "skills", [[123], [None], [{"name": "Python"}], ["Python"], []]
-    )
+    @pytest.mark.parametrize("skills", [[123], [None], [{"name": "Python"}], ["Python"], []])
     def test_assorted_skill_shapes_do_not_crash(
         self, client: TestClient, seeker_account: dict, stub_embedder, skills
     ) -> None:
@@ -182,15 +176,11 @@ class TestNoEndpointReturnsFiveHundred:
     def test_apply(
         self, client: TestClient, seeker_account: dict, seeker_profile: dict, body: dict
     ) -> None:
-        resp = client.post(
-            "/api/v1/seeker/apply", json=body, headers=seeker_account["headers"]
-        )
+        resp = client.post("/api/v1/seeker/apply", json=body, headers=seeker_account["headers"])
         assert resp.status_code < 500, resp.text
 
     @pytest.mark.parametrize("body", JUNK)
-    def test_employer_profile(
-        self, client: TestClient, employer_account: dict, body: dict
-    ) -> None:
+    def test_employer_profile(self, client: TestClient, employer_account: dict, body: dict) -> None:
         resp = client.post(
             "/api/v1/employer/profile", json=body, headers=employer_account["headers"]
         )

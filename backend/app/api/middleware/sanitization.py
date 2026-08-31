@@ -56,7 +56,9 @@ _INJECTION_PATTERNS: list[re.Pattern] = [
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 # Dangerous HTML tag pattern to remove without double-encoding ampersands/math
-_DANGEROUS_HTML = re.compile(r"<\/?(?:script|iframe|object|embed|form|input|button|style|meta|link)[^>]*>", re.I)
+_DANGEROUS_HTML = re.compile(
+    r"<\/?(?:script|iframe|object|embed|form|input|button|style|meta|link)[^>]*>", re.I
+)
 
 # Allowed filename characters (alphanumeric, dash, underscore, dot)
 _SAFE_FILENAME = re.compile(r"[^a-zA-Z0-9._\-\s]")
@@ -109,6 +111,33 @@ def sanitize_text(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Input field '{field_name}' contains disallowed content.",
             )
+
+    return text.strip()
+
+
+def clean_extracted_text(
+    text: str,
+    *,
+    max_length: int = 4_000,
+    allow_newlines: bool = True,
+) -> str:
+    """
+    Soft sanitization for extracted document text (e.g. CVs, Job Packs).
+    Instead of raising 422, it neutralizes injection patterns and control chars
+    so downstream processing and UI rendering stay safe without blocking the user.
+    """
+    if not isinstance(text, str):
+        return ""
+    text = text[:max_length]
+    if allow_newlines:
+        text = _CONTROL_CHARS.sub("", text)
+    else:
+        text = re.sub(r"[\x00-\x1f\x7f]", "", text)
+    text = _DANGEROUS_HTML.sub("", text)
+
+    # Neutralize injection patterns by replacing with benign marker
+    for pattern in _INJECTION_PATTERNS:
+        text = pattern.sub("[filtered]", text)
 
     return text.strip()
 

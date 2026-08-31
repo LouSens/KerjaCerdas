@@ -58,7 +58,9 @@ class SeekerProfile(Base, TimestampedMixin):
     )
     full_name: Mapped[str] = mapped_column(String(255))
     headline: Mapped[str] = mapped_column(String(255), default="")
-    nik: Mapped[str | None] = mapped_column(String(64), nullable=True)  # Stores SHA-256 hash of NIK for UU-PDP compliance
+    nik: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )  # Stores SHA-256 hash of NIK for UU-PDP compliance
     nik_verified: Mapped[str] = mapped_column(String(20), default="unverified")
     date_of_birth: Mapped[str | None] = mapped_column(String(20), nullable=True)
     region_code: Mapped[str] = mapped_column(String(50))
@@ -127,6 +129,7 @@ class Application(Base, TimestampedMixin):
 
 class OTPRecord(Base, TimestampedMixin):
     """Database-backed OTP store with expiration for distributed/autoscale environments."""
+
     __tablename__ = "otps"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)

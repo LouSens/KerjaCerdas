@@ -121,13 +121,12 @@ export default function Sidebar() {
                         onClick={() => navigate('home')}
                     >
                         <div style={{
-                            width: 26, height: 26, borderRadius: 6, background: '#FF4800',
+                            width: 26, height: 26, borderRadius: 6, background: '#FEFEFE',
                             border: '1.5px solid #FFFFFF', display: 'grid', placeItems: 'center',
                             boxShadow: '1.5px 1.5px 0 #FFFFFF', transform: 'rotate(-3deg)',
+                            overflow: 'hidden', flexShrink: 0,
                         }}>
-                            <svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                                <path d="M5 3v18M5 12l9-9M5 12l9 9" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                            <img src="/vite.svg" alt="KerjaCerdas Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
                         <span className="font-black text-lg tracking-tight text-white">
                             kerja<span className="text-[#FF4800]">cerdas</span>

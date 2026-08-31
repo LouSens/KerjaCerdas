@@ -17,6 +17,7 @@ class TestQueryEmbeddingCache:
     @pytest.fixture(autouse=True)
     def _clear(self, monkeypatch: pytest.MonkeyPatch):
         matcher_mod._query_cache.clear()
+
         # Neutralise the Postgres second tier so these test the in-process LRU.
         async def _no_persisted(_key):
             return None
@@ -24,9 +25,7 @@ class TestQueryEmbeddingCache:
         async def _no_save(*a, **k):
             return None
 
-        monkeypatch.setattr(
-            "backend.app.db.postgres_store.get_query_embedding", _no_persisted
-        )
+        monkeypatch.setattr("backend.app.db.postgres_store.get_query_embedding", _no_persisted)
         monkeypatch.setattr("backend.app.db.postgres_store.save_query_embedding", _no_save)
         yield
         matcher_mod._query_cache.clear()
@@ -68,9 +67,7 @@ class TestQueryEmbeddingCache:
         await m._embed_query_cached("overflow")
         assert _query_cache_key(stub_embedder.model, "hot") in matcher_mod._query_cache
 
-    async def test_embedder_failure_is_not_cached(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_embedder_failure_is_not_cached(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from backend.app.services.matching.embeddings.gemini import (
             EmbeddingUnavailableError,
         )
@@ -219,11 +216,7 @@ class TestRouting:
     def test_no_route_is_registered_twice(self, client: TestClient) -> None:
         from collections import Counter
 
-        pairs = [
-            (path, method)
-            for path, ops in self._spec(client).items()
-            for method in ops
-        ]
+        pairs = [(path, method) for path, ops in self._spec(client).items() for method in ops]
         dupes = [p for p, n in Counter(pairs).items() if n > 1]
         assert not dupes, f"duplicate routes: {dupes}"
 
@@ -246,9 +239,7 @@ class TestRouting:
         assert client.get("/health/detailed").status_code in (401, 403)
 
     def test_detailed_health_rejects_a_bad_token(self, client: TestClient) -> None:
-        resp = client.get(
-            "/health/detailed", headers={"Authorization": "Bearer not-a-real-token"}
-        )
+        resp = client.get("/health/detailed", headers={"Authorization": "Bearer not-a-real-token"})
         assert resp.status_code == 401
 
     def test_detailed_health_works_with_a_token(

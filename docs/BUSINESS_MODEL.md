@@ -26,11 +26,11 @@ flowchart TD
 
 ## 2. Aliran Pendapatan (*Revenue Streams*) & Mekanisme Monetisasi
 
-1. **B2B Pay-to-Unlock (Fokus Utama Traksi Awal):**
+1. **B2B Pay-to-Unlock & Micro-Bundle (Fokus Utama Traksi Awal):**
    - Perusahaan meninjau kandidat teratas (*shortlist*) secara gratis dengan format sensor (*The Teaser Method*).
-   - Membayar **Rp 50.000 per kandidat** saat ingin membuka kontak dan mengunduh CV lengkap.
-   - HPP per Transaksi: E-KYC pass-through (Rp 4.000) + Payment Gateway MDR (Rp 1.000) = Rp 5.000 $\rightarrow$ **Marjin Kotor: Rp 45.000 (90%)**.
-   - *Freemium Hook:* 5 kredit unlock gratis untuk setiap perusahaan baru.
+   - **Freemium Hook:** 5 kredit unlock gratis untuk setiap perusahaan baru yang mendaftar.
+   - **Paket Mikro Pay-to-Unlock:** Membayar **Rp 50.000 per 10 kandidat (Rp 5.000/unlock)** saat kuota gratis habis dan ingin membuka kontak langsung (email, WhatsApp, CV lengkap) sesuai kebutuhan tanpa harus berlangganan paket tahunan mahal.
+   - HPP per 10 Transaksi: E-KYC pass-through + Payment Gateway MDR $\approx$ Rp 8.000 $\rightarrow$ **Marjin Kotor: Rp 42.000 (84%)**.
 
 2. **B2B KerjaCerdas Pro (Langganan Retensi):**
    - Skema langganan **Rp 299.000 / bulan** bagi perusahaan dengan intensitas rekrutmen berkelanjutan (akses kuota shortlisting lebih besar & branding terverifikasi).

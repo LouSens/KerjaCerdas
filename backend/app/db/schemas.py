@@ -75,9 +75,7 @@ class ApplicationStatus(str, Enum):
 # act that belongs in an admin/audit path, not in the ordinary status PATCH.
 
 APPLICATION_TRANSITIONS: dict[ApplicationStatus, frozenset[ApplicationStatus]] = {
-    ApplicationStatus.SAVED: frozenset(
-        {ApplicationStatus.APPLIED, ApplicationStatus.WITHDRAWN}
-    ),
+    ApplicationStatus.SAVED: frozenset({ApplicationStatus.APPLIED, ApplicationStatus.WITHDRAWN}),
     ApplicationStatus.APPLIED: frozenset(
         {
             ApplicationStatus.REVIEWED,
@@ -261,6 +259,7 @@ class Employer(TimestampedModel):
     @classmethod
     def _normalize_size(cls, v: object) -> object:
         return normalize_company_size(v)
+
     region_code: str
     website: str | None = None
     description: str = ""

@@ -56,9 +56,7 @@ class TestLimitSelection:
         assert limiter._get_limit("/api/v1/jobs") == _DEFAULT_LIMIT
 
     def test_prefix_match_covers_sub_paths(self, limiter: RateLimiterMiddleware) -> None:
-        assert limiter._get_limit("/api/v1/auth/login/extra") == _ROUTE_LIMITS[
-            "/api/v1/auth/login"
-        ]
+        assert limiter._get_limit("/api/v1/auth/login/extra") == _ROUTE_LIMITS["/api/v1/auth/login"]
 
     @pytest.mark.parametrize(
         "path",
@@ -117,9 +115,7 @@ class TestWindowEnforcement:
     async def test_headers_count_down(self, limiter: RateLimiterMiddleware) -> None:
         r1 = await limiter.dispatch(_make_request("/api/v1/jobs"), _ok)
         r2 = await limiter.dispatch(_make_request("/api/v1/jobs"), _ok)
-        assert int(r1.headers["X-RateLimit-Remaining"]) > int(
-            r2.headers["X-RateLimit-Remaining"]
-        )
+        assert int(r1.headers["X-RateLimit-Remaining"]) > int(r2.headers["X-RateLimit-Remaining"])
 
     async def test_different_ips_have_independent_budgets(
         self, limiter: RateLimiterMiddleware
@@ -127,9 +123,7 @@ class TestWindowEnforcement:
         max_req, _ = _ROUTE_LIMITS["/api/v1/auth/login"]
         for _ in range(max_req):
             await limiter.dispatch(_make_request("/api/v1/auth/login", ip="10.0.0.1"), _ok)
-        other = await limiter.dispatch(
-            _make_request("/api/v1/auth/login", ip="10.0.0.2"), _ok
-        )
+        other = await limiter.dispatch(_make_request("/api/v1/auth/login", ip="10.0.0.2"), _ok)
         assert other.status_code == 200
 
     async def test_different_paths_have_independent_budgets(
@@ -153,14 +147,10 @@ class TestWindowEnforcement:
         max_req, window = _ROUTE_LIMITS["/api/v1/auth/login"]
         for _ in range(max_req):
             await limiter.dispatch(_make_request("/api/v1/auth/login"), _ok)
-        assert (
-            await limiter.dispatch(_make_request("/api/v1/auth/login"), _ok)
-        ).status_code == 429
+        assert (await limiter.dispatch(_make_request("/api/v1/auth/login"), _ok)).status_code == 429
 
         clock["t"] += window + 1
-        assert (
-            await limiter.dispatch(_make_request("/api/v1/auth/login"), _ok)
-        ).status_code == 200
+        assert (await limiter.dispatch(_make_request("/api/v1/auth/login"), _ok)).status_code == 200
 
 
 class TestConcurrency:
@@ -333,9 +323,7 @@ class TestLiveAppIntegration:
         max_req, _ = _ROUTE_LIMITS["/api/v1/auth/login"]
         last = None
         for _ in range(max_req + 3):
-            last = client.post(
-                "/api/v1/auth/login", json={"email": "a@b.com", "password": "x"}
-            )
+            last = client.post("/api/v1/auth/login", json={"email": "a@b.com", "password": "x"})
         assert last.status_code == 429
         assert last.json()["detail"]
 

@@ -109,6 +109,7 @@ app = FastAPI(
 # 5. RequestSizeMiddleware
 # 6. Route handler
 
+
 def _replit_origins() -> list[str]:
     """Return this Replit workspace's own origins, named explicitly.
 

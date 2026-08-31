@@ -14,6 +14,7 @@ import logging
 import re
 from typing import Any
 
+from backend.app.api.middleware.sanitization import clean_extracted_text
 from backend.app.config.settings import settings
 from backend.app.services.prompt_loader import build_system_prompt
 
@@ -277,8 +278,11 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
         return stub
 
     try:
+        raw_dict = _extract_json(raw)
         return (
-            _validate_cv_schema(_extract_json(raw)) if task == "cv_parser" else _extract_json(raw)
+            _validate_cv_schema(raw_dict)
+            if task == "cv_parser"
+            else _validate_job_pack_schema(raw_dict)
         )
     except Exception as e:
         logger.error("Gemini returned non-JSON (task=%s): %s", task, e)
@@ -288,14 +292,14 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
 
 
 def _validate_cv_schema(d: dict[str, Any]) -> dict[str, Any]:
-    """Coerce Gemini output to the strict schema uploads.py expects."""
+    """Coerce Gemini output to the strict, sanitized schema uploads.py expects."""
     return {
-        "full_name": str(d.get("full_name") or "Pengguna").strip(),
-        "headline": str(d.get("headline") or "").strip(),
-        "region_code": str(d.get("region_code") or "").strip(),
+        "full_name": clean_extracted_text(str(d.get("full_name") or "Pengguna"), max_length=100),
+        "headline": clean_extracted_text(str(d.get("headline") or ""), max_length=200),
+        "region_code": clean_extracted_text(str(d.get("region_code") or ""), max_length=10),
         "skills": [
             {
-                "name": str(s.get("name", "")).strip(),
+                "name": clean_extracted_text(str(s.get("name", "")), max_length=60),
                 "level": s.get("level", "intermediate"),
                 "years": float(s.get("years") or 0),
             }
@@ -304,20 +308,20 @@ def _validate_cv_schema(d: dict[str, Any]) -> dict[str, Any]:
         ],
         "experience": [
             {
-                "company": str(x.get("company", "")).strip(),
-                "title": str(x.get("title", "")).strip(),
+                "company": clean_extracted_text(str(x.get("company", "")), max_length=150),
+                "title": clean_extracted_text(str(x.get("title", "")), max_length=150),
                 "start_date": x.get("start_date") or "2024-01",
                 "end_date": x.get("end_date"),
-                "description": str(x.get("description", "")).strip(),
+                "description": clean_extracted_text(str(x.get("description", "")), max_length=1000),
             }
             for x in (d.get("experience") or [])
             if isinstance(x, dict)
         ],
         "education": [
             {
-                "institution": str(e.get("institution", "")).strip(),
+                "institution": clean_extracted_text(str(e.get("institution", "")), max_length=150),
                 "degree": (e.get("degree") or "S1").upper(),
-                "major": str(e.get("major", "")).strip(),
+                "major": clean_extracted_text(str(e.get("major", "")), max_length=100),
                 "graduation_year": int(e.get("graduation_year") or 2024),
             }
             for e in (d.get("education") or [])
@@ -325,8 +329,50 @@ def _validate_cv_schema(d: dict[str, Any]) -> dict[str, Any]:
         ],
         "salary_expectation_min": int(d.get("salary_expectation_min") or 0),
         "salary_expectation_max": int(d.get("salary_expectation_max") or 0),
-        "resume_text": str(d.get("resume_text") or "")[:1000],
+        "resume_text": clean_extracted_text(str(d.get("resume_text") or ""), max_length=2000),
     }
+
+
+def _validate_job_pack_schema(d: dict[str, Any]) -> dict[str, Any]:
+    """Coerce Gemini job pack output to a clean, sanitized posting list."""
+    postings_raw = d.get("postings") or []
+    cleaned_postings: list[dict[str, Any]] = []
+
+    for p in postings_raw:
+        if not isinstance(p, dict):
+            continue
+        cleaned_postings.append(
+            {
+                "title": clean_extracted_text(str(p.get("title") or "Untitled"), max_length=150),
+                "description": clean_extracted_text(
+                    str(p.get("description") or ""), max_length=3000
+                ),
+                "responsibilities": [
+                    clean_extracted_text(str(r), max_length=300)
+                    for r in (p.get("responsibilities") or [])
+                    if isinstance(r, (str, int, float)) and str(r).strip()
+                ],
+                "required_skills": [
+                    clean_extracted_text(str(s), max_length=60)
+                    for s in (p.get("required_skills") or [])
+                    if isinstance(s, (str, int, float)) and str(s).strip()
+                ],
+                "nice_to_have_skills": [
+                    clean_extracted_text(str(s), max_length=60)
+                    for s in (p.get("nice_to_have_skills") or [])
+                    if isinstance(s, (str, int, float)) and str(s).strip()
+                ],
+                "education_min": (p.get("education_min") or "S1").upper(),
+                "experience_years_min": int(p.get("experience_years_min") or 0),
+                "region_code": clean_extracted_text(str(p.get("region_code") or ""), max_length=10),
+                "remote_allowed": bool(p.get("remote_allowed", False)),
+                "salary_min": int(p.get("salary_min") or 0),
+                "salary_max": int(p.get("salary_max") or 0),
+                "kbji_code": clean_extracted_text(str(p.get("kbji_code") or ""), max_length=20),
+            }
+        )
+
+    return {"postings": cleaned_postings}
 
 
 async def parse_cv(pdf_bytes: bytes) -> dict[str, Any]:

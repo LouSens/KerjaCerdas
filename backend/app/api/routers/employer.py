@@ -407,37 +407,53 @@ async def list_employer_applications(
     target_job_ids = {job_id} if job_id and job_id in my_job_ids else my_job_ids
 
     all_apps = await repos.applications.list()
-    relevant_apps = [a for a in all_apps if a.job_id in target_job_ids and a.status != ApplicationStatus.SAVED]
+    relevant_apps = [
+        a for a in all_apps if a.job_id in target_job_ids and a.status != ApplicationStatus.SAVED
+    ]
 
     enriched = []
     for app in relevant_apps:
         job = job_map.get(app.job_id)
         seeker = await repos.seekers.get(app.seeker_id)
-        users = await repos.users.find(lambda u: u.id == (seeker.user_id if seeker else app.seeker_id))
+        users = await repos.users.find(
+            lambda u: u.id == (seeker.user_id if seeker else app.seeker_id)
+        )
         user_record = users[0] if users else None
 
         skill_names = [getattr(s, "name", str(s)) for s in (getattr(seeker, "skills", []) or [])]
         applied_dt = getattr(app, "created_at", None)
         updated_dt = getattr(app, "updated_at", None) or applied_dt
 
-        enriched.append({
-            "id": app.id,
-            "application_id": app.id,
-            "job_id": app.job_id,
-            "job_title": job.title if job else "—",
-            "seeker_id": app.seeker_id,
-            "seeker_name": seeker.full_name if seeker and seeker.full_name else (user_record.name if user_record else "Pelamar"),
-            "seeker_email": user_record.email if user_record else "pelamar@kerjacerdas.id",
-            "seeker_phone": getattr(seeker, "phone", "") or "+628123456789",
-            "headline": getattr(seeker, "headline", "") if seeker else "",
-            "skills": skill_names,
-            "status": app.status,
-            "note": getattr(app, "note", "") or "",
-            "cover_letter": getattr(app, "cover_letter", "") or "",
-            "match_score": getattr(app, "match_score", 0.0) or 0.0,
-            "applied_at": applied_dt.strftime("%Y-%m-%d %H:%M") if hasattr(applied_dt, "strftime") else str(applied_dt)[:16] if applied_dt else "2026-08-26 10:00",
-            "updated_at": updated_dt.strftime("%Y-%m-%d %H:%M") if hasattr(updated_dt, "strftime") else str(updated_dt)[:16] if updated_dt else "2026-08-26 10:00",
-        })
+        enriched.append(
+            {
+                "id": app.id,
+                "application_id": app.id,
+                "job_id": app.job_id,
+                "job_title": job.title if job else "—",
+                "seeker_id": app.seeker_id,
+                "seeker_name": seeker.full_name
+                if seeker and seeker.full_name
+                else (user_record.name if user_record else "Pelamar"),
+                "seeker_email": user_record.email if user_record else "pelamar@kerjacerdas.id",
+                "seeker_phone": getattr(seeker, "phone", "") or "+628123456789",
+                "headline": getattr(seeker, "headline", "") if seeker else "",
+                "skills": skill_names,
+                "status": app.status,
+                "note": getattr(app, "note", "") or "",
+                "cover_letter": getattr(app, "cover_letter", "") or "",
+                "match_score": getattr(app, "match_score", 0.0) or 0.0,
+                "applied_at": applied_dt.strftime("%Y-%m-%d %H:%M")
+                if hasattr(applied_dt, "strftime")
+                else str(applied_dt)[:16]
+                if applied_dt
+                else "2026-08-26 10:00",
+                "updated_at": updated_dt.strftime("%Y-%m-%d %H:%M")
+                if hasattr(updated_dt, "strftime")
+                else str(updated_dt)[:16]
+                if updated_dt
+                else "2026-08-26 10:00",
+            }
+        )
 
     return {"total": len(enriched), "items": enriched}
 
@@ -492,7 +508,9 @@ async def update_application_status(
 
     job = await repos.jobs.get(app.job_id)
     if not job or job.employer_id != employer.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Anda tidak memiliki izin mengelola lamaran ini")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Anda tidak memiliki izin mengelola lamaran ini"
+        )
 
     if payload.status is not None:
         target = _parse_status(payload.status)
@@ -523,7 +541,13 @@ async def update_application_status(
 
     app.updated_at = datetime.now(UTC)
     await repos.applications.upsert(app)
-    logger.info("Application %s updated to status=%s note=%s by employer=%s", app.id, app.status, app.note, employer.id)
+    logger.info(
+        "Application %s updated to status=%s note=%s by employer=%s",
+        app.id,
+        app.status,
+        app.note,
+        employer.id,
+    )
 
     return {
         "id": app.id,

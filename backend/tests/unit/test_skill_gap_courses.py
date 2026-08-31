@@ -76,9 +76,7 @@ class TestRecommendCourses:
         courses = await _recommend_courses(["Docker"], None)
         assert courses and courses[0].provider
 
-    async def test_llm_failure_degrades_to_catalog(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_llm_failure_degrades_to_catalog(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from backend.app.config.settings import settings
 
         monkeypatch.setattr(settings, "gemini_api_key", "fake-key")
@@ -146,9 +144,7 @@ class TestSkillGapEndpoint:
         assert client.post("/api/v1/seeker/skill-gap", json={}).status_code == 401
 
     def test_requires_a_profile(self, client: TestClient, seeker_account: dict) -> None:
-        resp = client.post(
-            "/api/v1/seeker/skill-gap", json={}, headers=seeker_account["headers"]
-        )
+        resp = client.post("/api/v1/seeker/skill-gap", json={}, headers=seeker_account["headers"])
         assert resp.status_code == 404
 
     def test_gap_is_computed_against_the_target_job(
@@ -236,9 +232,7 @@ class TestSkillGapEndpoint:
             json={"target_job_id": seeded_job["job_id"]},
             headers=seeker_account["headers"],
         )
-        latest = client.get(
-            "/api/v1/seeker/skill-gap/latest", headers=seeker_account["headers"]
-        )
+        latest = client.get("/api/v1/seeker/skill-gap/latest", headers=seeker_account["headers"])
         assert latest.status_code == 200
         body = latest.json()
         assert body is not None

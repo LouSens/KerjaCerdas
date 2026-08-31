@@ -549,7 +549,9 @@ async def list_applications(current_user: User = Depends(get_current_user)):
         note_val = getattr(app, "note", "") or ""
         if not note_val:
             if app.status == ApplicationStatus.APPLIED:
-                note_val = "Lamaran terkirim ke sistem rekrutmen institusi dan menunggu peninjauan tim HR."
+                note_val = (
+                    "Lamaran terkirim ke sistem rekrutmen institusi dan menunggu peninjauan tim HR."
+                )
             elif app.status == ApplicationStatus.REVIEWED:
                 note_val = "Berkas dan profil portofolio Anda sedang dalam proses peninjauan aktif oleh Hiring Manager."
             elif app.status == ApplicationStatus.INTERVIEW:
@@ -573,8 +575,16 @@ async def list_applications(current_user: User = Depends(get_current_user)):
                 "company": emp.company_name if emp else "—",
                 "status": app.status,
                 "note": note_val,
-                "applied_at": applied_dt.strftime("%Y-%m-%d") if hasattr(applied_dt, "strftime") else str(applied_dt)[:10] if applied_dt else "2026-08-26",
-                "updated_at": updated_dt.strftime("%Y-%m-%d") if hasattr(updated_dt, "strftime") else str(updated_dt)[:10] if updated_dt else "2026-08-26",
+                "applied_at": applied_dt.strftime("%Y-%m-%d")
+                if hasattr(applied_dt, "strftime")
+                else str(applied_dt)[:10]
+                if applied_dt
+                else "2026-08-26",
+                "updated_at": updated_dt.strftime("%Y-%m-%d")
+                if hasattr(updated_dt, "strftime")
+                else str(updated_dt)[:10]
+                if updated_dt
+                else "2026-08-26",
             }
         )
     return result

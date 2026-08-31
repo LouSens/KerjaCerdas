@@ -60,9 +60,7 @@ class TestMockIdentityService:
 
 class TestIdentityEndpoint:
     def test_requires_authentication(self, client: TestClient) -> None:
-        resp = client.post(
-            "/api/v1/verify/identity", json={"nik": VALID_NIK, "full_name": "Budi"}
-        )
+        resp = client.post("/api/v1/verify/identity", json={"nik": VALID_NIK, "full_name": "Budi"})
         assert resp.status_code == 401
 
     def test_valid_nik_returns_verified(self, client: TestClient, seeker_account: dict) -> None:
@@ -120,9 +118,7 @@ class TestIdentityEndpoint:
             json={"nik": VALID_NIK, "full_name": "Budi Santoso"},
             headers=seeker_account["headers"],
         )
-        profile = client.get(
-            "/api/v1/seeker/profile", headers=seeker_account["headers"]
-        ).json()
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
         stored_nik = (profile or {}).get("nik") or ""
         assert stored_nik != VALID_NIK
         if stored_nik:
@@ -146,9 +142,7 @@ class TestOtpFlow:
 
     def test_happy_path_send_then_verify(self, client: TestClient, seeker_account: dict) -> None:
         h = seeker_account["headers"]
-        sent = client.post(
-            "/api/v1/verify/otp/send", json={"phone": "+6281234567890"}, headers=h
-        )
+        sent = client.post("/api/v1/verify/otp/send", json={"phone": "+6281234567890"}, headers=h)
         assert sent.status_code == 200, sent.text
         code = sent.json()["demo_code"]
         assert len(code) == 6 and code.isdigit()
@@ -232,9 +226,9 @@ class TestOtpFlow:
     ) -> None:
         h = seeker_account["headers"]
         phone = "+6281200000005"
-        code = client.post(
-            "/api/v1/verify/otp/send", json={"phone": phone}, headers=h
-        ).json()["demo_code"]
+        code = client.post("/api/v1/verify/otp/send", json={"phone": phone}, headers=h).json()[
+            "demo_code"
+        ]
         resp = client.post(
             "/api/v1/verify/otp/verify", json={"phone": phone, "code": code}, headers=h
         )

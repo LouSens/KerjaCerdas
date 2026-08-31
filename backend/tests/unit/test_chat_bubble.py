@@ -47,7 +47,9 @@ class TestChatBubbleBasics:
     def test_requires_authentication(self, client: TestClient) -> None:
         assert client.post("/api/v1/agent/invoke", json={"user_message": "halo"}).status_code == 401
 
-    @pytest.mark.parametrize(("label", "message"), QUESTION_TYPES, ids=[q[0] for q in QUESTION_TYPES])
+    @pytest.mark.parametrize(
+        ("label", "message"), QUESTION_TYPES, ids=[q[0] for q in QUESTION_TYPES]
+    )
     def test_all_question_types_return_a_well_formed_answer(
         self,
         client: TestClient,
@@ -95,7 +97,9 @@ class TestChatBubbleBasics:
         stub_llm,
         stub_embedder,
     ) -> None:
-        scores = [m["score"] for m in _invoke(client, seeker_account, "cari kerja").json()["matches"]]
+        scores = [
+            m["score"] for m in _invoke(client, seeker_account, "cari kerja").json()["matches"]
+        ]
         assert scores == sorted(scores, reverse=True)
 
     def test_explicit_intent_raises_routing_confidence(
@@ -178,9 +182,7 @@ class TestChatBubbleTenancy:
         """Passing someone else's profile inline must not be honoured."""
         forged = dict(seeker_profile)
         forged["full_name"] = "Korban Data Bocor"
-        resp = _invoke(
-            client, other_seeker_account, "cari kerja", seeker=forged
-        )
+        resp = _invoke(client, other_seeker_account, "cari kerja", seeker=forged)
         assert resp.status_code == 200
         assert resp.json()["seeker_id"] != seeker_profile["id"]
 
@@ -193,9 +195,7 @@ class TestChatBubbleTenancy:
         stub_llm,
         stub_embedder,
     ) -> None:
-        resp = _invoke(
-            client, other_seeker_account, "cari kerja", seeker_id=seeker_profile["id"]
-        )
+        resp = _invoke(client, other_seeker_account, "cari kerja", seeker_id=seeker_profile["id"])
         assert resp.status_code == 200
         assert resp.json()["seeker_id"] != seeker_profile["id"]
         assert resp.json()["fallback_used"] is True
@@ -227,9 +227,7 @@ class TestChatBubbleTenancy:
 
         # Inspect ONLY the prompts assembled for the second caller.
         second_caller_text = "\n".join(
-            str(getattr(m, "content", m))
-            for prompt in stub_llm.prompts[before:]
-            for m in prompt
+            str(getattr(m, "content", m)) for prompt in stub_llm.prompts[before:] for m in prompt
         )
         assert second_caller_text, "the second call never reached the model"
         assert "1234567890" not in second_caller_text, (

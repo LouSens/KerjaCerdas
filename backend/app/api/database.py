@@ -175,9 +175,7 @@ async def _migrate_applications_schema(conn) -> None:
     """Add note column to applications if missing (SQLite & local dev migration)."""
     column_names = await conn.run_sync(_get_table_columns, "applications")
     if column_names and "note" not in column_names:
-        await conn.execute(
-            text("ALTER TABLE applications ADD COLUMN note TEXT DEFAULT ''")
-        )
+        await conn.execute(text("ALTER TABLE applications ADD COLUMN note TEXT DEFAULT ''"))
         logger.info("Migrated applications: added note column")
 
 

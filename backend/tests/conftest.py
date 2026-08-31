@@ -228,9 +228,7 @@ def seeded_job(client: TestClient, employer_account: dict, stub_embedder) -> dic
         "salary_max": 14_000_000,
         "work_type": "onsite",
     }
-    resp = client.post(
-        "/api/v1/employer/jobs", json=payload, headers=employer_account["headers"]
-    )
+    resp = client.post("/api/v1/employer/jobs", json=payload, headers=employer_account["headers"])
     assert resp.status_code == 201, resp.text
     return resp.json()
 
@@ -245,8 +243,6 @@ def seeker_profile(client: TestClient, seeker_account: dict, stub_embedder) -> d
         "salary_expectation": 10_000_000,
         "skills": [{"name": "Python"}, {"name": "Excel"}],
     }
-    resp = client.post(
-        "/api/v1/seeker/profile", json=payload, headers=seeker_account["headers"]
-    )
+    resp = client.post("/api/v1/seeker/profile", json=payload, headers=seeker_account["headers"])
     assert resp.status_code in (200, 201), resp.text
     return client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()

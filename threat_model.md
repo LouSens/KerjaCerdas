@@ -43,6 +43,7 @@ KerjaCerdas is an AI-powered job matching platform for Indonesia. A FastAPI back
 - All upload and profile mutation endpoints derive the target `user_id` directly from the authenticated JWT claims, preventing caller-supplied ID spoofing.
 - Atomic `ON CONFLICT (id) DO UPDATE` in database repository prevents TOCTOU race conditions.
 - Uploaded PDFs are validated against `%PDF-` binary magic bytes in addition to MIME-type headers.
+- **Indirect Prompt Injection & XSS Guard on Documents:** All extracted fields from Gemini Multimodal / PyMuPDF (full name, headline, skills, work history, job responsibilities) pass through `clean_extracted_text()` to neutralize embedded jailbreak triggers (`ignore previous instructions`, `DAN mode`, `system:`) and malicious HTML tags before database persistence or evaluation.
 
 ### Information Disclosure
 - NIK (National ID) is stored strictly as a one-way SHA-256 hash (`String(64)`), ensuring compliance with Indonesian Personal Data Protection Law (UU-PDP-2022).

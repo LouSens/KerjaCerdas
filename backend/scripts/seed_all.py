@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
+from backend.app.api.database import init_db
 from backend.app.db.postgres_store import get_repositories
 from backend.app.db.schemas import (
     Application,
@@ -30,7 +31,6 @@ from backend.app.db.schemas import (
     UserRole,
     WorkExperience,
 )
-from backend.app.api.database import init_db
 from backend.app.db.session import async_session as async_session_factory
 from backend.app.services.matching.matcher import SemanticMatcher
 from backend.scripts.auth_utils import seed_auth_user as _seed_auth_user
@@ -1174,12 +1174,42 @@ async def seed(clear: bool) -> None:
     if all_jobs and all_seekers:
         # Seed realistic application lifecycle for first few seekers
         seed_tuples = [
-            (0, 0, ApplicationStatus.INTERVIEW, "Jadwal wawancara teknis pada Kamis pukul 14:00 WIB via Google Meet. Link telah dikirim ke email."),
-            (0, 1, ApplicationStatus.REVIEWED, "Berkas dan portofolio teknis sedang dalam peninjauan Hiring Manager."),
-            (0, 2, ApplicationStatus.APPLIED, "Lamaran berhasil terkirim dan tersimpan di database instansi rekruter."),
-            (1, 0, ApplicationStatus.HIRED, "Selamat! Anda dinyatakan lolos dan menerima penawaran kerja (Offering Letter)."),
-            (1, 3, ApplicationStatus.INTERVIEW, "Undangan sesi Culture Fit interview dengan Engineering Lead."),
-            (2, 4, ApplicationStatus.REVIEWED, "Profil kompetensi sedang diverifikasi oleh Tim Rekrutmen."),
+            (
+                0,
+                0,
+                ApplicationStatus.INTERVIEW,
+                "Jadwal wawancara teknis pada Kamis pukul 14:00 WIB via Google Meet. Link telah dikirim ke email.",
+            ),
+            (
+                0,
+                1,
+                ApplicationStatus.REVIEWED,
+                "Berkas dan portofolio teknis sedang dalam peninjauan Hiring Manager.",
+            ),
+            (
+                0,
+                2,
+                ApplicationStatus.APPLIED,
+                "Lamaran berhasil terkirim dan tersimpan di database instansi rekruter.",
+            ),
+            (
+                1,
+                0,
+                ApplicationStatus.HIRED,
+                "Selamat! Anda dinyatakan lolos dan menerima penawaran kerja (Offering Letter).",
+            ),
+            (
+                1,
+                3,
+                ApplicationStatus.INTERVIEW,
+                "Undangan sesi Culture Fit interview dengan Engineering Lead.",
+            ),
+            (
+                2,
+                4,
+                ApplicationStatus.REVIEWED,
+                "Profil kompetensi sedang diverifikasi oleh Tim Rekrutmen.",
+            ),
         ]
         for s_idx, j_idx, status_val, note_val in seed_tuples:
             if s_idx < len(all_seekers) and j_idx < len(all_jobs):

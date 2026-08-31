@@ -178,13 +178,12 @@ export default function PrivacyPolicyPage() {
                         aria-label="Kembali ke Beranda"
                     >
                         <div style={{
-                            width: 26, height: 26, borderRadius: 7, background: KC.orange,
+                            width: 26, height: 26, borderRadius: 7, background: '#FEFEFE',
                             border: `2px solid ${KC.border}`, display: 'grid', placeItems: 'center',
                             boxShadow: `2.5px 2.5px 0 ${KC.border}`, transform: 'rotate(-3deg)',
+                            overflow: 'hidden', flexShrink: 0,
                         }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                                <path d="M5 3v18M5 12l9-9M5 12l9 9" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                            <img src="/vite.svg" alt="KerjaCerdas Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
                         <span style={{ fontWeight: 900, fontSize: 18, letterSpacing: -0.5, color: KC.ink }}>
                             kerja<span style={{ color: KC.orange }}>cerdas</span>

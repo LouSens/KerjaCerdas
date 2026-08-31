@@ -132,13 +132,12 @@ function Logo({ size = 28, color = KC.ink, mark = KC.orange }) {
     return (
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontFamily: FONT }}>
             <div style={{
-                width: size, height: size, borderRadius: 8, background: mark,
+                width: size, height: size, borderRadius: 8, background: '#FEFEFE',
                 border: `2px solid ${color}`, display: 'grid', placeItems: 'center',
                 boxShadow: `3px 3px 0 ${color}`, transform: 'rotate(-3deg)',
+                overflow: 'hidden', flexShrink: 0,
             }}>
-                <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none">
-                    <path d="M5 3v18M5 12l9-9M5 12l9 9" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <img src="/vite.svg" alt="KerjaCerdas Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <span style={{ fontWeight: 900, fontSize: size * 0.72, letterSpacing: -0.6, color }}>
                 kerja<span style={{ color: mark }}>cerdas</span>

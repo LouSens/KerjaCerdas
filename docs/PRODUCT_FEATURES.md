@@ -61,7 +61,7 @@ Perusahaan dapat mengunggah 1 dokumen PDF berisi kumpulan banyak posisi sekaligu
 
 ### 🔓 Pay-to-Unlock Model
 - Profil kandidat dalam daftar pendek (*Shortlist*) ditampilkan dengan **The Teaser Method** (misal: "Someone at Tokopedia", "Someone from ITB") lengkap dengan skor kecocokan teknis.
-- Perusahaan dapat membuka akses kontak langsung (Nama lengkap, email, nomor HP) dengan tarif mikro **Rp 50.000 / kandidat**, menghilangkan kebutuhan berlangganan jutaan rupiah di muka.
+- Perusahaan dapat membuka akses kontak langsung (Nama lengkap, email, nomor HP) dengan tarif mikro **Rp 50.000 / 10x unlock**, menghilangkan kebutuhan berlangganan jutaan rupiah di muka.
 
 **Komponen terkait:** `EmployerDashboard`, `EmployerJobs`, `EmployerPostJob`, `JobPackUploader`, `EmployerProfile`, `EmployerCandidates`, `PricingPage`  
 **API:** `POST /api/v1/employer/jobs`, `POST /api/v1/uploads/job-pack`, `POST /api/v1/employer/jobs/{id}/candidates`, `POST /api/v1/employer/jobs/{id}/unlock/{seeker_id}`, `GET/POST /api/v1/employer/profile`

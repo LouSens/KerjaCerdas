@@ -88,9 +88,7 @@ class TestApply:
     ) -> None:
         """`job_id` is a required field on the request model, so a body
         missing it never reaches the handler."""
-        resp = client.post(
-            "/api/v1/seeker/apply", json={}, headers=seeker_account["headers"]
-        )
+        resp = client.post("/api/v1/seeker/apply", json={}, headers=seeker_account["headers"])
         assert resp.status_code == 422
         assert "job_id" in resp.text
 
@@ -231,9 +229,7 @@ class TestPipelineAuthorization:
         resp = _set_status(client, intruder, application["application_id"], "hired")
         assert resp.status_code == 403
 
-    def test_unknown_application_is_404(
-        self, client: TestClient, employer_account: dict
-    ) -> None:
+    def test_unknown_application_is_404(self, client: TestClient, employer_account: dict) -> None:
         assert _set_status(client, employer_account, "nope", "hired").status_code == 404
 
     def test_seeker_only_sees_their_own_applications(
@@ -257,9 +253,7 @@ class TestEmployerCandidateView:
     def test_employer_sees_the_application(
         self, client: TestClient, employer_account: dict, application: dict
     ) -> None:
-        resp = client.get(
-            "/api/v1/employer/applications", headers=employer_account["headers"]
-        )
+        resp = client.get("/api/v1/employer/applications", headers=employer_account["headers"])
         assert resp.status_code == 200, resp.text
         ids = [r["application_id"] for r in resp.json()["items"]]
         assert application["application_id"] in ids
@@ -267,9 +261,9 @@ class TestEmployerCandidateView:
     def test_job_application_count_reflects_reality(
         self, client: TestClient, employer_account: dict, seeded_job: dict, application: dict
     ) -> None:
-        jobs = client.get(
-            "/api/v1/employer/jobs", headers=employer_account["headers"]
-        ).json()["items"]
+        jobs = client.get("/api/v1/employer/jobs", headers=employer_account["headers"]).json()[
+            "items"
+        ]
         job = next(j for j in jobs if j["id"] == seeded_job["job_id"])
         assert job["application_count"] == 1
 
@@ -381,7 +375,5 @@ class TestPipelineStateMachine:
         _set_status(
             client, employer_account, application["application_id"], "interview", note=payload
         )
-        rows = client.get(
-            "/api/v1/seeker/applications", headers=seeker_account["headers"]
-        ).json()
+        rows = client.get("/api/v1/seeker/applications", headers=seeker_account["headers"]).json()
         assert any(payload in r["note"] for r in rows), "notes are now sanitized — update this test"

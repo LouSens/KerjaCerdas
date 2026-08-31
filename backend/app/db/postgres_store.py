@@ -86,9 +86,7 @@ class PostgresRepository(Generic[TSchema, TModel]):
             else:
                 # SQLite fallback: SELECT then INSERT/UPDATE
                 oid = getattr(obj, "id")
-                result = await session.execute(
-                    select(self.model).where(self.model.id == oid)
-                )
+                result = await session.execute(select(self.model).where(self.model.id == oid))
                 existing = result.scalar_one_or_none()
                 if existing:
                     for k, v in data.items():
