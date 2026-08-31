@@ -34,9 +34,26 @@ const STAGE_OPTIONS = [
     { key: 'applied', label: 'Terkirim', color: KC.cyan, bg: KC.cyanSoft, icon: Send },
     { key: 'reviewed', label: 'Ditinjau HR', color: KC.yellow, bg: KC.yellowSoft, icon: FileSearch },
     { key: 'interview', label: 'Wawancara', color: KC.orange, bg: KC.orangeSoft, icon: PhoneCall },
+    { key: 'offered', label: 'Ditawari', color: KC.orange, bg: KC.orangeSoft, icon: Send },
     { key: 'hired', label: 'Diterima', color: KC.lime, bg: KC.limeSoft, icon: CheckCircle2 },
     { key: 'rejected', label: 'Ditolak', color: '#DC2626', bg: '#FEE2E2', icon: AlertCircle },
 ]
+
+// Mirrors APPLICATION_TRANSITIONS on the API. The pipeline only moves forward
+// and `hired` / `rejected` are terminal, so stages that would be refused are
+// disabled here rather than offered and then rejected with an error toast.
+const ALLOWED_NEXT = {
+    applied: ['reviewed', 'interview', 'rejected'],
+    reviewed: ['interview', 'offered', 'rejected'],
+    interview: ['offered', 'rejected'],
+    offered: ['hired', 'rejected'],
+    hired: [],
+    rejected: [],
+    saved: [],
+}
+
+const canMoveTo = (current, target) =>
+    current === target || (ALLOWED_NEXT[current] || []).includes(target)
 
 const DEMO_CANDIDATES = [
     { name: 'Rina Pertiwi', band: 'strong', verified: true, score: 94, title: 'Senior Backend Engineer · 6 tahun pengalaman', location: 'Jakarta · Hybrid', exp: '6 thn', edu: 'S1 Teknik Informatika ITB', prev: 'Bukalapak', skills: ['Go', 'PostgreSQL', 'gRPC', 'Kafka', 'Kubernetes'], gap: [], ai: 'Stack 100% selaras. Berpengalaman menangani throughput skala 100k RPS pada payment gateway.' },
@@ -256,7 +273,13 @@ export default function EmployerCandidates() {
                                                         }}
                                                     >
                                                         {STAGE_OPTIONS.map(opt => (
-                                                            <option key={opt.key} value={opt.key}>{opt.label}</option>
+                                                            <option
+                                                                key={opt.key}
+                                                                value={opt.key}
+                                                                disabled={!canMoveTo(app.status, opt.key)}
+                                                            >
+                                                                {opt.label}
+                                                            </option>
                                                         ))}
                                                     </select>
                                                     <button

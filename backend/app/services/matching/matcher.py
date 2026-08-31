@@ -89,6 +89,53 @@ def _build_job_text(j: JobPosting) -> str:
     )
 
 
+# BPS regency codes → lowercase display names, used by the location filter.
+_BPS_REGION_NAMES: dict[str, str] = {
+    "3171": "jakarta pusat",
+    "3172": "jakarta utara",
+    "3173": "jakarta barat",
+    "3174": "jakarta selatan",
+    "3175": "jakarta timur",
+    "3273": "bandung",
+    "3578": "surabaya",
+    "3471": "yogyakarta",
+    "5171": "denpasar",
+    "1275": "medan",
+    "7371": "makassar",
+    "6371": "balikpapan",
+}
+
+
+def _normalize_filters(filters: dict | None) -> dict:
+    """Coerce the caller-supplied filter dict into safe, typed values.
+
+    `filters` arrives untyped from the API body, so any field can hold a
+    number, a list, or None. Anything that can't be interpreted is dropped
+    rather than raising — a bad filter must degrade the ranking, never 500
+    the request.
+    """
+    raw = filters or {}
+    if not isinstance(raw, dict):
+        return {}
+
+    out: dict = {}
+
+    location = raw.get("location")
+    if isinstance(location, str) and location.strip():
+        out["location"] = location.strip().lower()
+
+    for key in ("salary_min", "experience_min"):
+        value = raw.get(key)
+        if isinstance(value, bool) or value is None:
+            continue
+        try:
+            out[key] = int(value)
+        except (TypeError, ValueError):
+            _logger.debug("ignoring non-numeric filter %s=%r", key, value)
+
+    return out
+
+
 def _band_label(score: float, strong_th: float, possible_th: float) -> str:
     """Map a final score to a confidence band. Single source of truth for the
     Strong / Possible / Stretch cutoffs — used by both the seeker ranking and
@@ -350,8 +397,7 @@ class SemanticMatcher:
 
         if top_k is None:
             top_k = settings.matching_top_k
-        if filters is None:
-            filters = {}
+        filters = _normalize_filters(filters)
 
         try:
             query_vec = await self._embed_query_cached(_build_seeker_text(seeker))
@@ -390,23 +436,9 @@ class SemanticMatcher:
             # 2. Hybrid AI Boosts (Only applied if user actively sets filters)
             loc_boost = 0.0
             region_ok = False
-            if filters.get("location"):
-                target_loc = filters["location"].lower()
-                bps_names = {
-                    "3171": "jakarta pusat",
-                    "3172": "jakarta utara",
-                    "3173": "jakarta barat",
-                    "3174": "jakarta selatan",
-                    "3175": "jakarta timur",
-                    "3273": "bandung",
-                    "3578": "surabaya",
-                    "3471": "yogyakarta",
-                    "5171": "denpasar",
-                    "1275": "medan",
-                    "7371": "makassar",
-                    "6371": "balikpapan",
-                }
-                reg_name = bps_names.get(j.region_code, "").lower()
+            target_loc = filters.get("location")
+            if target_loc:
+                reg_name = _BPS_REGION_NAMES.get(j.region_code, "")
                 if (
                     j.region_code.lower() == target_loc
                     or target_loc in reg_name
@@ -418,15 +450,15 @@ class SemanticMatcher:
 
             sal_boost = 0.0
             salary_ok = False
-            if filters.get("salary_min"):
-                target_sal = int(filters["salary_min"])
+            target_sal = filters.get("salary_min")
+            if target_sal:
                 if j.salary_max >= target_sal:
                     sal_boost = 0.10
                     salary_ok = True
 
             exp_boost = 0.0
-            if filters.get("experience_min"):
-                target_exp = int(filters["experience_min"])
+            target_exp = filters.get("experience_min")
+            if target_exp:
                 if j.experience_years_min <= target_exp:
                     exp_boost = 0.10
 
@@ -484,8 +516,9 @@ class SemanticMatcher:
 
         if top_k is None:
             top_k = settings.matching_top_k
-        if filters is None:
-            filters = {}
+        # Same coercion the seeker-side ranking uses: a filter value of the
+        # wrong type must degrade the ranking, not 500 the request.
+        filters = _normalize_filters(filters)
 
         try:
             query_vec = await self._embed_query_cached(_build_job_text(job))
@@ -510,16 +543,13 @@ class SemanticMatcher:
 
             # Hybrid AI Boost based on filters
             loc_boost = 0.0
-            if (
-                filters.get("location")
-                and filters["location"].lower() == (s.region_code or "").lower()
-            ):
+            if filters.get("location") and filters["location"] == (s.region_code or "").lower():
                 loc_boost = 0.15
 
             exp_boost = 0.0
             if filters.get("experience_min"):
                 years_exp = _experience_years(s)
-                if years_exp >= int(filters["experience_min"]):
+                if years_exp >= filters["experience_min"]:
                     exp_boost = 0.10
 
             score = round(0.60 * max(cos, 0.0) + 0.40 * skill + loc_boost + exp_boost, 4)

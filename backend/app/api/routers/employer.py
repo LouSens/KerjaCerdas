@@ -10,9 +10,26 @@ import logging
 from datetime import UTC, datetime
 
 from backend.app.api.dependencies import get_current_user, require_employer
+from backend.app.api.schemas.employer import (
+    ApplicationStatusUpdate,
+    CandidateSearchRequest,
+    EmployerProfileUpdate,
+    JobCreateRequest,
+    JobPoolEstimateRequest,
+    JobUpdateRequest,
+    UnlockCandidateRequest,
+)
 from backend.app.db.models import User
 from backend.app.db.postgres_store import find_employer_by_user_id, get_repositories
-from backend.app.db.schemas import ApplicationStatus, EducationLevel, Employer, JobPosting
+from backend.app.db.schemas import (
+    EMPLOYER_SETTABLE_STATUSES,
+    ApplicationStatus,
+    EducationLevel,
+    Employer,
+    JobPosting,
+    allowed_transitions,
+    can_transition,
+)
 from backend.app.services.matching.matcher import SemanticMatcher
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -46,28 +63,29 @@ async def get_employer_profile(current_user: User = Depends(get_current_user)):
 
 @router.post("/profile", status_code=status.HTTP_200_OK)
 async def update_employer_profile(
-    body: dict,
+    payload: EmployerProfileUpdate,
     current_user: User = Depends(get_current_user),
 ):
     """Create or update the employer's company profile.
 
     Editable fields: company_name, npwp, industry, size, region_code,
-    website, description.
+    website, description. Fields the request omits are left untouched.
     """
     repos = get_repositories()
+    provided = payload.model_dump(exclude_unset=True)
+
     employer = await _get_employer(current_user.id)
     if not employer:
         # Shouldn't normally happen (auto-created on register) but handle gracefully
         employer = Employer(
             user_id=current_user.id,
-            company_name=body.get("company_name", current_user.name),
-            region_code=body.get("region_code", "3171"),
+            company_name=provided.get("company_name") or current_user.name,
+            region_code=provided.get("region_code") or "3171",
         )
 
-    editable = {"company_name", "npwp", "industry", "size", "region_code", "website", "description"}
-    for k, v in body.items():
-        if k in editable:
-            setattr(employer, k, v)
+    for field, value in provided.items():
+        if value is not None:
+            setattr(employer, field, value)
 
     await repos.employers.upsert(employer)
     logger.info("Employer profile updated for user_id=%s", current_user.id)
@@ -78,33 +96,37 @@ async def update_employer_profile(
 
 
 @router.post("/jobs", status_code=status.HTTP_201_CREATED)
-async def create_job(body: dict, current_user: User = Depends(get_current_user)):
+async def create_job(payload: JobCreateRequest, current_user: User = Depends(get_current_user)):
     repos = get_repositories()
     employer = await _get_employer(current_user.id)
     if not employer:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Employer profile belum ada")
 
-    raw_edu = (body.get("education_min") or "S1").upper()
+    # An unrecognised education level falls back to S1 rather than 422-ing the
+    # whole posting — the field is advisory for matching, not a hard gate.
     try:
-        edu = EducationLevel(raw_edu)
+        edu = EducationLevel(payload.education_min.upper())
     except ValueError:
         edu = EducationLevel.S1
 
-    work_type = body.get("work_type", "onsite")
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Judul lowongan wajib diisi.")
+
     job = JobPosting(
         employer_id=employer.id,
-        title=body.get("title", ""),
-        description=body.get("description", ""),
-        responsibilities=body.get("responsibilities", []),
-        required_skills=body.get("required_skills", []),
-        nice_to_have_skills=body.get("nice_to_have_skills", []),
+        title=title,
+        description=payload.description,
+        responsibilities=payload.responsibilities,
+        required_skills=payload.required_skills,
+        nice_to_have_skills=payload.nice_to_have_skills,
         education_min=edu,
-        experience_years_min=int(body.get("experience_years_min", 0)),
-        region_code=body.get("region_code", body.get("location", employer.region_code)),
-        remote_allowed=work_type in ("remote", "hybrid") or bool(body.get("remote_allowed", False)),
-        salary_min=int(body.get("salary_min", 0)),
-        salary_max=int(body.get("salary_max", 0)),
-        kbji_code=body.get("kbji_code", ""),
+        experience_years_min=payload.experience_years_min,
+        region_code=payload.region_code or payload.location or employer.region_code,
+        remote_allowed=payload.work_type in ("remote", "hybrid") or payload.remote_allowed,
+        salary_min=payload.salary_min,
+        salary_max=payload.salary_max,
+        kbji_code=payload.kbji_code,
     )
 
     matcher = SemanticMatcher()
@@ -135,7 +157,11 @@ async def list_my_jobs(current_user: User = Depends(get_current_user)):
 
 
 @router.patch("/jobs/{job_id}")
-async def update_job(job_id: str, body: dict, current_user: User = Depends(get_current_user)):
+async def update_job(
+    job_id: str,
+    payload: JobUpdateRequest,
+    current_user: User = Depends(get_current_user),
+):
     repos = get_repositories()
     job = await repos.jobs.get(job_id)
     if not job:
@@ -145,29 +171,19 @@ async def update_job(job_id: str, body: dict, current_user: User = Depends(get_c
     if not employer or job.employer_id != employer.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan milik Anda")
 
-    editable = {
-        "title",
-        "description",
-        "required_skills",
-        "nice_to_have_skills",
-        "responsibilities",
-        "salary_min",
-        "salary_max",
-        "experience_years_min",
-        "remote_allowed",
-        "is_active",
-    }
-    for k, v in body.items():
-        if k in editable:
-            setattr(job, k, v)
+    # The model declares exactly the editable fields, so anything else in the
+    # request is already dropped; `exclude_unset` keeps a PATCH partial.
+    updates = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    for field, value in updates.items():
+        setattr(job, field, value)
 
     # Re-embed if description or skills changed
-    if "description" in body or "required_skills" in body:
+    if "description" in updates or "required_skills" in updates:
         matcher = SemanticMatcher()
         await matcher.embed_job(job)
 
     await repos.jobs.upsert(job)
-    return {"job_id": job.id, "updated": list(body.keys())}
+    return {"job_id": job.id, "updated": sorted(updates)}
 
 
 @router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -186,12 +202,8 @@ async def delete_job(job_id: str, current_user: User = Depends(get_current_user)
 # ── AI pool estimation (live preview while drafting a job) ────────────────────
 
 
-class JobEstimateRequest(dict):
-    pass
-
-
 @router.post("/jobs/estimate")
-async def estimate_job_pool(body: dict):
+async def estimate_job_pool(payload: JobPoolEstimateRequest):
     """Cheap heuristic pool estimate for the live-preview card in PostJob.
 
     Walks the seeker store, scores each on skill overlap + location, and
@@ -201,10 +213,10 @@ async def estimate_job_pool(body: dict):
     repos = get_repositories()
     seekers = await repos.seekers.list()
 
-    req_skills = {str(s).lower() for s in (body.get("required_skills") or []) if s}
-    location = (body.get("location") or "").lower()
-    salary_min = int(body.get("salary_min") or 0)
-    salary_max = int(body.get("salary_max") or 0)
+    req_skills = {s.lower() for s in payload.required_skills if s}
+    location = payload.location.lower()
+    salary_min = payload.salary_min
+    salary_max = payload.salary_max
 
     scored = []
     for s in seekers:
@@ -251,7 +263,7 @@ async def estimate_job_pool(body: dict):
 @router.post("/jobs/{job_id}/candidates")
 async def find_candidates(
     job_id: str,
-    body: dict | None = None,
+    payload: CandidateSearchRequest | None = None,
     current_user: User = Depends(get_current_user),
 ):
     """Return top-K seekers ranked by semantic + skill fit for this job."""
@@ -260,8 +272,9 @@ async def find_candidates(
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
 
-    top_k = int((body or {}).get("top_k", 15))
-    filters = (body or {}).get("filters", {})
+    search = payload or CandidateSearchRequest()
+    top_k = search.top_k
+    filters = search.filters.model_dump(exclude_none=True)
 
     # seekers=None → the matcher prefilters DB-side via the pgvector HNSW index.
     matcher = SemanticMatcher()
@@ -322,7 +335,7 @@ _UNLOCKED_CONTACTS: dict[str, set[str]] = {}  # employer_id → set of seeker_id
 async def unlock_candidate(
     job_id: str,
     seeker_id: str,
-    body: dict | None = None,
+    payload: UnlockCandidateRequest | None = None,
     current_user: User = Depends(get_current_user),
 ) -> dict:
     """Unlock a candidate's full contact info after payment validation.
@@ -349,8 +362,8 @@ async def unlock_candidate(
     employer_unlocks = _UNLOCKED_CONTACTS.setdefault(employer.id, set())
     if seeker_id not in employer_unlocks:
         # In production: validate payment_token with payment gateway here
-        # payment_token = (body or {}).get("payment_token")
-        # if not _validate_payment(payment_token): raise HTTPException(402, "Payment required")
+        # if not _validate_payment(payload.payment_token if payload else None):
+        #     raise HTTPException(402, "Payment required")
         employer_unlocks.add(seeker_id)
         logger.info("Employer %s unlocked seeker %s for job %s", employer.id, seeker_id, job_id)
 
@@ -429,13 +442,45 @@ async def list_employer_applications(
     return {"total": len(enriched), "items": enriched}
 
 
+# Indonesian aliases the frontend has historically sent for pipeline stages.
+_STATUS_ALIASES: dict[str, ApplicationStatus] = {
+    "accepted": ApplicationStatus.HIRED,
+    "diterima": ApplicationStatus.HIRED,
+    "wawancara": ApplicationStatus.INTERVIEW,
+    "ditinjau": ApplicationStatus.REVIEWED,
+    "ditolak": ApplicationStatus.REJECTED,
+    "terkirim": ApplicationStatus.APPLIED,
+    "ditawari": ApplicationStatus.OFFERED,
+}
+
+
+def _parse_status(raw: str) -> ApplicationStatus:
+    """Resolve a client status string to an ApplicationStatus, or 400."""
+    normalized = raw.lower().strip()
+    try:
+        return ApplicationStatus(normalized)
+    except ValueError:
+        pass
+    if normalized in _STATUS_ALIASES:
+        return _STATUS_ALIASES[normalized]
+    raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Status '{raw}' tidak valid")
+
+
 @router.patch("/applications/{application_id}/status")
 async def update_application_status(
     application_id: str,
-    body: dict,
+    payload: ApplicationStatusUpdate,
     current_user: User = Depends(get_current_user),
 ):
-    """Update application stage status and attach employer notes."""
+    """Move an application through the recruitment pipeline and attach notes.
+
+    Status changes are checked against the pipeline state machine
+    (`APPLICATION_TRANSITIONS`): the pipeline only moves forward and
+    hired/rejected/withdrawn are terminal, so a hire cannot be quietly walked
+    back to `applied` and a rejection cannot be flipped to `hired`. Re-sending
+    the status an application already has is a no-op rather than an error, so
+    a retried request stays safe.
+    """
     repos = get_repositories()
     app = await repos.applications.get(application_id)
     if not app:
@@ -449,26 +494,32 @@ async def update_application_status(
     if not job or job.employer_id != employer.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Anda tidak memiliki izin mengelola lamaran ini")
 
-    if "status" in body:
-        new_status_str = str(body["status"]).lower().strip()
-        try:
-            app.status = ApplicationStatus(new_status_str)
-        except ValueError:
-            if new_status_str in ("hired", "accepted", "diterima"):
-                app.status = ApplicationStatus.HIRED
-            elif new_status_str in ("interview", "wawancara"):
-                app.status = ApplicationStatus.INTERVIEW
-            elif new_status_str in ("reviewed", "ditinjau"):
-                app.status = ApplicationStatus.REVIEWED
-            elif new_status_str in ("rejected", "ditolak"):
-                app.status = ApplicationStatus.REJECTED
-            elif new_status_str in ("applied", "terkirim"):
-                app.status = ApplicationStatus.APPLIED
-            else:
-                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Status '{new_status_str}' tidak valid")
+    if payload.status is not None:
+        target = _parse_status(payload.status)
+        current = ApplicationStatus(app.status)
 
-    if "note" in body:
-        app.note = str(body["note"]).strip()
+        if target not in EMPLOYER_SETTABLE_STATUSES and target != current:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"Status '{target.value}' bukan milik perusahaan untuk diubah.",
+            )
+
+        if not can_transition(current, target):
+            allowed = allowed_transitions(current)
+            detail = (
+                f"Lamaran berstatus '{current.value}' sudah final dan tidak dapat diubah."
+                if not allowed
+                else (
+                    f"Tidak bisa mengubah status dari '{current.value}' ke "
+                    f"'{target.value}'. Berikutnya: {', '.join(allowed)}."
+                )
+            )
+            raise HTTPException(status.HTTP_409_CONFLICT, detail)
+
+        app.status = target
+
+    if payload.note is not None:
+        app.note = payload.note
 
     app.updated_at = datetime.now(UTC)
     await repos.applications.upsert(app)

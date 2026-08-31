@@ -8,8 +8,10 @@ from datetime import UTC, datetime, timedelta
 
 from backend.app.api.dependencies import get_current_user
 from backend.app.api.services.identity_verifier import MockIdentityVerificationService
+from backend.app.config.settings import settings
 from backend.app.db.models import OTPRecord, User
 from backend.app.db.postgres_store import find_seeker_by_user_id, get_repositories
+from backend.app.db.schemas import VerificationStatus
 from backend.app.db.session import async_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -62,7 +64,7 @@ async def verify_identity(req: EkycReq, current_user: User = Depends(get_current
         seeker = await find_seeker_by_user_id(current_user.id)
         if seeker:
             seeker.nik = nik_hash
-            seeker.nik_verified = "verified"
+            seeker.nik_verified = VerificationStatus.VERIFIED
             repos = get_repositories()
             await repos.seekers.upsert(seeker)
 
@@ -144,7 +146,22 @@ class OtpVerifyReq(BaseModel):
 
 @router.post("/otp/send")
 async def send_otp(req: OtpSendReq, current_user: User = Depends(get_current_user)) -> dict:
-    """Generate and record a 6-digit OTP in the database."""
+    """Generate and record a 6-digit OTP in the database.
+
+    There is no SMS/WhatsApp provider wired in yet, so the only delivery
+    channel available is the response body itself. That is a demo affordance:
+    the caller who asks for a code for a phone number is handed that code, so
+    the OTP proves nothing about who controls the number. It is gated behind
+    ``settings.otp_demo_enabled`` (off in production unless OTP_DEMO_MODE is
+    set explicitly) and the endpoint fails closed rather than issuing a code
+    it cannot deliver.
+    """
+    if not settings.otp_demo_enabled:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Verifikasi OTP belum tersedia: penyedia SMS/WhatsApp belum dikonfigurasi.",
+        )
+
     phone = req.phone.strip()
     if not phone.startswith("+"):
         raise HTTPException(
@@ -178,6 +195,7 @@ async def send_otp(req: OtpSendReq, current_user: User = Depends(get_current_use
     return {
         "request_id": str(uuid.uuid4()),
         "status": "SENT",
+        "mode": "demo",
         "phone": phone,
         "expires_in_seconds": _OTP_TTL_SECONDS,
         "demo_code": code,

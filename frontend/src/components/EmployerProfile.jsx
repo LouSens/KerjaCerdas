@@ -19,12 +19,13 @@ const INDUSTRIES = [
     'Manufaktur & Energi',
 ]
 
+// The API stores one of four canonical values; the label is display-only.
+// Sending the label used to persist a value the backend could not read back.
 const COMPANY_SIZES = [
-    '1 - 50 Karyawan',
-    '51 - 200 Karyawan',
-    '201 - 500 Karyawan',
-    '501 - 1000 Karyawan',
-    '1000+ Karyawan (Enterprise)',
+    { value: 'startup', label: '1 - 50 Karyawan (Startup)' },
+    { value: 'sme', label: '51 - 200 Karyawan (UKM)' },
+    { value: 'mid', label: '201 - 1000 Karyawan (Menengah)' },
+    { value: 'enterprise', label: '1000+ Karyawan (Enterprise)' },
 ]
 
 export default function EmployerProfile() {
@@ -33,7 +34,7 @@ export default function EmployerProfile() {
         company_name: 'GoTo Group (PT GoTo Gojek Tokopedia Tbk)',
         npwp: '01.234.567.8-012.000',
         industry: 'Teknologi & Perangkat Lunak',
-        size: '1000+ Karyawan (Enterprise)',
+        size: 'enterprise',
         region_code: '3171',
         website: 'https://gotocompany.com',
         description: 'Ekosistem digital terdepan di Indonesia yang mengintegrasikan layanan on-demand, e-commerce, dan teknologi finansial.',
@@ -162,7 +163,7 @@ export default function EmployerProfile() {
                                 style={{ ...inputStyle, cursor: 'pointer' }}
                             >
                                 {COMPANY_SIZES.map(sz => (
-                                    <option key={sz} value={sz}>{sz}</option>
+                                    <option key={sz.value} value={sz.value}>{sz.label}</option>
                                 ))}
                             </select>
                         </div>
