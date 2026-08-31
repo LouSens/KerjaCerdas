@@ -109,17 +109,37 @@ app = FastAPI(
 # 5. RequestSizeMiddleware
 # 6. Route handler
 
-_cors_origins = list(settings.cors_allow_origins)
-_replit_dev = os.environ.get("REPLIT_DEV_DOMAIN")
-if _replit_dev:
-    _cors_origins.append(f"https://{_replit_dev}")
+def _replit_origins() -> list[str]:
+    """Return this Replit workspace's own origins, named explicitly.
+
+    Replit exposes REPLIT_DEV_DOMAIN for the dev workspace and REPLIT_DOMAINS
+    (comma-separated) for a deployment. Both are read here so every legitimate
+    origin is listed by name.
+
+    A `https://.*\\.replit\\.dev` regex used to stand in for this. Combined with
+    allow_credentials=True that trusted *every* Replit subdomain — any Replit
+    account holder could register one and make credentialed cross-origin calls
+    with a logged-in user's cookies. The wildcard was also redundant: the dev
+    workspace is already named below, and a Replit deployment serves the SPA
+    from this same origin (see the frontend mount at the bottom of this file),
+    so it needs no CORS grant at all.
+    """
+    origins: list[str] = []
+    for var in ("REPLIT_DEV_DOMAIN", "REPLIT_DOMAINS"):
+        for host in (os.environ.get(var) or "").split(","):
+            host = host.strip()
+            if host:
+                origins.append(host if host.startswith("http") else f"https://{host}")
+    return origins
+
+
+_cors_origins = list(dict.fromkeys([*settings.cors_allow_origins, *_replit_origins()]))
 
 app.add_middleware(RequestSizeMiddleware)
 app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_origin_regex=r"https://.*\.replit\.dev",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

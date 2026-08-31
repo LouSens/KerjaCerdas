@@ -397,27 +397,65 @@ class TestCors:
         )
         assert resp.headers.get("access-control-allow-origin") is None
 
-    def test_any_replit_subdomain_is_trusted_with_credentials(
-        self, client: TestClient
+    @pytest.mark.parametrize(
+        "origin",
+        [
+            "https://attacker-controlled.replit.dev",
+            "https://evil.replit.dev",
+            "https://a.b.replit.dev",
+            "https://attacker.replit.app",
+        ],
+    )
+    def test_arbitrary_replit_subdomains_are_refused(
+        self, client: TestClient, origin: str
     ) -> None:
-        """The regex trusts every *.replit.dev host, which anyone can register."""
+        """Regression: a `https://.*\\.replit\\.dev` regex once trusted every
+        Replit subdomain with allow_credentials=True, so any Replit account
+        holder could make credentialed cross-origin calls. Origins are now
+        named explicitly."""
         resp = client.options(
             "/api/v1/auth/login",
-            headers={
-                "Origin": "https://attacker-controlled.replit.dev",
-                "Access-Control-Request-Method": "POST",
-            },
+            headers={"Origin": origin, "Access-Control-Request-Method": "POST"},
         )
-        assert (
-            resp.headers.get("access-control-allow-origin")
-            == "https://attacker-controlled.replit.dev"
-        ), "the regex has been tightened — update this test"
-        assert resp.headers.get("access-control-allow-credentials") == "true"
+        assert resp.headers.get("access-control-allow-origin") is None, (
+            f"{origin} is still trusted"
+        )
+
+    def test_no_origin_regex_is_configured(self) -> None:
+        """A regex is what let the wildcard in; assert none is wired up."""
+        from fastapi.middleware.cors import CORSMiddleware
+
+        from backend.app.api.main import app as real_app
+
+        cors = next(m for m in real_app.user_middleware if m.cls is CORSMiddleware)
+        assert not cors.kwargs.get("allow_origin_regex")
 
     def test_wildcard_origin_is_never_used_with_credentials(self) -> None:
         from backend.app.config.settings import settings
 
         assert "*" not in settings.cors_allow_origins
+
+    def test_the_replit_workspace_origin_is_still_allowed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Dropping the regex must not lock the real workspace out."""
+        from backend.app.api import main as main_mod
+
+        monkeypatch.setenv("REPLIT_DEV_DOMAIN", "my-workspace.replit.dev")
+        monkeypatch.setenv("REPLIT_DOMAINS", "my-app.replit.app,other.example.com")
+        origins = main_mod._replit_origins()
+        assert "https://my-workspace.replit.dev" in origins
+        assert "https://my-app.replit.app" in origins
+        assert "https://other.example.com" in origins
+
+    def test_replit_origins_is_empty_off_replit(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from backend.app.api import main as main_mod
+
+        monkeypatch.delenv("REPLIT_DEV_DOMAIN", raising=False)
+        monkeypatch.delenv("REPLIT_DOMAINS", raising=False)
+        assert main_mod._replit_origins() == []
 
 
 # ── Cross-tenant authorization ───────────────────────────────────────────────
