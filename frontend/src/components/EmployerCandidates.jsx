@@ -341,10 +341,10 @@ export default function EmployerCandidates() {
 
                                     <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                         {items.map((cand, idx) => (
-                                            <BrutalCard key={idx} color="#FFFFFF" padding={20}>
-                                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-                                                    <div style={{ flex: 1, minWidth: 280 }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                            <BrutalCard key={idx} color="#FFFFFF" padding={18}>
+                                                <div className="kc-card-split">
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                                                             <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, color: KC.ink }}>
                                                                 {cand.name}
                                                             </h3>
@@ -358,11 +358,11 @@ export default function EmployerCandidates() {
                                                             )}
                                                         </div>
 
-                                                        <div style={{ fontSize: 13, fontWeight: 600, color: KC.inkLight, marginBottom: 8 }}>
+                                                        <div style={{ fontSize: 13, fontWeight: 600, color: KC.inkLight, marginBottom: 6 }}>
                                                             {cand.title} · Sebelumnya di <b>{cand.prev}</b>
                                                         </div>
 
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute, marginBottom: 12 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: KC.mute, marginBottom: 10, flexWrap: 'wrap' }}>
                                                             <span>{cand.location}</span>
                                                             <span>·</span>
                                                             <span>Pendidikan: {cand.edu}</span>
@@ -390,21 +390,23 @@ export default function EmployerCandidates() {
                                                     </div>
 
                                                     {/* Action Buttons */}
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-                                                        <button
-                                                            onClick={() => setCvModalOpen(cand)}
-                                                            className="kc-btn"
-                                                            style={{ ...topBtn('#fff', KC.ink), padding: '8px 14px', fontSize: 12 }}
-                                                        >
-                                                            <FileText size={14} /> Lihat CV Lengkap
-                                                        </button>
-                                                        <button
-                                                            onClick={() => toast.success(`Akses kontak resmi ${cand.name} terbuka!`)}
-                                                            className="kc-btn"
-                                                            style={{ ...topBtn(KC.orange, '#fff'), padding: '8px 16px', fontSize: 12 }}
-                                                        >
-                                                            <Lock size={13} /> Unlock Kontak (Rp 50.000)
-                                                        </button>
+                                                    <div className="kc-card-actions">
+                                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: '100%', justifyContent: 'flex-end' }}>
+                                                            <button
+                                                                onClick={() => setCvModalOpen(cand)}
+                                                                className="kc-btn"
+                                                                style={{ ...topBtn('#fff', KC.ink), padding: '8px 14px', fontSize: 12 }}
+                                                            >
+                                                                <FileText size={14} /> Lihat CV
+                                                            </button>
+                                                            <button
+                                                                onClick={() => toast.success(`Akses kontak resmi ${cand.name} terbuka! (Menggunakan 1 kuota unlock)`)}
+                                                                className="kc-btn"
+                                                                style={{ ...topBtn(KC.orange, '#fff'), padding: '8px 16px', fontSize: 12 }}
+                                                            >
+                                                                <Lock size={13} /> Buka Kontak (1 Kuota)
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </BrutalCard>

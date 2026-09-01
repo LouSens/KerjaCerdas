@@ -298,14 +298,14 @@ const CSS = `
 .kc-stagger > *:nth-child(5) { animation-delay: .2s }
 .kc-stagger > *:nth-child(6) { animation-delay: .25s }
 
-.kc-card { transition: transform .15s ease, box-shadow .15s ease; }
+.kc-card { transition: transform .15s ease, box-shadow .15s ease; max-width: 100%; box-sizing: border-box; }
 .kc-card:hover { transform: translate(-1.5px, -1.5px); box-shadow: 4.5px 4.5px 0 #090A0F; }
 
-.kc-btn { transition: transform .12s ease, box-shadow .12s ease; }
+.kc-btn { transition: transform .12s ease, box-shadow .12s ease; user-select: none; }
 .kc-btn:hover { transform: translate(-1.5px, -1.5px); box-shadow: 3.5px 3.5px 0 #090A0F; }
 .kc-btn:active { transform: translate(1px, 1px); box-shadow: 1.5px 1.5px 0 #090A0F; }
 
-.kc-stat { transition: transform .15s ease, box-shadow .15s ease; }
+.kc-stat { transition: transform .15s ease, box-shadow .15s ease; min-width: 0; box-sizing: border-box; }
 .kc-stat:hover { transform: translate(-2px, -2px); box-shadow: 5px 5px 0 #090A0F; }
 
 .kc-donut-ring { transition: stroke-dashoffset 0.8s ease-out; }
@@ -313,6 +313,8 @@ const CSS = `
 .kc-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .kc-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .kc-grid-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; }
+.kc-card-split { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.kc-card-actions { display: flex; align-items: flex-end; flex-direction: column; gap: 12px; }
 
 @media (max-width: 1100px) {
   .kc-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -321,9 +323,15 @@ const CSS = `
 }
 
 @media (max-width: 640px) {
-  .kc-grid-4 { grid-template-columns: 1fr; }
-  .kc-h1 { font-size: 24px !important; }
-  .kc-topbar { flex-direction: column; align-items: flex-start !important; gap: 12px; }
+  .kc-grid-4 { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .kc-grid-3 { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .kc-h1 { font-size: 22px !important; line-height: 1.25 !important; }
+  .kc-topbar { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
+  .kc-topbar > div:last-child { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+  .kc-topbar > div:last-child .kc-btn { flex: 1 1 auto; justify-content: center; }
+  .kc-card-split { flex-direction: column !important; align-items: stretch !important; gap: 14px !important; }
+  .kc-card-actions { flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100% !important; border-top: 1px solid #E2E8F0; padding-top: 12px; margin-top: 4px; }
+  .kc-card-actions > div:last-child { display: flex; gap: 8px; flex: 1; justify-content: flex-end; }
 }
 
 .kc-h1 { font-size: 28px; font-weight: 900; letter-spacing: -0.8px; margin: 0; color: #090A0F; }

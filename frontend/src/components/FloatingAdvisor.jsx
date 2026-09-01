@@ -137,16 +137,51 @@ export default function FloatingAdvisor() {
         <>
             <DesignStyles />
 
+            <style>{`
+            .kc-advisor-btn {
+              position: fixed;
+              bottom: 24px;
+              right: 24px;
+              z-index: 999;
+            }
+            .kc-advisor-panel {
+              position: fixed;
+              bottom: 88px;
+              right: 24px;
+              z-index: 999;
+              width: 390px;
+              max-width: calc(100vw - 32px);
+              height: 530px;
+              max-height: calc(100vh - 110px);
+            }
+            @media (max-width: 768px) {
+              .kc-advisor-btn {
+                bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+                right: 16px !important;
+                height: 44px !important;
+                padding: 0 14px !important;
+                font-size: 12px !important;
+                border-radius: 10px !important;
+              }
+              .kc-advisor-panel {
+                bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
+                right: 10px !important;
+                left: 10px !important;
+                width: auto !important;
+                max-width: calc(100vw - 20px) !important;
+                height: 480px !important;
+                max-height: calc(100vh - 84px) !important;
+                border-radius: 12px !important;
+              }
+            }
+            `}</style>
+
             {/* Bubble toggle button */}
             <button
                 id="floating-advisor-toggle-btn"
                 onClick={toggleFloatingAdvisor}
+                className="kc-advisor-btn"
                 style={{
-                    position: 'fixed',
-                    bottom: 24,
-                    right: 24,
-                    zIndex: 999,
-                    height: 52,
                     padding: floatingAdvisorOpen ? '0 16px' : '0 20px',
                     background: floatingAdvisorOpen ? '#FFFFFF' : KC.ink,
                     color: floatingAdvisorOpen ? KC.ink : '#FFFFFF',
@@ -190,15 +225,8 @@ export default function FloatingAdvisor() {
 
             {/* Chat panel */}
             <div
+                className="kc-advisor-panel"
                 style={{
-                    position: 'fixed',
-                    bottom: 88,
-                    right: 24,
-                    zIndex: 999,
-                    width: 390,
-                    maxWidth: 'calc(100vw - 32px)',
-                    height: 530,
-                    maxHeight: 'calc(100vh - 110px)',
                     background: '#FFFFFF',
                     border: `2px solid ${KC.ink}`,
                     borderRadius: 14,

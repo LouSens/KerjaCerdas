@@ -123,15 +123,15 @@ function AppShell({ children }) {
         !seekerId && !(profile?.skills?.length > 0)
 
     return (
-        <div className="flex">
+        <div className="flex min-h-screen bg-kc-cream w-full overflow-x-hidden">
             {showOnboarding && (
                 <OnboardingWizard onClose={() => {
                     // Wizard closed — stay on current page
                 }} />
             )}
             <Sidebar />
-            <main className="mobile-main flex-1 min-h-screen transition-[margin] duration-200 ml-60">
-                <div className="max-w-5xl mx-auto px-6 py-8">
+            <main className="mobile-main flex-1 min-h-screen transition-[margin] duration-200 md:ml-64 ml-0 w-full max-w-full overflow-x-hidden">
+                <div className="max-w-5xl mx-auto px-3.5 sm:px-6 py-4 sm:py-8 w-full box-border">
                     {children}
                 </div>
             </main>

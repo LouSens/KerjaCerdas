@@ -197,8 +197,8 @@ export default function SeekerMatchResults() {
                                     const missingSkills = m.missing_skills || []
 
                                     return (
-                                        <BrutalCard key={m.job_id || idx} color="#FFFFFF" padding={20}>
-                                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                                        <BrutalCard key={m.job_id || idx} color="#FFFFFF" padding={18}>
+                                            <div className="kc-card-split">
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                                                         <span style={{ fontSize: 13, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -214,11 +214,11 @@ export default function SeekerMatchResults() {
                                                         )}
                                                     </div>
 
-                                                    <h3 style={{ fontSize: 18, fontWeight: 900, margin: '0 0 8px', color: KC.ink, letterSpacing: -0.4 }}>
+                                                    <h3 style={{ fontSize: 18, fontWeight: 900, margin: '0 0 8px', color: KC.ink, letterSpacing: -0.4, wordBreak: 'break-word' }}>
                                                         {m.title || m.job_title || 'Senior Backend Engineer'}
                                                     </h3>
 
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 13, color: KC.mute, marginBottom: 14, flexWrap: 'wrap' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: KC.mute, marginBottom: 12, flexWrap: 'wrap' }}>
                                                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                                             <MapPin size={14} /> {m.location || 'Jakarta · Hybrid'}
                                                         </span>
@@ -247,9 +247,9 @@ export default function SeekerMatchResults() {
                                                 </div>
 
                                                 {/* Score Donut & Action */}
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
-                                                    <ScoreDonut value={pct} size={54} color={bandInfo.color} />
-                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                <div className="kc-card-actions">
+                                                    <ScoreDonut value={pct} size={52} color={bandInfo.color} />
+                                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                                         <button
                                                             onClick={() => toggleSaveJob(m)}
                                                             className="kc-btn"

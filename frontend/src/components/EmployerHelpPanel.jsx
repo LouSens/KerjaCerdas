@@ -64,10 +64,44 @@ export default function EmployerHelpPanel() {
 
     return (
         <>
+            <style>{`
+            .kc-help-btn {
+              position: fixed;
+              bottom: 24px;
+              right: 24px;
+              z-index: 40;
+            }
+            .kc-help-panel {
+              position: fixed;
+              bottom: 96px;
+              right: 24px;
+              z-index: 40;
+              width: 360px;
+              max-width: calc(100vw - 2rem);
+              max-height: calc(100vh - 7rem);
+            }
+            @media (max-width: 768px) {
+              .kc-help-btn {
+                bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+                right: 16px !important;
+                width: 44px !important;
+                height: 44px !important;
+              }
+              .kc-help-panel {
+                bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
+                right: 10px !important;
+                left: 10px !important;
+                width: auto !important;
+                max-width: calc(100vw - 20px) !important;
+                max-height: calc(100vh - 84px) !important;
+              }
+            }
+            `}</style>
+
             {/* Floating trigger button */}
             <button
                 onClick={() => setOpen(o => !o)}
-                className={`fixed bottom-6 right-6 z-40 w-14 h-14 bg-kc-dark text-white border-2 border-kc-dark shadow-brutal grid place-items-center hover:bg-kc-orange transition-colors ${
+                className={`kc-help-btn w-14 h-14 bg-kc-dark text-white border-2 border-kc-dark shadow-brutal grid place-items-center hover:bg-kc-orange transition-colors ${
                     open ? '' : 'animate-pulse'
                 }`}
                 aria-label="Bantuan Platform"
@@ -78,9 +112,7 @@ export default function EmployerHelpPanel() {
 
             {/* Help panel */}
             <div
-                className={`fixed bottom-24 right-6 z-40 w-[360px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-7rem)]
-                            bg-white border-2 border-kc-dark shadow-brutal flex flex-col origin-bottom-right
-                            transition-all duration-200 ${
+                className={`kc-help-panel bg-white border-2 border-kc-dark shadow-brutal flex flex-col origin-bottom-right transition-all duration-200 ${
                     open
                         ? 'opacity-100 scale-100 pointer-events-auto'
                         : 'opacity-0 scale-90 pointer-events-none'

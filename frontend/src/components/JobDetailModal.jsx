@@ -62,10 +62,10 @@ export default function JobDetailModal({ job, onClose }) {
     }
 
     const company = job.company || 'GoTo Group'
-
     return (
         <div
             onClick={onClose}
+            className="kc-modal-overlay"
             style={{
                 position: 'fixed',
                 inset: 0,
@@ -74,12 +74,68 @@ export default function JobDetailModal({ job, onClose }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: 20,
                 backdropFilter: 'blur(3px)',
             }}
         >
+            <style>{`
+            .kc-modal-overlay {
+              padding: 20px;
+            }
+            .kc-modal-body {
+              padding: 24px 26px;
+            }
+            .kc-modal-banner {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 16px;
+            }
+            .kc-modal-footer {
+              padding: 18px 26px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 12px;
+            }
+            @media (max-width: 640px) {
+              .kc-modal-overlay {
+                padding: 10px !important;
+              }
+              .kc-modal-card {
+                max-height: calc(100vh - 20px) !important;
+                border-radius: 10px !important;
+              }
+              .kc-modal-header {
+                padding: 16px 14px !important;
+              }
+              .kc-modal-body {
+                padding: 16px 14px !important;
+                gap: 16px !important;
+              }
+              .kc-modal-banner {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 8px !important;
+                text-align: left !important;
+              }
+              .kc-modal-banner > div:last-child {
+                text-align: left !important;
+                max-width: 100% !important;
+              }
+              .kc-modal-footer {
+                padding: 14px 14px !important;
+                flex-direction: column-reverse !important;
+                gap: 10px !important;
+              }
+              .kc-modal-footer .kc-btn {
+                width: 100% !important;
+                justify-content: center !important;
+              }
+            }
+            `}</style>
             <div
                 onClick={(e) => e.stopPropagation()}
+                className="kc-modal-card"
                 style={{
                     background: '#FFFFFF',
                     border: `1.5px solid ${KC.ink}`,
@@ -92,12 +148,13 @@ export default function JobDetailModal({ job, onClose }) {
                     position: 'relative',
                     display: 'flex',
                     flexDirection: 'column',
+                    boxSizing: 'border-box',
                 }}
             >
                 {/* Header */}
-                <div style={{ padding: '22px 26px', borderBottom: `1.5px solid ${KC.ink}`, background: KC.surface, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <div className="kc-modal-header" style={{ padding: '22px 26px', borderBottom: `1.5px solid ${KC.ink}`, background: KC.surface, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 13, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <Building2 size={14} /> {company}
                             </span>
@@ -107,10 +164,10 @@ export default function JobDetailModal({ job, onClose }) {
                                 </Tag>
                             )}
                         </div>
-                        <h2 style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.5, margin: '0 0 8px', color: KC.ink }}>
+                        <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.5, margin: '0 0 8px', color: KC.ink, wordBreak: 'break-word' }}>
                             {job.title || job.job_title || 'Senior Backend Engineer'}
                         </h2>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 13, color: KC.mute, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: KC.mute, flexWrap: 'wrap' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <MapPin size={14} /> {job.location || 'Jakarta · Hybrid'}
                             </span>
@@ -141,19 +198,21 @@ export default function JobDetailModal({ job, onClose }) {
                 </div>
 
                 {/* Body Content */}
-                <div style={{ padding: '24px 26px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+                <div className="kc-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
                     {/* Explainable AI Banner */}
-                    <div style={{ padding: '16px 20px', background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 10, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.mute }}>
-                                Total Skor Kesesuaian AI
-                            </span>
-                            <div style={{ fontSize: 24, fontWeight: 900, color: KC.ink, letterSpacing: -0.5, marginTop: 2 }}>
-                                {score}% Match
+                    <div style={{ padding: '16px 18px', background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 10, boxShadow: `2.5px 2.5px 0 ${KC.ink}` }}>
+                        <div className="kc-modal-banner">
+                            <div>
+                                <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.mute }}>
+                                    Total Skor Kesesuaian AI
+                                </span>
+                                <div style={{ fontSize: 24, fontWeight: 900, color: KC.ink, letterSpacing: -0.5, marginTop: 2 }}>
+                                    {score}% Match
+                                </div>
                             </div>
-                        </div>
-                        <div style={{ fontSize: 12, color: KC.mute, maxWidth: 360, textAlign: 'right' }}>
-                            Dihitung secara transparan menggunakan 5 komponen bobot semantik terkalibrasi.
+                            <div style={{ fontSize: 12, color: KC.mute, maxWidth: 360, textAlign: 'right' }}>
+                                Dihitung secara transparan menggunakan 5 komponen bobot semantik terkalibrasi.
+                            </div>
                         </div>
                     </div>
 
@@ -165,7 +224,7 @@ export default function JobDetailModal({ job, onClose }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {breakdown.map((item, idx) => (
                                 <div key={idx} style={{ padding: '12px 14px', background: KC.surface, border: `1px solid ${KC.ash}`, borderRadius: 8 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 4 }}>
                                         <span style={{ fontSize: 13, fontWeight: 700, color: KC.ink }}>{item.label}</span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <span style={{ fontSize: 11, fontWeight: 600, color: KC.mute }}>Bobot {item.weight}</span>
@@ -173,18 +232,20 @@ export default function JobDetailModal({ job, onClose }) {
                                         </div>
                                     </div>
                                     <div style={{ height: 6, background: KC.ash, borderRadius: 999, overflow: 'hidden', marginBottom: 6 }}>
-                                        <div style={{ width: `${item.score}%`, height: '100%', background: item.color, borderRadius: 999 }} />
+                                        <div style={{ height: '100%', width: `${item.score}%`, background: item.color, borderRadius: 999, transition: 'width 0.6s ease' }} />
                                     </div>
-                                    <span style={{ fontSize: 12, color: KC.mute }}>{item.desc}</span>
+                                    <p style={{ fontSize: 11, color: KC.mute, margin: 0, lineHeight: 1.4 }}>
+                                        {item.desc}
+                                    </p>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Competency Gap Analysis */}
+                    {/* Skills Coverage */}
                     <div>
                         <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.ink, margin: '0 0 10px' }}>
-                            Kesesuaian Kompetensi
+                            Pemenuhan Kualifikasi Keahlian
                         </h3>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                             {matchingSkills.map((s, idx) => (
@@ -212,7 +273,7 @@ export default function JobDetailModal({ job, onClose }) {
                 </div>
 
                 {/* Footer Action */}
-                <div style={{ padding: '18px 26px', borderTop: `1.5px solid ${KC.ink}`, background: KC.surface, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div className="kc-modal-footer" style={{ borderTop: `1.5px solid ${KC.ink}`, background: KC.surface }}>
                     <button
                         onClick={() => toggleSaveJob(job)}
                         className="kc-btn"

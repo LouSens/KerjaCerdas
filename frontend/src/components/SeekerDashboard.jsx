@@ -204,8 +204,8 @@ function DashMatchCard({ match, onSelect }) {
     return (
         <BrutalCard color="#FFFFFF" padding={18} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Building2 size={13} /> {match.company || 'GoTo Group'}
                         </span>
@@ -213,10 +213,10 @@ function DashMatchCard({ match, onSelect }) {
                             {bandData.badgeLabel}
                         </Tag>
                     </div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: KC.ink, letterSpacing: -0.3 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: KC.ink, letterSpacing: -0.3, wordBreak: 'break-word' }}>
                         {match.title || match.job_title || 'Senior Backend Engineer'}
                     </h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: KC.mute, flexWrap: 'wrap' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <MapPin size={13} /> {match.location || 'Jakarta · Hybrid'}
                         </span>
@@ -224,7 +224,7 @@ function DashMatchCard({ match, onSelect }) {
                         <span>{match.salary_range || 'Rp 28.000.000 - Rp 42.000.000'}</span>
                     </div>
                 </div>
-                <ScoreDonut value={pct} size={54} color={bandData.color} />
+                <ScoreDonut value={pct} size={50} color={bandData.color} />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTop: `1px solid ${KC.ash}`, flexWrap: 'wrap', gap: 8 }}>
@@ -235,7 +235,7 @@ function DashMatchCard({ match, onSelect }) {
                         </span>
                     ))}
                 </div>
-                <button onClick={onSelect} className="kc-btn" style={{ ...topBtn(KC.ink, '#fff'), padding: '6px 14px', fontSize: 12 }}>
+                <button onClick={onSelect} className="kc-btn" style={{ ...topBtn(KC.ink, '#fff'), padding: '6px 14px', fontSize: 12, marginLeft: 'auto' }}>
                     Lihat Detail & Lamar →
                 </button>
             </div>
