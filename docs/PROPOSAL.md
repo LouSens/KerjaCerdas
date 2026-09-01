@@ -23,7 +23,7 @@
 
 KerjaCerdas adalah platform karier berbasis kecerdasan buatan (*AI-powered talent infrastructure*) yang menyelesaikan krisis ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja Indonesia dari dua sisi: pencari kerja (B2C) yang kesulitan mengidentifikasi peluang relevan dan memahami celah keahlian mereka, serta perusahaan/HRD (B2B) yang kewalahan menyaring volume lamaran tidak relevan.
 
-Sistem mengonversi CV dan lowongan menjadi representasi vektor semantik 768-dimensi menggunakan Gemini Embeddings, lalu mencocokkannya melalui algoritma **Hybrid Ranking** (Semantik 50%, Skill 30%, Lokasi 10%, Gaji 5%, Pengalaman 5%) dengan **Explainable AI Score Breakdown** yang transparan. *Multi-Agent Swarm* berbasis LangGraph menganalisis celah keahlian (*skill gap*) dan merekomendasikan pelatihan terstruktur. HRD menyaring kandidat terbaik dalam hitungan menit dan membayar biaya mikro bersahabat (**Pay-to-Unlock Rp 50.000/kandidat**) tanpa beban langganan mahal di muka.
+Sistem mengonversi CV dan lowongan menjadi representasi vektor semantik 768-dimensi menggunakan Gemini Embeddings, lalu mencocokkannya melalui algoritma **Hybrid Ranking** (Semantik 50%, Skill 30%, Lokasi 10%, Gaji 5%, Pengalaman 5%) dengan **Explainable AI Score Breakdown** yang transparan. *Multi-Agent Swarm* berbasis LangGraph menganalisis celah keahlian (*skill gap*) dan merekomendasikan pelatihan terstruktur. HRD menyaring kandidat terbaik dalam hitungan menit dan membayar biaya mikro bersahabat (**Pay-to-Unlock Rp 50.000 / 10 kandidat atau Rp 5.000/kontak**) tanpa beban langganan mahal di muka.
 
 **Status saat ini:** MVP v1.0.0 fungsional penuh — dieksekusi via Docker dengan latensi API <200ms, mencakup infrastruktur CI/CD otomatis, A/B testing, Onboarding Wizard, Kanban Pipeline Employer, dan dual-layer caching.
 
@@ -160,12 +160,12 @@ KerjaCerdas bukan sekadar prototipe konsep — ini adalah platform beroperasi en
 | Pihak | Nilai yang Diterima | Model Monetisasi |
 |---|---|---|
 | **Pencari Kerja (B2C)** | Match presisi + peta skill gap + panduan karier personal + verifikasi identitas | Freemium (Gratis) |
-| **HRD / UMKM (B2B)** | Shortlist dalam <10 menit vs. 14 hari manual; reduksi beban screening 90% | Pay-to-Unlock (Rp 50.000 / kontak) |
-| **Mitra EdTech** | Akuisisi siswa baru via referral terkonversi dari Skill Gap Analyzer | Komisi Afiliasi 10–15% |
-| **Enterprise / Headhunter** | Integrasi Semantic Matching Engine ke HRIS internal | Enterprise API License |
+| **HRD / UMKM (B2B)** | Shortlist dalam <10 menit vs. 14 hari manual; reduksi beban screening 90% | Freemium (5 free unlock) + Pay-to-Unlock (Rp 50.000 / 10 kontak) |
+| **Penyedia Pelatihan / LPK** | Penyaluran langsung ke talenta dengan skill gap terverifikasi | Komisi Afiliasi (10%–15% per referral) |
 
-**Model Pendapatan (Hybrid Revenue):**
-1. **Pay-to-Unlock:** Rp 50.000 per kontak kandidat terverifikasi (Margin kotor: 90% setelah E-KYC pass-through Rp 4.000 & payment gateway MDR Rp 1.000).
+### 4.2 Struktur Monetisasi & Titik Impas (*Break-Even Point*)
+
+1. **Pay-to-Unlock Mikro:** Rp 50.000 per 10 kontak kandidat terverifikasi (Rp 5.000/kontak) dengan bonus 5 unlock gratis bagi employer baru di awal (Margin kotor: 84% setelah E-KYC pass-through & payment gateway MDR).
 2. **KerjaCerdas Pro (SaaS):** Rp 299.000/bulan — kuota unlock lebih besar, analitik rekrutmen lanjutan, prioritas AI shortlist.
 3. **Affiliate EdTech:** Komisi 10–15% (rata-rata Rp 48.000 per transaksi kursus) dari pembelian pelatihan terarah.
 4. **Enterprise API License:** Lisensi kustom mulai Rp 5.000.000/bulan untuk korporasi dan headhunter.

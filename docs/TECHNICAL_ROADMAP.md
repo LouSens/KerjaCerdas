@@ -55,7 +55,7 @@ flowchart LR
 
 - **Kedaulatan Perlindungan Data (Vertex AI VPC):** *Vertex AI Endpoint* memastikan data *prompt* LLM dieksekusi dalam ruang komputasi *Virtual Private Cloud (VPC)* terisolasi dengan *Zero Data Retention*.
 - **Micro-Tuning Berkelanjutan (LoRA):** Menala model secara internal dengan dialek khas rekrutmen Indonesia (nomenklatur kampus lokal, istilah teknis Disnaker).
-- **Payment Gateway Korporasi Terintegrasi:** Otomatisasi penagihan B2B (*Pay-to-Unlock* Rp 50.000/kandidat) melalui integrasi Midtrans/Xendit live.
+- **Payment Gateway Korporasi Terintegrasi:** Otomatisasi penagihan B2B (*Pay-to-Unlock* Rp 50.000 / 10 kandidat atau Rp 5.000/kontak) melalui integrasi Midtrans/Xendit live.
 
 ---
 

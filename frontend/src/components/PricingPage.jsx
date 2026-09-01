@@ -26,22 +26,22 @@ export default function PricingPage() {
                         onCta={() => openAuthModal('register', 'seeker')}
                     />
                     <PricingCard
-                        tier="Employer Basic"
+                        tier="Employer Starter"
                         price="Rp 0"
-                        period="pasang lowongan"
-                        features={['Pasang Lowongan Gratis', 'AI Shortlist (Top 5)', 'Skor Semantik']}
+                        period="freemium"
+                        features={['Pasang Lowongan Gratis', 'Bonus 5 Kuota Unlock Kontak', 'AI Shortlist & Skor Semantik', 'Preview Profil Teaser']}
                         accent="bg-kc-cyan"
-                        cta="Posting Sekarang"
+                        cta="Coba Gratis 5 Kontak"
                         onCta={() => openAuthModal('register', 'employer')}
                     />
                     <PricingCard
-                        tier="Verified Unlock"
+                        tier="Verified Unlock Pack"
                         price="Rp 50k"
-                        period="/kandidat"
-                        features={['Buka Kontak Asli Kandidat', 'Lihat CV PDF Lengkap', '✓ Background Checked', '✓ Ijazah/SIVIL Verified']}
+                        period="/10 kandidat (Rp 5k/kontak)"
+                        features={['Buka 10 Kontak Lengkap & CV PDF', '✓ Background Checked & E-KYC', '✓ Ijazah / SIVIL Verified', '🛡️ Garansi Kontak Aktif (Refund Kredit)']}
                         accent="bg-kc-yellow"
                         featured
-                        cta="Coba Unlock"
+                        cta="Beli Paket 10 Kandidat"
                         onCta={() => openAuthModal('register', 'employer')}
                     />
                     <PricingCard
@@ -60,9 +60,11 @@ export default function PricingPage() {
                 <div className="mt-20">
                     <h2 className="text-2xl font-black text-kc-dark mb-6">FAQ</h2>
                     <div className="space-y-3">
-                        <FaqItem q="Pencari kerja harus bayar?" a="Tidak. Fitur dasar gratis selamanya. Termasuk analisis skill gap dan rekomendasi kursus." />
-                        <FaqItem q="Employer benar-benar gratis pasang lowongan?" a="Ya! Pasang lowongan dan lihat AI Shortlist (Skor + Profil Singkat) gratis. Anda baru bayar Rp 50.000 jika ingin membuka akses kontak langsung & CV Full kandidat." />
-                        <FaqItem q="Data saya aman?" a="Data Anda dienkripsi dan disimpan dengan aman di server Indonesia. Kami tidak pernah membagikan CV Anda secara publik." />
+                        <FaqItem q="Pencari kerja harus bayar?" a="Tidak sama sekali. Seluruh fitur pencari kerja 100% gratis selamanya, termasuk AI Career Advisor, pencocokan lowongan, dan analisis skill gap." />
+                        <FaqItem q="Apakah ada kuota gratis (Freemium) untuk Employer?" a="Ya! Setiap employer baru langsung mendapatkan 5 kuota unlock kontak kandidat gratis di awal untuk membuktikan kecocokan dan validitas kandidat tanpa perlu bayar apa pun." />
+                        <FaqItem q="Berapa biaya setelah kuota gratis habis?" a="Sangat terjangkau: Rp 50.000 untuk 10 kandidat (hanya Rp 5.000 per kandidat). Tanpa komitmen langganan bulanan jutaan rupiah." />
+                        <FaqItem q="Bagaimana jaminan bahwa kontak kandidat 100% terpercaya?" a="Setiap kandidat melewati verifikasi OTP nomor WhatsApp, validasi Ijazah (SIVIL/PDDIKTI), dan analisis riwayat kerja. Jika kontak yang Anda buka tidak valid/tidak merespons, kredit unlock Anda otomatis di-refund (Garansi 100% Kontak Aktif)." />
+                        <FaqItem q="Apakah data pelamar aman dan privasinya terlindungi?" a="Sangat aman. Profil kandidat ditampilkan secara teaser/anonim sebelum di-unlock. Data kontak hanya dibuka kepada perusahaan terverifikasi dengan enkripsi standar industri." />
                     </div>
                 </div>
             </section>
