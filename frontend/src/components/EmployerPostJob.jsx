@@ -116,7 +116,7 @@ export default function EmployerPostJob() {
             </header>
 
             {/* 3-Step Guided Timeline */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <div className="kc-timeline-3">
                 {[
                     { step: '1', title: 'Profil Perusahaan', sub: 'Terverifikasi GoTo', active: true, route: 'employer-profile' },
                     { step: '2', title: 'Verifikasi Pajak (DJP)', sub: 'NPWP Valid Aktif', active: true, route: 'employer-verification' },
@@ -162,10 +162,10 @@ export default function EmployerPostJob() {
             </div>
 
             {/* Form Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) 340px', gap: 20 }}>
+            <div className="kc-grid-main">
                 {/* Left Form */}
                 <BrutalCard color="#FFFFFF" padding={24} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="kc-grid-2-col">
                         <div>
                             <label style={labelStyle}>Judul Posisi Pekerjaan</label>
                             <input
@@ -188,7 +188,7 @@ export default function EmployerPostJob() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="kc-grid-2-col">
                         <div>
                             <label style={labelStyle}>Lokasi Kerja</label>
                             <input
@@ -209,7 +209,7 @@ export default function EmployerPostJob() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="kc-grid-2-col">
                         <div>
                             <label style={labelStyle}>Rentang Gaji Minimum (Rp)</label>
                             <input

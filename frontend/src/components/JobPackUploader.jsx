@@ -52,7 +52,7 @@ export default function JobPackUploader() {
             </header>
 
             {/* Main Upload Box */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) 340px', gap: 20 }}>
+            <div className="kc-grid-main">
                 <BrutalCard color="#FFFFFF" padding={32} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
                     <div
                         onDragOver={(e) => { e.preventDefault(); setDragActive(true) }}

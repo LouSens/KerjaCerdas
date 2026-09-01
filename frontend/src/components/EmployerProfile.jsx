@@ -119,9 +119,9 @@ export default function EmployerProfile() {
             </header>
 
             {/* Form Card */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) 340px', gap: 20 }}>
+            <div className="kc-grid-main">
                 <BrutalCard color="#FFFFFF" padding={26} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="kc-grid-2-col">
                         <div>
                             <label style={labelStyle}>Nama Resmi Entitas Bisnis</label>
                             <input
@@ -142,7 +142,7 @@ export default function EmployerProfile() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="kc-grid-2-col">
                         <div>
                             <label style={labelStyle}>Sektor Industri</label>
                             <select
