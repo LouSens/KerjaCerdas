@@ -252,8 +252,16 @@ export default function App() {
  * NotFoundRedirect — catches unknown URLs, shows a toast, and redirects to home.
  */
 function NotFoundRedirect() {
-    import('react-hot-toast').then(({ default: toast }) => {
-        toast.error('Halaman tidak ditemukan. Anda dialihkan ke Beranda.', { id: '404-toast' })
-    })
+    useEffect(() => {
+        let cancelled = false
+        import('react-hot-toast').then(({ default: toast }) => {
+            if (!cancelled) {
+                toast.error('Halaman tidak ditemukan. Anda dialihkan ke Beranda.', { id: '404-toast' })
+            }
+        })
+        return () => {
+            cancelled = true
+        }
+    }, [])
     return <Navigate to="/" replace />
 }
