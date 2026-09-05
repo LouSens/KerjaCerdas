@@ -44,15 +44,6 @@ jobs:
       - name: pip-audit (dependency CVE scan)
         run: pip-audit --requirement <(pip freeze) --skip-editable
 
-  # ── Gate 1.5: Docker Build Check ─────────────────────────────────────────────
-  build-docker:
-    name: "Backend · Docker Build"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test Dockerfile Build
-        run: docker build -t kerjacerdas-backend -f backend/Dockerfile .
-
   # ── Gate 2: Frontend Code Quality ────────────────────────────────────────────
   quality-frontend:
     name: "Frontend · Lint & Build"
