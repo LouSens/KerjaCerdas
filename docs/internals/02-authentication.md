@@ -49,7 +49,7 @@ In-memory **sliding window** per IP with an `asyncio.Lock`:
 
 The client IP comes from the **TCP peer address**, not `X-Forwarded-For` — a client-supplied XFF header is attacker-controlled and was previously spoofable to bypass the limiter. (Trade-off: behind Replit's proxy all requests may share the proxy's peer IP; acceptable for current scale.)
 
-Being in-memory, limits reset on restart and are per-process — fine for a single-instance deployment, needs Redis/central store if horizontally scaled.
+Being in-memory, limits reset on restart and are per-process — fine for a single-instance deployment, needs a central store if horizontally scaled.
 
 ## Input Sanitization
 

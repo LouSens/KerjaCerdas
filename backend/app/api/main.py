@@ -81,8 +81,8 @@ async def lifespan(app: FastAPI):
     # to also set APP_ENV=production in that deployment's own secrets. Without
     # this check, a deployment that forgot APP_ENV=production would silently
     # keep every dev-mode default (ephemeral JWT secret, public /docs, in-band
-    # OTP codes) while being reachable from the public internet through the
-    # Cloudflare Tunnel, with no error raised anywhere to signal the mistake.
+    # OTP codes) while being reachable from the public internet, with no error
+    # raised anywhere to signal the mistake.
     if os.environ.get("REPLIT_DEPLOYMENT") and not settings.is_production:
         raise RuntimeError(
             "REPLIT_DEPLOYMENT is set (this is a real Replit deployment) but "

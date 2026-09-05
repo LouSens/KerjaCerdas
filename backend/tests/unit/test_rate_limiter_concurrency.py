@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 
-import fakeredis.aioredis
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -19,7 +18,6 @@ from backend.app.api.middleware.rate_limiter import (
     RateLimiterMiddleware,
     _get_bucket,
     _get_client_ip,
-    _RedisSlidingWindow,
 )
 from backend.app.config.settings import settings
 
@@ -44,32 +42,10 @@ def _make_request(
 
 class TestClientIpResolution:
     """`_get_client_ip` must keep ignoring X-Forwarded-For always (it's
-    client-forgeable), and must only trust CF-Connecting-IP when the operator
-    has explicitly opted in via settings.trust_cloudflare_tunnel — see the
-    Cloudflare Tunnel deployment note in docs/KNOWN_ISSUES.md."""
+    client-forgeable)."""
 
-    def test_uses_the_tcp_peer_by_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(settings, "trust_cloudflare_tunnel", False)
-        request = _make_request("/", ip="10.0.0.1", headers=[(b"cf-connecting-ip", b"203.0.113.9")])
-        assert _get_client_ip(request) == "10.0.0.1"
-
-    def test_x_forwarded_for_is_never_trusted_even_when_tunnel_trust_is_on(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(settings, "trust_cloudflare_tunnel", True)
+    def test_uses_the_tcp_peer(self) -> None:
         request = _make_request("/", ip="10.0.0.1", headers=[(b"x-forwarded-for", b"203.0.113.9")])
-        assert _get_client_ip(request) == "10.0.0.1"
-
-    def test_trusts_cf_connecting_ip_when_enabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(settings, "trust_cloudflare_tunnel", True)
-        request = _make_request("/", ip="10.0.0.1", headers=[(b"cf-connecting-ip", b"203.0.113.9")])
-        assert _get_client_ip(request) == "203.0.113.9"
-
-    def test_falls_back_to_tcp_peer_when_header_missing_even_if_enabled(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(settings, "trust_cloudflare_tunnel", True)
-        request = _make_request("/", ip="10.0.0.1", headers=[])
         assert _get_client_ip(request) == "10.0.0.1"
 
 
@@ -80,130 +56,6 @@ async def _ok(_request):
 @pytest.fixture
 def limiter() -> RateLimiterMiddleware:
     return RateLimiterMiddleware(app=lambda *a, **k: None)
-
-
-def _fake_redis_window() -> _RedisSlidingWindow:
-    """A _RedisSlidingWindow wired to an in-memory fakeredis client instead
-    of a real server — exercises the exact Redis command sequence
-    (ZREMRANGEBYSCORE/ZCARD/ZADD/EXPIRE/ZRANGE) without needing one."""
-    window = _RedisSlidingWindow.__new__(_RedisSlidingWindow)
-    window._redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
-    return window
-
-
-class TestRedisSlidingWindow:
-    """Distributed counterpart to TestWindowEnforcement below — same
-    contract (allow up to the limit, throttle after, independent per-key
-    budgets, window expiry restores budget), backed by Redis instead of an
-    in-process deque. This is what makes the rate limiter correct across
-    more than one instance (Replit autoscale) once
-    settings.rate_limit_backend="redis" is switched on."""
-
-    @pytest.mark.asyncio
-    async def test_allows_requests_up_to_the_limit(self) -> None:
-        window = _fake_redis_window()
-        for _ in range(5):
-            throttled, _remaining, _retry = await window.check_and_record(
-                ("1.2.3.4", "test"), max_req=5, window_s=60
-            )
-            assert throttled is False
-
-    @pytest.mark.asyncio
-    async def test_throttles_the_request_over_the_limit(self) -> None:
-        window = _fake_redis_window()
-        for _ in range(3):
-            await window.check_and_record(("1.2.3.4", "test"), max_req=3, window_s=60)
-        throttled, remaining, retry_after = await window.check_and_record(
-            ("1.2.3.4", "test"), max_req=3, window_s=60
-        )
-        assert throttled is True
-        assert remaining == 0
-        assert retry_after > 0
-
-    @pytest.mark.asyncio
-    async def test_different_keys_have_independent_budgets(self) -> None:
-        window = _fake_redis_window()
-        for _ in range(3):
-            await window.check_and_record(("1.2.3.4", "test"), max_req=3, window_s=60)
-        throttled, _remaining, _retry = await window.check_and_record(
-            ("5.6.7.8", "test"), max_req=3, window_s=60
-        )
-        assert throttled is False
-
-    @pytest.mark.asyncio
-    async def test_window_expiry_restores_the_budget(self) -> None:
-        window = _fake_redis_window()
-        for _ in range(2):
-            await window.check_and_record(("1.2.3.4", "test"), max_req=2, window_s=1)
-        throttled, _remaining, _retry = await window.check_and_record(
-            ("1.2.3.4", "test"), max_req=2, window_s=1
-        )
-        assert throttled is True
-
-        await asyncio.sleep(1.1)
-
-        throttled, _remaining, _retry = await window.check_and_record(
-            ("1.2.3.4", "test"), max_req=2, window_s=1
-        )
-        assert throttled is False
-
-    @pytest.mark.asyncio
-    async def test_remaining_counts_down(self) -> None:
-        window = _fake_redis_window()
-        _throttled, remaining_1, _retry = await window.check_and_record(
-            ("1.2.3.4", "test"), max_req=5, window_s=60
-        )
-        _throttled, remaining_2, _retry = await window.check_and_record(
-            ("1.2.3.4", "test"), max_req=5, window_s=60
-        )
-        assert remaining_1 == 4
-        assert remaining_2 == 3
-
-
-class TestRedisBackendIntegration:
-    """The middleware must route through the Redis path only when explicitly
-    enabled, and must degrade to the in-process limiter (not 500) if Redis
-    itself is unreachable — a Redis outage should never become an API outage."""
-
-    @pytest.mark.asyncio
-    async def test_default_backend_never_touches_redis(
-        self, limiter: RateLimiterMiddleware, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(settings, "rate_limit_backend", "memory")
-        assert limiter._get_redis_window() is None
-
-    @pytest.mark.asyncio
-    async def test_redis_backend_throttles_via_middleware(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(settings, "rate_limit_backend", "redis")
-        limiter = RateLimiterMiddleware(app=lambda *a, **k: None)
-        limiter._redis_window = _fake_redis_window()
-
-        request = _make_request("/api/v1/auth/login", ip="9.9.9.9")
-        for _ in range(_ROUTE_LIMITS["/api/v1/auth/login"][0]):
-            resp = await limiter.dispatch(request, _ok)
-            assert resp.status_code == 200
-
-        resp = await limiter.dispatch(request, _ok)
-        assert resp.status_code == 429
-
-    @pytest.mark.asyncio
-    async def test_redis_failure_falls_back_to_in_process_limiter(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(settings, "rate_limit_backend", "redis")
-        limiter = RateLimiterMiddleware(app=lambda *a, **k: None)
-
-        class _BrokenWindow:
-            async def check_and_record(self, *a, **k):
-                raise ConnectionError("redis is down")
-
-        limiter._redis_window = _BrokenWindow()
-
-        request = _make_request("/", ip="9.9.9.9")
-        resp = await limiter.dispatch(request, _ok)
-        assert resp.status_code == 200  # degraded to in-process, not a 500
 
 
 class TestLimitSelection:

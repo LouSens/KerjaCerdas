@@ -31,12 +31,7 @@ EVICTION
 SCALE-OUT:
   In a multi-instance deployment (Replit autoscale, Docker swarm, k8s) the
   in-process counters below are per-instance, so the effective per-IP limit
-  silently becomes (N_instances × per-instance limit) unless
-  settings.rate_limit_backend is set to "redis" (env: RATE_LIMIT_BACKEND=redis,
-  plus REDIS_URL pointing at a reachable Redis) — see _RedisSlidingWindow.
-  Falls back to allowing the request (fail-open, logged) if Redis itself is
-  unreachable, so a Redis outage degrades rate limiting rather than taking
-  the whole app down with it.
+  silently becomes (N_instances × per-instance limit).
 """
 
 from __future__ import annotations
@@ -94,31 +89,14 @@ _STALE_AFTER_SECONDS = 3600
 
 
 def _get_client_ip(request: Request) -> str:
-    """Extract the client IP, preferring a trusted proxy header when configured.
+    """Extract the client IP.
 
     X-Forwarded-For is intentionally never trusted here: it is a request
     header that any client can set to an arbitrary value, which would allow
     trivial rate-limit bypass (rotating the header on each request makes
-    every request appear to come from a distinct IP). In a direct-to-internet
-    deployment the real peer address reported by the TCP stack is the only
-    trustworthy source, which is the default below.
-
-    When ``settings.trust_cloudflare_tunnel`` is enabled, ``CF-Connecting-IP``
-    is read instead: Cloudflare's edge sets this header to the real visitor
-    IP and overwrites any client-supplied value, so it cannot be spoofed —
-    provided the origin is *only* reachable through Cloudflare (a Cloudflare
-    Tunnel with no other public ingress). Enabling this flag on a deployment
-    that is also directly exposed to the internet would let a client set
-    CF-Connecting-IP to anything, since that path never touches Cloudflare's
-    edge and its header-overwrite guarantee.
+    every request appear to come from a distinct IP). The real peer address
+    reported by the TCP stack is the only trustworthy source.
     """
-    from backend.app.config.settings import settings  # noqa: PLC0415
-
-    if settings.trust_cloudflare_tunnel:
-        cf_ip = request.headers.get("CF-Connecting-IP")
-        if cf_ip:
-            return cf_ip.strip()
-
     return request.client.host if request.client else "unknown"
 
 
@@ -130,62 +108,13 @@ def _get_bucket(path: str) -> tuple[str, int, int]:
     return _DEFAULT_BUCKET, _DEFAULT_LIMIT[0], _DEFAULT_LIMIT[1]
 
 
-class _RedisSlidingWindow:
-    """Sliding-window counter backed by a Redis sorted set, shared across
-    every instance of the app — the distributed counterpart to the in-process
-    ``deque`` windows below, for deployments that run more than one instance.
-
-    Score = insertion time in ms; member includes a per-call UUID so two
-    requests landing in the same millisecond don't collide and undercount
-    (a plain ``{now_ms: now_ms}`` mapping would silently drop one of them).
-    """
-
-    def __init__(self, redis_url: str) -> None:
-        import redis.asyncio as redis_asyncio  # noqa: PLC0415
-
-        self._redis = redis_asyncio.from_url(redis_url, decode_responses=True)
-
-    async def check_and_record(
-        self, key: tuple[str, str], max_req: int, window_s: int
-    ) -> tuple[bool, int, int]:
-        """Returns ``(throttled, remaining, retry_after_seconds)``.
-
-        Raises whatever the redis client raises on a connection failure —
-        callers are expected to catch that and fail open (see dispatch()).
-        """
-        redis_key = f"kc:rl:{key[0]}:{key[1]}"
-        now_ms = int(time.time() * 1000)
-        window_ms = window_s * 1000
-        member = f"{now_ms}:{uuid.uuid4().hex}"
-
-        pipe = self._redis.pipeline()
-        pipe.zremrangebyscore(redis_key, 0, now_ms - window_ms)
-        pipe.zcard(redis_key)
-        results = await pipe.execute()
-        count = results[1]
-
-        if count >= max_req:
-            oldest = await self._redis.zrange(redis_key, 0, 0, withscores=True)
-            oldest_ms = int(oldest[0][1]) if oldest else now_ms
-            retry_after = int((oldest_ms + window_ms - now_ms) / 1000) + 1
-            return True, 0, max(retry_after, 1)
-
-        pipe = self._redis.pipeline()
-        pipe.zadd(redis_key, {member: now_ms})
-        pipe.expire(redis_key, window_s + 1)
-        await pipe.execute()
-        return False, max_req - (count + 1), 0
-
-
 class RateLimiterMiddleware(BaseHTTPMiddleware):
     """
     Sliding-window rate limiter that tracks requests per (IP, rule bucket) pair.
 
     Thread-safety: uses an asyncio.Lock per key — safe for async workers.
     Memory: bounded by _MAX_TRACKED_KEYS; LRU eviction prevents leak.
-    Scale: process-local by default; set settings.rate_limit_backend="redis"
-    for a multi-instance deployment — see _RedisSlidingWindow and the module
-    docstring.
+    Scale: process-local.
     """
 
     def __init__(self, app: ASGIApp) -> None:
@@ -197,7 +126,6 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         # Per-key locks, created under _map_lock and evicted alongside windows
         self._locks: OrderedDict[tuple[str, str], asyncio.Lock] = OrderedDict()
         self._request_counter = 0
-        self._redis_window: _RedisSlidingWindow | None = None
 
     def _get_limit(self, path: str) -> tuple[int, int]:
         """Return (max_requests, window_seconds) for the given path."""
@@ -282,64 +210,11 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             for k in stale:
                 self._drop(k)
 
-    def _get_redis_window(self) -> _RedisSlidingWindow | None:
-        """Lazily construct the Redis client the first time it's needed, so a
-        deployment that never enables the redis backend never imports/touches
-        redis.asyncio at all."""
-        from backend.app.config.settings import settings  # noqa: PLC0415
-
-        if settings.rate_limit_backend != "redis":
-            return None
-        if self._redis_window is None:
-            self._redis_window = _RedisSlidingWindow(settings.redis_url)
-        return self._redis_window
-
     async def dispatch(self, request: Request, call_next) -> Response:
         ip = _get_client_ip(request)
         path = request.url.path
         bucket, max_req, window = _get_bucket(path)
         key = (ip, bucket)
-
-        redis_window = self._get_redis_window()
-        if redis_window is not None:
-            try:
-                throttled, remaining, retry_after = await redis_window.check_and_record(
-                    key, max_req, window
-                )
-            except Exception:  # noqa: BLE001 — any redis failure degrades, never 500s the request
-                logger.warning(
-                    "Redis rate limiter unreachable — falling back to the "
-                    "in-process (per-instance) limiter for this request "
-                    "(ip=%s bucket=%s)",
-                    ip,
-                    bucket,
-                    exc_info=True,
-                )
-            else:
-                if throttled:
-                    logger.warning(
-                        "Rate limit exceeded (redis): ip=%s bucket=%s path=%s limit=%d",
-                        ip,
-                        bucket,
-                        path,
-                        max_req,
-                    )
-                    return Response(
-                        content='{"detail":"Too many requests. Please slow down."}',
-                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                        media_type="application/json",
-                        headers={
-                            "Retry-After": str(retry_after),
-                            "X-RateLimit-Limit": str(max_req),
-                            "X-RateLimit-Remaining": "0",
-                            "X-RateLimit-Window": str(window),
-                        },
-                    )
-                response = await call_next(request)
-                response.headers["X-RateLimit-Limit"] = str(max_req)
-                response.headers["X-RateLimit-Remaining"] = str(remaining)
-                response.headers["X-RateLimit-Window"] = str(window)
-                return response
 
         key_lock = await self._get_or_create_key(key)
 

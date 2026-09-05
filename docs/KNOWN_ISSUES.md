@@ -2,16 +2,13 @@
 
 Engineering debt and open findings, each cited to a file so it can be checked directly against source. Items below are marked **Fixed** (with what changed), **Open** (still needs work, with why), or **Deferred** (deliberately not attempted this pass, with why).
 
-## Deployment (Replit + Cloudflare Tunnel)
+## Deployment (Replit)
 
-Findings from putting the current codebase behind a Cloudflare Tunnel in front of a Replit deployment.
+Findings from putting the current codebase in a Replit deployment.
 
-- **Fixed — rate limiter misidentified every visitor as the same client behind the tunnel.** `_get_client_ip()` in `backend/app/api/middleware/rate_limiter.py` now trusts `CF-Connecting-IP` when `settings.trust_cloudflare_tunnel` is enabled (env: `TRUST_CLOUDFLARE_TUNNEL=true`) — Cloudflare's edge sets and overwrites this header, so it can't be spoofed by a client, unlike `X-Forwarded-For` (still never trusted). Only enable this flag if the origin is *exclusively* reachable through the tunnel. Covered by `TestClientIpResolution` in `backend/tests/unit/test_rate_limiter_concurrency.py`.
 - **Fixed — `/docs`, `/redoc`, `/openapi.json` were unconditionally public.** `main.py` now gates all three behind `settings.is_production` via a request-time check (`_gate_docs_in_production`), returning 404 in production. Covered by `test_interactive_docs_are_gated_in_production` in `backend/tests/unit/test_caching_routing.py`.
 - **Fixed — nothing caught a real Replit deployment missing `APP_ENV=production`.** `main.py`'s lifespan now raises at startup if `REPLIT_DEPLOYMENT` is set (which Replit sets automatically for a real deployment, independent of user memory) but `APP_ENV` isn't `production` — instead of silently keeping every dev-mode default (ephemeral JWT secret, public docs, in-band OTP codes) on something reachable from the public internet. Covered by `test_lifespan_rejects_a_real_replit_deployment_not_in_production` and `test_lifespan_allows_a_replit_deployment_correctly_configured` in `backend/tests/unit/test_api.py`. Note: `.replit`'s `[userenv.production]` already sets `APP_ENV=production`, so this is defense-in-depth, not a currently-firing bug.
-- **Fixed — process-local rate-limit state under `autoscale`.** The Replit deployment intentionally stays on `autoscale` (not changed here). Given that, the rate limiter's in-memory counters previously would have silently multiplied every per-IP limit by the instance count (N instances → N× the intended budget) — each instance tracked its own counters with no shared state. `backend/app/api/middleware/rate_limiter.py` now supports a Redis-backed sliding window (`_RedisSlidingWindow`), shared across every instance, activated via `RATE_LIMIT_BACKEND=redis` + `REDIS_URL` pointing at a reachable Redis (e.g. Upstash — see [`ROADMAP.md`](ROADMAP.md)). It is **off by default** (`rate_limit_backend: str = "memory"`) so nothing changes until those two env vars are set, and it fails open to the existing in-process limiter (never a 500) if Redis itself is unreachable. Covered by `TestRedisSlidingWindow` and `TestRedisBackendIntegration` in `backend/tests/unit/test_rate_limiter_concurrency.py`, using `fakeredis` (no live Redis needed to verify the logic). **Remaining action:** provision `REDIS_URL` (Upstash free tier is sufficient to start) and set `RATE_LIMIT_BACKEND=redis` in the deployment's secrets — this is an infrastructure step, not a code change.
 - **Open — the matcher's in-process query-embedding cache is still per-instance.** `backend/app/services/matching/matcher.py`'s in-process LRU is a pure performance optimization with a Postgres-backed second tier already in place (`query_embeddings` table) — a cache miss on one autoscale instance still hits the persisted tier before falling back to a fresh Gemini call, so this is a missed-optimization, not a correctness bug like the rate limiter was. Left as-is.
-- **Open — CORS needs the tunnel's public hostname.** `_replit_origins()` already reads `REPLIT_DEV_DOMAIN`/`REPLIT_DOMAINS`, but a Cloudflare Tunnel typically fronts a custom or `trycloudflare.com` domain that is neither. Only matters if the SPA and API end up served from different origins through the tunnel (not needed if the API serves the built SPA itself, same-origin). Add the tunnel's hostname to `cors_allow_origins` if that split happens.
 
 ## Architecture
 
@@ -38,12 +35,10 @@ Findings from putting the current codebase behind a Cloudflare Tunnel in front o
 
 ## Production readiness
 
-- **Superseded — manual VPS deployment.** `release.yml` still builds and publishes tagged images to GHCR for the Docker/VPS path, and `docker-compose.prod.yml` still exists — but the primary deployment path going forward is Replit + Cloudflare Tunnel, not a self-managed VPS. Keep the Docker path in sync opportunistically, or retire it explicitly once Replit is confirmed as the sole target.
+- **Superseded — manual VPS deployment.** `release.yml` still builds and publishes tagged images to GHCR for the Docker/VPS path, and `docker-compose.prod.yml` still exists — but the primary deployment path going forward is Replit, not a self-managed VPS. Keep the Docker path in sync opportunistically, or retire it explicitly once Replit is confirmed as the sole target.
 
 ## Next priorities
 
-1. **Provision `REDIS_URL` (e.g. Upstash) and set `RATE_LIMIT_BACKEND=redis`** in the Replit deployment's secrets — the code is ready and tested; this is the one remaining infrastructure step for correct rate limiting under autoscale.
-2. Design and implement real RLS policies, after first confirming (and if needed, provisioning) a non-superuser, non-owner database role for the app connection with `FORCE ROW LEVEL SECURITY` set — or explicitly document tenant isolation as application-layer-only until that's done.
-3. Set up `uv` (or `poetry`) for the backend and commit a real lockfile.
-4. Confirm the Cloudflare Tunnel's public hostname is covered by CORS once the actual tunnel domain is known.
-5. Grow frontend test coverage past the API client, starting with the matching/upload/verification flows called out above.
+1. Design and implement real RLS policies, after first confirming (and if needed, provisioning) a non-superuser, non-owner database role for the app connection with `FORCE ROW LEVEL SECURITY` set — or explicitly document tenant isolation as application-layer-only until that's done.
+2. Set up `uv` (or `poetry`) for the backend and commit a real lockfile.
+3. Grow frontend test coverage past the API client, starting with the matching/upload/verification flows called out above.
