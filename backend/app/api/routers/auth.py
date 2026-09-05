@@ -64,11 +64,11 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
 
     logger.info("New user registered: user_id=%s role=%s", new_user.id, new_user.role)
 
-    # Auto-create domain profile in JSON store ---------------------------------
+    # Auto-create domain profile in postgres_store ------------------------------
     repos = get_repositories()
-    # Mirror user into JSON store so agents/matchers can resolve user lookups.
+    # Mirror user into postgres_store so agents/matchers can resolve user lookups.
     # Note: db/schemas.py User does NOT have a `name` field (name lives in the
-    # ORM User for auth; the JSON store only needs id/email/role for lookups).
+    # ORM User for auth; the postgres_store copy only needs id/email/role for lookups).
     json_user = JsonUser(
         id=new_user.id,
         email=new_user.email,

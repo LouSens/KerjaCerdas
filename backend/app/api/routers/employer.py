@@ -1,7 +1,7 @@
 """Employer endpoints — profile, job CRUD and real reverse-matching candidate search.
 
-Uses JSON store (same layer as uploads/agent), so postings created here are
-immediately visible to the semantic matcher.
+Uses the postgres_store layer (same layer as uploads/agent), so postings
+created here are immediately visible to the semantic matcher.
 """
 
 from __future__ import annotations
