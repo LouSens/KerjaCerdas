@@ -279,3 +279,36 @@
     }
   }
 }
+
+/* ─── Enterprise Neobrutalism Keyframes (Matching Mobile Spec) ───────── */
+@keyframes kcUp {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes kcIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes kcBar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes kcRing68 {
+  from { stroke-dashoffset: 427; }
+  to { stroke-dashoffset: 137; }
+}
+@keyframes kcRing91 {
+  from { stroke-dashoffset: 427; }
+  to { stroke-dashoffset: 38; }
+}
+@keyframes kcPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes kcSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes kcSlideUp {
+  from { transform: translateY(26px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}

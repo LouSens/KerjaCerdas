@@ -26,6 +26,8 @@ export const VIEW_TO_PATH = {
     'seeker-profile':        '/profil',
     'seeker-search':         '/cari',
     'seeker-applications':   '/lamaran',
+    'seeker-advisor':        '/advisor',
+    'seeker-onboarding':     '/onboarding',
     'employer-dashboard':    '/employer/dashboard',
     'employer-jobs':         '/employer/lowongan',
     'employer-post-job':     '/employer/pasang',
@@ -50,7 +52,8 @@ export const ALLOWED_VIEWS = {
     seeker: new Set([
         'seeker-dashboard', 'seeker-match', 'seeker-skill-gap',
         'seeker-verification', 'seeker-saved', 'seeker-profile',
-        'seeker-search', 'seeker-applications',
+        'seeker-search', 'seeker-applications', 'seeker-advisor',
+        'seeker-onboarding',
     ]),
     employer: new Set([
         'employer-dashboard', 'employer-jobs', 'employer-candidates',

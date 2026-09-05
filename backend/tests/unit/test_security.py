@@ -370,7 +370,9 @@ class TestSeedAuthUtils:
     ) -> None:
         """_get_seed_password_hash must raise RuntimeError when env var is absent."""
         monkeypatch.delenv("SEED_DEFAULT_PASSWORD", raising=False)
-        import sys, os
+        import os
+        import sys
+
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
         from scripts import auth_utils
 
@@ -382,7 +384,9 @@ class TestSeedAuthUtils:
     ) -> None:
         """An empty string env var must also be rejected."""
         monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "   ")
-        import sys, os
+        import os
+        import sys
+
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
         from scripts import auth_utils
 
@@ -396,7 +400,9 @@ class TestSeedAuthUtils:
         import bcrypt
 
         monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "TestSeedPass1!")
-        import sys, os
+        import os
+        import sys
+
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
         from scripts import auth_utils
 
@@ -407,8 +413,9 @@ class TestSeedAuthUtils:
     def test_no_hardcoded_hash_in_auth_utils(self) -> None:
         """auth_utils.py must not contain the previously hardcoded bcrypt hash."""
         import inspect
+        import os
+        import sys
 
-        import sys, os
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
         from scripts import auth_utils
 
@@ -419,8 +426,9 @@ class TestSeedAuthUtils:
     def test_no_hardcoded_hash_in_seed_all(self) -> None:
         """seed_all.py must not contain any hardcoded bcrypt hash."""
         import inspect
+        import os
+        import sys
 
-        import sys, os
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
         from scripts import seed_all
 
@@ -467,8 +475,12 @@ class TestSeedAuthUtils:
             return FakeSession()
 
         with patch("scripts.auth_utils.async_session_factory", new=fake_session_factory):
-            import sys, os
-            sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+            import os
+            import sys
+
+            sys.path.insert(
+                0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+            )
             from scripts.auth_utils import seed_auth_user
 
             await seed_auth_user("new@example.com", "New User", "seeker")
@@ -515,8 +527,12 @@ class TestSeedAuthUtils:
             return FakeSession()
 
         with patch("scripts.auth_utils.async_session_factory", new=fake_session_factory):
-            import sys, os
-            sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+            import os
+            import sys
+
+            sys.path.insert(
+                0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+            )
             from scripts.auth_utils import seed_auth_user
 
             await seed_auth_user("existing@example.com", "Existing User", "employer")

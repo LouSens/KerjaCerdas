@@ -432,6 +432,7 @@ const useStore = create(
                 } catch (e) {
                     set({ jobPackUploading: false })
                     toast.error('Upload job-pack gagal: ' + e.message)
+                    throw e
                 }
             },
 
@@ -460,6 +461,42 @@ const useStore = create(
                 } catch (err) {
                     if (err?.status && err.status !== 404) {
                         console.error('Failed to sync saved jobs:', err)
+                    }
+                }
+            },
+
+            bookmarkJob: async (job) => {
+                const { savedJobs, isAuthenticated, userRole } = get()
+                const id = job.job_id || job.id
+                if (!id) return
+                const exists = savedJobs.some(j => (j.job_id || j.id) === id)
+                if (exists) return
+
+                set({ savedJobs: [...savedJobs, { ...job, job_id: id, savedAt: new Date().toISOString() }] })
+
+                if (isAuthenticated && userRole === 'seeker') {
+                    try {
+                        await addBookmark(id)
+                    } catch (e) {
+                        set({ savedJobs })
+                        toast.error('Gagal simpan: ' + e.message)
+                    }
+                }
+            },
+
+            unbookmarkJob: async (jobOrId) => {
+                const { savedJobs, isAuthenticated, userRole } = get()
+                const id = typeof jobOrId === 'object' ? (jobOrId.job_id || jobOrId.id) : jobOrId
+                if (!id) return
+                const prev = savedJobs
+                set({ savedJobs: savedJobs.filter(j => (j.job_id || j.id) !== id) })
+
+                if (isAuthenticated && userRole === 'seeker') {
+                    try {
+                        await removeBookmark(id)
+                    } catch (e) {
+                        set({ savedJobs: prev })
+                        toast.error('Gagal menghapus simpanan: ' + e.message)
                     }
                 }
             },

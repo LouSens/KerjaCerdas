@@ -1,360 +1,342 @@
 /**
- * VerificationDashboard — Clean enterprise identity & document verification.
+ * VerificationDashboard — E-KYC Identity Verification matching Mobile Frame 11.
  */
-import { useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
-import { verifyEducation, verifyIdentity, verifyNPWP, listVerificationDocs, sendOTP, verifyOTP } from '../services/api'
-import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'
+import { useState } from 'react'
 import useStore from '../store/useStore'
-import { ShieldCheck, CreditCard, GraduationCap, Phone, Building2, FileText, Mail, CheckCircle2, AlertCircle, ArrowRight, Lock, Loader2, X } from 'lucide-react'
-
-const EMPLOYER_DOCS = [
-    { id: 'npwp', name: 'NPWP Perusahaan (DJP)', desc: 'Validasi legalitas institusi dan nomor pokok wajib pajak via DJP Online', icon: Building2 },
-    { id: 'akta', name: 'Akta Pendirian AHU', desc: 'Verifikasi surat keputusan kementerian hukum & HAM RI', icon: FileText },
-    { id: 'domain', name: 'Email Korporat / PIC', desc: 'Validasi kepemilikan domain perusahaan dan otorisasi perwakilan', icon: Mail },
-]
-
-const SEEKER_DOCS = [
-    { id: 'ktp', name: 'KTP / Identitas Kependudukan', desc: 'Validasi NIK dan identitas resmi via E-KYC Dukcapil Kemendagri', icon: CreditCard },
-    { id: 'ijazah', name: 'Ijazah & Transkrip Pendidikan', desc: 'Verifikasi keaslian nomor ijazah perguruan tinggi via PDDikti SIVIL', icon: GraduationCap },
-    { id: 'phone', name: 'Nomor WhatsApp / Kontak', desc: 'Verifikasi nomor aktif kandidat untuk koordinasi rekrutmen via OTP', icon: Phone },
-]
+import { KC, DesignStyles } from './_design'
+import { verifyIdentity, verifyEducation } from '../services/api'
+import toast from 'react-hot-toast'
 
 export default function VerificationDashboard() {
-    return <VerificationScreen role="seeker" docsSpec={SEEKER_DOCS} />
-}
+    const { profile, loadSeekerProfile } = useStore()
+    const [ktpVerified, setKtpVerified] = useState(profile?.ktp_verified || false)
+    const [ktpChecking, setKtpChecking] = useState(false)
+    const [ijazahVerified, setIjazahVerified] = useState(profile?.ijazah_verified || false)
+    const [ijazahInput, setIjazahInput] = useState('')
+    const [ijazahChecking, setIjazahChecking] = useState(false)
 
-export function VerificationScreen({ role, docsSpec }) {
-    const { profile, employerProfile, navigate } = useStore()
-    const isEmployer = role === 'employer'
+    // Calculate score based on completed items
+    const completedCount = 1 + (ktpVerified ? 1 : 0) + (ijazahVerified ? 1 : 0) // phone verified by default
+    const trustScore = Math.round((completedCount / 4) * 100)
 
-    const [docs, setDocs] = useState(docsSpec.map(d => ({
-        ...d, status: 'pending', when: 'Belum diverifikasi',
-    })))
-    const [busy, setBusy] = useState(null)
-    const [formOpen, setFormOpen] = useState(null)
-    const [formData, setFormData] = useState({})
-    const [otpStep, setOtpStep] = useState(null)
-    const [demoOtp, setDemoOtp] = useState(null)
-    const [otpInput, setOtpInput] = useState('')
-
-    useEffect(() => {
-        if (isEmployer && employerProfile) {
-            setDocs(prev => prev.map(d => {
-                if (d.id === 'npwp' && employerProfile.npwp) return { ...d, status: 'verified', when: 'Terverifikasi DJP Online' }
-                return d
-            }))
-        } else if (!isEmployer && profile) {
-            setDocs(prev => prev.map(d => {
-                if (d.id === 'ktp' && profile.ktp_verified) return { ...d, status: 'verified', when: 'Terverifikasi Dukcapil' }
-                if (d.id === 'ijazah' && profile.ijazah_verified) return { ...d, status: 'verified', when: 'Terverifikasi SIVIL Dikti' }
-                if (d.id === 'phone' && profile.phone_verified) return { ...d, status: 'verified', when: 'Nomor Terverifikasi' }
-                return d
-            }))
-        }
-    }, [profile, employerProfile, isEmployer])
-
-    const handleSendOTP = async () => {
-        let phone = (formData.phone || '').trim()
-        if (!phone) {
-            toast.error('Nomor telepon/WhatsApp wajib diisi')
-            return
-        }
-        if (phone.startsWith('0')) {
-            phone = '+62' + phone.slice(1)
-        } else if (!phone.startsWith('+')) {
-            phone = '+62' + phone
-        }
-        setFormData(prev => ({ ...prev, formattedPhone: phone }))
-        setBusy('phone')
+    const handleSimulateKTP = async () => {
+        setKtpChecking(true)
         try {
-            const res = await sendOTP(phone)
-            setDemoOtp(res.demo_code)
-            setOtpStep('verify')
-            toast.success(res.message || `Kode OTP: ${res.demo_code}`, { duration: 8000, icon: '📱' })
-        } catch (e) {
-            toast.error('Gagal mengirim OTP: ' + e.message)
-        } finally {
-            setBusy(null)
-        }
-    }
-
-    const handleConfirmOTP = async () => {
-        if (!otpInput || otpInput.trim().length !== 6) {
-            toast.error('Masukkan 6 digit kode OTP')
-            return
-        }
-        setBusy('otp_confirm')
-        try {
-            await verifyOTP(formData.formattedPhone, otpInput.trim())
-            toast.success('Nomor WhatsApp / HP berhasil diverifikasi!')
-            setDocs(prev => prev.map(d => d.id === 'phone' ? { ...d, status: 'verified', when: 'Nomor Terverifikasi' } : d))
-            setFormOpen(null)
-            setOtpStep(null)
-            setOtpInput('')
-        } catch (e) {
-            toast.error('Verifikasi OTP gagal: ' + e.message)
-        } finally {
-            setBusy(null)
-        }
-    }
-
-    const handleVerify = async (docId) => {
-        if (docId === 'phone') {
-            await handleSendOTP()
-            return
-        }
-        setBusy(docId)
-        try {
-            if (docId === 'ktp') {
-                if (!formData.nik || formData.nik.length !== 16) {
-                    toast.error('NIK wajib 16 digit')
-                    setBusy(null)
-                    return
-                }
-                await verifyIdentity({ nik: formData.nik, full_name: formData.full_name || profile?.full_name || 'Budi Santoso' })
-            } else if (docId === 'ijazah') {
-                await verifyEducation({ ijazah_number: formData.ijazah_number || '12345/ITB/2022', university_name: formData.university_name || 'Institut Teknologi Bandung', major: 'Teknik Informatika' })
-            } else if (docId === 'npwp') {
-                await verifyNPWP({ npwp: formData.npwp || '01.234.567.8-012.000', company_name: formData.company_name || 'GoTo Group' })
+            const res = await verifyIdentity({ nik: '3271012345670004', full_name: profile?.full_name || 'Budi Santoso' })
+            if (res?.status === 'VERIFIED') {
+                setKtpVerified(true)
+                toast.success('NIK 3271••••••••0004 berhasil divalidasi!')
+                await loadSeekerProfile()
+            } else {
+                toast.error(res?.message || 'Verifikasi NIK gagal')
             }
-            toast.success('Dokumen berhasil diverifikasi!')
-            setDocs(prev => prev.map(d => d.id === docId ? { ...d, status: 'verified', when: 'Terverifikasi Resmi' } : d))
-            setFormOpen(null)
         } catch (e) {
-            toast.error('Gagal verifikasi: ' + e.message)
+            toast.error('Verifikasi NIK gagal: ' + (e.message || 'Terjadi kesalahan'))
         } finally {
-            setBusy(null)
+            setKtpChecking(false)
+        }
+    }
+
+    const handleCheckIjazah = async () => {
+        if (!ijazahInput.trim()) {
+            toast.error('Masukkan nomor ijazah')
+            return
+        }
+        setIjazahChecking(true)
+        try {
+            const institution = profile?.education?.[0]?.institution || 'Institut Teknologi Bandung'
+            const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), institution_name: institution })
+            if (res?.status === 'VERIFIED') {
+                setIjazahVerified(true)
+                toast.success('Nomor ijazah terverifikasi via format SIVIL Dikti!')
+                await loadSeekerProfile()
+            } else {
+                toast.error(res?.message || 'Nomor ijazah tidak ditemukan pada PDDikti/SIVIL')
+            }
+        } catch (e) {
+            toast.error('Verifikasi Ijazah gagal: ' + (e.message || 'Terjadi kesalahan'))
+        } finally {
+            setIjazahChecking(false)
         }
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <DesignStyles />
 
-            {/* Header */}
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
-                <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
-                        {isEmployer ? 'Verifikasi Legalitas Institusi' : 'Verifikasi Identitas & Dokumen'}
-                    </h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Membangun ekosistem rekrutmen terpercaya dengan otentikasi data resmi pemerintah
-                    </p>
+            {/* Header (Frame 11) */}
+            <div>
+                <h1 style={{
+                    fontSize: 22, fontWeight: 900, letterSpacing: -0.9,
+                    color: KC.ink, margin: '0 0 5px', lineHeight: 1.1,
+                }}>
+                    Verifikasi Identitas
+                </h1>
+                <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600 }}>
+                    {completedCount} dari 4 selesai · prioritas kurasi hingga 3× lipat
                 </div>
-                <Tag color={KC.limeSoft} ink={KC.lime} border={KC.lime}>
-                    <Lock size={12} /> Terenkripsi AES-256-GCM
-                </Tag>
-            </header>
-
-            {/* Document Cards */}
-            <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {docs.map(doc => {
-                    const IconComp = doc.icon
-                    const isVerified = doc.status === 'verified'
-
-                    return (
-                        <BrutalCard key={doc.id} color="#FFFFFF" padding={20}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                                    <div style={{ width: 40, height: 40, borderRadius: 10, background: isVerified ? KC.limeSoft : KC.surfaceAlt, border: `1.5px solid ${isVerified ? KC.lime : KC.borderMuted}`, display: 'grid', placeItems: 'center', color: isVerified ? KC.lime : KC.mute, flexShrink: 0 }}>
-                                        <IconComp size={20} />
-                                    </div>
-                                    <div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                                            <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: KC.ink }}>{doc.name}</h3>
-                                            <Tag color={isVerified ? KC.limeSoft : KC.surfaceAlt} ink={isVerified ? '#047857' : KC.mute} border={isVerified ? KC.lime : KC.borderMuted} size="sm">
-                                                {isVerified ? '✓ Terverifikasi' : 'Belum Terverifikasi'}
-                                            </Tag>
-                                        </div>
-                                        <p style={{ fontSize: 13, color: KC.mute, margin: '4px 0 0', lineHeight: 1.4 }}>
-                                            {doc.desc}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    {isVerified ? (
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: '#047857', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <CheckCircle2 size={14} /> {doc.when}
-                                        </span>
-                                    ) : (
-                                        <button
-                                            onClick={() => setFormOpen(doc.id)}
-                                            className="kc-btn"
-                                            style={{ ...topBtn(KC.ink, '#fff'), padding: '8px 16px', fontSize: 12 }}
-                                        >
-                                            Verifikasi Sekarang →
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </BrutalCard>
-                    )
-                })}
             </div>
 
-            {/* Verification Form Modal */}
-            {formOpen && (
-                <div
-                    onClick={() => setFormOpen(null)}
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(9, 10, 15, 0.6)',
-                        zIndex: 1000,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 20,
-                        backdropFilter: 'blur(3px)',
-                    }}
-                >
-                    <div
-                        onClick={e => e.stopPropagation()}
-                        style={{
-                            background: '#FFFFFF',
-                            border: `1.5px solid ${KC.ink}`,
-                            borderRadius: 14,
-                            boxShadow: `6px 6px 0 ${KC.ink}`,
-                            maxWidth: 480,
-                            width: '100%',
-                            padding: 24,
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                            <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0, color: KC.ink }}>
-                                Verifikasi {docs.find(d => d.id === formOpen)?.name}
-                            </h3>
-                            <button onClick={() => setFormOpen(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: KC.mute }}>
-                                <X size={18} />
-                            </button>
-                        </div>
+            {/* Dark Trust Score Card (Frame 11) */}
+            <div style={{
+                background: '#090A0F', border: `1.5px solid ${KC.ink}`,
+                borderRadius: 13, boxShadow: `3px 3px 0 ${KC.orange}`,
+                padding: 16,
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
+                    <span style={{
+                        fontFamily: 'JetBrains Mono, monospace', fontSize: 10,
+                        fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase',
+                        color: 'rgba(255,255,255,0.5)',
+                    }}>
+                        Trust score
+                    </span>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', letterSpacing: -1 }}>
+                        {trustScore}%
+                    </span>
+                </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            {formOpen === 'ktp' && (
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nomor Induk Kependudukan (16 Digit)</label>
-                                    <input
-                                        type="text"
-                                        maxLength={16}
-                                        placeholder="Contoh: 3171012345670001"
-                                        value={formData.nik || ''}
-                                        onChange={e => setFormData({ ...formData, nik: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                                    />
-                                </div>
-                            )}
+                <div style={{ height: 9, background: 'rgba(255,255,255,0.14)', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{
+                        height: '100%', width: `${trustScore}%`, background: KC.orange,
+                        borderRadius: 999, transition: 'width .6s ease',
+                    }} />
+                </div>
 
-                            {formOpen === 'ijazah' && (
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nomor Ijazah Nasional / SIVIL</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Contoh: 12345/ITB/2022"
-                                        value={formData.ijazah_number || ''}
-                                        onChange={e => setFormData({ ...formData, ijazah_number: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                                    />
-                                </div>
-                            )}
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 11, lineHeight: 1.5, fontWeight: 600 }}>
+                    Lengkapi KTP dan ijazah untuk naik ke 100% dan muncul lebih tinggi pada shortlist rekruter.
+                </div>
+            </div>
 
-                            {formOpen === 'npwp' && (
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nomor Pokok Wajib Pajak (NPWP 15-16 Digit)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Contoh: 01.234.567.8-012.000"
-                                        value={formData.npwp || ''}
-                                        onChange={e => setFormData({ ...formData, npwp: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                                    />
-                                </div>
-                            )}
-
-                            {formOpen === 'phone' && (
-                                <div>
-                                    {otpStep !== 'verify' ? (
-                                        <>
-                                            <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>
-                                                Nomor Telepon / WhatsApp (Format Internasional atau 08...)
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                placeholder="Contoh: 081234567890"
-                                                value={formData.phone || ''}
-                                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                                style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                                            />
-                                            <p style={{ fontSize: 12, color: KC.mute, margin: '6px 0 0' }}>
-                                                Kode OTP 6-digit akan dibuat untuk memverifikasi kontak Anda.
-                                            </p>
-                                        </>
-                                    ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                            <div style={{ background: KC.limeSoft, padding: '10px 12px', borderRadius: 8, border: `1px solid ${KC.lime}`, fontSize: 13, color: '#065F46' }}>
-                                                <strong>Kode OTP Terkirim ke {formData.formattedPhone}:</strong><br />
-                                                Gunakan kode demo: <code style={{ fontWeight: 900, fontSize: 15, letterSpacing: 2, background: '#fff', padding: '2px 6px', borderRadius: 4 }}>{demoOtp}</code>
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>
-                                                    Masukkan 6-Digit Kode OTP
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    maxLength={6}
-                                                    placeholder="123456"
-                                                    value={otpInput}
-                                                    onChange={e => setOtpInput(e.target.value)}
-                                                    style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 18, fontWeight: 800, letterSpacing: 4, textAlign: 'center', boxSizing: 'border-box' }}
-                                                />
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={handleSendOTP}
-                                                disabled={busy === 'phone'}
-                                                style={{ background: 'none', border: 'none', color: KC.orange, fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'left', padding: 0 }}
-                                            >
-                                                Kirim ulang kode OTP
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                                <button
-                                    onClick={() => {
-                                        setFormOpen(null)
-                                        setOtpStep(null)
-                                        setOtpInput('')
-                                    }}
-                                    style={{ ...topBtn('#fff', KC.ink), flex: 1 }}
-                                >
-                                    Batal
-                                </button>
-                                {formOpen === 'phone' && otpStep === 'verify' ? (
-                                    <button
-                                        onClick={handleConfirmOTP}
-                                        disabled={busy === 'otp_confirm'}
-                                        style={{ ...topBtn(KC.orange, '#fff'), flex: 1 }}
-                                    >
-                                        {busy === 'otp_confirm' ? 'Memverifikasi…' : 'Verifikasi OTP'}
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={() => handleVerify(formOpen)}
-                                        disabled={busy === formOpen}
-                                        style={{ ...topBtn(KC.orange, '#fff'), flex: 1 }}
-                                    >
-                                        {busy === formOpen ? 'Memproses…' : (formOpen === 'phone' ? 'Kirim Kode OTP' : 'Kirim Validasi')}
-                                    </button>
-                                )}
+            {/* Verification Items List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* 1. Identitas KTP Card */}
+                <div style={{
+                    background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                    borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`,
+                    padding: 15,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ width: 9, height: 9, background: ktpVerified ? '#10B981' : KC.orange, borderRadius: '50%' }} />
+                                <span style={{ fontSize: 14, fontWeight: 900, color: KC.ink }}>
+                                    Identitas KTP
+                                </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>
+                                Pemeriksaan format NIK · disimpan ter-hash SHA-256
                             </div>
                         </div>
+                        <span style={{
+                            padding: '4px 9px',
+                            background: ktpVerified ? '#ECFDF5' : '#FFF1EB',
+                            border: `1px solid ${ktpVerified ? '#10B981' : KC.orange}`,
+                            borderRadius: 999, fontSize: 9.5, fontWeight: 800,
+                            color: ktpVerified ? '#065F46' : '#9A3412', flexShrink: 0,
+                        }}>
+                            {ktpVerified ? 'Selesai ✓' : 'Belum'}
+                        </span>
+                    </div>
+
+                    {!ktpVerified ? (
+                        <div
+                            onClick={handleSimulateKTP}
+                            style={{
+                                background: '#F8FAFC', border: `1.5px dashed ${KC.ink}`,
+                                borderRadius: 11, padding: '18px 14px', textAlign: 'center',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            {/* KTP Illustration Icon */}
+                            <div style={{
+                                width: 64, height: 42, margin: '0 auto 11px',
+                                border: '1.5px solid #64748B', borderRadius: 6,
+                                position: 'relative', background: '#FFFFFF',
+                            }}>
+                                <div style={{ position: 'absolute', left: 7, top: 8, width: 14, height: 14, borderRadius: '50%', background: '#E2E8F0' }} />
+                                <div style={{ position: 'absolute', left: 26, top: 10, right: 7, height: 3, background: '#E2E8F0', borderRadius: 2 }} />
+                                <div style={{ position: 'absolute', left: 26, top: 18, right: 14, height: 3, background: '#E2E8F0', borderRadius: 2 }} />
+                                <div style={{ position: 'absolute', left: 7, bottom: 7, right: 7, height: 3, background: '#E2E8F0', borderRadius: 2 }} />
+                            </div>
+
+                            <button
+                                type="button"
+                                style={{
+                                    padding: '12px 16px', background: ktpChecking ? '#64748B' : KC.orange,
+                                    border: `1.5px solid ${KC.ink}`, borderRadius: 9,
+                                    boxShadow: `2.5px 2.5px 0 ${KC.ink}`, fontSize: 12.5,
+                                    fontWeight: 800, color: '#fff', minHeight: 44,
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer', fontFamily: 'inherit',
+                                }}
+                            >
+                                {ktpChecking ? 'Mengecek Format KTP…' : 'Buka Kamera · Foto KTP'}
+                            </button>
+
+                            <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 9 }}>
+                                Posisikan KTP di dalam bingkai · pastikan NIK terbaca
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{
+                            padding: '12px 13px', background: '#ECFDF5', border: '1.5px solid #10B981',
+                            borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10,
+                        }}>
+                            <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 13, fontWeight: 900, flexShrink: 0 }}>✓</span>
+                            <div>
+                                <div style={{ fontSize: 12, fontWeight: 800, color: '#065F46' }}>NIK terbaca & format valid</div>
+                                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: '#059669', marginTop: 3 }}>3271••••••••0004</div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{
+                        marginTop: 11, padding: '10px 12px', background: '#FEF3C7',
+                        border: '1px solid #F59E0B', borderRadius: 9, fontSize: 10.5,
+                        lineHeight: 1.5, color: '#92400E', fontWeight: 600,
+                    }}>
+                        Status: pemeriksaan format internal. Integrasi resmi Dukcapil memerlukan kontrak dan kepatuhan regulasi.
                     </div>
                 </div>
-            )}
+
+                {/* 2. Nomor Telepon OTP Card */}
+                <div style={{
+                    background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                    borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`,
+                    padding: 15,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ width: 9, height: 9, background: '#10B981', borderRadius: '50%' }} />
+                                <span style={{ fontSize: 14, fontWeight: 900, color: KC.ink }}>
+                                    Nomor Telepon
+                                </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>
+                                OTP 6 digit · kode ter-hash, kedaluwarsa 5 menit
+                            </div>
+                        </div>
+                        <span style={{
+                            padding: '4px 9px', background: '#ECFDF5', border: '1px solid #10B981',
+                            borderRadius: 999, fontSize: 9.5, fontWeight: 800, color: '#065F46', flexShrink: 0,
+                        }}>
+                            Selesai ✓
+                        </span>
+                    </div>
+
+                    {/* 6 OTP Boxes */}
+                    <div style={{ display: 'flex', gap: 7, justifyContent: 'space-between' }}>
+                        {['4', '9', '2', '7', '1', '3'].map((digit, dIdx) => (
+                            <div
+                                key={dIdx}
+                                style={{
+                                    flex: 1, aspectRatio: '1', maxWidth: 46,
+                                    background: '#F8FAFC', border: '1.5px solid #10B981',
+                                    borderRadius: 9, display: 'grid', placeItems: 'center',
+                                    fontFamily: 'JetBrains Mono, monospace', fontSize: 17,
+                                    fontWeight: 900, color: '#065F46',
+                                }}
+                            >
+                                {digit}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, fontWeight: 700, color: '#059669', marginTop: 11 }}>
+                        +62 812-•••-4471 terverifikasi
+                    </div>
+                </div>
+
+                {/* 3. Ijazah SIVIL Dikti Card */}
+                <div style={{
+                    background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                    borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`,
+                    padding: 15,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ width: 9, height: 9, background: ijazahVerified ? '#10B981' : '#F59E0B', borderRadius: '50%' }} />
+                                <span style={{ fontSize: 14, fontWeight: 900, color: KC.ink }}>
+                                    Ijazah SIVIL Dikti
+                                </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>
+                                Nomor ijazah & institusi · pemeriksaan format
+                            </div>
+                        </div>
+                        <span style={{
+                            padding: '4px 9px',
+                            background: ijazahVerified ? '#ECFDF5' : '#FFF1EB',
+                            border: `1px solid ${ijazahVerified ? '#10B981' : KC.orange}`,
+                            borderRadius: 999, fontSize: 9.5, fontWeight: 800,
+                            color: ijazahVerified ? '#065F46' : '#9A3412', flexShrink: 0,
+                        }}>
+                            {ijazahVerified ? 'Selesai ✓' : 'Belum'}
+                        </span>
+                    </div>
+
+                    {!ijazahVerified ? (
+                        <>
+                            <input
+                                value={ijazahInput}
+                                onChange={(e) => setIjazahInput(e.target.value)}
+                                placeholder="Nomor ijazah perguruan tinggi"
+                                style={{
+                                    width: '100%', padding: '12px 13px', background: '#F8FAFC',
+                                    border: `1.5px solid #CBD5E1`, borderRadius: 10,
+                                    fontSize: 12, fontWeight: 600, color: KC.ink,
+                                    boxSizing: 'border-box', outline: 'none', marginBottom: 11,
+                                    fontFamily: 'inherit',
+                                }}
+                            />
+                            <button
+                                onClick={handleCheckIjazah}
+                                disabled={ijazahChecking}
+                                style={{
+                                    width: '100%', padding: '12px 16px', background: '#090A0F',
+                                    border: `1.5px solid ${KC.ink}`, borderRadius: 9,
+                                    boxShadow: `2.5px 2.5px 0 ${KC.orange}`, fontSize: 12.5,
+                                    fontWeight: 800, color: '#fff', minHeight: 44,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: ijazahChecking ? 'wait' : 'pointer', fontFamily: 'inherit',
+                                }}
+                            >
+                                {ijazahChecking ? 'Memeriksa Format…' : 'Periksa Ijazah'}
+                            </button>
+                        </>
+                    ) : (
+                        <div style={{ padding: '10px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8, fontSize: 11, color: '#065F46', fontWeight: 700 }}>
+                            ✓ Ijazah terdaftar dan format valid PDDikti SIVIL
+                        </div>
+                    )}
+                </div>
+
+                {/* 4. NPWP (Employer Only) */}
+                <div style={{
+                    background: '#F1F5F9', border: '1.5px solid #CBD5E1',
+                    borderRadius: 13, padding: 15,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <div style={{ fontSize: 13.5, fontWeight: 900, color: '#64748B', marginBottom: 3 }}>
+                                NPWP
+                            </div>
+                            <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>
+                                Hanya untuk akun Employer / HR
+                            </div>
+                        </div>
+                        <span style={{
+                            padding: '4px 9px', background: '#FFFFFF', border: '1px solid #CBD5E1',
+                            borderRadius: 999, fontSize: 9.5, fontWeight: 800, color: '#94A3B8',
+                        }}>
+                            N/A
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
     )
 }

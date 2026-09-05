@@ -12,15 +12,15 @@ export default function CVUploader() {
     const [activeTab, setActiveTab] = useState('upload') // 'upload' | 'manual'
 
     const [manualForm, setManualForm] = useState({
-        full_name: profile?.full_name || 'Budi Santoso',
+        full_name: profile?.full_name || '',
         nik: profile?.nik || '',
         date_of_birth: profile?.date_of_birth || '',
         region_code: profile?.region_code || '3171',
         skillInput: '',
-        skills: (profile?.skills || ['Go', 'PostgreSQL', 'Docker', 'REST API']).map(s => typeof s === 'string' ? s : s.name),
-        headline: profile?.headline || 'Senior Backend Engineer',
-        salary_expectation_min: profile?.salary_expectation_min || '25000000',
-        salary_expectation_max: profile?.salary_expectation_max || '40000000',
+        skills: (profile?.skills || []).map(s => typeof s === 'string' ? s : s.name),
+        headline: profile?.headline || '',
+        salary_expectation_min: profile?.salary_expectation_min || '',
+        salary_expectation_max: profile?.salary_expectation_max || '',
     })
 
     const [manualSaving, setManualSaving] = useState(false)
@@ -30,7 +30,9 @@ export default function CVUploader() {
             setManualForm(prev => ({
                 ...prev,
                 full_name: profile.full_name || prev.full_name,
-                skills: (profile.skills || prev.skills).map(s => typeof s === 'string' ? s : s.name),
+                skills: (profile.skills && profile.skills.length > 0)
+                    ? profile.skills.map(s => typeof s === 'string' ? s : s.name)
+                    : prev.skills,
                 headline: profile.headline || prev.headline,
             }))
         }
@@ -181,7 +183,9 @@ export default function CVUploader() {
                                     </div>
                                     <div style={{ textAlign: 'left' }}>
                                         <div style={{ fontSize: 13, fontWeight: 800, color: KC.ink }}>CV Aktif Terindeks</div>
-                                        <div style={{ fontSize: 11, color: KC.mute }}>Dokumen_Resume_Budi.pdf</div>
+                                        <div style={{ fontSize: 11, color: KC.mute }}>
+                                            {profile?.full_name ? `Resume_${profile.full_name.replace(/\s+/g, '_')}.pdf` : 'Dokumen_CV_Terindeks.pdf'}
+                                        </div>
                                     </div>
                                 </div>
                                 <button onClick={() => navigate('seeker-match')} className="kc-btn" style={{ ...topBtn(KC.orange, '#fff'), padding: '6px 14px', fontSize: 12 }}>

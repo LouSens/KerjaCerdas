@@ -162,6 +162,16 @@ export default function App() {
                         <AppShell><ApplicationsPage /></AppShell>
                     </ProtectedRoute>
                 } />
+                <Route path="/advisor" element={
+                    <ProtectedRoute role="seeker">
+                        <AppShell><FloatingAdvisor asPage={true} /></AppShell>
+                    </ProtectedRoute>
+                } />
+                <Route path="/onboarding" element={
+                    <ProtectedRoute role="seeker">
+                        <OnboardingWizard isPage={true} />
+                    </ProtectedRoute>
+                } />
 
                 {/* ── Employer routes ───────────────────────── */}
                 <Route path="/employer/dashboard" element={

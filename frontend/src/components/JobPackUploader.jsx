@@ -1,17 +1,14 @@
-/**
- * JobPackUploader — Clean enterprise bulk PDF job pack uploader.
- */
 import { useState, useRef } from 'react'
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
-import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'
+import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
+import { UploadCloud, CheckCircle2, ArrowRight } from 'lucide-react'
 
 export default function JobPackUploader() {
     const { uploadJobPack, jobPackUploading, navigate } = useStore()
-    const [dragActive, setDragActive] = useState(false)
     const [selectedFile, setSelectedFile] = useState(null)
-    const [successResult, setSuccessResult] = useState(null)
+    const [isParsing, setIsParsing] = useState(false)
+    const [parsedResult, setParsedResult] = useState(null)
     const inputRef = useRef(null)
 
     const handleFile = async (file) => {
@@ -21,113 +18,240 @@ export default function JobPackUploader() {
             return
         }
         setSelectedFile(file)
-        // uploadJobPack (store action) already handles its own success/error
-        // toasts and never rethrows, so no try/catch or duplicate toast here.
-        const res = await uploadJobPack(file)
-        if (res) setSuccessResult(res)
+        setIsParsing(true)
+
+        try {
+            const res = await uploadJobPack(file)
+            setIsParsing(false)
+            if (!res || (!res.created_job_ids?.length && !res.jobs?.length)) {
+                toast.error('Tidak ada lowongan yang berhasil diurai dari berkas PDF ini.')
+                setSelectedFile(null)
+                setParsedResult(null)
+                return
+            }
+
+            const jobsList = (res.jobs && res.jobs.length > 0)
+                ? res.jobs
+                : res.created_job_ids.map((id, idx) => ({
+                    id,
+                    title: `Lowongan Terunggah #${idx + 1}`,
+                    details: `ID: ${id.slice(0, 8)} · Berhasil diekstrak dari dokumen`,
+                    valid: true,
+                }))
+
+            setParsedResult({
+                fileName: file.name,
+                time: '< 2 s',
+                jobs: jobsList,
+            })
+        } catch (e) {
+            setIsParsing(false)
+            setSelectedFile(null)
+            setParsedResult(null)
+        }
+    }
+
+    const handleViewJobs = async () => {
+        await useStore.getState().refreshEmployerJobs()
+        toast.success(`${parsedResult?.jobs?.length || 0} lowongan berhasil dipublikasikan dan siap dikelola!`)
+        navigate('employer-jobs')
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <DesignStyles />
 
-            {/* Header */}
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
-                        Bulk Upload Lowongan (Job Pack PDF)
+                    <h1 style={{ font: '900 21px/1.1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.9px', color: KC.ink, margin: '0 0 5px' }}>
+                        Upload Job Pack
                     </h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Unggah 1 dokumen PDF kompilasi — AI otomatis mengekstrak seluruh posisi ke dalam sistem
-                    </p>
+                    <div style={{ font: '600 11.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                        Satu PDF berisi banyak lowongan sekaligus. AI memecahnya jadi entri terstruktur — dari jam menjadi detik.
+                    </div>
                 </div>
-                <button onClick={() => navigate('employer-post-job')} style={topBtn('#fff')}>
-                    Input Manual Lowongan →
+                <button
+                    onClick={() => navigate('employer-post-job')}
+                    style={{ ...topBtn('#fff', KC.ink), padding: '6px 12px', fontSize: 12, flexShrink: 0 }}
+                >
+                    Manual →
                 </button>
-            </header>
+            </div>
 
-            {/* Main Upload Box */}
-            <div className="kc-grid-main">
-                <BrutalCard color="#FFFFFF" padding={32} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
+            {/* Dropzone Box */}
+            <input
+                ref={inputRef}
+                type="file"
+                accept=".pdf"
+                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+                style={{ display: 'none' }}
+            />
+
+            {!parsedResult ? (
+                <>
                     <div
-                        onDragOver={(e) => { e.preventDefault(); setDragActive(true) }}
-                        onDragLeave={() => setDragActive(false)}
-                        onDrop={(e) => {
-                            e.preventDefault()
-                            setDragActive(false)
-                            if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0])
-                        }}
                         onClick={() => inputRef.current?.click()}
                         style={{
-                            width: '100%',
-                            padding: '40px 20px',
-                            border: `2px dashed ${dragActive ? KC.orange : KC.ink}`,
-                            borderRadius: 10,
-                            background: dragActive ? KC.orangeSoft : KC.surface,
+                            background: '#fff',
+                            border: `1.5px dashed ${KC.ink}`,
+                            borderRadius: 14,
+                            boxShadow: `3px 3px 0 ${KC.ink}`,
+                            padding: '26px 18px',
+                            textAlign: 'center',
                             cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 12,
-                            boxSizing: 'border-box',
-                            transition: 'all 0.15s ease',
+                            animation: 'kcUp .4s both',
                         }}
                     >
-                        <input
-                            ref={inputRef}
-                            type="file"
-                            accept=".pdf"
-                            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-                            style={{ display: 'none' }}
-                        />
-                        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', color: KC.ink }}>
-                            <UploadCloud size={26} />
+                        <div style={{ width: 52, height: 52, margin: '0 auto 12px', borderRadius: 13, background: '#FFF1EB', border: `1.5px solid ${KC.orange}`, display: 'grid', placeItems: 'center' }}>
+                            <div style={{ width: 0, height: 0, borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderBottom: `13px solid ${KC.orange}` }} />
+                        </div>
+                        <div style={{ font: '800 14.5px/1.3 "Plus Jakarta Sans", sans-serif', color: KC.ink, marginBottom: 5 }}>
+                            {isParsing ? 'Mengurai Job Pack PDF…' : 'Ketuk untuk pilih Job Pack PDF'}
+                        </div>
+                        <div style={{ font: '400 11.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                            Maks 10 MB · header %PDF- divalidasi
+                        </div>
+                        <button
+                            type="button"
+                            className="kc-btn"
+                            style={{
+                                marginTop: 14,
+                                padding: '12px 18px',
+                                background: isParsing ? '#64748B' : KC.orange,
+                                color: '#fff',
+                                border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 10,
+                                boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                                font: '800 13.5px/1 "Plus Jakarta Sans", sans-serif',
+                                minHeight: 44,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            {isParsing ? 'Memproses Berkas…' : 'Pilih Berkas PDF'}
+                        </button>
+                    </div>
+
+                    <div style={{ background: '#FEF3C7', border: '1.5px solid #F59E0B', borderRadius: 12, padding: '13px 15px' }}>
+                        <div style={{ font: '800 12px/1.3 "Plus Jakarta Sans", sans-serif', color: '#92400E', marginBottom: 4 }}>
+                            Format yang bekerja paling baik
+                        </div>
+                        <div style={{ font: '400 11.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#92400E' }}>
+                            Satu lowongan per halaman, judul sebagai heading, keahlian dalam bullet. Hasil parsing tetap bisa diedit sebelum publikasi.
+                        </div>
+                    </div>
+                </>
+            ) : (
+                /* Parsed Result Display */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 12, padding: '13px 15px', display: 'flex', alignItems: 'center', gap: 11, animation: 'kcSlideUp .35s both' }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#10B981', display: 'grid', placeItems: 'center', color: '#fff', font: '900 14px/1 "Plus Jakarta Sans", sans-serif', flex: 'none' }}>
+                            ✓
                         </div>
                         <div>
-                            <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: KC.ink }}>
-                                {jobPackUploading ? 'Mengekstrak Dokumen Massal…' : 'Upload Dokumen Job Pack (PDF)'}
-                            </h3>
-                            <p style={{ fontSize: 12, color: KC.mute, margin: 0 }}>
-                                Pilih atau drag & drop berkas PDF hingga 20 lowongan per dokumen (maks. 10 MB).
-                            </p>
+                            <div style={{ font: '800 13px/1.2 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
+                                {parsedResult.fileName} terurai
+                            </div>
+                            <div style={{ font: '700 11px/1.3 "JetBrains Mono", monospace', color: '#059669', marginTop: 2 }}>
+                                {parsedResult.jobs.length} lowongan ditemukan · {parsedResult.time}
+                            </div>
                         </div>
                     </div>
 
-                    {successResult && (
-                        <div style={{ width: '100%', padding: '16px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 8, textAlign: 'left' }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: '#047857', marginBottom: 4 }}>
-                                Ekstraksi Berhasil
-                            </div>
-                            <div style={{ fontSize: 12, color: '#065F46' }}>
-                                Ditemukan 4 lowongan baru siap dipublikasikan ke dasbor rekrutmen.
-                            </div>
+                    <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 15, animation: 'kcSlideUp .35s .07s both' }}>
+                        <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#059669', marginBottom: 12 }}>
+                            Daftar lowongan terunggah · tersimpan di database
                         </div>
-                    )}
-                </BrutalCard>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {parsedResult.jobs.map((job, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: 10,
+                                        paddingBottom: 10,
+                                        borderBottom: idx < parsedResult.jobs.length - 1 ? '1px dashed #E2E8F0' : 'none',
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            width: 19,
+                                            height: 19,
+                                            borderRadius: 5,
+                                            background: '#10B981',
+                                            border: '1.5px solid #10B981',
+                                            display: 'grid',
+                                            placeItems: 'center',
+                                            color: '#fff',
+                                            font: '900 11px/1 "Plus Jakarta Sans", sans-serif',
+                                            flex: 'none',
+                                            marginTop: 1,
+                                        }}
+                                    >
+                                        ✓
+                                    </span>
+                                    <div>
+                                        <div style={{ font: '800 12.5px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
+                                            {job.title}
+                                        </div>
+                                        <div style={{ font: '600 10.5px/1.35 "Plus Jakarta Sans", sans-serif', color: '#64748B', marginTop: 3 }}>
+                                            {job.details}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-                {/* Right Column: Spec Tips */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <BrutalCard color="#FFFFFF" padding={22}>
-                        <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.ink, margin: '0 0 12px' }}>
-                            Spesifikasi Dokumen Job Pack
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: KC.inkLight, lineHeight: 1.45 }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} style={{ flexShrink: 0, marginTop: 1 }} />
-                                <span>Gunakan judul posisi yang jelas pada tiap halaman.</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} style={{ flexShrink: 0, marginTop: 1 }} />
-                                <span>Sertakan daftar keahlian utama dan rentang kompensasi.</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} style={{ flexShrink: 0, marginTop: 1 }} />
-                                <span>Format dokumen teks terstruktur (bukan gambar raster).</span>
-                            </div>
-                        </div>
-                    </BrutalCard>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <button
+                            onClick={() => { setParsedResult(null); setSelectedFile(null); }}
+                            className="kc-btn"
+                            style={{
+                                flex: 'none',
+                                padding: '14px 16px',
+                                background: '#fff',
+                                border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 11,
+                                boxShadow: `3px 3px 0 ${KC.ink}`,
+                                font: '800 12.5px/1 "Plus Jakarta Sans", sans-serif',
+                                color: KC.ink,
+                                cursor: 'pointer',
+                                minHeight: 48,
+                                display: 'flex',
+                                alignItems: 'center',
+                            }}
+                        >
+                            ← Unggah Ulang
+                        </button>
+                        <button
+                            onClick={handleViewJobs}
+                            className="kc-btn"
+                            style={{
+                                flex: 1,
+                                padding: 14,
+                                background: KC.ink,
+                                border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 11,
+                                boxShadow: `3px 3px 0 ${KC.orange}`,
+                                font: '800 13.5px/1 "Plus Jakarta Sans", sans-serif',
+                                color: '#fff',
+                                minHeight: 48,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                animation: 'kcSlideUp .35s .14s both',
+                            }}
+                        >
+                            Buka Kelola Lowongan ({parsedResult.jobs.length}) →
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     )
 }

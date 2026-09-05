@@ -100,6 +100,20 @@ const AUTH_CSS = `
 }
 
 @media (max-width: 640px) {
+  .kc-auth-wrapper {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .kc-auth-content {
+    border-radius: 22px 22px 0 0 !important;
+    border-bottom: none !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.25) !important;
+  }
+  .kc-auth-drag-handle {
+    display: grid !important;
+  }
   .kc-auth-left {
     display: none !important;
   }
@@ -375,6 +389,11 @@ export default function AuthModal() {
 
                 {/* ─── RIGHT INTERACTIVE FORM COLUMN ─── */}
                 <div style={{ padding: '32px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    {/* Mobile Bottom Sheet Handle (Frame 00b) */}
+                    <div className="kc-auth-drag-handle" style={{ display: 'none', placeItems: 'center', marginBottom: 14 }}>
+                        <div style={{ width: 44, height: 5, background: '#CBD5E1', borderRadius: 999 }} />
+                    </div>
+
                     {/* Top Action Bar (Close & Tab Switcher) */}
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -637,6 +656,31 @@ export default function AuthModal() {
                                     <span>Buat Akun Sekarang →</span>
                                 )}
                             </button>
+
+                            {/* Demo Accounts Helper (Frame 00b) */}
+                            <div style={{
+                                marginTop: 12, padding: '10px 12px', background: '#F1F5F9',
+                                border: '1px solid #E2E8F0', borderRadius: 9,
+                                fontSize: 11, lineHeight: 1.5, color: '#64748B', fontFamily: FONT,
+                            }}>
+                                Akun demo:{' '}
+                                <b
+                                    style={{ color: '#090A0F', cursor: 'pointer', textDecoration: 'underline' }}
+                                    onClick={() => { setEmail('budi.santoso@example.com'); setPassword('demo'); setRole('seeker'); }}
+                                    title="Klik untuk mengisi akun seeker"
+                                >
+                                    budi.santoso@example.com
+                                </b>{' '}
+                                /{' '}
+                                <b
+                                    style={{ color: '#090A0F', cursor: 'pointer', textDecoration: 'underline' }}
+                                    onClick={() => { setEmail('hr@goto.id'); setPassword('demo'); setRole('employer'); }}
+                                    title="Klik untuk mengisi akun HR"
+                                >
+                                    hr@goto.id
+                                </b>{' '}
+                                — sandi <b style={{ color: '#090A0F' }}>demo</b>
+                            </div>
                         </form>
                     </div>
 

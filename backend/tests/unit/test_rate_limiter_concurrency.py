@@ -17,10 +17,13 @@ from backend.app.api.middleware.rate_limiter import (
     _ROUTE_LIMITS,
     RateLimiterMiddleware,
     _get_bucket,
+    _get_client_ip,
 )
 
 
-def _make_request(path: str, ip: str = "1.2.3.4") -> Request:
+def _make_request(
+    path: str, ip: str = "1.2.3.4", headers: list[tuple[bytes, bytes]] | None = None
+) -> Request:
     scope = {
         "type": "http",
         "method": "GET",
@@ -28,12 +31,21 @@ def _make_request(path: str, ip: str = "1.2.3.4") -> Request:
         "raw_path": path.encode(),
         "root_path": "",
         "query_string": b"",
-        "headers": [],
+        "headers": headers or [],
         "client": (ip, 12345),
         "scheme": "http",
         "server": ("testserver", 80),
     }
     return Request(scope)
+
+
+class TestClientIpResolution:
+    """`_get_client_ip` must keep ignoring X-Forwarded-For always (it's
+    client-forgeable)."""
+
+    def test_uses_the_tcp_peer(self) -> None:
+        request = _make_request("/", ip="10.0.0.1", headers=[(b"x-forwarded-for", b"203.0.113.9")])
+        assert _get_client_ip(request) == "10.0.0.1"
 
 
 async def _ok(_request):

@@ -140,6 +140,7 @@ async def upload_job_pack(
 
     matcher = SemanticMatcher()
     created: list[str] = []
+    created_jobs: list[dict] = []
     for p in postings:
         raw_edu = (p.get("education_min") or "S1").upper()
         try:
@@ -164,9 +165,20 @@ async def upload_job_pack(
         await matcher.embed_job(job)
         await repos.jobs.upsert(job)
         created.append(job.id)
+        skills_summary = f"{len(job.required_skills)} skill wajib" if job.required_skills else "Persyaratan umum"
+        loc_summary = "Remote" if job.remote_allowed else (job.region_code or "Indonesia")
+        created_jobs.append({
+            "id": job.id,
+            "title": job.title,
+            "details": f"{loc_summary} · {skills_summary} · ID: {job.id[:8]}",
+            "valid": True,
+            "required_skills": job.required_skills,
+            "location": job.region_code,
+        })
 
     return {
         "employer_id": employer.id,
         "created_job_ids": created,
+        "jobs": created_jobs,
         "parsed_offline": any(p.get("_offline") for p in postings),
     }

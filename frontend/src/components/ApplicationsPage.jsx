@@ -1,185 +1,218 @@
 /**
- * ApplicationsPage — Real enterprise milestone tracker for submitted job applications.
+ * ApplicationsPage — Real milestone timeline tracking for submitted job applications (Frame 10).
  */
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'
-import { Send, FileSearch, PhoneCall, CheckCircle2, XCircle, Building2, Calendar, Clock, RefreshCw, Briefcase, ChevronRight } from 'lucide-react'
-
-const STAGES = [
-    { key: 'applied', label: 'Terkirim', icon: Send, color: KC.cyan, bg: KC.cyanSoft },
-    { key: 'reviewed', label: 'Ditinjau HR', icon: FileSearch, color: KC.yellow, bg: KC.yellowSoft },
-    { key: 'interview', label: 'Wawancara', icon: PhoneCall, color: KC.orange, bg: KC.orangeSoft },
-    { key: 'hired', label: 'Diterima', icon: CheckCircle2, color: KC.lime, bg: KC.limeSoft },
-]
+import { KC, DesignStyles } from './_design'
+import { Send, Clock } from 'lucide-react'
 
 export default function ApplicationsPage() {
-    const { applications, applicationsLoading, loadApplications, navigate } = useStore()
-    const [refreshing, setRefreshing] = useState(false)
+    const { applications, loadApplications, navigate } = useStore()
 
     useEffect(() => {
         if (typeof loadApplications === 'function') {
             loadApplications()
         }
-    }, []) // eslint-disable-line
-
-    const handleRefresh = async () => {
-        setRefreshing(true)
-        if (typeof loadApplications === 'function') {
-            await loadApplications()
-        }
-        setRefreshing(false)
-    }
+    }, [loadApplications])
 
     const list = applications || []
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <DesignStyles />
 
-            {/* Header */}
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
-                <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
-                        Riwayat & Status Lamaran
-                    </h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Pantau transparansi tahapan proses rekrutmen aktif Anda secara real-time dari database
-                    </p>
+            {/* Header (Frame 10) */}
+            <div>
+                <h1 style={{
+                    fontSize: 22, fontWeight: 900, letterSpacing: -0.9,
+                    color: KC.ink, margin: '0 0 5px', lineHeight: 1.1,
+                }}>
+                    Lamaran Saya
+                </h1>
+                <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600 }}>
+                    {list.length} lamaran aktif · pelacakan tahapan real-time
                 </div>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <button
-                        className="kc-btn"
-                        onClick={handleRefresh}
-                        disabled={refreshing || applicationsLoading}
-                        style={{ ...topBtn('#fff', KC.ink), opacity: refreshing ? 0.7 : 1 }}
-                        title="Segarkan data dari server"
-                    >
-                        <RefreshCw size={14} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} /> Segarkan
-                    </button>
-                    <button className="kc-btn" onClick={() => navigate('seeker-match')} style={topBtn(KC.orange, '#fff')}>
-                        Lamar Posisi Baru →
-                    </button>
-                </div>
-            </header>
-
-            {/* Empty State */}
-            {!applicationsLoading && list.length === 0 && (
-                <BrutalCard color="#FFFFFF" padding={40}>
-                    <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-                        <div style={{ width: 56, height: 56, borderRadius: '50%', background: KC.yellowSoft, display: 'grid', placeItems: 'center', border: `1.5px solid ${KC.ink}` }}>
-                            <Briefcase size={26} color={KC.ink} />
-                        </div>
-                        <h2 style={{ fontSize: 20, fontWeight: 900, color: KC.ink, margin: 0 }}>
-                            Belum Ada Lamaran Aktif
-                        </h2>
-                        <p style={{ fontSize: 14, color: KC.mute, maxWidth: 460, margin: 0, lineHeight: 1.5 }}>
-                            Anda belum mengirimkan lamaran pekerjaan. Temukan lowongan yang selaras dengan profil kompetensi Anda dan lamar sekarang.
-                        </p>
-                        <button
-                            className="kc-btn"
-                            onClick={() => navigate('seeker-match')}
-                            style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 24px', fontSize: 13, marginTop: 8 }}
-                        >
-                            Jelajahi Rekomendasi Karir AI →
-                        </button>
-                    </div>
-                </BrutalCard>
-            )}
+            </div>
 
             {/* Application List */}
-            <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {list.map((app, idx) => {
-                    const normalizedStatus = (app.status || 'applied').toLowerCase()
-                    const isRejected = normalizedStatus === 'rejected'
-                    const isHired = normalizedStatus === 'hired' || normalizedStatus === 'offered'
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+                {list.length === 0 ? (
+                    <div style={{
+                        background: '#FFFFFF',
+                        border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 13,
+                        boxShadow: `3px 3px 0 ${KC.ink}`,
+                        padding: '36px 20px',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 12,
+                    }}>
+                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F1F5F9', display: 'grid', placeItems: 'center', border: `1.5px solid ${KC.ink}` }}>
+                            <Send size={22} color={KC.ink} />
+                        </div>
+                        <h3 style={{ fontSize: 16, fontWeight: 900, color: KC.ink, margin: 0 }}>
+                            Belum Ada Lamaran Aktif
+                        </h3>
+                        <p style={{ fontSize: 12, color: '#64748B', margin: 0, maxWidth: 360 }}>
+                            Lamaran yang Anda kirimkan ke perusahaan akan terlacak secara otomatis di sini beserta tahapan status rekrutmen.
+                        </p>
+                        <button
+                            onClick={() => navigate('search')}
+                            className="kc-btn"
+                            style={{
+                                marginTop: 6,
+                                padding: '11px 20px',
+                                background: KC.orange,
+                                border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 9,
+                                boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                                font: '800 12px/1 "Plus Jakarta Sans", sans-serif',
+                                color: '#fff',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Jelajahi Lowongan Pekerjaan →
+                        </button>
+                    </div>
+                ) : (
+                    list.map((app, idx) => {
+                        // Status mapping
+                        const status = (app.status || 'applied').toLowerCase()
+                        const stageIndex = app.stageIndex ?? (
+                            status === 'hired' ? 4 :
+                            status === 'interview' || status === 'shortlisted' ? 3 :
+                            status === 'reviewed' ? 2 : 1
+                        )
+                        const isShortlisted = status === 'shortlisted' || status === 'interview'
+                        const isReviewed = status === 'reviewed'
 
-                    let activeIdx = STAGES.findIndex(s => s.key === normalizedStatus)
-                    if (isHired) activeIdx = 3
-                    if (activeIdx < 0) activeIdx = 0
+                        const company = app.company || app.company_name || 'Perusahaan Pemberi Kerja'
+                        const title = app.title || app.job_title || 'Posisi Pekerjaan'
+                        const badgeText = isShortlisted ? 'Shortlisted' : isReviewed ? 'Ditinjau' : 'Terkirim'
 
-                    const activeStage = isRejected
-                        ? { key: 'rejected', label: 'Ditolak', icon: XCircle, color: '#DC2626', bg: '#FEE2E2' }
-                        : isHired
-                        ? { key: 'hired', label: 'Diterima', icon: CheckCircle2, color: KC.lime, bg: KC.limeSoft }
-                        : STAGES[activeIdx]
+                        const dateText = app.created_at
+                            ? new Date(app.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : null
 
-                    return (
-                        <BrutalCard key={app.id || app.application_id || idx} color="#FFFFFF" padding={22}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                        <span style={{ fontSize: 13, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <Building2 size={14} /> {app.company || 'Perusahaan Mitra'}
-                                        </span>
-                                        <Tag color={activeStage.bg} ink={activeStage.color} border={activeStage.color} size="sm">
-                                            {activeStage.label}
-                                        </Tag>
+                        return (
+                            <div
+                                key={app.id || idx}
+                                style={{
+                                    background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                                    borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`,
+                                    padding: 15, animation: 'kcUp .4s both',
+                                }}
+                            >
+                                {/* Header */}
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
+                                    <div>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 4 }}>
+                                            {company}
+                                        </div>
+                                        <div style={{ fontSize: 15.5, fontWeight: 900, letterSpacing: -0.5, color: KC.ink }}>
+                                            {title}
+                                        </div>
                                     </div>
-                                    <h3 style={{ fontSize: 18, fontWeight: 900, margin: '0 0 4px', color: KC.ink, letterSpacing: -0.3 }}>
-                                        {app.title}
-                                    </h3>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: KC.mute, flexWrap: 'wrap' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <Calendar size={13} /> Dikirim: {app.applied_at || 'Baru saja'}
-                                        </span>
-                                        {app.updated_at && app.updated_at !== app.applied_at && (
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                <Clock size={13} /> Pembaruan: {app.updated_at}
-                                            </span>
-                                        )}
+                                    <span style={{
+                                        padding: '5px 10px',
+                                        background: isShortlisted ? '#EEF2FF' : isReviewed ? '#FEF3C7' : '#F1F5F9',
+                                        border: `1px solid ${isShortlisted ? '#6366F1' : isReviewed ? '#F59E0B' : '#CBD5E1'}`,
+                                        borderRadius: 999, fontSize: 10, fontWeight: 800,
+                                        color: isShortlisted ? '#3730A3' : isReviewed ? '#B45309' : '#475569',
+                                        flexShrink: 0, whiteSpace: 'nowrap',
+                                    }}>
+                                        {badgeText}
+                                    </span>
+                                </div>
+
+                                {/* 4-Step Milestone Stepper (Frame 10) */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 10 }}>
+                                    {/* Step 1: Terkirim */}
+                                    <div style={{
+                                        width: 22, height: 22, borderRadius: '50%',
+                                        background: '#10B981', border: `1.5px solid ${KC.ink}`,
+                                        display: 'grid', placeItems: 'center', fontSize: 11,
+                                        fontWeight: 900, color: '#fff', flexShrink: 0,
+                                    }}>
+                                        ✓
+                                    </div>
+
+                                    <div style={{ flex: 1, height: 3, background: stageIndex >= 2 ? (stageIndex >= 3 ? '#10B981' : '#F59E0B') : '#E2E8F0' }} />
+
+                                    {/* Step 2: Ditinjau */}
+                                    <div style={{
+                                        width: 22, height: 22, borderRadius: '50%',
+                                        background: stageIndex >= 3 ? '#10B981' : stageIndex === 2 ? '#F59E0B' : '#fff',
+                                        border: `1.5px solid ${stageIndex >= 2 ? KC.ink : '#CBD5E1'}`,
+                                        boxShadow: stageIndex === 2 ? '0 0 0 4px rgba(245,158,11,.2)' : 'none',
+                                        display: 'grid', placeItems: 'center', fontSize: stageIndex >= 3 ? 11 : 10,
+                                        fontWeight: 900, color: stageIndex >= 2 ? '#fff' : '#94A3B8', flexShrink: 0,
+                                    }}>
+                                        {stageIndex >= 3 ? '✓' : 2}
+                                    </div>
+
+                                    <div style={{ flex: 1, height: 3, background: stageIndex >= 3 ? '#6366F1' : '#E2E8F0' }} />
+
+                                    {/* Step 3: Wawancara */}
+                                    <div style={{
+                                        width: 22, height: 22, borderRadius: '50%',
+                                        background: stageIndex === 3 ? '#6366F1' : '#fff',
+                                        border: `1.5px solid ${stageIndex >= 3 ? KC.ink : '#CBD5E1'}`,
+                                        boxShadow: stageIndex === 3 ? '0 0 0 4px rgba(99,102,241,.2)' : 'none',
+                                        display: 'grid', placeItems: 'center', fontSize: 10,
+                                        fontWeight: 900, color: stageIndex === 3 ? '#fff' : '#94A3B8', flexShrink: 0,
+                                    }}>
+                                        3
+                                    </div>
+
+                                    <div style={{ flex: 1, height: 3, background: '#E2E8F0' }} />
+
+                                    {/* Step 4: Hasil */}
+                                    <div style={{
+                                        width: 22, height: 22, borderRadius: '50%',
+                                        background: stageIndex >= 4 ? '#10B981' : '#fff',
+                                        border: `1.5px solid ${stageIndex >= 4 ? KC.ink : '#CBD5E1'}`,
+                                        display: 'grid', placeItems: 'center', fontSize: 10,
+                                        fontWeight: 900, color: stageIndex >= 4 ? '#fff' : '#94A3B8', flexShrink: 0,
+                                    }}>
+                                        {stageIndex >= 4 ? '✓' : 4}
                                     </div>
                                 </div>
+
+                                {/* Stepper Labels */}
+                                <div style={{
+                                    display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono, monospace',
+                                    fontSize: 9, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.3,
+                                    marginBottom: app.note ? 12 : 0,
+                                }}>
+                                    <span>Terkirim</span>
+                                    <span style={{ color: stageIndex === 2 ? '#B45309' : undefined }}>Ditinjau</span>
+                                    <span style={{ color: stageIndex === 3 ? '#3730A3' : undefined }}>Wawancara</span>
+                                    <span style={{ color: stageIndex >= 4 ? '#065F46' : undefined }}>Hasil</span>
+                                </div>
+
+                                {/* Dynamic Note / Schedule box */}
+                                {app.note && (
+                                    <div style={{
+                                        padding: '11px 12px', background: '#EEF2FF', border: '1px solid #6366F1',
+                                        borderRadius: 9, fontSize: 11.5, lineHeight: 1.5, color: '#3730A3', fontWeight: 600,
+                                        marginTop: 8,
+                                    }}>
+                                        Catatan Perusahaan: <b>{app.note}</b>
+                                    </div>
+                                )}
+
+                                {dateText && (
+                                    <div style={{ fontSize: 10.5, color: '#94A3B8', fontWeight: 600, marginTop: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <Clock size={12} /> Dikirim pada {dateText}
+                                    </div>
+                                )}
                             </div>
-
-                            {/* Stepper Timeline */}
-                            {!isRejected ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, margin: '14px 0 16px', position: 'relative' }}>
-                                    {STAGES.map((stage, sIdx) => {
-                                        const isDone = sIdx <= activeIdx
-                                        const isCurrent = sIdx === activeIdx
-                                        const IconComp = stage.icon
-
-                                        return (
-                                            <div key={stage.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center' }}>
-                                                <div
-                                                    style={{
-                                                        width: 34,
-                                                        height: 34,
-                                                        borderRadius: '50%',
-                                                        border: `1.5px solid ${isDone ? KC.ink : KC.borderMuted}`,
-                                                        background: isCurrent ? stage.color : isDone ? KC.ink : KC.surfaceAlt,
-                                                        color: isDone ? '#fff' : KC.mute,
-                                                        display: 'grid',
-                                                        placeItems: 'center',
-                                                        boxShadow: isCurrent ? `2px 2px 0 ${KC.ink}` : 'none',
-                                                        transition: 'all 0.2s ease',
-                                                    }}
-                                                >
-                                                    <IconComp size={15} />
-                                                </div>
-                                                <span style={{ fontSize: 11, fontWeight: isCurrent ? 800 : 600, color: isCurrent ? KC.ink : KC.mute }}>
-                                                    {stage.label}
-                                                </span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            ) : (
-                                <div style={{ padding: '10px 14px', background: '#FEE2E2', border: '1px solid #F87171', borderRadius: 8, fontSize: 12, color: '#991B1B', margin: '12px 0' }}>
-                                    <b>Tahapan Selesai:</b> Proses seleksi untuk posisi ini telah ditutup.
-                                </div>
-                            )}
-
-                            {/* Real Status Note from Recruiter / DB */}
-                            {app.note && (
-                                <div style={{ padding: '12px 14px', background: KC.surface, border: `1px solid ${KC.ash}`, borderRadius: 8, fontSize: 12, color: KC.inkLight, lineHeight: 1.45 }}>
-                                    <b>Catatan Tahapan Rekruter:</b> {app.note}
-                                </div>
-                            )}
-                        </BrutalCard>
-                    )
-                })}
+                        )
+                    })
+                )}
             </div>
         </div>
     )

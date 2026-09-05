@@ -28,22 +28,10 @@ EVICTION
   currently at its limit, so an attacker cannot clear their own throttle by
   pushing other entries into the map.
 
-SCALE-OUT NOTE:
-  This implementation is process-local. In a multi-instance deployment
-  (Replit autoscale, Docker swarm, k8s) each instance maintains its own
-  counters, so the effective per-IP limit is (N_instances × per-instance limit).
-  Migrate to a Redis-backed sliding-window limiter before scaling beyond
-  a single instance. The settings.redis_url config key is already prepared.
-
-  Redis implementation sketch:
-    key = f"rl:{ip}:{bucket}"
-    now_ms = int(time.time() * 1000)
-    pipe = redis.pipeline()
-    pipe.zremrangebyscore(key, 0, now_ms - window_ms)
-    pipe.zadd(key, {str(now_ms): now_ms})
-    pipe.zcard(key)
-    pipe.expire(key, window_seconds + 1)
-    _, _, count, _ = await pipe.execute()
+SCALE-OUT:
+  In a multi-instance deployment (Replit autoscale, Docker swarm, k8s) the
+  in-process counters below are per-instance, so the effective per-IP limit
+  silently becomes (N_instances × per-instance limit).
 """
 
 from __future__ import annotations
@@ -100,18 +88,13 @@ _STALE_AFTER_SECONDS = 3600
 
 
 def _get_client_ip(request: Request) -> str:
-    """Extract the client IP from the transport layer.
+    """Extract the client IP.
 
-    X-Forwarded-For is intentionally ignored: it is a request header that any
-    client can set to an arbitrary value, which would allow trivial rate-limit
-    bypass (rotating the header on each request makes every request appear to
-    come from a distinct IP).  In a direct-to-internet deployment the real
-    peer address reported by the TCP stack is the only trustworthy source.
-
-    If this service is ever placed behind a trusted reverse proxy (nginx,
-    Caddy, AWS ALB, …), configure the proxy to *overwrite* (not append)
-    a custom trusted header and read only that header here — do not blindly
-    trust the client-supplied X-Forwarded-For.
+    X-Forwarded-For is intentionally never trusted here: it is a request
+    header that any client can set to an arbitrary value, which would allow
+    trivial rate-limit bypass (rotating the header on each request makes
+    every request appear to come from a distinct IP). The real peer address
+    reported by the TCP stack is the only trustworthy source.
     """
     return request.client.host if request.client else "unknown"
 
@@ -130,7 +113,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
 
     Thread-safety: uses an asyncio.Lock per key — safe for async workers.
     Memory: bounded by _MAX_TRACKED_KEYS; LRU eviction prevents leak.
-    Scale: process-local — see module docstring for Redis migration guide.
+    Scale: process-local.
     """
 
     def __init__(self, app: ASGIApp) -> None:
@@ -230,8 +213,8 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         ip = _get_client_ip(request)
         path = request.url.path
         bucket, max_req, window = _get_bucket(path)
-
         key = (ip, bucket)
+
         key_lock = await self._get_or_create_key(key)
 
         async with key_lock:
