@@ -19,19 +19,18 @@ export default function VerificationDashboard() {
     const completedCount = 1 + (ktpVerified ? 1 : 0) + (ijazahVerified ? 1 : 0) // phone verified by default
     const trustScore = Math.round((completedCount / 4) * 100)
 
-    const handleSimulateKTP = () => {
+    const handleSimulateKTP = async () => {
         setKtpChecking(true)
-        setTimeout(async () => {
-            setKtpChecking(false)
+        try {
+            await verifyIdentity({ nik: '3271012345670004', full_name: profile?.full_name || 'Budi Santoso' })
             setKtpVerified(true)
             toast.success('NIK 3271••••••••0004 berhasil divalidasi!')
-            try {
-                await verifyIdentity({ nik: '3271012345670004', full_name: profile?.full_name || 'Budi Santoso' })
-                loadSeekerProfile()
-            } catch (e) {
-                // local state is already verified
-            }
-        }, 1200)
+            await loadSeekerProfile()
+        } catch (e) {
+            toast.error('Verifikasi NIK gagal: ' + (e.message || 'Terjadi kesalahan'))
+        } finally {
+            setKtpChecking(false)
+        }
     }
 
     const handleCheckIjazah = async () => {
@@ -40,17 +39,17 @@ export default function VerificationDashboard() {
             return
         }
         setIjazahChecking(true)
-        setTimeout(async () => {
-            setIjazahChecking(false)
+        try {
+            const institution = profile?.education?.[0]?.institution || 'Institut Teknologi Bandung'
+            await verifyEducation({ ijazah_number: ijazahInput.trim(), institution_name: institution })
             setIjazahVerified(true)
             toast.success('Nomor ijazah terverifikasi via format SIVIL Dikti!')
-            try {
-                await verifyEducation({ ijazah_number: ijazahInput.trim(), institution_name: 'Institut Teknologi Bandung' })
-                loadSeekerProfile()
-            } catch (e) {
-                // local state
-            }
-        }, 1000)
+            await loadSeekerProfile()
+        } catch (e) {
+            toast.error('Verifikasi Ijazah gagal: ' + (e.message || 'Terjadi kesalahan'))
+        } finally {
+            setIjazahChecking(false)
+        }
     }
 
     return (

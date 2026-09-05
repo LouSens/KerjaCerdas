@@ -8,7 +8,8 @@
 
 import toast from 'react-hot-toast'
 
-const API_BASE = '/api/v1'
+const RAW_API_URL = (import.meta.env.VITE_API_URL || '').trim()
+const API_BASE = RAW_API_URL ? `${RAW_API_URL.replace(/\/+$/, '')}/api/v1` : '/api/v1'
 
 let _inMemoryToken = null
 
@@ -259,7 +260,7 @@ export const fetchExperimentAssignments = () =>
     request(`${API_BASE}/experiments/assignments`)
 
 // ── Health ──────────────────────────────────────────────────────────────────
-export const healthCheck = () => request('/health')
+export const healthCheck = () => request(RAW_API_URL ? `${RAW_API_URL.replace(/\/+$/, '')}/health` : '/health')
 
 // ── Pay-to-Unlock candidate contact (3.5) ───────────────────────────────────
 export const unlockCandidate = (jobId, seekerId, paymentToken = 'demo') =>

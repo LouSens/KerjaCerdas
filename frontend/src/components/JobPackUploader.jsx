@@ -24,25 +24,32 @@ export default function JobPackUploader() {
         try {
             const res = await uploadJobPack(file)
             setIsParsing(false)
+            if (!res || (!res.created_job_ids?.length && !res.jobs?.length)) {
+                toast.error('Tidak ada lowongan yang berhasil diurai dari berkas PDF ini.')
+                setSelectedFile(null)
+                setParsedResult(null)
+                return
+            }
+
+            const jobsList = (res.jobs && res.jobs.length > 0)
+                ? res.jobs
+                : res.created_job_ids.map((id, idx) => ({
+                    id,
+                    title: `Lowongan Terunggah #${idx + 1}`,
+                    details: `ID: ${id.slice(0, 8)} · Berhasil diekstrak dari dokumen`,
+                    valid: true,
+                }))
+
             setParsedResult({
                 fileName: file.name,
-                time: '1,2 s',
-                jobs: (res?.created_job_ids && res.created_job_ids.length > 0)
-                    ? res.created_job_ids.map((id, idx) => ({
-                        title: `Lowongan Terunggah #${idx + 1}`,
-                        details: `ID: ${id} · Berhasil diekstraksi dari dokumen Job Pack`,
-                        valid: true,
-                    }))
-                    : [
-                        {
-                            title: 'Lowongan dari Job Pack',
-                            details: `${file.name} · Diproses dan siap dipublikasikan`,
-                            valid: true,
-                        },
-                    ],
+                time: '< 2 s',
+                jobs: jobsList,
             })
+            setSelectedIndices(jobsList.map((_, i) => i))
         } catch (e) {
             setIsParsing(false)
+            setSelectedFile(null)
+            setParsedResult(null)
         }
     }
 
@@ -54,9 +61,13 @@ export default function JobPackUploader() {
         }
     }
 
-    const handlePublishAll = () => {
-        toast.success(`${selectedIndices.length} Lowongan berhasil dipublikasikan!`)
-        useStore.getState().refreshEmployerJobs()
+    const handlePublishAll = async () => {
+        if (selectedIndices.length === 0) {
+            toast.error('Pilih minimal satu lowongan untuk dipublikasikan')
+            return
+        }
+        await useStore.getState().refreshEmployerJobs()
+        toast.success(`${selectedIndices.length} lowongan berhasil dipublikasikan dan tersimpan!`)
         navigate('employer-jobs')
     }
 
@@ -158,7 +169,7 @@ export default function JobPackUploader() {
                                 {parsedResult.fileName} terurai
                             </div>
                             <div style={{ font: '700 11px/1.3 "JetBrains Mono", monospace', color: '#059669', marginTop: 2 }}>
-                                3 lowongan ditemukan · {parsedResult.time}
+                                {parsedResult.jobs.length} lowongan ditemukan · {parsedResult.time}
                             </div>
                         </div>
                     </div>

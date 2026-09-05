@@ -23,11 +23,10 @@ ENV VITE_API_URL=$VITE_API_URL
 COPY . .
 RUN npm run build
 
-# ── prod: serves the built bundle only — no dev server, no source, no node_modules
-# dev-deps. `serve -s` rewrites unknown paths to index.html for React Router. ──
-FROM node:20-alpine AS prod
-WORKDIR /app
-RUN npm install -g serve@14
-COPY --from=build /app/dist ./dist
+# ── prod: serves the built bundle via Nginx with reverse proxy for /api/ and /health,
+# plus SPA fallback routing for React Router. ──
+FROM nginx:alpine AS prod
+ENV BACKEND_URL=http://api:8000
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 3000
-CMD ["serve", "-s", "dist", "-l", "3000"]

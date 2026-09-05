@@ -96,10 +96,7 @@ export default function EmployerPostJob() {
             await refreshEmployerJobs()
             navigate('employer-candidates')
         } catch (err) {
-            // Fallback for demo if offline / backend error
-            toast.success('Lowongan berhasil dipublikasikan!')
-            await refreshEmployerJobs()
-            navigate('employer-candidates')
+            toast.error('Gagal mempublikasikan lowongan: ' + (err.message || 'Terjadi kesalahan'))
         } finally {
             setPublishing(false)
         }
