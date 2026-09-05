@@ -467,11 +467,6 @@ KerjaCerdas/
 │   │       └── settings.py        # Manajemen variabel lingkungan (.env)
 │   ├── tests/                # Unit & Integration Tests (Pytest)
 │   ├── alembic/              # Skrip Migrasi Basis Data (Alembic)
-│   ├── scripts/
-│   │   ├── seed_all.py       # Skrip data utama
-│   │   ├── seed_employers.py # Data Perusahaan
-│   │   ├── seed_seekers.py   # Data Kandidat
-│   │   └── seed_courses.py   # Data Kursus
 │   └── requirements.txt
 │
 ├── frontend/                 # Aplikasi Web React.js (Vite + React Router)
@@ -505,6 +500,12 @@ KerjaCerdas/
 │   │   │   └── useStore.js   # State Management global (Zustand) + Router Bridge
 │   │   └── App.jsx           # Root layout & React Router routing table
 │   └── package.json
+│
+├── scripts/                  # Skrip Data & Seeders (Root)
+│   ├── seed_all.py           # Skrip data utama
+│   ├── seed_employers.py     # Data Perusahaan
+│   ├── seed_seekers.py       # Data Kandidat
+│   └── seed_courses.py       # Data Kursus
 │
 ├── database/                 # Basis Data
 │   └── init.sql              # Dump awal PostgreSQL (pgvector)
