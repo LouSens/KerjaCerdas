@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     matching_experience_weight: float = 0.05
     # Band thresholds for the recruiter shortlist (employer-side). Tunable so
     # they can be calibrated against the real score distribution
-    # (see backend/scripts/benchmark_matching.py). Scores are in [0..1].
+    # (see scripts/benchmark_matching.py). Scores are in [0..1].
     band_strong_threshold: float = 0.65
     band_possible_threshold: float = 0.45
 

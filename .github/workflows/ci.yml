@@ -175,4 +175,4 @@ jobs:
         run: pip install -e "backend/."
 
       - name: Run matching benchmark
-        run: python -m backend.scripts.benchmark_matching --manual-seconds-per-cv 30
+        run: python -m scripts.benchmark_matching --manual-seconds-per-cv 30
