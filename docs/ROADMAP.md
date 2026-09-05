@@ -47,7 +47,7 @@ flowchart LR
 
 1. **Google Cloud SQL (Postgres + pgvector):** Database dipindahkan secara *managed* dengan *Read Replica* menjamin ketersediaan tinggi (*High Availability*) 99.9% Uptime.
 2. **Cloudflare R2 Storage:** Penyimpanan dokumen CV PDF dan berkas identitas menggunakan Cloudflare R2 (gratis 10GB pertama, $0.015/GB setelahnya tanpa biaya *egress*), dengan enkripsi AES-256 pada level aplikasi sebelum berkas diunggah.
-3. **Upstash / Cloud Redis:** Cache semantik untuk komputasi kalkulasi jarak vektor yang identik, memangkas biaya API LLM bulanan hingga 20%, serta menjadi backend penyimpanan terdistribusi untuk `slowapi` rate-limiting.
+3. **Upstash / Cloud Redis:** Cache semantik untuk komputasi kalkulasi jarak vektor yang identik, memangkas biaya API LLM bulanan hingga 20%, serta menjadi backend penyimpanan terdistribusi untuk `RateLimiterMiddleware` (saat ini in-memory, process-local).
 4. **Celery / Background Worker:** Menangani tugas ekstraksi dokumen dan pemrosesan batch secara asinkron terisolasi.
 
 ### 1.3 Fase 3 (Bulan 9 - 18): Privasi Kognitif Mutlak (Vertex AI & B2G Enterprise)
