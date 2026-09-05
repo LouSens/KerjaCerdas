@@ -1,7 +1,23 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, FilledStat, Tag, topBtn, DesignStyles } from './_design'
-import { Briefcase, Users, Sparkles, Eye, Plus, ArrowRight, ShieldCheck, TrendingUp, Building2, MapPin } from 'lucide-react'
+import { Briefcase, Users, Plus, ArrowRight, ShieldCheck, TrendingUp, Building2, MapPin } from 'lucide-react'
+
+function formatRelativeAge(iso) {
+    if (!iso) return null
+    const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+    if (Number.isNaN(days) || days < 0) return null
+    if (days === 0) return 'hari ini'
+    if (days === 1) return '1 hari lalu'
+    return `${days} hari lalu`
+}
+
+function formatSalaryRange(min, max) {
+    if (!min && !max) return null
+    const fmt = (n) => `Rp ${Math.round(n / 1_000_000)}jt`
+    if (min && max) return `${fmt(min)} - ${fmt(max)}`
+    return fmt(min || max)
+}
 
 export default function EmployerDashboard() {
     const { user, employerJobs, refreshEmployerJobs, navigate, navigateToCandidates, employerProfile, loadEmployerProfile } = useStore()
@@ -13,11 +29,9 @@ export default function EmployerDashboard() {
     }, []) // eslint-disable-line
 
     const activeJobs = (employerJobs || []).filter(j => j.is_active !== false)
-    const totalApplications = activeJobs.reduce((sum, j) => sum + (j.application_count || 0), 0) || 287
-    const display = activeJobs.length ? activeJobs.slice(0, 4) : DEMO_JOBS
-    const avgTopMatch = activeJobs.length
-        ? Math.round(activeJobs.reduce((s, j) => s + (j.top_match_avg || 84), 0) / activeJobs.length)
-        : 84
+    const totalApplications = activeJobs.reduce((sum, j) => sum + (j.application_count || 0), 0)
+    const display = activeJobs.slice(0, 4)
+    const verified = employerProfile?.verified === 'verified'
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -30,7 +44,7 @@ export default function EmployerDashboard() {
                         Dashboard Rekrutmen
                     </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Selamat datang kembali, <b>{employerProfile?.company_name || 'GoTo Group'}</b> · {display.length} lowongan aktif terpublikasi
+                        Selamat datang kembali, <b>{employerProfile?.company_name || 'Perusahaan Anda'}</b> · {display.length} lowongan aktif terpublikasi
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -43,8 +57,12 @@ export default function EmployerDashboard() {
                 </div>
             </header>
 
-            {/* Metric KPI Grid */}
-            <div className="kc-grid-4 kc-stagger">
+            {/* Metric KPI Grid — only metrics the backend actually computes.
+                A per-job "avg match rate" and a "shortlisted" count were shown
+                here before, but no endpoint ever populates either field, so
+                they always rendered the same fabricated numbers regardless of
+                real data. */}
+            <div className="kc-grid-2-col kc-stagger">
                 <FilledStat
                     label="Lowongan Aktif"
                     value={String(display.length)}
@@ -59,22 +77,6 @@ export default function EmployerDashboard() {
                     sub="Pada seluruh posisi aktif"
                     icon={<Users size={16} />}
                     accent={KC.cyan}
-                    onClick={() => navigate('employer-candidates')}
-                />
-                <FilledStat
-                    label="Avg Match Rate AI"
-                    value={`${avgTopMatch}%`}
-                    sub="Kesesuaian kandidat teratas"
-                    icon={<Sparkles size={16} />}
-                    accent={KC.yellow}
-                    onClick={() => navigate('employer-candidates')}
-                />
-                <FilledStat
-                    label="Kandidat Shortlisted"
-                    value="42"
-                    sub="Tersimpan dalam review"
-                    icon={<Eye size={16} />}
-                    accent={KC.lime}
                     onClick={() => navigate('employer-candidates')}
                 />
             </div>
@@ -97,46 +99,52 @@ export default function EmployerDashboard() {
                         </button>
                     </div>
 
-                    <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {display.map((j, idx) => (
-                            <BrutalCard key={j.id || idx} color="#FFFFFF" padding={18}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
-                                    <div style={{ flex: '1 1 200px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                            <span style={{ padding: '2px 8px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 6, fontSize: 10, fontWeight: 800, color: '#047857' }}>
-                                                ● LIVE
-                                            </span>
-                                            <span style={{ fontSize: 12, fontWeight: 600, color: KC.mute }}>
-                                                Dipublikasi {j.age || '5 hari lalu'}
-                                            </span>
+                    {display.length === 0 ? (
+                        <BrutalCard color="#FFFFFF" padding={24} style={{ textAlign: 'center', color: KC.mute }}>
+                            Belum ada lowongan aktif. Pasang lowongan pertama untuk mulai menerima pelamar.
+                        </BrutalCard>
+                    ) : (
+                        <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {display.map((j, idx) => (
+                                <BrutalCard key={j.id || idx} color="#FFFFFF" padding={18}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+                                        <div style={{ flex: '1 1 200px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                                <span style={{ padding: '2px 8px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 6, fontSize: 10, fontWeight: 800, color: '#047857' }}>
+                                                    ● LIVE
+                                                </span>
+                                                <span style={{ fontSize: 12, fontWeight: 600, color: KC.mute }}>
+                                                    Dipublikasi {formatRelativeAge(j.created_at) || '—'}
+                                                </span>
+                                            </div>
+                                            <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: KC.ink }}>
+                                                {j.title}
+                                            </h3>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute, flexWrap: 'wrap' }}>
+                                                <span>{j.remote_allowed ? 'Remote' : j.region_code || '—'}</span>
+                                                <span>·</span>
+                                                <span>{formatSalaryRange(j.salary_min, j.salary_max) || '—'}</span>
+                                            </div>
                                         </div>
-                                        <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: KC.ink }}>
-                                            {j.title}
-                                        </h3>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute, flexWrap: 'wrap' }}>
-                                            <span>{j.location || 'Jakarta · Hybrid'}</span>
-                                            <span>·</span>
-                                            <span>{j.salary_range || 'Rp 28jt - Rp 42jt'}</span>
-                                        </div>
-                                    </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: 16, fontWeight: 900, color: KC.ink }}>{j.app || 84}</div>
-                                            <div style={{ fontSize: 10, fontWeight: 700, color: KC.mute, textTransform: 'uppercase' }}>Pelamar</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: 16, fontWeight: 900, color: KC.ink }}>{j.application_count ?? 0}</div>
+                                                <div style={{ fontSize: 10, fontWeight: 700, color: KC.mute, textTransform: 'uppercase' }}>Pelamar</div>
+                                            </div>
+                                            <button
+                                                onClick={() => navigate('employer-candidates')}
+                                                className="kc-btn"
+                                                style={{ ...topBtn(KC.ink, '#fff'), padding: '8px 14px', fontSize: 12 }}
+                                            >
+                                                Review Kandidat →
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => navigate('employer-candidates')}
-                                            className="kc-btn"
-                                            style={{ ...topBtn(KC.ink, '#fff'), padding: '8px 14px', fontSize: 12 }}
-                                        >
-                                            Review Kandidat →
-                                        </button>
                                     </div>
-                                </div>
-                            </BrutalCard>
-                        ))}
-                    </div>
+                                </BrutalCard>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Column: Plan & Verification Status */}
@@ -165,19 +173,25 @@ export default function EmployerDashboard() {
                         </div>
                     </BrutalCard>
 
-                    {/* Trust / Verification Status */}
+                    {/* Trust / Verification Status — reflects the employer's real
+                        `verified` field (unverified/pending/verified/failed) instead
+                        of unconditionally claiming NPWP was verified. */}
                     <BrutalCard color="#FFFFFF" padding={20}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 8, background: KC.limeSoft, border: `1px solid ${KC.lime}`, display: 'grid', placeItems: 'center', color: KC.lime, flexShrink: 0 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: 8, background: verified ? KC.limeSoft : '#FEF3C7', border: `1px solid ${verified ? KC.lime : '#F59E0B'}`, display: 'grid', placeItems: 'center', color: verified ? KC.lime : '#F59E0B', flexShrink: 0 }}>
                                 <ShieldCheck size={20} />
                             </div>
                             <div>
-                                <h4 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 2px', color: KC.ink }}>NPWP Terverifikasi Resmi</h4>
+                                <h4 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 2px', color: KC.ink }}>
+                                    {verified ? 'NPWP Terverifikasi' : 'NPWP Belum Diverifikasi'}
+                                </h4>
                                 <p style={{ fontSize: 12, color: KC.mute, lineHeight: 1.4, margin: '0 0 10px' }}>
-                                    Entitas institusi terdaftar pada pangkalan data DJP Online.
+                                    {verified
+                                        ? 'Entitas institusi terdaftar pada pangkalan data DJP Online (mode demo).'
+                                        : 'Lengkapi verifikasi NPWP agar profil perusahaan Anda tampak lebih tepercaya.'}
                                 </p>
                                 <button onClick={() => navigate('employer-verification')} style={{ ...topBtn('#fff', KC.ink), padding: '6px 12px', fontSize: 11 }}>
-                                    Lihat Sertifikasi Legalitas →
+                                    {verified ? 'Lihat Sertifikasi Legalitas →' : 'Verifikasi Sekarang →'}
                                 </button>
                             </div>
                         </div>
@@ -187,10 +201,3 @@ export default function EmployerDashboard() {
         </div>
     )
 }
-
-const DEMO_JOBS = [
-    { id: 'd1', title: 'Senior Backend Engineer', location: 'Jakarta · Hybrid', salary_range: 'Rp 28jt - Rp 42jt', age: '3 hari lalu', app: 94 },
-    { id: 'd2', title: 'Product Designer (UI/UX)', location: 'Jakarta · Remote', salary_range: 'Rp 18jt - Rp 26jt', age: '7 hari lalu', app: 112 },
-    { id: 'd3', title: 'Tech Lead Infrastructure', location: 'Jakarta · Hybrid', salary_range: 'Rp 35jt - Rp 50jt', age: '12 hari lalu', app: 58 },
-    { id: 'd4', title: 'Data Platform Engineer', location: 'Bandung · Onsite', salary_range: 'Rp 20jt - Rp 32jt', age: '14 hari lalu', app: 23 },
-]

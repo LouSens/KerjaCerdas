@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
 import { KC, BrutalCard, Tag, ScoreDonut, topBtn, DesignStyles } from './_design'
-import { estimateJobPool, _authHeader } from '../services/api'
+import { createEmployerJob, estimateJobPool } from '../services/api'
 import { Sparkles, Building2, CheckCircle2, Users, Plus, X, ArrowRight, ShieldCheck } from 'lucide-react'
 
 export default function EmployerPostJob() {
@@ -20,7 +20,28 @@ export default function EmployerPostJob() {
     })
     const [skillInput, setSkillInput] = useState('')
     const [publishing, setPublishing] = useState(false)
-    const [estimate, setEstimate] = useState({ pool_size: 340, match_score: 88, tip: 'Rentang gaji kompetitif mencakup ~340 talenta aktif.' })
+    const [estimate, setEstimate] = useState(null)
+    const [estimating, setEstimating] = useState(false)
+
+    // Live talent-pool estimate from the real backend endpoint, debounced so it
+    // doesn't fire on every keystroke. Replaces a previously-hardcoded static
+    // panel (pool_size: 340, match_score: 88) that never reflected the form.
+    useEffect(() => {
+        let cancelled = false
+        setEstimating(true)
+        const timer = setTimeout(() => {
+            estimateJobPool({
+                required_skills: form.required_skills,
+                location: form.location,
+                salary_min: Number(form.salary_min) || 0,
+                salary_max: Number(form.salary_max) || 0,
+            })
+                .then((res) => { if (!cancelled) setEstimate(res) })
+                .catch(() => { if (!cancelled) setEstimate(null) })
+                .finally(() => { if (!cancelled) setEstimating(false) })
+        }, 500)
+        return () => { cancelled = true; clearTimeout(timer) }
+    }, [form.required_skills, form.location, form.salary_min, form.salary_max])
 
     const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }))
     const addSkill = () => {
@@ -39,20 +60,15 @@ export default function EmployerPostJob() {
         }
         setPublishing(true)
         try {
-            const res = await fetch('/api/v1/employer/jobs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ..._authHeader() },
-                body: JSON.stringify({
-                    title: form.title,
-                    description: form.description,
-                    required_skills: form.required_skills,
-                    location: form.location,
-                    work_type: form.work_type,
-                    salary_min: Number(form.salary_min) || 0,
-                    salary_max: Number(form.salary_max) || 0,
-                }),
+            await createEmployerJob({
+                title: form.title,
+                description: form.description,
+                required_skills: form.required_skills,
+                location: form.location,
+                work_type: form.work_type,
+                salary_min: Number(form.salary_min) || 0,
+                salary_max: Number(form.salary_max) || 0,
             })
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
             toast.success('Lowongan berhasil dipublikasikan!')
             useStore.getState().refreshEmployerJobs()
             navigate('employer-dashboard')
@@ -282,15 +298,17 @@ export default function EmployerPostJob() {
                             <div>
                                 <span style={{ fontSize: 11, fontWeight: 700, color: KC.mute, textTransform: 'uppercase' }}>Potensi Talenta</span>
                                 <div style={{ fontSize: 28, fontWeight: 900, color: KC.ink, letterSpacing: -0.5 }}>
-                                    ~{estimate.pool_size}
+                                    {estimating ? '…' : estimate ? `~${estimate.pool_size}` : '—'}
                                 </div>
                                 <span style={{ fontSize: 11, color: KC.lime, fontWeight: 700 }}>Kandidat Aktif Terdata</span>
                             </div>
-                            <ScoreDonut value={estimate.match_score} size={58} color={KC.orange} label="Kecocokan" />
+                            <ScoreDonut value={estimate?.match_score ?? 0} size={58} color={KC.orange} label="Kecocokan" />
                         </div>
 
                         <div style={{ marginTop: 14, fontSize: 12, color: KC.inkLight, lineHeight: 1.45 }}>
-                            {estimate.tip}
+                            {estimating
+                                ? 'Menghitung estimasi…'
+                                : estimate?.tip || 'Isi keahlian & lokasi untuk melihat estimasi talenta.'}
                         </div>
                     </BrutalCard>
 

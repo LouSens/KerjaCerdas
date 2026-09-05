@@ -3,9 +3,10 @@ KerjaCerdas — Auth Router
 =========================
 FastAPI router for user authentication (Login/Register).
 
-ANTIGRAVITY PROTOCOL: Password must be hashed before DB insert.
-On employer registration, an Employer profile is auto-created in the JSON
-store so the user can post jobs immediately without a separate onboarding step.
+Passwords are always hashed (bcrypt) before the ORM insert. On employer
+registration, an Employer profile is auto-created via the postgres_store
+repositories so the user can post jobs immediately without a separate
+onboarding step.
 """
 
 import logging
@@ -19,8 +20,7 @@ from backend.app.api.services.auth_service import (
 )
 from backend.app.db.models import User
 from backend.app.db.postgres_store import find_employer_by_user_id, get_repositories
-from backend.app.db.schemas import Employer, UserRole
-from backend.app.db.schemas import User as JsonUser
+from backend.app.db.schemas import Employer
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,18 +64,11 @@ async def register_user(request: UserRegisterRequest, db: AsyncSession = Depends
 
     logger.info("New user registered: user_id=%s role=%s", new_user.id, new_user.role)
 
-    # Auto-create domain profile in JSON store ---------------------------------
+    # `new_user` is already committed to the `users` table above via the ORM
+    # session — there is exactly one `users` table, so no second write through
+    # the repository layer is needed (it previously wrote a second, divergent
+    # copy of the same row through db.schemas.User's field set).
     repos = get_repositories()
-    # Mirror user into JSON store so agents/matchers can resolve user lookups.
-    # Note: db/schemas.py User does NOT have a `name` field (name lives in the
-    # ORM User for auth; the JSON store only needs id/email/role for lookups).
-    json_user = JsonUser(
-        id=new_user.id,
-        email=new_user.email,
-        password_hash=new_user.password_hash,
-        role=UserRole(new_user.role),
-    )
-    await repos.users.upsert(json_user)
 
     if new_user.role == "employer":
         # Auto-create employer profile so the user can post jobs immediately

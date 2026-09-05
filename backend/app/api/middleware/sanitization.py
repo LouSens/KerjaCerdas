@@ -13,7 +13,7 @@ Usage:
   - Use `SanitizedStr` as a type alias in Pydantic models where you want
     automatic stripping + injection detection.
 
-ANTIGRAVITY PROTOCOL: RULE-SECURITY-02 — All LLM inputs MUST be sanitized.
+Convention: every field that reaches an LLM prompt must be sanitized first.
 """
 
 from __future__ import annotations

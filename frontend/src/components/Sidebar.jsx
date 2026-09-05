@@ -9,6 +9,7 @@ import {
     FileText, User, ClipboardList, Sparkles, PlusCircle, CheckCircle2,
 } from 'lucide-react'
 import useStore from '../store/useStore'
+import { ALLOWED_VIEWS } from '../routes'
 
 const SEEKER_GROUPS = [
     {
@@ -81,7 +82,15 @@ const EMPLOYER_MOBILE_NAV = [
 export default function Sidebar() {
     const { userRole, user, activeView, navigate, logout, applications, savedJobs, employerJobs, profile } = useStore()
 
-    const groups = userRole === 'employer' ? EMPLOYER_GROUPS : SEEKER_GROUPS
+    // Filter out any nav item whose id isn't in the shared ALLOWED_VIEWS for
+    // this role, so a stale/typo'd sidebar entry can never link to a view
+    // navigate() would then refuse — it just silently drops from the menu
+    // instead of desyncing (see routes.js).
+    const allowedForRole = ALLOWED_VIEWS[userRole] || new Set()
+    const groups = (userRole === 'employer' ? EMPLOYER_GROUPS : SEEKER_GROUPS).map((group) => ({
+        ...group,
+        items: group.items.filter((item) => allowedForRole.has(item.id)),
+    }))
     const roleLabel = userRole === 'employer' ? 'Employer / HR' : 'Pencari Kerja'
     const roleBadgeBg = userRole === 'employer' ? '#FF4800' : '#00B8D9'
 
@@ -335,7 +344,10 @@ export function MobileBottomNav() {
     const { userRole, activeView, navigate, isAuthenticated } = useStore()
     if (!isAuthenticated) return null
 
-    const mobileNav = userRole === 'employer' ? EMPLOYER_MOBILE_NAV : SEEKER_MOBILE_NAV
+    const allowedForRole = ALLOWED_VIEWS[userRole] || new Set()
+    const mobileNav = (userRole === 'employer' ? EMPLOYER_MOBILE_NAV : SEEKER_MOBILE_NAV).filter(
+        (item) => allowedForRole.has(item.id)
+    )
 
     return (
         <nav

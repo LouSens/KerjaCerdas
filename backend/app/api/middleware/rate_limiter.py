@@ -44,8 +44,6 @@ SCALE-OUT NOTE:
     pipe.zcard(key)
     pipe.expire(key, window_seconds + 1)
     _, _, count, _ = await pipe.execute()
-
-ANTIGRAVITY PROTOCOL: RULE-SECURITY-01 — All mutating endpoints are rate-limited.
 """
 
 from __future__ import annotations

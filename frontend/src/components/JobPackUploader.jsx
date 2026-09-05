@@ -21,15 +21,10 @@ export default function JobPackUploader() {
             return
         }
         setSelectedFile(file)
-        try {
-            const res = await uploadJobPack(file)
-            if (res) {
-                setSuccessResult(res)
-                toast.success('Job pack berhasil diekstrak!')
-            }
-        } catch (e) {
-            toast.error('Gagal mengekstrak berkas: ' + e.message)
-        }
+        // uploadJobPack (store action) already handles its own success/error
+        // toasts and never rethrows, so no try/catch or duplicate toast here.
+        const res = await uploadJobPack(file)
+        if (res) setSuccessResult(res)
     }
 
     return (

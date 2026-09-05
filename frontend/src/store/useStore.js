@@ -37,47 +37,11 @@ import {
     triggerSkillGap,
     fetchLatestSkillGap,
 } from '../services/api'
-
-const PUBLIC_VIEWS = new Set(['home', 'pricing', 'about', 'privacy'])
-
-const ALLOWED_VIEWS = {
-    seeker: new Set([
-        'seeker-dashboard', 'seeker-match', 'seeker-skill-gap',
-        'seeker-verification', 'seeker-saved', 'seeker-profile',
-        'seeker-search', 'seeker-applications',
-    ]),
-    employer: new Set([
-        'employer-dashboard', 'employer-jobs', 'employer-candidates',
-        'employer-post-job', 'employer-verification', 'employer-upload', 'employer-profile',
-    ]),
-}
+import { VIEW_TO_PATH, PUBLIC_VIEWS, ALLOWED_VIEWS } from '../routes'
 
 // ── React Router bridge ──────────────────────────────────────────────────────
 // Allows Zustand navigate() to push to browser URL without React hooks.
 let _routerNavigate = null
-
-// ── VIEW → PATH map (mirrors App.jsx) ───────────────────────────────────────
-const VIEW_TO_PATH = {
-    'home':                  '/',
-    'pricing':               '/harga',
-    'about':                 '/tentang',
-    'privacy':               '/privasi',
-    'seeker-dashboard':      '/dashboard',
-    'seeker-match':          '/lowongan',
-    'seeker-skill-gap':      '/skill-gap',
-    'seeker-saved':          '/tersimpan',
-    'seeker-verification':   '/verifikasi',
-    'seeker-profile':        '/profil',
-    'seeker-search':         '/cari',
-    'seeker-applications':   '/lamaran',
-    'employer-dashboard':    '/employer/dashboard',
-    'employer-jobs':         '/employer/lowongan',
-    'employer-post-job':     '/employer/pasang',
-    'employer-candidates':   '/employer/kandidat',
-    'employer-verification': '/employer/verifikasi',
-    'employer-upload':       '/employer/upload',
-    'employer-profile':      '/employer/profil',
-}
 
 const useStore = create(
     persist(
