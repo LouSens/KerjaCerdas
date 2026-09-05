@@ -6,14 +6,14 @@ import toast from 'react-hot-toast'
 import { Building2, ShieldCheck, Check, ArrowRight, UserPlus, LogOut } from 'lucide-react'
 
 export default function EmployerProfile() {
-    const { employerProfile, loadEmployerProfile, navigate, logout } = useStore()
+    const { employerProfile, loadEmployerProfile, navigate, logout, user } = useStore()
     const [form, setForm] = useState({
-        company_name: 'PT GoTo Gojek Tokopedia',
-        brand_name: 'GoTo Group',
-        npwp: '01.234.567.8-901.000',
-        industry: 'Teknologi · Marketplace · 1000+ karyawan',
-        address: 'Jl. Iskandarsyah II, Jakarta Selatan',
-        website: 'goto.com',
+        company_name: employerProfile?.company_name || user?.full_name || '',
+        brand_name: employerProfile?.company_name || user?.full_name || '',
+        npwp: employerProfile?.npwp || '',
+        industry: employerProfile?.industry || 'Teknologi Informasi & Rekrutmen Digital',
+        address: employerProfile?.address || 'Indonesia',
+        website: employerProfile?.website || '',
     })
     const [saving, setSaving] = useState(false)
 

@@ -4,69 +4,14 @@ import useStore from '../store/useStore'
 import { KC, DesignStyles, topBtn, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
 
-const DEMO_SEARCH_RESULTS = [
-    {
-        id: 'sr-goto-1',
-        title: 'Senior Backend Engineer',
-        company: 'GoTo Group',
-        company_name: 'GoTo Group',
-        location: 'Jakarta',
-        work_type: 'Hybrid',
-        salary_range: 'Rp 28 jt – Rp 42 jt',
-        skills_text: 'Go, PostgreSQL, gRPC',
-        matching_skills: ['Go', 'PostgreSQL', 'gRPC'],
-        score: 94,
-        band: 'strong',
-    },
-    {
-        id: 'sr-buka-2',
-        title: 'Backend Engineer',
-        company: 'Bukalapak',
-        company_name: 'Bukalapak',
-        location: 'Jakarta',
-        work_type: 'Remote',
-        salary_range: 'Rp 26 jt – Rp 38 jt',
-        skills_text: 'Go, Redis, gRPC',
-        matching_skills: ['Go', 'Redis', 'gRPC'],
-        score: 91,
-        band: 'strong',
-    },
-    {
-        id: 'sr-mandiri-3',
-        title: 'DevOps Platform Engineer',
-        company: 'Bank Mandiri Digital',
-        company_name: 'Bank Mandiri Digital',
-        location: 'Jakarta',
-        work_type: 'Onsite',
-        salary_range: 'Rp 25 jt – Rp 38 jt',
-        skills_text: 'Kubernetes, CI/CD, AWS',
-        matching_skills: ['Kubernetes', 'CI/CD', 'AWS'],
-        score: 78,
-        band: 'possible',
-    },
-    {
-        id: 'sr-bibit-4',
-        title: 'Data Engineer',
-        company: 'Bibit',
-        company_name: 'Bibit',
-        location: 'Jakarta',
-        work_type: 'Hybrid',
-        salary_range: 'Rp 24 jt – Rp 34 jt',
-        skills_text: 'Python, Airflow, dbt',
-        matching_skills: ['Python', 'Airflow', 'dbt'],
-        score: 64,
-        band: 'stretch',
-    },
-]
-
 export default function SeekerSearch() {
     const isMobile = useIsMobile()
-    const [query, setQuery] = useState('backend engineer')
+    const [query, setQuery] = useState('')
     const [filterPanelOpen, setFilterPanelOpen] = useState(false)
-    const [selectedLocation, setSelectedLocation] = useState('Jakarta')
-    const [selectedModes, setSelectedModes] = useState(['Remote', 'Hybrid'])
-    const [minSalary, setMinSalary] = useState(25)
-    const [selectedBands, setSelectedBands] = useState(['strong', 'possible'])
+    const [selectedLocation, setSelectedLocation] = useState('')
+    const [selectedModes, setSelectedModes] = useState([])
+    const [minSalary, setMinSalary] = useState(10)
+    const [selectedBands, setSelectedBands] = useState(['strong', 'possible', 'stretch'])
     const [results, setResults] = useState([])
     const [loading, setLoading] = useState(false)
     const [selectedJob, setSelectedJob] = useState(null)
@@ -79,13 +24,14 @@ export default function SeekerSearch() {
         if (e) e.preventDefault()
         setLoading(true)
         try {
-            const res = await searchJobs(query, 0, 10, {
+            const res = await searchJobs(query, 0, 20, {
                 region: selectedLocation === 'Jakarta' ? '3171' : undefined,
-                salary_min: minSalary * 1_000_000,
+                salary_min: minSalary > 10 ? minSalary * 1_000_000 : undefined,
             })
-            setResults(res?.items && res.items.length ? res.items : DEMO_SEARCH_RESULTS)
+            setResults(res?.items || [])
         } catch (err) {
-            setResults(DEMO_SEARCH_RESULTS)
+            console.error('Search error:', err)
+            setResults([])
         } finally {
             setLoading(false)
         }
@@ -104,9 +50,10 @@ export default function SeekerSearch() {
         setSelectedModes([])
         setMinSalary(10)
         setSelectedBands(['strong', 'possible', 'stretch'])
+        setQuery('')
     }
 
-    const displayList = results.length > 0 ? results : DEMO_SEARCH_RESULTS
+    const displayList = results
     const activeFilterCount = (selectedLocation ? 1 : 0) + selectedModes.length + (minSalary > 10 ? 1 : 0)
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -302,7 +249,35 @@ export default function SeekerSearch() {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-                            {displayList.map((item, idx) => (
+                            {loading && (
+                                <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 32, textAlign: 'center', font: '700 14px/1.5 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
+                                    Memuat lowongan dari database...
+                                </div>
+                            )}
+
+                            {!loading && displayList.length === 0 && (
+                                <div style={{
+                                    background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13,
+                                    boxShadow: `3px 3px 0 ${KC.ink}`, padding: '40px 24px', textAlign: 'center',
+                                }}>
+                                    <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
+                                    <div style={{ font: '900 18px/1.2 "Plus Jakarta Sans", sans-serif', color: KC.ink, marginBottom: 8 }}>
+                                        Tidak Ada Lowongan Ditemukan
+                                    </div>
+                                    <div style={{ font: '500 13px/1.5 "Plus Jakarta Sans", sans-serif', color: '#64748B', maxWidth: 440, margin: '0 auto 20px' }}>
+                                        Tidak ada data lowongan yang sesuai kriteria pencarian dari database. Silakan sesuaikan kata kunci atau atur ulang filter lokasi dan gaji.
+                                    </div>
+                                    <button
+                                        onClick={() => { resetFilters(); handleSearch(); }}
+                                        className="kc-btn"
+                                        style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 20px', fontSize: 13 }}
+                                    >
+                                        Reset Filter & Muat Semua Lowongan
+                                    </button>
+                                </div>
+                            )}
+
+                            {!loading && displayList.map((item, idx) => (
                                 <div
                                     key={item.id || idx}
                                     style={{
@@ -323,39 +298,43 @@ export default function SeekerSearch() {
                                             <span style={{ font: '700 12.5px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
                                                 {item.company || item.company_name}
                                             </span>
-                                            <span style={{
-                                                padding: '3px 9px',
-                                                background: item.score >= 85 ? '#ECFDF5' : item.score >= 70 ? '#FEF3C7' : '#E0F2FE',
-                                                border: `1px solid ${item.score >= 85 ? '#10B981' : item.score >= 70 ? '#F59E0B' : '#0284C7'}`,
-                                                borderRadius: 999,
-                                                font: '800 10px/1.3 "Plus Jakarta Sans", sans-serif',
-                                                color: item.score >= 85 ? '#065F46' : item.score >= 70 ? '#B45309' : '#075985',
-                                            }}>
-                                                {item.score >= 85 ? 'Strong Fit' : item.score >= 70 ? 'Possible Fit' : 'Stretch Fit'}
-                                            </span>
+                                            {item.score ? (
+                                                <span style={{
+                                                    padding: '3px 9px',
+                                                    background: item.score >= 85 ? '#ECFDF5' : item.score >= 70 ? '#FEF3C7' : '#E0F2FE',
+                                                    border: `1px solid ${item.score >= 85 ? '#10B981' : item.score >= 70 ? '#F59E0B' : '#0284C7'}`,
+                                                    borderRadius: 999,
+                                                    font: '800 10px/1.3 "Plus Jakarta Sans", sans-serif',
+                                                    color: item.score >= 85 ? '#065F46' : item.score >= 70 ? '#B45309' : '#075985',
+                                                }}>
+                                                    {item.score >= 85 ? 'Strong Fit' : item.score >= 70 ? 'Possible Fit' : 'Stretch Fit'}
+                                                </span>
+                                            ) : null}
                                         </div>
                                         <div style={{ font: '900 19px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.7px', color: KC.ink, marginBottom: 7 }}>
                                             {item.title}
                                         </div>
                                         <div style={{ font: '600 12px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
-                                            {item.location} · {item.work_type} &nbsp;·&nbsp; {item.salary_range || 'Rp 25 jt – Rp 38 jt'} &nbsp;·&nbsp; {item.skills_text || (item.matching_skills || []).join(', ')}
+                                            {item.location || item.region_name || 'Jakarta'} · {item.work_type || 'Onsite'} &nbsp;·&nbsp; {item.salary_range || 'Kompetitif'} &nbsp;·&nbsp; {item.skills_text || (item.required_skills || []).join(', ')}
                                         </div>
                                     </div>
 
                                     <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
-                                        <div style={{
-                                            textAlign: 'center', padding: '9px 13px',
-                                            background: item.score >= 85 ? '#ECFDF5' : item.score >= 70 ? '#FEF3C7' : '#E0F2FE',
-                                            border: `1.5px solid ${item.score >= 85 ? '#10B981' : item.score >= 70 ? '#F59E0B' : '#0284C7'}`,
-                                            borderRadius: 9,
-                                        }}>
-                                            <div style={{ font: '900 18px/1 "Plus Jakarta Sans", sans-serif', color: item.score >= 85 ? '#065F46' : item.score >= 70 ? '#B45309' : '#075985' }}>
-                                                {item.score}%
+                                        {item.score ? (
+                                            <div style={{
+                                                textAlign: 'center', padding: '9px 13px',
+                                                background: item.score >= 85 ? '#ECFDF5' : item.score >= 70 ? '#FEF3C7' : '#E0F2FE',
+                                                border: `1.5px solid ${item.score >= 85 ? '#10B981' : item.score >= 70 ? '#F59E0B' : '#0284C7'}`,
+                                                borderRadius: 9,
+                                            }}>
+                                                <div style={{ font: '900 18px/1 "Plus Jakarta Sans", sans-serif', color: item.score >= 85 ? '#065F46' : item.score >= 70 ? '#B45309' : '#075985' }}>
+                                                    {item.score}%
+                                                </div>
+                                                <div style={{ font: '800 8.5px/1.5 "Plus Jakarta Sans", sans-serif', color: item.score >= 85 ? '#059669' : item.score >= 70 ? '#B45309' : '#0284C7', letterSpacing: 0.5 }}>
+                                                    MATCH
+                                                </div>
                                             </div>
-                                            <div style={{ font: '800 8.5px/1.5 "Plus Jakarta Sans", sans-serif', color: item.score >= 85 ? '#059669' : item.score >= 70 ? '#B45309' : '#0284C7', letterSpacing: 0.5 }}>
-                                                MATCH
-                                            </div>
-                                        </div>
+                                        ) : null}
                                         <button
                                             onClick={() => setSelectedJob(item)}
                                             className="kc-btn"
@@ -543,7 +522,39 @@ export default function SeekerSearch() {
 
             {/* Mobile Results List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                {displayList.map((item, idx) => (
+                {loading && (
+                    <div style={{ background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, padding: 20, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#64748B' }}>
+                        Memuat lowongan dari database...
+                    </div>
+                )}
+
+                {!loading && displayList.length === 0 && (
+                    <div style={{
+                        background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: '28px 18px', textAlign: 'center',
+                    }}>
+                        <div style={{ fontSize: 28, marginBottom: 10 }}>🔍</div>
+                        <div style={{ fontSize: 15, fontWeight: 900, color: KC.ink, marginBottom: 6 }}>
+                            Tidak Ada Lowongan Ditemukan
+                        </div>
+                        <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5, marginBottom: 16 }}>
+                            Tidak ada lowongan yang sesuai filter pencarian. Coba ubah kata kunci atau reset filter.
+                        </div>
+                        <button
+                            onClick={() => { resetFilters(); handleSearch(); }}
+                            style={{
+                                width: '100%', padding: '11px 16px', background: KC.orange,
+                                border: `1.5px solid ${KC.ink}`, borderRadius: 10,
+                                boxShadow: `2.5px 2.5px 0 ${KC.ink}`, fontSize: 12, fontWeight: 800,
+                                color: '#fff', cursor: 'pointer',
+                            }}
+                        >
+                            Reset Filter & Tampilkan Semua
+                        </button>
+                    </div>
+                )}
+
+                {!loading && displayList.map((item, idx) => (
                     <div
                         key={item.id || idx}
                         onClick={() => setSelectedJob(item)}
@@ -562,22 +573,24 @@ export default function SeekerSearch() {
                                     {item.title}
                                 </div>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>
-                                    {item.location} · {item.work_type} · {item.salary_range}
+                                    {item.location || item.region_name || 'Jakarta'} · {item.work_type || 'Onsite'} · {item.salary_range || 'Kompetitif'}
                                 </div>
                             </div>
-                            <div style={{
-                                flexShrink: 0, textAlign: 'center', padding: '6px 8px',
-                                background: item.score >= 85 ? '#ECFDF5' : '#FEF3C7',
-                                border: `1px solid ${item.score >= 85 ? '#10B981' : '#F59E0B'}`,
-                                borderRadius: 8,
-                            }}>
-                                <div style={{ fontSize: 13, fontWeight: 900, color: item.score >= 85 ? '#065F46' : '#B45309' }}>
-                                    {item.score}%
+                            {item.score ? (
+                                <div style={{
+                                    flexShrink: 0, textAlign: 'center', padding: '6px 8px',
+                                    background: item.score >= 85 ? '#ECFDF5' : item.score >= 70 ? '#FEF3C7' : '#E0F2FE',
+                                    border: `1px solid ${item.score >= 85 ? '#10B981' : item.score >= 70 ? '#F59E0B' : '#0284C7'}`,
+                                    borderRadius: 8,
+                                }}>
+                                    <div style={{ fontSize: 13, fontWeight: 900, color: item.score >= 85 ? '#065F46' : item.score >= 70 ? '#B45309' : '#075985' }}>
+                                        {item.score}%
+                                    </div>
+                                    <div style={{ fontSize: 7.5, fontWeight: 800, color: item.score >= 85 ? '#059669' : item.score >= 70 ? '#B45309' : '#0284C7', letterSpacing: 0.3 }}>
+                                        MATCH
+                                    </div>
                                 </div>
-                                <div style={{ fontSize: 7.5, fontWeight: 800, color: item.score >= 85 ? '#059669' : '#B45309', letterSpacing: 0.3 }}>
-                                    MATCH
-                                </div>
-                            </div>
+                            ) : null}
                         </div>
                     </div>
                 ))}

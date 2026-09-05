@@ -10,57 +10,6 @@ function formatSalary(min, max) {
     return fmt(min || max)
 }
 
-const DEFAULT_JOBS = [
-    {
-        id: 'job-be-1',
-        title: 'Senior Backend Engineer (Go)',
-        location: 'Jakarta',
-        work_type: 'Hybrid',
-        salary: 'Rp 28–42 jt',
-        status: 'active',
-        candidates_count: 42,
-        strong_count: 2,
-        unlocked_count: 3,
-        interview_count: 2,
-    },
-    {
-        id: 'job-da-2',
-        title: 'Product Data Analyst',
-        location: 'Jakarta',
-        work_type: 'Onsite',
-        salary: 'Rp 18–26 jt',
-        status: 'active',
-        candidates_count: 28,
-        strong_count: 1,
-        unlocked_count: 0,
-        interview_count: 0,
-    },
-    {
-        id: 'job-fe-draft',
-        title: 'Frontend Engineer (React)',
-        location: 'Jakarta',
-        work_type: 'Remote',
-        salary: 'Rp 22–32 jt',
-        status: 'draft',
-        candidates_count: 31,
-        strong_count: 0,
-        unlocked_count: 0,
-        interview_count: 0,
-    },
-    {
-        id: 'job-devops-closed',
-        title: 'DevOps Platform Specialist',
-        location: 'Bandung',
-        work_type: 'Hybrid',
-        salary: 'Rp 25–38 jt',
-        status: 'closed',
-        candidates_count: 19,
-        strong_count: 3,
-        unlocked_count: 2,
-        interview_count: 1,
-    },
-]
-
 export default function EmployerJobs() {
     const { employerJobs, refreshEmployerJobs, navigate } = useStore()
     const [filterTab, setFilterTab] = useState('all') // 'all' | 'active' | 'draft' | 'closed'
@@ -69,36 +18,30 @@ export default function EmployerJobs() {
         refreshEmployerJobs()
     }, []) // eslint-disable-line
 
-    // Merge backend employerJobs with default mock jobs if needed
-    const allJobs = (employerJobs && employerJobs.length > 0)
-        ? employerJobs.map((j, i) => ({
-            id: j.id || `job-${i}`,
-            title: j.title || 'Posisi Rekrutmen',
-            location: j.region_code || j.location || 'Jakarta',
-            work_type: j.remote_allowed ? 'Remote' : (j.work_type || 'Hybrid'),
-            salary: formatSalary(j.salary_min, j.salary_max),
-            status: j.is_active === false ? 'draft' : 'active',
-            candidates_count: j.application_count ?? (i === 0 ? 42 : i === 1 ? 28 : 15),
-            strong_count: i === 0 ? 2 : 1,
-            unlocked_count: i === 0 ? 3 : 0,
-            interview_count: i === 0 ? 2 : 0,
-        }))
-        : DEFAULT_JOBS
+    // Map real backend employerJobs
+    const allJobs = (employerJobs || []).map((j, i) => ({
+        id: j.id || `job-${i}`,
+        title: j.title || 'Posisi Rekrutmen',
+        location: j.region_name || j.region_code || j.location || 'Indonesia',
+        work_type: j.work_type || (j.remote_allowed ? 'Remote' : 'Hybrid'),
+        salary: formatSalary(j.salary_min, j.salary_max) || j.salary_range || 'Gaji bersaing',
+        status: j.is_active === false ? 'draft' : 'active',
+        candidates_count: j.application_count ?? 0,
+        strong_count: Math.round((j.application_count ?? 0) * 0.2),
+        unlocked_count: 0,
+        interview_count: 0,
+    }))
 
-    // Add draft if not present
-    const hasDraft = allJobs.some(j => j.status === 'draft')
-    const combinedJobs = hasDraft ? allJobs : [...allJobs, DEFAULT_JOBS[2]]
-
-    const filteredJobs = combinedJobs.filter(j => {
+    const filteredJobs = allJobs.filter(j => {
         if (filterTab === 'active') return j.status === 'active'
         if (filterTab === 'draft') return j.status === 'draft'
         if (filterTab === 'closed') return j.status === 'closed'
         return true
     })
 
-    const activeCount = combinedJobs.filter(j => j.status === 'active').length
-    const draftCount = combinedJobs.filter(j => j.status === 'draft').length
-    const closedCount = combinedJobs.filter(j => j.status === 'closed').length
+    const activeCount = allJobs.filter(j => j.status === 'active').length
+    const draftCount = allJobs.filter(j => j.status === 'draft').length
+    const closedCount = allJobs.filter(j => j.status === 'closed').length
 
     const handleReviewCandidates = (jobId) => {
         useStore.setState({ selectedCandidateJobId: jobId })
@@ -116,7 +59,7 @@ export default function EmployerJobs() {
                         Lowongan Saya
                     </h1>
                     <div style={{ font: '600 11.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
-                        {combinedJobs.length} lowongan · {activeCount} aktif, {draftCount} draf{closedCount > 0 ? `, ${closedCount} ditutup` : ''}
+                        {allJobs.length} lowongan · {activeCount} aktif, {draftCount} draf{closedCount > 0 ? `, ${closedCount} ditutup` : ''}
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -153,7 +96,7 @@ export default function EmployerJobs() {
                         flex: 'none',
                     }}
                 >
-                    Semua {combinedJobs.length}
+                    Semua {allJobs.length}
                 </button>
                 <button
                     onClick={() => setFilterTab('active')}
@@ -209,7 +152,38 @@ export default function EmployerJobs() {
 
             {/* Job List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {filteredJobs.map((job) => {
+                {filteredJobs.length === 0 ? (
+                    <BrutalCard color="#FFFFFF" padding={32}>
+                        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F1F5F9', display: 'grid', placeItems: 'center', border: `1.5px solid ${KC.ink}` }}>
+                                <FileText size={22} color={KC.ink} />
+                            </div>
+                            <h3 style={{ fontSize: 16, fontWeight: 900, color: KC.ink, margin: 0 }}>
+                                {filterTab === 'all' ? 'Belum Ada Lowongan Dipasang' : `Tidak Ada Lowongan ${filterTab.toUpperCase()}`}
+                            </h3>
+                            <p style={{ fontSize: 12.5, color: '#64748B', margin: 0, maxWidth: 380 }}>
+                                Mulai pasang lowongan pertama Anda untuk mendapatkan kandidat yang sudah terkurasi dan diverifikasi AI.
+                            </p>
+                            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+                                <button
+                                    onClick={() => navigate('employer-post-job')}
+                                    className="kc-btn"
+                                    style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 18px', fontSize: 12 }}
+                                >
+                                    + Pasang Lowongan Baru
+                                </button>
+                                <button
+                                    onClick={() => navigate('employer-upload')}
+                                    className="kc-btn"
+                                    style={{ ...topBtn('#fff', KC.ink), padding: '10px 18px', fontSize: 12 }}
+                                >
+                                    Upload Job Pack
+                                </button>
+                            </div>
+                        </div>
+                    </BrutalCard>
+                ) : (
+                    filteredJobs.map((job) => {
                     const isDraft = job.status === 'draft'
 
                     if (isDraft) {
@@ -361,7 +335,7 @@ export default function EmployerJobs() {
                             </div>
                         </div>
                     )
-                })}
+                }))}
             </div>
         </div>
     )

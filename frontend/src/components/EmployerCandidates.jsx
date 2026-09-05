@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
-import { fetchCandidatesForJob } from '../services/api'
+import { fetchCandidatesForJob, unlockCandidate } from '../services/api'
 import { KC, BrutalCard, topBtn, DesignStyles, useIsMobile } from './_design'
 import {
     Users,
@@ -40,79 +40,6 @@ const ALLOWED_NEXT = {
 const canMoveTo = (current, target) =>
     current === target || (ALLOWED_NEXT[current] || []).includes(target)
 
-const DEFAULT_CURATED_CANDIDATES = [
-    {
-        id: 'cand-1',
-        name: 'Rina Pertiwi',
-        score: 94,
-        band: 'strong',
-        verified: true,
-        headline: 'Senior Backend Engineer · 6 thn · Bukalapak',
-        location_edu: 'Jakarta · Hybrid · S1 Teknik Informatika ITB',
-        matching_skills: ['Go', 'PostgreSQL', 'gRPC', 'Kafka', 'Kubernetes'],
-        missing_skills: [],
-        explanation: 'Stack 100% selaras. Berpengalaman menangani throughput skala 100k RPS pada payment gateway.',
-        email: 'rina.pertiwi@example.com',
-        phone: '+62 812-•••-4471',
-    },
-    {
-        id: 'cand-2',
-        name: 'Andika Pratama',
-        score: 90,
-        band: 'strong',
-        verified: true,
-        headline: 'Backend Tech Lead · 7 thn · Bibit',
-        location_edu: 'Jakarta · Remote · S1 Ilmu Komputer UI',
-        matching_skills: ['Go', 'PostgreSQL', 'Redis'],
-        missing_skills: ['Kafka'],
-        explanation: 'Pengalaman arsitektur terdistribusi kuat. Gap Apache Kafka dapat diadaptasi dalam tempo singkat.',
-        email: 'andika.pratama@example.com',
-        phone: '+62 811-•••-2098',
-    },
-    {
-        id: 'cand-3',
-        name: 'Sari Ningrum',
-        score: 76,
-        band: 'possible',
-        verified: false,
-        headline: 'Staff Software Engineer · 8 thn · GoTo Group',
-        location_edu: 'Bandung · Hybrid · S1 Teknik Elektro ITB',
-        matching_skills: ['Go', 'Microservices', 'Docker'],
-        missing_skills: ['gRPC'],
-        explanation: 'Kandidat memiliki fondasi kuat dalam ekosistem microservices internal, adaptasi gRPC diperkirakan cepat.',
-        email: 'sari.ningrum@example.com',
-        phone: '+62 813-•••-7712',
-    },
-    {
-        id: 'cand-4',
-        name: 'Bayu Wicaksono',
-        score: 72,
-        band: 'possible',
-        verified: false,
-        headline: 'Backend Developer · 4 thn · Tokopedia',
-        location_edu: 'Jakarta · Hybrid · S1 Sistem Informasi Binus',
-        matching_skills: ['Go', 'PostgreSQL'],
-        missing_skills: ['Kubernetes', 'gRPC'],
-        explanation: 'Pengalaman microservices level menengah, memenuhi kriteria utama Go dan basis data relational.',
-        email: 'bayu.w@example.com',
-        phone: '+62 812-•••-9901',
-    },
-    {
-        id: 'cand-5',
-        name: 'Deni Kurniawan',
-        score: 58,
-        band: 'stretch',
-        verified: false,
-        headline: 'Java Backend Specialist · 5 thn · Mandiri Sekuritas',
-        location_edu: 'Surabaya · Remote · S1 Informatika ITS',
-        matching_skills: ['PostgreSQL', 'Docker'],
-        missing_skills: ['Go', 'gRPC'],
-        explanation: 'Latar belakang performa backend Java tingkat tinggi, potensi transfer kompetensi ke Go dalam 4-6 minggu.',
-        email: 'deni.k@example.com',
-        phone: '+62 819-•••-3344',
-    },
-]
-
 export default function EmployerCandidates() {
     const {
         employerJobs,
@@ -126,6 +53,8 @@ export default function EmployerCandidates() {
     const isMobile = useIsMobile()
     const [activeTab, setActiveTab] = useState('sourcing') // 'sourcing' (Reverse Matching) | 'applications' (Real DB)
     const [selectedJobId, setSelectedJobId] = useState(selectedCandidateJobId || null)
+    const [candidates, setCandidates] = useState([])
+    const [loadingCandidates, setLoadingCandidates] = useState(false)
     const [bandsExpanded, setBandsExpanded] = useState(false)
     const [unlockedMap, setUnlockedMap] = useState({})
     const [unlockingMap, setUnlockingMap] = useState({})
@@ -144,14 +73,42 @@ export default function EmployerCandidates() {
         }
     }, [employerJobs, selectedCandidateJobId])
 
-    const selectedJob = employerJobs.find(j => j.id === selectedJobId) || (employerJobs.length ? employerJobs[0] : { title: 'Senior Backend Engineer (Go)' })
+    useEffect(() => {
+        if (!selectedJobId) {
+            setCandidates([])
+            return
+        }
+        let active = true
+        setLoadingCandidates(true)
+        fetchCandidatesForJob(selectedJobId, 15)
+            .then(res => {
+                if (active) {
+                    setCandidates(res?.candidates || [])
+                }
+            })
+            .catch(err => {
+                console.error('Failed to load candidates:', err)
+                if (active) setCandidates([])
+            })
+            .finally(() => {
+                if (active) setLoadingCandidates(false)
+            })
+        return () => { active = false }
+    }, [selectedJobId])
 
-    const handleUnlock = (candId) => {
+    const selectedJob = employerJobs.find(j => j.id === selectedJobId) || (employerJobs.length ? employerJobs[0] : { title: 'Lowongan Posisi' })
+
+    const handleUnlock = async (candId) => {
+        if (!selectedJobId || unlockingMap[candId]) return
         setUnlockingMap(prev => ({ ...prev, [candId]: true }))
-        setTimeout(() => {
+        try {
+            const res = await unlockCandidate(selectedJobId, candId)
+            setUnlockedMap(prev => ({ ...prev, [candId]: res || true }))
+        } catch (err) {
+            console.error('Failed to unlock candidate:', err)
+        } finally {
             setUnlockingMap(prev => ({ ...prev, [candId]: false }))
-            setUnlockedMap(prev => ({ ...prev, [candId]: true }))
-        }, 700)
+        }
     }
 
     const filteredApplications = selectedJobId
@@ -184,9 +141,9 @@ export default function EmployerCandidates() {
         }
     }
 
-    const strongCandidates = DEFAULT_CURATED_CANDIDATES.filter(c => c.band === 'strong')
-    const possibleCandidates = DEFAULT_CURATED_CANDIDATES.filter(c => c.band === 'possible')
-    const stretchCandidates = DEFAULT_CURATED_CANDIDATES.filter(c => c.band === 'stretch')
+    const strongCandidates = candidates.filter(c => c.band === 'strong')
+    const possibleCandidates = candidates.filter(c => c.band === 'possible')
+    const stretchCandidates = candidates.filter(c => c.band === 'stretch')
 
     // ==========================================
     // DESKTOP V2 LAYOUT (D10)
@@ -277,7 +234,7 @@ export default function EmployerCandidates() {
 
                 {/* TAB: Reverse Matching */}
                 {activeTab === 'sourcing' && (
-                    <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                         {/* Dark Pool Hero Card */}
                         <div
                             style={{
@@ -298,7 +255,7 @@ export default function EmployerCandidates() {
                                     Kolam kandidat dipindai
                                 </div>
                                 <div style={{ font: '900 40px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-2px', color: '#fff' }}>
-                                    42 <span style={{ fontSize: 16, letterSpacing: '-0.3px', fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>profil aktif</span>
+                                    {candidates.length} <span style={{ fontSize: 16, letterSpacing: '-0.3px', fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>profil aktif</span>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 14, flex: 'none' }}>
@@ -375,22 +332,67 @@ export default function EmployerCandidates() {
                             )}
                         </div>
 
-                        {/* Strong Fit Section */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10 }}>
-                            <span style={{ width: 10, height: 10, background: '#10B981', borderRadius: '50%' }} />
-                            <span style={{ font: '900 17px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink }}>
-                                Strong Fit (Kecocokan Kuat)
-                            </span>
-                            <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
-                                {strongCandidates.length} kandidat
-                            </span>
-                            <span style={{ flex: 1, height: 1.5, background: '#E2E8F0' }} />
-                        </div>
+                        {loadingCandidates && (
+                            <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 36, textAlign: 'center', font: '700 14px "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
+                                Memindai basis data kandidat dengan AI reverse-matching...
+                            </div>
+                        )}
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            {strongCandidates.map(cand => {
-                                const isUnlocked = !!unlockedMap[cand.id]
-                                const isUnlocking = !!unlockingMap[cand.id]
+                        {!loadingCandidates && candidates.length === 0 && (
+                            <div style={{
+                                background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 14,
+                                boxShadow: `3px 3px 0 ${KC.ink}`, padding: '48px 32px', textAlign: 'center',
+                            }}>
+                                <div style={{ fontSize: 36, marginBottom: 14 }}>👥</div>
+                                <div style={{ font: '900 20px/1.2 "Plus Jakarta Sans", sans-serif', color: KC.ink, marginBottom: 8 }}>
+                                    Belum Ada Kandidat Terkurasi untuk Posisi Ini
+                                </div>
+                                <div style={{ font: '500 13.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#64748B', maxWidth: 460, margin: '0 auto 22px' }}>
+                                    AI Reverse-Matching belum menemukan profil pencari kerja terdaftar yang selaras dengan kriteria keahlian posisi ini.
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (selectedJobId) {
+                                            setLoadingCandidates(true);
+                                            fetchCandidatesForJob(selectedJobId, 15)
+                                                .then(r => setCandidates(r?.candidates || []))
+                                                .catch(() => setCandidates([]))
+                                                .finally(() => setLoadingCandidates(false));
+                                        }
+                                    }}
+                                    className="kc-btn"
+                                    style={{ ...topBtn(KC.orange, '#fff'), padding: '12px 22px', fontSize: 13 }}
+                                >
+                                    Pindai Ulang Kandidat AI
+                                </button>
+                            </div>
+                        )}
+
+                        {!loadingCandidates && candidates.length > 0 && (
+                            <>
+                                {/* Strong Fit Section */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10 }}>
+                                    <span style={{ width: 10, height: 10, background: '#10B981', borderRadius: '50%' }} />
+                                    <span style={{ font: '900 17px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink }}>
+                                        Strong Fit (Kecocokan Kuat)
+                                    </span>
+                                    <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                                        {strongCandidates.length} kandidat
+                                    </span>
+                                    <span style={{ flex: 1, height: 1.5, background: '#E2E8F0' }} />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    {strongCandidates.map(cand => {
+                                        const candId = cand.seeker_id || cand.id
+                                        const unlockData = unlockedMap[candId]
+                                        const isUnlocked = typeof unlockData === 'object' ? unlockData.unlocked : !!unlockData
+                                        const isUnlocking = !!unlockingMap[candId]
+                                        const candName = isUnlocked && unlockData?.name ? unlockData.name : (cand.full_name || cand.name || 'Kandidat Terkurasi')
+                                        const candEmail = isUnlocked && unlockData?.email ? unlockData.email : (cand.email || '—')
+                                        const candPhone = isUnlocked && unlockData?.phone ? unlockData.phone : (cand.phone || '—')
+                                        const matchingSkills = cand.matching_skills || []
+                                        const missingSkills = cand.missing_skills || []
 
                                 return (
                                     <div
@@ -408,7 +410,7 @@ export default function EmployerCandidates() {
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 9, flexWrap: 'wrap' }}>
                                                     <span style={{ font: '900 21px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.8px', color: KC.ink }}>
-                                                        {cand.name}
+                                                        {candName}
                                                     </span>
                                                     <span style={{ padding: '3px 9px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
                                                         Strong Fit
@@ -420,25 +422,25 @@ export default function EmployerCandidates() {
                                                     )}
                                                 </div>
                                                 <div style={{ font: '600 13.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 5 }}>
-                                                    {cand.headline}
+                                                    {cand.headline || (matchingSkills.length > 0 ? `Keahlian: ${matchingSkills.slice(0, 3).join(', ')}` : 'Kandidat Terkurasi')}
                                                 </div>
                                                 <div style={{ font: '600 12px/1.5 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginBottom: 15 }}>
-                                                    {cand.location_edu}
+                                                    {cand.location_edu || (cand.region_code ? `Wilayah ${cand.region_code}` : 'Indonesia')}
                                                 </div>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 15 }}>
-                                                    {cand.matching_skills.map((s, idx) => (
+                                                    {matchingSkills.map((s, idx) => (
                                                         <span key={idx} style={{ padding: '6px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 7, font: '800 12px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
                                                             ✓ {s}
                                                         </span>
                                                     ))}
-                                                    {cand.missing_skills.map((s, idx) => (
+                                                    {missingSkills.map((s, idx) => (
                                                         <span key={idx} style={{ padding: '6px 12px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 7, font: '800 12px/1 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
                                                             + {s}
                                                         </span>
                                                     ))}
                                                 </div>
                                                 <div style={{ padding: '14px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, font: '600 13px/1.6 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>
-                                                    <b style={{ color: KC.orange }}>Analisis AI:</b> {cand.explanation}
+                                                    <b style={{ color: KC.orange }}>Analisis AI:</b> {cand.explanation || 'Profil memiliki kecocokan kompetensi dengan lowongan ini.'}
                                                 </div>
 
                                                 {isUnlocked && (
@@ -447,8 +449,8 @@ export default function EmployerCandidates() {
                                                             Kontak terbuka · Rp 50.000 tercatat
                                                         </div>
                                                         <div style={{ display: 'flex', gap: 26, font: '700 13px/1.5 "JetBrains Mono", monospace', color: '#065F46' }}>
-                                                            <span>{cand.email}</span>
-                                                            <span>{cand.phone}</span>
+                                                            <span>{candEmail}</span>
+                                                            <span>{candPhone}</span>
                                                         </div>
                                                         <div style={{ marginTop: 13, paddingTop: 13, borderTop: '1px dashed #10B981', font: '600 12.5px/1.55 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
                                                             Ringkasan skill grounded terlampir · rekomendasi: jadwalkan wawancara teknis dalam 48 jam.
@@ -470,7 +472,7 @@ export default function EmployerCandidates() {
                                                         strokeWidth="7"
                                                         strokeLinecap="round"
                                                         strokeDasharray="251.3"
-                                                        strokeDashoffset={251.3 - (251.3 * cand.score) / 100}
+                                                        strokeDashoffset={251.3 - (251.3 * (cand.score > 1 ? cand.score : cand.score * 100)) / 100}
                                                     />
                                                     <text
                                                         x="49"
@@ -480,7 +482,7 @@ export default function EmployerCandidates() {
                                                         transform="rotate(90 49 49)"
                                                         style={{ font: '900 27px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}
                                                     >
-                                                        {cand.score}
+                                                        {Math.round(cand.score > 1 ? cand.score : cand.score * 100)}
                                                     </text>
                                                 </svg>
 
@@ -490,7 +492,7 @@ export default function EmployerCandidates() {
                                                     </div>
                                                     {!isUnlocked ? (
                                                         <div
-                                                            onClick={() => handleUnlock(cand.id)}
+                                                            onClick={() => handleUnlock(candId)}
                                                             style={{
                                                                 padding: '13px 12px',
                                                                 background: isUnlocking ? '#64748B' : KC.orange,
@@ -532,12 +534,19 @@ export default function EmployerCandidates() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             {possibleCandidates.map(cand => {
-                                const isUnlocked = !!unlockedMap[cand.id]
-                                const isUnlocking = !!unlockingMap[cand.id]
+                                const candId = cand.seeker_id || cand.id
+                                const unlockData = unlockedMap[candId]
+                                const isUnlocked = typeof unlockData === 'object' ? unlockData.unlocked : !!unlockData
+                                const isUnlocking = !!unlockingMap[candId]
+                                const candName = isUnlocked && unlockData?.name ? unlockData.name : (cand.full_name || cand.name || 'Kandidat Terkurasi')
+                                const candEmail = isUnlocked && unlockData?.email ? unlockData.email : (cand.email || '—')
+                                const candPhone = isUnlocked && unlockData?.phone ? unlockData.phone : (cand.phone || '—')
+                                const matchingSkills = cand.matching_skills || []
+                                const missingSkills = cand.missing_skills || []
 
                                 return (
                                     <div
-                                        key={cand.id}
+                                        key={candId}
                                         style={{
                                             background: '#fff',
                                             border: `1.5px solid ${KC.ink}`,
@@ -551,7 +560,7 @@ export default function EmployerCandidates() {
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 9, flexWrap: 'wrap' }}>
                                                     <span style={{ font: '900 21px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.8px', color: KC.ink }}>
-                                                        {cand.name}
+                                                        {candName}
                                                     </span>
                                                     <span style={{ padding: '3px 9px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
                                                         Possible Fit
@@ -563,25 +572,25 @@ export default function EmployerCandidates() {
                                                     )}
                                                 </div>
                                                 <div style={{ font: '600 13.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 5 }}>
-                                                    {cand.headline}
+                                                    {cand.headline || (matchingSkills.length > 0 ? `Keahlian: ${matchingSkills.slice(0, 3).join(', ')}` : 'Kandidat Terkurasi')}
                                                 </div>
                                                 <div style={{ font: '600 12px/1.5 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginBottom: 15 }}>
-                                                    {cand.location_edu}
+                                                    {cand.location_edu || (cand.region_code ? `Wilayah ${cand.region_code}` : 'Indonesia')}
                                                 </div>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 15 }}>
-                                                    {cand.matching_skills.map((s, idx) => (
+                                                    {matchingSkills.map((s, idx) => (
                                                         <span key={idx} style={{ padding: '6px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 7, font: '800 12px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
                                                             ✓ {s}
                                                         </span>
                                                     ))}
-                                                    {cand.missing_skills.map((s, idx) => (
+                                                    {missingSkills.map((s, idx) => (
                                                         <span key={idx} style={{ padding: '6px 12px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 7, font: '800 12px/1 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
                                                             + {s}
                                                         </span>
                                                     ))}
                                                 </div>
                                                 <div style={{ padding: '14px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, font: '600 13px/1.6 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>
-                                                    <b style={{ color: KC.orange }}>Analisis AI:</b> {cand.explanation}
+                                                    <b style={{ color: KC.orange }}>Analisis AI:</b> {cand.explanation || 'Profil memenuhi sebagian besar kriteria esensial lowongan.'}
                                                 </div>
 
                                                 {isUnlocked && (
@@ -590,8 +599,8 @@ export default function EmployerCandidates() {
                                                             Kontak terbuka · Rp 50.000 tercatat
                                                         </div>
                                                         <div style={{ display: 'flex', gap: 26, font: '700 13px/1.5 "JetBrains Mono", monospace', color: '#065F46' }}>
-                                                            <span>{cand.email}</span>
-                                                            <span>{cand.phone}</span>
+                                                            <span>{candEmail}</span>
+                                                            <span>{candPhone}</span>
                                                         </div>
                                                     </div>
                                                 )}
@@ -609,7 +618,7 @@ export default function EmployerCandidates() {
                                                         strokeWidth="7"
                                                         strokeLinecap="round"
                                                         strokeDasharray="251.3"
-                                                        strokeDashoffset={251.3 - (251.3 * cand.score) / 100}
+                                                        strokeDashoffset={251.3 - (251.3 * (cand.score > 1 ? cand.score : cand.score * 100)) / 100}
                                                     />
                                                     <text
                                                         x="49"
@@ -619,7 +628,7 @@ export default function EmployerCandidates() {
                                                         transform="rotate(90 49 49)"
                                                         style={{ font: '900 27px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}
                                                     >
-                                                        {cand.score}
+                                                        {Math.round(cand.score > 1 ? cand.score : cand.score * 100)}
                                                     </text>
                                                 </svg>
 
@@ -629,7 +638,7 @@ export default function EmployerCandidates() {
                                                     </div>
                                                     {!isUnlocked ? (
                                                         <div
-                                                            onClick={() => handleUnlock(cand.id)}
+                                                            onClick={() => handleUnlock(candId)}
                                                             style={{
                                                                 padding: '13px 12px',
                                                                 background: isUnlocking ? '#64748B' : KC.orange,
@@ -658,6 +667,8 @@ export default function EmployerCandidates() {
                         </div>
                     </>
                 )}
+            </div>
+        )}
 
                 {/* TAB: Real DB Applications (Desktop) */}
                 {activeTab === 'applications' && (
@@ -900,7 +911,7 @@ export default function EmployerCandidates() {
 
             {/* TAB: Reverse Matching */}
             {activeTab === 'sourcing' && (
-                <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {/* Reverse Matching Talent Pool Breakdown */}
                     <div
                         style={{
@@ -975,21 +986,70 @@ export default function EmployerCandidates() {
                         )}
                     </div>
 
-                    {/* Section 1: Strong Fit */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                        <span style={{ width: 9, height: 9, background: '#10B981', borderRadius: '50%' }} />
-                        <span style={{ font: '900 13.5px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>Strong Fit</span>
-                        <span style={{ font: '600 11px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>{strongCandidates.length} kandidat</span>
-                    </div>
+                    {loadingCandidates && (
+                        <div style={{ background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, padding: 22, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#64748B' }}>
+                            Memindai basis data kandidat dengan AI reverse-matching...
+                        </div>
+                    )}
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {strongCandidates.map(cand => {
-                            const isUnlocked = !!unlockedMap[cand.id]
-                            const isUnlocking = !!unlockingMap[cand.id]
+                    {!loadingCandidates && candidates.length === 0 && (
+                        <div style={{
+                            background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                            borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: '28px 18px', textAlign: 'center',
+                        }}>
+                            <div style={{ fontSize: 28, marginBottom: 10 }}>👥</div>
+                            <div style={{ fontSize: 15, fontWeight: 900, color: KC.ink, marginBottom: 6 }}>
+                                Belum Ada Kandidat Terkurasi
+                            </div>
+                            <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5, marginBottom: 16 }}>
+                                AI Reverse-Matching belum menemukan profil pencari kerja terdaftar yang selaras dengan kriteria lowongan ini.
+                            </div>
+                            <button
+                                onClick={() => {
+                                    if (selectedJobId) {
+                                        setLoadingCandidates(true);
+                                        fetchCandidatesForJob(selectedJobId, 15)
+                                            .then(r => setCandidates(r?.candidates || []))
+                                            .catch(() => setCandidates([]))
+                                            .finally(() => setLoadingCandidates(false));
+                                    }
+                                }}
+                                style={{
+                                    width: '100%', padding: '11px 16px', background: KC.orange,
+                                    border: `1.5px solid ${KC.ink}`, borderRadius: 10,
+                                    boxShadow: `2.5px 2.5px 0 ${KC.ink}`, fontSize: 12, fontWeight: 800,
+                                    color: '#fff', cursor: 'pointer',
+                                }}
+                            >
+                                Pindai Ulang Kandidat AI
+                            </button>
+                        </div>
+                    )}
+
+                    {!loadingCandidates && candidates.length > 0 && (
+                        <>
+                            {/* Section 1: Strong Fit */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                <span style={{ width: 9, height: 9, background: '#10B981', borderRadius: '50%' }} />
+                                <span style={{ font: '900 13.5px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>Strong Fit</span>
+                                <span style={{ font: '600 11px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>{strongCandidates.length} kandidat</span>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {strongCandidates.map(cand => {
+                                    const candId = cand.seeker_id || cand.id
+                                    const unlockData = unlockedMap[candId]
+                                    const isUnlocked = typeof unlockData === 'object' ? unlockData.unlocked : !!unlockData
+                                    const isUnlocking = !!unlockingMap[candId]
+                                    const candName = isUnlocked && unlockData?.name ? unlockData.name : (cand.full_name || cand.name || 'Kandidat Terkurasi')
+                                    const candEmail = isUnlocked && unlockData?.email ? unlockData.email : (cand.email || '—')
+                                    const candPhone = isUnlocked && unlockData?.phone ? unlockData.phone : (cand.phone || '—')
+                                    const matchingSkills = cand.matching_skills || []
+                                    const missingSkills = cand.missing_skills || []
 
                             return (
                                 <div
-                                    key={cand.id}
+                                    key={candId}
                                     style={{
                                         background: '#fff',
                                         border: `1.5px solid ${KC.ink}`,
@@ -1003,17 +1063,17 @@ export default function EmployerCandidates() {
                                         <div style={{ minWidth: 0 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginBottom: 6 }}>
                                                 <span style={{ font: '900 15.5px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink }}>
-                                                    {cand.name}
+                                                    {candName}
                                                 </span>
                                                 <span style={{ padding: '3px 7px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, font: '800 9.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
                                                     Strong Fit
                                                 </span>
                                             </div>
                                             <div style={{ font: '600 11.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>
-                                                {cand.headline}
+                                                {cand.headline || (matchingSkills.length > 0 ? `Keahlian: ${matchingSkills.slice(0, 3).join(', ')}` : 'Kandidat Terkurasi')}
                                             </div>
                                             <div style={{ font: '600 10.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginTop: 3 }}>
-                                                {cand.location_edu}
+                                                {cand.location_edu || (cand.region_code ? `Wilayah ${cand.region_code}` : 'Indonesia')}
                                             </div>
                                         </div>
 
@@ -1029,7 +1089,7 @@ export default function EmployerCandidates() {
                                                 strokeWidth="4"
                                                 strokeLinecap="round"
                                                 strokeDasharray="132"
-                                                strokeDashoffset={132 - (132 * cand.score) / 100}
+                                                strokeDashoffset={132 - (132 * (cand.score > 1 ? cand.score : cand.score * 100)) / 100}
                                             />
                                             <text
                                                 x="26"
@@ -1039,7 +1099,7 @@ export default function EmployerCandidates() {
                                                 transform="rotate(90 26 26)"
                                                 style={{ font: '900 14px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}
                                             >
-                                                {cand.score}
+                                                {Math.round(cand.score > 1 ? cand.score : cand.score * 100)}
                                             </text>
                                         </svg>
                                     </div>
@@ -1052,12 +1112,12 @@ export default function EmployerCandidates() {
 
                                     {/* Skills */}
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                                        {cand.matching_skills.map((s, idx) => (
+                                        {matchingSkills.map((s, idx) => (
                                             <span key={idx} style={{ padding: '4px 9px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 7, font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
                                                 ✓ {s}
                                             </span>
                                         ))}
-                                        {cand.missing_skills.map((s, idx) => (
+                                        {missingSkills.map((s, idx) => (
                                             <span key={idx} style={{ padding: '4px 9px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 7, font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
                                                 + {s}
                                             </span>
@@ -1066,7 +1126,7 @@ export default function EmployerCandidates() {
 
                                     {/* Grounded AI Analysis */}
                                     <div style={{ padding: '10px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 9, font: '600 11.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 12 }}>
-                                        <b style={{ color: KC.orange }}>Analisis AI:</b> {cand.explanation}
+                                        <b style={{ color: KC.orange }}>Analisis AI:</b> {cand.explanation || 'Profil memiliki kecocokan kompetensi dengan lowongan ini.'}
                                     </div>
 
                                     {/* Unlock Button & Reveal */}
@@ -1092,7 +1152,7 @@ export default function EmployerCandidates() {
                                         </button>
                                         {!isUnlocked ? (
                                             <button
-                                                onClick={() => handleUnlock(cand.id)}
+                                                onClick={() => handleUnlock(candId)}
                                                 disabled={isUnlocking}
                                                 className="kc-btn"
                                                 style={{
@@ -1126,8 +1186,8 @@ export default function EmployerCandidates() {
                                                 Kontak terbuka
                                             </div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, font: '700 12px/1.4 "JetBrains Mono", monospace', color: '#065F46' }}>
-                                                <span>{cand.email}</span>
-                                                <span>{cand.phone}</span>
+                                                <span>{candEmail}</span>
+                                                <span>{candPhone}</span>
                                             </div>
                                             <div style={{ marginTop: 11, paddingTop: 11, borderTop: '1px dashed #10B981', font: '600 11px/1.45 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
                                                 Ringkasan skill grounded terlampir · rekomendasi jadwalkan wawancara teknis.
@@ -1148,12 +1208,20 @@ export default function EmployerCandidates() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {possibleCandidates.map(cand => {
-                            const isUnlocked = !!unlockedMap[cand.id]
-                            const isUnlocking = !!unlockingMap[cand.id]
+                            const candId = cand.seeker_id || cand.id
+                            const isUnlocked = !!unlockedMap[candId]
+                            const isUnlocking = !!unlockingMap[candId]
+                            const unlockedData = unlockedMap[candId]
+                            const candName = isUnlocked && unlockedData?.name ? unlockedData.name : (cand.full_name || cand.name || `Kandidat #${candId}`)
+                            const candEmail = isUnlocked && unlockedData?.email ? unlockedData.email : (cand.email || 'Email belum dibuka')
+                            const candPhone = isUnlocked && unlockedData?.phone ? unlockedData.phone : (cand.phone || 'Nomor HP belum dibuka')
+                            const matchingSkills = cand.matching_skills || []
+                            const missingSkills = cand.missing_skills || []
+                            const scoreVal = Math.round(cand.score > 1 ? cand.score : cand.score * 100)
 
                             return (
                                 <div
-                                    key={cand.id}
+                                    key={candId}
                                     style={{
                                         background: '#fff',
                                         border: `1.5px solid ${KC.ink}`,
@@ -1167,17 +1235,17 @@ export default function EmployerCandidates() {
                                         <div style={{ minWidth: 0 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginBottom: 6 }}>
                                                 <span style={{ font: '900 15.5px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink }}>
-                                                    {cand.name}
+                                                    {candName}
                                                 </span>
                                                 <span style={{ padding: '3px 7px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 999, font: '800 9.5px/1 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
                                                     Possible Fit
                                                 </span>
                                             </div>
                                             <div style={{ font: '600 11.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>
-                                                {cand.headline}
+                                                {cand.headline || (matchingSkills.length > 0 ? `Keahlian: ${matchingSkills.slice(0, 3).join(', ')}` : 'Kandidat Terkurasi')}
                                             </div>
                                             <div style={{ font: '600 10.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginTop: 3 }}>
-                                                {cand.location_edu}
+                                                {cand.location_edu || (cand.region_code ? `Wilayah ${cand.region_code}` : 'Indonesia')}
                                             </div>
                                         </div>
 
@@ -1192,7 +1260,7 @@ export default function EmployerCandidates() {
                                                 strokeWidth="4"
                                                 strokeLinecap="round"
                                                 strokeDasharray="132"
-                                                strokeDashoffset={132 - (132 * cand.score) / 100}
+                                                strokeDashoffset={132 - (132 * scoreVal) / 100}
                                             />
                                             <text
                                                 x="26"
@@ -1202,19 +1270,19 @@ export default function EmployerCandidates() {
                                                 transform="rotate(90 26 26)"
                                                 style={{ font: '900 14px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}
                                             >
-                                                {cand.score}
+                                                {scoreVal}
                                             </text>
                                         </svg>
                                     </div>
 
                                     {/* Skills */}
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                                        {cand.matching_skills.map((s, idx) => (
+                                        {matchingSkills.map((s, idx) => (
                                             <span key={idx} style={{ padding: '4px 9px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 7, font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
                                                 ✓ {s}
                                             </span>
                                         ))}
-                                        {cand.missing_skills.map((s, idx) => (
+                                        {missingSkills.map((s, idx) => (
                                             <span key={idx} style={{ padding: '4px 9px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 7, font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
                                                 + {s}
                                             </span>
@@ -1244,7 +1312,7 @@ export default function EmployerCandidates() {
                                         </button>
                                         {!isUnlocked ? (
                                             <button
-                                                onClick={() => handleUnlock(cand.id)}
+                                                onClick={() => handleUnlock(candId)}
                                                 disabled={isUnlocking}
                                                 className="kc-btn"
                                                 style={{
@@ -1278,8 +1346,8 @@ export default function EmployerCandidates() {
                                                 Kontak terbuka
                                             </div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, font: '700 12px/1.4 "JetBrains Mono", monospace', color: '#065F46' }}>
-                                                <span>{cand.email}</span>
-                                                <span>{cand.phone}</span>
+                                                <span>{candEmail}</span>
+                                                <span>{candPhone}</span>
                                             </div>
                                         </div>
                                     )}
@@ -1289,6 +1357,8 @@ export default function EmployerCandidates() {
                     </div>
                 </>
             )}
+        </div>
+    )}
 
             {/* TAB: Real DB Applications */}
             {activeTab === 'applications' && (

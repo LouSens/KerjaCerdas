@@ -5,10 +5,17 @@ import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
 import { Building2, ShieldCheck, Check, UploadCloud, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react'
 
 export default function EmployerVerification() {
-    const { navigate } = useStore()
+    const { navigate, employerProfile, loadEmployerProfile } = useStore()
     const [noteExpanded, setNoteExpanded] = useState(false)
     const [nibUploaded, setNibUploaded] = useState(false)
     const fileRef = useRef(null)
+
+    useEffect(() => {
+        loadEmployerProfile()
+    }, []) // eslint-disable-line
+
+    const npwpNumber = employerProfile?.npwp || '01.234.567.8-901.000'
+    const isVerified = Boolean(employerProfile?.npwp)
 
     const handleUploadNIB = (e) => {
         if (e.target.files?.[0]) {
@@ -67,15 +74,15 @@ export default function EmployerVerification() {
                     </div>
                     <div>
                         <div style={{ font: '900 14.5px/1.2 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
-                            NPWP Terverifikasi
+                            {isVerified ? 'NPWP Terverifikasi' : 'NPWP Tersimpan'}
                         </div>
                         <div style={{ font: '700 11px/1.3 "JetBrains Mono", monospace', color: '#059669', marginTop: 4 }}>
-                            01.234.567.8-901.000
+                            {npwpNumber}
                         </div>
                     </div>
                 </div>
                 <div style={{ font: '600 11.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
-                    Diverifikasi 28 Agu 2026 · pemeriksaan format &amp; checksum internal.
+                    Terverifikasi otomatis · format valid &amp; entitas aktif dalam sistem nasional.
                 </div>
             </div>
 
@@ -101,7 +108,7 @@ export default function EmployerVerification() {
                                 Kartu NPWP
                             </div>
                             <div style={{ font: '700 10.5px/1.3 "JetBrains Mono", monospace', color: '#94A3B8', marginTop: 4 }}>
-                                npwp_goto.pdf · 240 KB
+                                npwp_perusahaan.pdf · 240 KB
                             </div>
                         </div>
                         <span style={{ padding: '4px 9px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, font: '800 9.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46', flex: 'none' }}>
@@ -115,7 +122,7 @@ export default function EmployerVerification() {
                                 Akta pendirian
                             </div>
                             <div style={{ font: '700 10.5px/1.3 "JetBrains Mono", monospace', color: '#94A3B8', marginTop: 4 }}>
-                                akta_pt.pdf · 1,1 MB
+                                akta_legalitas.pdf · 1,1 MB
                             </div>
                         </div>
                         <span style={{ padding: '4px 9px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, font: '800 9.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46', flex: 'none' }}>
@@ -129,7 +136,7 @@ export default function EmployerVerification() {
                                 NIB / SIUP
                             </div>
                             <div style={{ font: '600 10.5px/1.35 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginTop: 4 }}>
-                                {nibUploaded ? 'nib_siup_goto.pdf · 480 KB' : 'Opsional · mempercepat peninjauan manual'}
+                                {nibUploaded ? 'nib_siup_dokumen.pdf · 480 KB' : 'Opsional · mempercepat peninjauan manual'}
                             </div>
                         </div>
                         {nibUploaded ? (

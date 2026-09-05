@@ -6,33 +6,40 @@ import { createEmployerJob, estimateJobPool } from '../services/api'
 import { Plus, X, ArrowLeft, ArrowRight, ShieldCheck, Building2, CheckCircle2 } from 'lucide-react'
 
 export default function EmployerPostJob() {
-    const { navigate, refreshEmployerJobs } = useStore()
+    const { navigate, refreshEmployerJobs, employerProfile, loadEmployerProfile, user } = useStore()
     const [step, setStep] = useState(1) // 1: Profil, 2: NPWP, 3: Lowongan
 
+    useEffect(() => {
+        loadEmployerProfile()
+    }, []) // eslint-disable-line
+
     // Step 1: Profil Lembaga
-    const [companyName, setCompanyName] = useState('GoTo Group')
+    const [companyName, setCompanyName] = useState(employerProfile?.company_name || user?.full_name || '')
     const [industry, setIndustry] = useState('Teknologi')
-    const [companySize, setCompanySize] = useState('1000+')
-    const [picEmail, setPicEmail] = useState('hr@goto.id')
+    const [companySize, setCompanySize] = useState('51-200')
+    const [picEmail, setPicEmail] = useState(user?.email || '')
 
     // Step 2: Validasi NPWP
-    const [npwp, setNpwp] = useState('01.234.567.8-901.000')
+    const [npwp, setNpwp] = useState(employerProfile?.npwp || '')
 
     // Step 3: Detail Lowongan
-    const [title, setTitle] = useState('Senior Backend Engineer (Go)')
+    const [title, setTitle] = useState('')
     const [location, setLocation] = useState('Jakarta')
     const [workType, setWorkType] = useState('Hybrid')
-    const [salaryMin, setSalaryMin] = useState(28000000)
-    const [salaryMax, setSalaryMax] = useState(42000000)
-    const [skills, setSkills] = useState(['Go', 'PostgreSQL', 'gRPC'])
+    const [salaryMin, setSalaryMin] = useState(15000000)
+    const [salaryMax, setSalaryMax] = useState(25000000)
+    const [skills, setSkills] = useState([])
     const [skillInput, setSkillInput] = useState('')
-    const [description, setDescription] = useState(
-        'Merancang arsitektur backend berskala tinggi, membangun RESTful / gRPC microservices, dan mengoptimalkan performa database serta sistem antrean pesan pada ekosistem produksi.'
-    )
+    const [description, setDescription] = useState('')
     const [publishing, setPublishing] = useState(false)
-    const [estimate, setEstimate] = useState({ pool_size: 42, strong: 2, possible: 2, stretch: 1 })
+    const [estimate, setEstimate] = useState({ pool_size: 0, strong: 0, possible: 0, stretch: 0 })
 
-    // Estimate talent pool when skills or location change
+    useEffect(() => {
+        if (employerProfile) {
+            if (!companyName && employerProfile.company_name) setCompanyName(employerProfile.company_name)
+            if (!npwp && employerProfile.npwp) setNpwp(employerProfile.npwp)
+        }
+    }, [employerProfile]) // eslint-disable-line
     useEffect(() => {
         let cancelled = false
         const timer = setTimeout(() => {

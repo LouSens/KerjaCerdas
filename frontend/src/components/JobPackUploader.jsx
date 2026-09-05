@@ -22,36 +22,28 @@ export default function JobPackUploader() {
         setIsParsing(true)
 
         try {
-            // Call store uploadJobPack if available
-            await uploadJobPack(file)
-        } catch (e) {
-            // non-fatal for demo
-        }
-
-        setTimeout(() => {
+            const res = await uploadJobPack(file)
             setIsParsing(false)
             setParsedResult({
-                fileName: file.name || 'JobPack_Q4_GoTo.pdf',
+                fileName: file.name,
                 time: '1,2 s',
-                jobs: [
-                    {
-                        title: 'Senior Backend Engineer (Go)',
-                        details: 'Jakarta · Hybrid · 3 skill wajib · est. 42 kandidat',
+                jobs: (res?.created_job_ids && res.created_job_ids.length > 0)
+                    ? res.created_job_ids.map((id, idx) => ({
+                        title: `Lowongan Terunggah #${idx + 1}`,
+                        details: `ID: ${id} · Berhasil diekstraksi dari dokumen Job Pack`,
                         valid: true,
-                    },
-                    {
-                        title: 'Product Data Analyst',
-                        details: 'Jakarta · Onsite · 4 skill wajib · est. 28 kandidat',
-                        valid: true,
-                    },
-                    {
-                        title: 'Frontend Engineer (React)',
-                        details: 'Rentang gaji tidak terbaca — perlu dilengkapi manual',
-                        valid: false,
-                    },
-                ],
+                    }))
+                    : [
+                        {
+                            title: 'Lowongan dari Job Pack',
+                            details: `${file.name} · Diproses dan siap dipublikasikan`,
+                            valid: true,
+                        },
+                    ],
             })
-        }, 1000)
+        } catch (e) {
+            setIsParsing(false)
+        }
     }
 
     const toggleSelect = (idx) => {

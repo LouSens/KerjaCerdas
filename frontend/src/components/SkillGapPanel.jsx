@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 
 export default function SkillGapPanel() {
     const isMobile = useIsMobile()
-    const { profile, matches, navigate, skillGapResult, runSkillGap, loadSkillGap } = useStore()
+    const { profile, matches, navigate, skillGapResult, runSkillGap, loadSkillGap, recommendedCourses } = useStore()
     const [selectedChips, setSelectedChips] = useState([])
     const [selectedTargetJobId, setSelectedTargetJobId] = useState('')
 
@@ -13,20 +13,28 @@ export default function SkillGapPanel() {
         loadSkillGap()
     }, [loadSkillGap])
 
-    const currentScore = skillGapResult?.match_before || 68
-    const potentialScore = skillGapResult?.match_after || 91
-    const targetTitle = skillGapResult?.target_job_title || 'DevOps Platform Engineer · Bank Mandiri Digital'
+    const currentScore = skillGapResult?.match_before != null
+        ? Math.round(skillGapResult.match_before > 1 ? skillGapResult.match_before : skillGapResult.match_before * 100)
+        : (matches?.[0]?.overall_score ? Math.round(matches[0].overall_score > 1 ? matches[0].overall_score : matches[0].overall_score * 100) : 0)
+
+    const potentialScore = skillGapResult?.match_after != null
+        ? Math.round(skillGapResult.match_after > 1 ? skillGapResult.match_after : skillGapResult.match_after * 100)
+        : Math.min(100, currentScore + 25)
+
+    const targetTitle = skillGapResult?.target_job_title
+        || (matches?.[0]?.title ? `${matches[0].title} · ${matches[0].company || matches[0].company_name || ''}` : 'Pilih Lowongan Target')
 
     const gapSkills = (skillGapResult?.missing_skills && skillGapResult.missing_skills.length)
-        ? skillGapResult.missing_skills.map(s => ({ name: s, hours: 22 }))
-        : [
-            { name: 'Kubernetes', hours: 22 },
-            { name: 'CI/CD Pipeline', hours: 22 },
-        ]
+        ? skillGapResult.missing_skills.map(s => ({ name: s, hours: 20 }))
+        : (matches?.[0]?.missing_skills || []).map(s => ({ name: s, hours: 20 }))
 
     const matchingSkills = (skillGapResult?.matching_skills && skillGapResult.matching_skills.length)
         ? skillGapResult.matching_skills
-        : ['Go', 'PostgreSQL', 'Docker', 'gRPC']
+        : (matches?.[0]?.matching_skills || [])
+
+    const courses = (skillGapResult?.recommended_courses && skillGapResult.recommended_courses.length)
+        ? skillGapResult.recommended_courses
+        : (recommendedCourses || [])
 
     const toggleChip = (name) => {
         setSelectedChips(prev =>
@@ -34,7 +42,7 @@ export default function SkillGapPanel() {
         )
     }
 
-    const selectedHours = selectedChips.length * 22
+    const selectedHours = selectedChips.length * 20
     const projectedMatch = currentScore + Math.round(selectedChips.length * ((potentialScore - currentScore) / (gapSkills.length || 1)))
 
     const handleRunAnalysis = () => {
@@ -60,7 +68,7 @@ export default function SkillGapPanel() {
                             Skill Gap dan Rencana Belajar
                         </h1>
                         <p style={{ font: '400 13.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#64748B', margin: '8px 0 0' }}>
-                            Bandingkan profil Anda dengan kebutuhan lowongan dan pilih langkah belajar yang relevan.
+                            Target analisis: <b>{targetTitle}</b> · {gapSkills.length} gap wajib, {matchingSkills.length} keahlian sesuai.
                         </p>
                     </div>
                     <div style={{ display: 'flex', gap: 11, flexShrink: 0, alignItems: 'center' }}>
@@ -78,7 +86,7 @@ export default function SkillGapPanel() {
                                 outline: 'none',
                             }}
                         >
-                            <option value="">DevOps Platform Engineer</option>
+                            <option value="">{matches?.[0]?.title ? `${matches[0].title} (Target Teratas)` : 'Pilih Lowongan Target'}</option>
                             {(matches || []).map(m => (
                                 <option key={m.id || m.job_id} value={m.id || m.job_id}>
                                     {m.title} ({m.company || m.company_name})
@@ -266,48 +274,58 @@ export default function SkillGapPanel() {
                             Referensi pembelajaran
                         </h2>
                         <p style={{ font: '400 12.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', margin: '5px 0 0' }}>
-                            Dihasilkan dari gap saat ini. Periksa informasi penyedia sebelum mendaftar.
+                            Dihasilkan dari analisis gap AI untuk target pekerjaan {targetTitle}.
                         </p>
                     </div>
                     <span style={{ padding: '6px 12px', background: '#EEF2FF', border: '1px solid #6366F1', borderRadius: 999, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#3730A3' }}>
-                        2 rekomendasi
+                        {courses.length} rekomendasi
                     </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 22 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
-                            <span style={{ font: '800 10.5px/1 "JetBrains Mono", monospace', textTransform: 'uppercase', letterSpacing: 0.7, color: '#64748B' }}>Dicoding</span>
-                            <span style={{ padding: '4px 10px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, font: '700 11px/1 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>Rp 350.000</span>
+                <div style={{ display: 'grid', gridTemplateColumns: courses.length > 0 ? 'repeat(auto-fit, minmax(280px, 1fr))' : '1fr', gap: 16 }}>
+                    {courses.length === 0 ? (
+                        <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 28, textAlign: 'center', color: '#64748B' }}>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Belum ada rekomendasi kursus. Jalankan analisis skill gap untuk memuat modul pelatihan AI.</p>
                         </div>
-                        <h3 style={{ font: '900 17px/1.3 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink, margin: '0 0 9px' }}>
-                            Menjadi Kubernetes Administrator
-                        </h3>
-                        <p style={{ font: '400 12.5px/1.6 "Plus Jakarta Sans", sans-serif', color: '#1E293B', margin: '0 0 16px' }}>
-                            Orkestrasi kontainer, strategi deployment, dan observability untuk beban kerja produksi.
-                        </p>
-                        <div style={{ paddingTop: 14, borderTop: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ font: '600 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>⏱ 22 jam</span>
-                            <span style={{ padding: '9px 14px', background: KC.ink, borderRadius: 8, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#fff', cursor: 'pointer' }}>Periksa penyedia ↗</span>
-                        </div>
-                    </div>
-
-                    <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 22 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
-                            <span style={{ font: '800 10.5px/1 "JetBrains Mono", monospace', textTransform: 'uppercase', letterSpacing: 0.7, color: '#64748B' }}>Hacktiv8</span>
-                            <span style={{ padding: '4px 10px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, font: '700 11px/1 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>Rp 500.000</span>
-                        </div>
-                        <h3 style={{ font: '900 17px/1.3 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink, margin: '0 0 9px' }}>
-                            CI/CD dengan GitHub Actions
-                        </h3>
-                        <p style={{ font: '400 12.5px/1.6 "Plus Jakarta Sans", sans-serif', color: '#1E293B', margin: '0 0 16px' }}>
-                            Pipeline otomatis, gating kualitas, dan strategi rilis bertahap untuk tim kecil.
-                        </p>
-                        <div style={{ paddingTop: 14, borderTop: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ font: '600 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>⏱ 22 jam</span>
-                            <span style={{ padding: '9px 14px', background: KC.ink, borderRadius: 8, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#fff', cursor: 'pointer' }}>Periksa penyedia ↗</span>
-                        </div>
-                    </div>
+                    ) : (
+                        courses.map((c, idx) => (
+                            <div key={idx} style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 22 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
+                                    <span style={{ font: '800 10.5px/1 "JetBrains Mono", monospace', textTransform: 'uppercase', letterSpacing: 0.7, color: '#64748B' }}>
+                                        {c.provider || 'Mitra Pelatihan'}
+                                    </span>
+                                    <span style={{ padding: '4px 10px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, font: '700 11px/1 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>
+                                        {c.price || 'Gratis / Bersubsidi'}
+                                    </span>
+                                </div>
+                                <h3 style={{ font: '900 17px/1.3 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink, margin: '0 0 9px' }}>
+                                    {c.title}
+                                </h3>
+                                <p style={{ font: '400 12.5px/1.6 "Plus Jakarta Sans", sans-serif', color: '#1E293B', margin: '0 0 16px' }}>
+                                    {c.description || 'Program akselerasi kompetensi untuk menutup kesenjangan keahlian.'}
+                                </p>
+                                <div style={{ paddingTop: 14, borderTop: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ font: '600 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                                        ⏱ {c.hours ? `${c.hours} jam` : '20 jam'}
+                                    </span>
+                                    {c.url ? (
+                                        <a
+                                            href={c.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            style={{ textDecoration: 'none', padding: '9px 14px', background: KC.ink, borderRadius: 8, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#fff' }}
+                                        >
+                                            Periksa penyedia ↗
+                                        </a>
+                                    ) : (
+                                        <span style={{ padding: '9px 14px', background: KC.ink, borderRadius: 8, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#fff' }}>
+                                            Tersedia di Platform
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
         )
@@ -376,11 +394,13 @@ export default function SkillGapPanel() {
                         <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>Gap wajib</div>
                     </div>
                     <div style={{ flex: 1, textAlign: 'center', padding: '11px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: '#fff' }}>44</div>
+                        <div style={{ fontSize: 17, fontWeight: 900, color: '#fff' }}>{gapSkills.length * 20}</div>
                         <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>Jam estimasi</div>
                     </div>
                     <div style={{ flex: 1, textAlign: 'center', padding: '11px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: '#F59E0B' }}>Sedang</div>
+                        <div style={{ fontSize: 17, fontWeight: 900, color: gapSkills.length >= 4 ? '#EF4444' : gapSkills.length >= 2 ? '#F59E0B' : '#10B981' }}>
+                            {gapSkills.length >= 4 ? 'Tinggi' : gapSkills.length >= 2 ? 'Sedang' : 'Rendah'}
+                        </div>
                         <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>Severity</div>
                     </div>
                 </div>
@@ -456,40 +476,46 @@ export default function SkillGapPanel() {
                     Referensi pembelajaran
                 </h2>
                 <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, fontWeight: 800, color: '#6366F1' }}>
-                    2 rekomendasi
+                    {courses.length} rekomendasi
                 </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                <div style={{ background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 800, color: '#64748B' }}>Dicoding</span>
-                        <span style={{ padding: '3px 8px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 10, fontWeight: 700, color: '#334155' }}>Rp 350.000</span>
+                {courses.length === 0 ? (
+                    <div style={{ background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 20, textAlign: 'center', color: '#64748B', fontSize: 12 }}>
+                        Belum ada kursus. Jalankan analisis gap untuk melihat modul rekomendasi AI.
                     </div>
-                    <div style={{ fontSize: 14.5, fontWeight: 900, color: KC.ink, marginBottom: 6 }}>Menjadi Kubernetes Administrator</div>
-                    <p style={{ fontSize: 11.5, color: '#1E293B', margin: '0 0 11px', lineHeight: 1.5 }}>
-                        Orkestrasi kontainer, deployment, dan observability untuk beban kerja produksi.
-                    </p>
-                    <div style={{ paddingTop: 11, borderTop: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 10.5, color: '#94A3B8' }}>⏱ 22 jam</span>
-                        <span style={{ padding: '7px 11px', background: KC.ink, borderRadius: 7, fontSize: 10.5, fontWeight: 800, color: '#fff' }}>Periksa penyedia</span>
-                    </div>
-                </div>
-
-                <div style={{ background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 800, color: '#64748B' }}>Hacktiv8</span>
-                        <span style={{ padding: '3px 8px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 10, fontWeight: 700, color: '#334155' }}>Rp 500.000</span>
-                    </div>
-                    <div style={{ fontSize: 14.5, fontWeight: 900, color: KC.ink, marginBottom: 6 }}>CI/CD dengan GitHub Actions</div>
-                    <p style={{ fontSize: 11.5, color: '#1E293B', margin: '0 0 11px', lineHeight: 1.5 }}>
-                        Pipeline otomatis, gating kualitas, dan strategi rilis bertahap.
-                    </p>
-                    <div style={{ paddingTop: 11, borderTop: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 10.5, color: '#94A3B8' }}>⏱ 22 jam</span>
-                        <span style={{ padding: '7px 11px', background: KC.ink, borderRadius: 7, fontSize: 10.5, fontWeight: 800, color: '#fff' }}>Periksa penyedia</span>
-                    </div>
-                </div>
+                ) : (
+                    courses.map((c, idx) => (
+                        <div key={idx} style={{ background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 14 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 800, color: '#64748B' }}>{c.provider || 'Mitra Pelatihan'}</span>
+                                <span style={{ padding: '3px 8px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 10, fontWeight: 700, color: '#334155' }}>{c.price || 'Bersubsidi'}</span>
+                            </div>
+                            <div style={{ fontSize: 14.5, fontWeight: 900, color: KC.ink, marginBottom: 6 }}>{c.title}</div>
+                            <p style={{ fontSize: 11.5, color: '#1E293B', margin: '0 0 11px', lineHeight: 1.5 }}>
+                                {c.description || 'Program intensif penutupan skill gap pencari kerja.'}
+                            </p>
+                            <div style={{ paddingTop: 11, borderTop: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: 10.5, color: '#94A3B8' }}>⏱ {c.hours ? `${c.hours} jam` : '20 jam'}</span>
+                                {c.url ? (
+                                    <a
+                                        href={c.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ textDecoration: 'none', padding: '7px 11px', background: KC.ink, borderRadius: 7, fontSize: 10.5, fontWeight: 800, color: '#fff' }}
+                                    >
+                                        Periksa penyedia
+                                    </a>
+                                ) : (
+                                    <span style={{ padding: '7px 11px', background: KC.ink, borderRadius: 7, fontSize: 10.5, fontWeight: 800, color: '#fff' }}>
+                                        Tersedia
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     )

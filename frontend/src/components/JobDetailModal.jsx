@@ -14,21 +14,19 @@ export default function JobDetailModal({ job, onClose }) {
 
     const jobId = job.job_id || job.id || 'j1'
     const isSaved = (savedJobs || []).some(s => (s.id || s.job_id) === jobId)
-    const company = job.company || job.company_name || 'GoTo Group'
-    const title = job.title || job.job_title || 'Senior Backend Engineer'
-    const rawScore = job.score || job.overall_score || 0.94
+    const company = job.company || job.company_name || 'Perusahaan Pemberi Kerja'
+    const title = job.title || job.job_title || 'Posisi Lowongan'
+    const rawScore = job.score || job.overall_score || 0
     const score = Math.round(rawScore > 1 ? rawScore : rawScore * 100)
 
-    const matchingSkills = (job.matching_skills && job.matching_skills.length)
-        ? job.matching_skills
-        : ['Go', 'PostgreSQL', 'gRPC']
+    const matchingSkills = job.matching_skills || job.required_skills?.slice(0, 4) || []
 
     const breakdown = [
         {
             label: 'Semantic Match (Pengalaman & Profil CV)',
             weight: 'Bobot 50%',
             multiplier: '×0.50',
-            pct: job.semantic_score || (score > 90 ? 96 : score),
+            pct: Math.round(job.semantic_score != null ? (job.semantic_score > 1 ? job.semantic_score : job.semantic_score * 100) : score),
             color: KC.orange,
             desc: 'Konteks pengalaman kerja dan portofolio CV terhadap kualifikasi posisi',
         },
@@ -36,23 +34,23 @@ export default function JobDetailModal({ job, onClose }) {
             label: 'Technical Skills Match',
             weight: 'Bobot 30%',
             multiplier: '×0.30',
-            pct: job.skill_score || (matchingSkills.length >= 3 ? 100 : 85),
+            pct: Math.round(job.skill_score != null ? (job.skill_score > 1 ? job.skill_score : job.skill_score * 100) : score),
             color: '#0284C7',
-            desc: `${matchingSkills.length} dari ${matchingSkills.length} kompetensi esensial telah terpenuhi`,
+            desc: `${matchingSkills.length} kompetensi esensial telah terpenuhi`,
         },
         {
             label: 'Lokasi & Work Mode Match',
             weight: 'Bobot 10%',
             multiplier: '×0.10',
-            pct: job.location_score || 90,
+            pct: Math.round(job.location_score != null ? (job.location_score > 1 ? job.location_score : job.location_score * 100) : (score > 80 ? 90 : 75)),
             color: '#10B981',
-            desc: 'Lokasi kerja sesuai wilayah domisili kandidat',
+            desc: 'Lokasi kerja sesuai preferensi dan wilayah domisili kandidat',
         },
         {
             label: 'Ekspektasi Gaji',
             weight: 'Bobot 5%',
             multiplier: '×0.05',
-            pct: job.salary_score || 95,
+            pct: Math.round(job.salary_score != null ? (job.salary_score > 1 ? job.salary_score : job.salary_score * 100) : (score > 80 ? 90 : 80)),
             color: '#F59E0B',
             desc: 'Rentang penawaran sejalan dengan target kandidat',
         },
@@ -60,7 +58,7 @@ export default function JobDetailModal({ job, onClose }) {
             label: 'Senioritas & Jenjang',
             weight: 'Bobot 5%',
             multiplier: '×0.05',
-            pct: job.seniority_score || 95,
+            pct: Math.round(job.seniority_score != null ? (job.seniority_score > 1 ? job.seniority_score : job.seniority_score * 100) : (score > 80 ? 95 : 80)),
             color: '#6366F1',
             desc: 'Total masa kerja memenuhi kriteria minimum posisi',
         },
