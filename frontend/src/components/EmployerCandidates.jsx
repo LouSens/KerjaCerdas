@@ -95,6 +95,7 @@ export default function EmployerCandidates() {
         setCandidatesError(null)
         setCandidates([])
         fetchCandidatesForJob(selectedJobId, 10)
+            .then((data) => {
                 if (!cancelled) setCandidates(data.candidates || [])
             })
             .catch((err) => {
