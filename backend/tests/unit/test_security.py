@@ -370,7 +370,9 @@ class TestSeedAuthUtils:
     ) -> None:
         """_get_seed_password_hash must raise RuntimeError when env var is absent."""
         monkeypatch.delenv("SEED_DEFAULT_PASSWORD", raising=False)
-        from backend.scripts import auth_utils
+        import sys, os
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+        from scripts import auth_utils
 
         with pytest.raises(RuntimeError, match="SEED_DEFAULT_PASSWORD"):
             auth_utils._get_seed_password_hash()
@@ -380,7 +382,9 @@ class TestSeedAuthUtils:
     ) -> None:
         """An empty string env var must also be rejected."""
         monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "   ")
-        from backend.scripts import auth_utils
+        import sys, os
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+        from scripts import auth_utils
 
         with pytest.raises(RuntimeError, match="SEED_DEFAULT_PASSWORD"):
             auth_utils._get_seed_password_hash()
@@ -392,7 +396,9 @@ class TestSeedAuthUtils:
         import bcrypt
 
         monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "TestSeedPass1!")
-        from backend.scripts import auth_utils
+        import sys, os
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+        from scripts import auth_utils
 
         hashed = auth_utils._get_seed_password_hash()
         assert hashed.startswith("$2b$")
@@ -402,7 +408,9 @@ class TestSeedAuthUtils:
         """auth_utils.py must not contain the previously hardcoded bcrypt hash."""
         import inspect
 
-        from backend.scripts import auth_utils
+        import sys, os
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+        from scripts import auth_utils
 
         src = inspect.getsource(auth_utils)
         assert "$2b$12$demoDemoDemoDemoDemoDe" not in src
@@ -412,7 +420,9 @@ class TestSeedAuthUtils:
         """seed_all.py must not contain any hardcoded bcrypt hash."""
         import inspect
 
-        from backend.scripts import seed_all
+        import sys, os
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+        from scripts import seed_all
 
         src = inspect.getsource(seed_all)
         assert "$2b$12$" not in src
@@ -456,8 +466,10 @@ class TestSeedAuthUtils:
         def fake_session_factory():
             return FakeSession()
 
-        with patch("backend.scripts.auth_utils.async_session_factory", new=fake_session_factory):
-            from backend.scripts.auth_utils import seed_auth_user
+        with patch("scripts.auth_utils.async_session_factory", new=fake_session_factory):
+            import sys, os
+            sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+            from scripts.auth_utils import seed_auth_user
 
             await seed_auth_user("new@example.com", "New User", "seeker")
 
@@ -502,8 +514,10 @@ class TestSeedAuthUtils:
         def fake_session_factory():
             return FakeSession()
 
-        with patch("backend.scripts.auth_utils.async_session_factory", new=fake_session_factory):
-            from backend.scripts.auth_utils import seed_auth_user
+        with patch("scripts.auth_utils.async_session_factory", new=fake_session_factory):
+            import sys, os
+            sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+            from scripts.auth_utils import seed_auth_user
 
             await seed_auth_user("existing@example.com", "Existing User", "employer")
 

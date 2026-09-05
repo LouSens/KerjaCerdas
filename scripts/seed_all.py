@@ -33,7 +33,7 @@ from backend.app.db.schemas import (
 )
 from backend.app.db.session import async_session as async_session_factory
 from backend.app.services.matching.matcher import SemanticMatcher
-from backend.scripts.auth_utils import seed_auth_user as _seed_auth_user
+from scripts.auth_utils import seed_auth_user as _seed_auth_user
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Employers
