@@ -52,7 +52,10 @@ def downgrade() -> None:
     migration 3ec45615212f converted them from JSONB to JSON — and no
     server_default on created_at/updated_at, matching the original
     5a748883f1d9 create_table calls, which none of the migrations between
-    that revision and this one's down_revision ever added.
+    that revision and this one's down_revision ever added. Also re-enables
+    RLS on all four tables at the end: migration 45d873583ae4 enabled it on
+    every table (this one's upgrade() drops the tables, RLS state and all),
+    and a fresh CREATE TABLE does not have it enabled by default.
     """
     op.create_table(
         "ai_logs",
@@ -112,3 +115,6 @@ def downgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_matches_subject_id"), "matches", ["subject_id"], unique=False)
+
+    for table in ("ai_logs", "conversations", "gamification", "matches"):
+        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
