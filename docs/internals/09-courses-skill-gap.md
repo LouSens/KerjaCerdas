@@ -3,7 +3,7 @@
 Files:
 - `backend/app/db/models.py` — `Course`, `SkillGapResult` tables
 - `backend/app/agents/graph/nodes.py` — recommendation logic (agent-triggered)
-- `backend/scripts/seed_courses.py` / `seed_all.py` — catalog seed (15 real Indonesian providers)
+- `scripts/seed_courses.py` / `seed_all.py` — catalog seed (15 real Indonesian providers)
 
 ## Data Model
 

@@ -4,8 +4,8 @@ Both sides of the cosine comparison MUST use the same embedding model, so run
 this after changing GEMINI_EMBED_MODEL (e.g. the switch to gemini-embedding-2).
 
 Run:
-    python -m backend.scripts.reembed            # only rows with a stale model
-    python -m backend.scripts.reembed --all      # force re-embed everything
+    python -m scripts.reembed            # only rows with a stale model
+    python -m scripts.reembed --all      # force re-embed everything
 """
 
 from __future__ import annotations

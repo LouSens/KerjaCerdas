@@ -421,20 +421,26 @@ async def analyze_skill_gap(
             missing_skills.append(req)
 
     total_required = len(target.required_skills or [])
-    match_before = (len(matching_skills) / total_required) if total_required else 1.0
-    # Hypothetical match after covering all gaps
-    match_after = (
-        min(match_before + (len(missing_skills) / total_required * 0.85), 1.0)
-        if total_required
-        else 1.0
-    )
+    explicit_skill_match = (len(matching_skills) / total_required) if total_required else 1.0
 
     # Use top match score as the current match score
     if raw_matches:
         top_score = next(
             (m.score for m in raw_matches if m.job_id == target.id), raw_matches[0].score
         )
-        match_before = max(match_before, top_score)
+        match_before = max(explicit_skill_match, top_score)
+    else:
+        match_before = explicit_skill_match
+
+    # This is a transparent scenario estimate, not a measured outcome. It
+    # assumes the user demonstrates every missing required skill, while the
+    # semantic signal and contextual constraints remain unchanged. Calculate it
+    # after match_before so POST and GET /latest can use the same rule.
+    match_after = (
+        min(match_before + (len(missing_skills) / total_required * 0.85), 1.0)
+        if total_required
+        else 1.0
+    )
 
     # --- Determine severity --------------------------------------------------
     gap_ratio = len(missing_skills) / total_required if total_required else 0
@@ -522,7 +528,21 @@ async def get_latest_skill_gap(current_user: User = Depends(get_current_user)):
         "matching_skills": latest.matching_skills,
         "recommended_courses": courses,
         "match_before": latest.match_percentage,
-        "match_after": min(latest.match_percentage + 9.0, 99.0),
+        # Keep the stored-result view consistent with POST /skill-gap. This is
+        # a scenario estimate, not a promise that completing a course changes
+        # a hiring decision.
+        "match_after": round(
+            min(
+                latest.match_percentage
+                + (
+                    len(latest.missing_skills)
+                    / max(1, len(latest.matching_skills) + len(latest.missing_skills))
+                    * 85.0
+                ),
+                100.0,
+            ),
+            1,
+        ),
         "estimated_hours": min(len(latest.missing_skills) * 10, 120),
         "gap_severity": latest.gap_severity,
     }

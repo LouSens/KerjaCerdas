@@ -272,6 +272,14 @@ async def find_candidates(
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
 
+    # A recruiter may only search the talent pool for a posting owned by their
+    # own organisation. Router-level role enforcement alone is insufficient:
+    # without this check employer B could submit employer A's public job id and
+    # receive candidate-fit data for a recruitment process they do not own.
+    employer = await _get_employer(current_user.id)
+    if not employer or job.employer_id != employer.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan lowongan milik perusahaan Anda")
+
     search = payload or CandidateSearchRequest()
     top_k = search.top_k
     filters = search.filters.model_dump(exclude_none=True)
@@ -353,6 +361,8 @@ async def unlock_candidate(
     employer = await _get_employer(current_user.id)
     if not employer:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Profil perusahaan tidak ditemukan")
+    if job.employer_id != employer.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan lowongan milik perusahaan Anda")
 
     seeker = await repos.seekers.get(seeker_id)
     if not seeker:

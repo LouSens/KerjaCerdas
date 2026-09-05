@@ -309,7 +309,7 @@ class TestSkillGapEndpoint:
         assert "employer_id" not in body
         assert "embedding" not in body
 
-    def test_latest_match_after_is_a_flat_offset(
+    def test_latest_match_after_matches_posted_scenario(
         self,
         client: TestClient,
         seeker_account: dict,
@@ -318,7 +318,7 @@ class TestSkillGapEndpoint:
         stub_embedder,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """POST computes match_after from the gap; GET /latest just adds 9.0."""
+        """The saved latest result uses the same transparent scenario as POST."""
         from backend.app.config.settings import settings
 
         monkeypatch.setattr(settings, "gemini_api_key", "")
@@ -330,7 +330,5 @@ class TestSkillGapEndpoint:
         latest = client.get(
             "/api/v1/seeker/skill-gap/latest", headers=seeker_account["headers"]
         ).json()
-        assert latest["match_after"] == min(latest["match_before"] + 9.0, 99.0)
-        assert latest["match_after"] != posted["match_after"], (
-            "the two endpoints now agree — update this test"
-        )
+        assert latest["match_before"] == posted["match_before"]
+        assert latest["match_after"] == posted["match_after"]

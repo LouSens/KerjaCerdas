@@ -22,13 +22,13 @@ export default function SeekerDashboard() {
         }
     }, [hasProfile]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const topMatches = (matches.length ? matches : DEMO_MATCHES).slice(0, 3)
+    const topMatches = matches.slice(0, 3)
     const avg = matches.length
         ? Math.round(matches.reduce((s, m) => {
-            const raw = m.overall_score ?? m.score ?? 0.8
+            const raw = m.overall_score ?? m.score ?? 0
             return s + (raw > 1 ? raw : raw * 100)
         }, 0) / matches.length)
-        : 87
+        : 0
 
     const completionPct = computeProfileCompleteness()
 
@@ -44,7 +44,7 @@ export default function SeekerDashboard() {
                         Dashboard Karir
                     </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Selamat datang kembali, <b>{user.name || 'Pencari Kerja'}</b> · {matches.length || 5} lowongan terkurasi aktif
+                        Selamat datang kembali, <b>{user.name || 'Pencari Kerja'}</b> · {matches.length} lowongan terkurasi aktif
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -91,7 +91,7 @@ export default function SeekerDashboard() {
                     />
                     <FilledStat
                         label="Lowongan Cocok"
-                        value={String(Math.min(5, matches.length || 5))}
+                        value={String(matches.length)}
                         sub="Tersedia untuk dilamar hari ini"
                         icon={<Briefcase size={16} />}
                         accent={KC.cyan}
@@ -99,7 +99,7 @@ export default function SeekerDashboard() {
                     />
                     <FilledStat
                         label="Skill Gap"
-                        value={String(missingSkills?.length || '2')}
+                        value={String(missingSkills?.length || 0)}
                         sub={missingSkills?.slice(0, 2).join(', ') || 'Analisis skill tersedia'}
                         icon={<TrendingUp size={16} />}
                         accent={KC.yellow}
@@ -107,7 +107,7 @@ export default function SeekerDashboard() {
                     />
                     <FilledStat
                         label="Rekomendasi Kursus"
-                        value={String(recommendedCourses?.length || '5')}
+                        value={String(recommendedCourses?.length || 0)}
                         sub="Modul terkurasi dari mitra"
                         icon={<BookOpen size={16} />}
                         accent={KC.lime}
@@ -135,9 +135,22 @@ export default function SeekerDashboard() {
                         </div>
 
                         <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            {topMatches.map((m, i) => (
+                            {topMatches.length > 0 ? topMatches.map((m, i) => (
                                 <DashMatchCard key={m.job_id || i} match={m} onSelect={() => setSelectedJob(m)} />
-                            ))}
+                            )) : (
+                                <BrutalCard color="#FFFFFF" padding={28}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <Sparkles size={28} color={KC.orange} style={{ marginBottom: 10 }} />
+                                        <h3 style={{ fontSize: 16, fontWeight: 900, margin: '0 0 8px', color: KC.ink }}>Belum Ada Hasil Pencocokan</h3>
+                                        <p style={{ fontSize: 13, color: KC.mute, margin: '0 0 16px', maxWidth: 400, marginInline: 'auto', lineHeight: 1.5 }}>
+                                            Klik "Refresh Match" di atas atau unggah CV untuk mendapatkan rekomendasi lowongan berdasarkan profil Anda.
+                                        </p>
+                                        <button className="kc-btn" onClick={() => runAgent({ explicitIntent: 'match_jobs' })} disabled={agentLoading} style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 20px', fontSize: 13 }}>
+                                            <Sparkles size={14} /> Jalankan Pencocokan AI
+                                        </button>
+                                    </div>
+                                </BrutalCard>
+                            )}
                         </div>
                     </div>
 
@@ -195,11 +208,11 @@ export default function SeekerDashboard() {
 }
 
 function DashMatchCard({ match, onSelect }) {
-    const raw = match.overall_score ?? match.score ?? 0.85
+    const raw = match.overall_score ?? match.score ?? 0
     const pct = Math.round(raw > 1 ? raw : raw * 100)
     const band = bandOf(match)
     const bandData = BAND_META[band]
-    const skills = (match.matching_skills || ['Go', 'PostgreSQL', 'Docker']).slice(0, 3)
+    const skills = (match.matching_skills || []).slice(0, 3)
 
     return (
         <BrutalCard color="#FFFFFF" padding={18} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -207,21 +220,21 @@ function DashMatchCard({ match, onSelect }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Building2 size={13} /> {match.company || 'GoTo Group'}
+                            <Building2 size={13} /> {match.company || 'Perusahaan'}
                         </span>
                         <Tag color={bandData.bg} ink={bandData.color} border={bandData.border} size="sm">
                             {bandData.badgeLabel}
                         </Tag>
                     </div>
                     <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: KC.ink, letterSpacing: -0.3, wordBreak: 'break-word' }}>
-                        {match.title || match.job_title || 'Senior Backend Engineer'}
+                        {match.title || match.job_title || 'Lowongan'}
                     </h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: KC.mute, flexWrap: 'wrap' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <MapPin size={13} /> {match.location || 'Jakarta · Hybrid'}
+                            <MapPin size={13} /> {match.location || match.region_code || '—'}
                         </span>
                         <span>·</span>
-                        <span>{match.salary_range || 'Rp 28.000.000 - Rp 42.000.000'}</span>
+                        {match.salary_range && <span>{match.salary_range}</span>}
                     </div>
                 </div>
                 <ScoreDonut value={pct} size={50} color={bandData.color} />
@@ -243,8 +256,5 @@ function DashMatchCard({ match, onSelect }) {
     )
 }
 
-const DEMO_MATCHES = [
-    { job_id: 'j1', company: 'GoTo Group', title: 'Senior Backend Engineer', location: 'Jakarta · Hybrid', salary_range: 'Rp 28jt - Rp 42jt', score: 0.94, band: 'strong', matching_skills: ['Go', 'PostgreSQL', 'gRPC'] },
-    { job_id: 'j2', company: 'Traveloka', title: 'Full-Stack Developer', location: 'Jakarta · Remote', salary_range: 'Rp 22jt - Rp 35jt', score: 0.88, band: 'strong', matching_skills: ['React', 'Node.js', 'PostgreSQL'] },
-    { job_id: 'j3', company: 'Bank Mandiri Digital', title: 'DevOps Platform Engineer', location: 'Jakarta · Onsite', salary_range: 'Rp 25jt - Rp 38jt', score: 0.78, band: 'possible', matching_skills: ['Kubernetes', 'CI/CD', 'AWS'] },
-]
+// DEMO_MATCHES removed — the dashboard now shows real API data only.
+// If no matches exist, the UI renders an honest zero-state.

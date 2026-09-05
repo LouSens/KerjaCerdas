@@ -310,7 +310,14 @@ const useStore = create(
                 set({ skillGapLoading: true, skillGapError: null })
                 try {
                     const res = await triggerSkillGap(targetJobId)
-                    set({ skillGapResult: res, skillGapLoading: false })
+                    set({
+                        skillGapResult: res,
+                        skillGapLoading: false,
+                        missingSkills: res.missing_skills || [],
+                        matchingSkills: res.matching_skills || [],
+                        recommendedCourses: res.recommended_courses || [],
+                        targetJobTitle: res.target_job_title || null,
+                    })
                     return res
                 } catch (e) {
                     set({ skillGapLoading: false, skillGapError: e.message })
@@ -322,7 +329,14 @@ const useStore = create(
                 set({ skillGapLoading: true, skillGapError: null })
                 try {
                     const res = await fetchLatestSkillGap()
-                    set({ skillGapResult: res || null, skillGapLoading: false })
+                    set({
+                        skillGapResult: res || null,
+                        skillGapLoading: false,
+                        missingSkills: res?.missing_skills || [],
+                        matchingSkills: res?.matching_skills || [],
+                        recommendedCourses: res?.recommended_courses || [],
+                        targetJobTitle: res?.target_job_title || null,
+                    })
                     return res
                 } catch (e) {
                     if (e.status !== 404) {

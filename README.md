@@ -14,7 +14,7 @@
 │                                                                                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 </pre>
-**Autonomous Recruitment Platform powered by Semantic Matching & Multi-Agent Swarm**
+**AI-Powered Recruitment Platform — Semantic Matching & LangGraph-Assisted Response Layer**
 
 [![Backend: FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
 [![Frontend: React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev)
@@ -24,7 +24,7 @@
 [![Cloud: Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![Deploy: Docker](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 
-*An enterprise-grade talent matching infrastructure utilizing high-dimensional vector search and ReAct-based autonomous agents to streamline recruitment pipelines.*
+*A functional prototype of an AI-powered talent matching platform utilizing high-dimensional vector search and a LangGraph response layer to streamline recruitment pipelines.*
 
 <br>
  
@@ -66,14 +66,14 @@ Setiap komponen dalam aplikasi ini dirancang tidak hanya untuk fungsi teknis, me
 | **`JobDetailModal`** | Modal detail lowongan dengan **Explainable AI Score Breakdown**. | Transparansi 5 komponen skor pencocokan (Semantik, Skill, Lokasi, Gaji, Pengalaman) untuk trust kandidat. |
 | **`ApplicationsPage`** | Visual milestone pipeline status lamaran interaktif. | Menghilangkan ketidakpastian kandidat dengan pelacakan tahapan lamaran real-time. |
 | **`SkillGapPanel`** | Membandingkan array `skills` pengguna dengan top lowongan (Set Difference). | Agregasi Ed-Tech: menghubungkan pengguna ke kursus/bootcamp partner (potensi komisi referal). |
-| **`FloatingAdvisor`** | Interface chatbot dengan streaming completion LangGraph. | Memberikan layanan career coaching 24/7 berskala massal dengan Zero Marginal Cost. |
+| **`FloatingAdvisor`** | Interface chatbot terhubung ke LangGraph response node. | Memberikan layanan career coaching 24/7 berskala massal dengan Zero Marginal Cost. |
 | **`EmployerDashboard`** | Dasbor analitik (KPIs) pelamar real-time per lowongan dengan context passing. | Meminimalisasi beban kognitif HRD dengan funnel view pelamar yang jelas. |
 | **`EmployerPostJob`** | Wizard pasang lowongan berjenjang (1: Profil $\rightarrow$ 2: NPWP $\rightarrow$ 3: Lowongan). | Memandu HRD melalui onboarding terstruktur sebelum mempublikasikan lowongan. |
 | **`JobPackUploader`** | Drag-and-drop uploader untuk file PDF berisi kumpulan lowongan massal. | Mereduksi waktu input lowongan dari jam menjadi detik dengan AI auto-parsing. |
 | **`EmployerProfile`** | Formulir informasi legalitas dan identitas institusi perusahaan. | Membangun kredibilitas perusahaan sebelum proses verifikasi NPWP. |
-| **`EmployerCandidates`** | Menampilkan hasil sortir (*Shortlist*) `ResumeReviewAgent`. | Mendorong monetisasi *Pay-to-Unlock* (Rp 50.000/kontak) dengan Teaser Method. |
+| **`EmployerCandidates`** | Menampilkan hasil reverse-matching dari backend API. | Sourcing kandidat real-time dari profil pencari kerja yang tersedia. |
 | **`PricingPage`** | Konfigurasi limit tiering, paywall, dan ATS enterprise coming soon. | Transparansi harga B2B/B2C dengan strategi freemium untuk akuisisi awal agresif. |
-| **`VerificationDashboard`** | Integrasi E-KYC KTP Dukcapil, Ijazah SIVIL, NPWP DJP, dan Phone OTP. | Solusi krisis Trust dengan verifikasi dokumen terenkripsi AES-256-GCM. |
+| **`VerificationDashboard`** | Antarmuka verifikasi identitas (KTP, Ijazah, NPWP, OTP). | **[Implementasi Mendatang]** Saat ini menggunakan mock endpoint. Integrasi resmi Dukcapil/SIVIL/DJP memerlukan kontrak dan kepatuhan regulasi. |
 
 ---
 
@@ -263,73 +263,65 @@ Proyek ini menggunakan **GitHub Actions** (`release.yml`) untuk membangun (build
 
 ## 🧠 Arsitektur Sistem Inti
 
-Platform kami tidak mengandalkan *Prompt Wrapper* statis. Pusat logika diorkestrasi oleh arsitektur *Autonomous Multi-Agent Swarm* memanfaatkan framework **LangGraph** dan model **Gemini 3.1 Flash**.
+Platform ini menggunakan **LangGraph** sebagai response layer dan **Gemini 3.1 Flash** untuk embedding semantik dan generasi teks. Arsitektur saat ini berupa *single-node LangGraph graph* yang menghasilkan respons natural-language, sementara logika matching dan skill-gap dijalankan secara prosedural sebelum graph dieksekusi.
+
+> **Status:** Fungsi-fungsi node (router, matcher, skill_gap, advisor, compose) sudah diimplementasikan di `nodes.py` tetapi dijalankan secara prosedural di API router — belum diwiring sebagai multi-node LangGraph StateGraph. Migrasi ke topologi multi-node yang sesungguhnya ada di roadmap teknis.
 
 ```mermaid
 flowchart TD
-    %% Modern Startup Aesthetics
+    %% Accurate Architecture Diagram
     classDef user fill:#1A1A1A,stroke:#646CFF,stroke-width:2px,color:#FFF,font-weight:bold
     classDef api fill:#2D3748,stroke:#38B2AC,stroke-width:2px,color:#FFF,font-weight:bold
-    classDef supervisor fill:#4A5568,stroke:#F6E05E,stroke-width:3px,color:#FFF,font-weight:bold
-    classDef worker fill:#2B6CB0,stroke:#63B3ED,stroke-width:2px,color:#FFF
-    classDef state fill:#2C7A7B,stroke:#81E6D9,stroke-width:2px,color:#FFF,stroke-dasharray: 5 5
+    classDef node fill:#4A5568,stroke:#F6E05E,stroke-width:3px,color:#FFF,font-weight:bold
+    classDef proc fill:#2B6CB0,stroke:#63B3ED,stroke-width:2px,color:#FFF
     classDef db fill:#276749,stroke:#68D391,stroke-width:2px,color:#FFF
     classDef llm fill:#702459,stroke:#D6BCFA,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef future fill:#4A5568,stroke:#A0AEC0,stroke-width:2px,color:#CBD5E0,stroke-dasharray: 5 5
 
-    User((👤 Seeker / Employer)):::user
+    User(("👤 Seeker / Employer")):::user
 
     subgraph API_Layer ["API Gateway & Security Layer"]
         FastAPI["⚡ FastAPI / ASGI"]:::api
-        Middleware["🛡️ Rate Limiter (Sliding Window)\n+ PII Redaction & Sanitizer"]:::api
+        Middleware["🛡️ Rate Limiter + JWT Auth\n+ PII Redaction"]:::api
         FastAPI --- Middleware
     end
 
-    subgraph LangGraph_Swarm ["🧠 Multi-Agent Swarm (LangGraph)"]
-        Supervisor{"👑 Supervisor Node\n(Routing & Synthesis)"}:::supervisor
-        
-        %% Agents
-        SearchAgent["🔍 SearchJobs Agent"]:::worker
-        ReviewAgent["📄 ResumeReview Agent"]:::worker
-        GapAgent["🎯 SkillGap Agent"]:::worker
-        AdvisorAgent["💬 CareerAdvisor Agent"]:::worker
-        
-        GraphState[("💬 Conversational\nMemory / State")]:::state
+    subgraph Processing ["🧠 AI Processing Pipeline (Procedural)"]
+        Router["🔀 Intent Router\n(Gemini LLM / Regex Fallback)"]:::proc
+        Matcher["🔍 SemanticMatcher\n(Hybrid Ranking)"]:::proc
+        SkillGap["🎯 Skill Gap Compute\n(Deterministic + Course Recs)"]:::proc
+        Advisor["💬 Career Advisor\n(Gemini LLM)"]:::proc
+    end
 
-        Supervisor <--> SearchAgent
-        Supervisor <--> ReviewAgent
-        Supervisor <--> GapAgent
-        Supervisor <--> AdvisorAgent
-        
-        Supervisor -.-> GraphState
-        SearchAgent -.-> GraphState
-        AdvisorAgent -.-> GraphState
+    subgraph LangGraph_Node ["📝 LangGraph Response Layer"]
+        AgentNode{"Single Agent Node\nSTART → agent → END"}:::node
     end
 
     subgraph Infrastructure ["Vector & LLM Engine"]
-        Gemini{"✨ Google Gemini\n3.1 Flash (MRL 768-dim)"}:::llm
-        PG[("🐘 PostgreSQL 16\n(pgvector HNSW ef=64)")]:::db
-        Cache[("⚡ LRU / Redis\nQuery Embeddings Cache")]:::db
-        
-        Gemini ~~~ PG
-        PG ~~~ Cache
+        Gemini{"✨ Google Gemini\n3.1 Flash (768-dim)"}:::llm
+        PG[("🐘 PostgreSQL 16\n(pgvector HNSW)")]:::db
     end
 
-    %% Vertical Data Flow
-    User -->|HTTP / SSE Stream| FastAPI
-    FastAPI -->|Submit Task| Supervisor
-    FastAPI <-->|Stream Response| GraphState
+    User -->|HTTP JSON| FastAPI
+    FastAPI --> Router
+    Router -->|match_jobs| Matcher
+    Router -->|skill_gap| SkillGap
+    Router -->|advise| Advisor
+    Matcher --> AgentNode
+    SkillGap --> AgentNode
+    Advisor --> AgentNode
+    AgentNode -->|final_response| FastAPI
 
-    %% Agents to Infrastructure
-    SearchAgent -->|HNSW ANN Search| PG
-    GapAgent -->|Read Skills & Courses| PG
-    ReviewAgent -->|Multimodal Parsing| Gemini
-    GapAgent -->|Reasoning & Roadmaps| Gemini
-    Supervisor -->|Intent Classification| Gemini
-    SearchAgent -->|Query Vectors| Cache
+    Matcher -->|HNSW ANN Search| PG
+    SkillGap -->|Read Skills & Courses| PG
+    Matcher -->|Embed Query| Gemini
+    SkillGap -->|Course Recs| Gemini
+    Advisor -->|NL Generation| Gemini
+    AgentNode -->|NL Synthesis| Gemini
 ```
 
-### 1. Eksekusi Otonom Paralel (Parallel Function Calling)
-*Supervisor Node* merutekan permintaan kandidat secara dinamis. Apabila kandidat meminta pencarian lowongan sekaligus evaluasi CV, sistem akan mengeksekusi modul `SearchJobsAgent` dan `ResumeReviewAgent` secara bersamaan, kemudian mensintesis laporan gabungan.
+### 1. Pipeline Proses AI
+*Intent Router* menentukan jalur pemrosesan berdasarkan pesan pengguna. Saat ini pipeline dijalankan secara sekuensial (router → matcher → skill_gap/advisor → compose). Migrasi ke topologi LangGraph multi-node paralel ada di roadmap pengembangan.
 
 ### 2. Hibridisasi Penilaian (Hybrid Ranking)
 Sistem menggunakan komposit metrik matematis untuk mereplikasi prioritas SDM:
@@ -350,7 +342,7 @@ Sebelum diproses oleh model eksternal, komponen PII (Personally Identifiable Inf
 Infrastruktur relasional kami direkayasa untuk menangani entitas dalam skala tinggi (High-Volume) sekaligus memfasilitasi pencarian jarak vektor komputasional menggunakan `pgvector`.
 
 ### 5. Data Acquisition & AI Feedback Loop
-Sistem mengakuisisi data riwayat lowongan (*historical data*) melalui tiga jalur: **B2B Web Scraping (ETL)** terhadap lowongan lama, **Kemitraan Data B2G** dengan Kemnaker/BPS, serta yang paling krusial, **Internal Feedback Loop**. Platform mencatat aktivitas kandidat secara *closed-loop* (lolos wawancara, tingkat retensi). Data organik ini akan melatih-ulang (*fine-tuning*) rekomendasi agen AI agar relevansinya mengungguli pangkalan data rekrutmen manapun.
+**[Implementasi Mendatang]** Sistem dirancang untuk mengakuisisi data melalui tiga jalur di masa depan: **Kemitraan Data** dengan institusi ketenagakerjaan, **Internal Feedback Loop** dari aktivitas pengguna (lolos wawancara, tingkat retensi), serta integrasi kursus terverifikasi. Saat ini, data bersumber dari seeder manual dan input pengguna langsung.
 
 ```mermaid
 ---
@@ -442,7 +434,7 @@ KerjaCerdas/
 │   ├── app/
 │   │   ├── api/              # Interface Endpoints FastAPI
 │   │   │   ├── routers/
-│   │   │   │   ├── agent.py       # Endpoint streaming SSE untuk LangGraph
+│   │   │   │   ├── agent.py       # Endpoint invokasi LangGraph response node
 │   │   │   │   ├── auth.py        # Login/Register (JWT)
 │   │   │   │   ├── employer.py    # Endpoint perusahaan & kandidat pelamar
 │   │   │   │   ├── events.py      # Analytics event tracking
@@ -456,8 +448,8 @@ KerjaCerdas/
 │   │   │   └── services/          # Business logic helpers
 │   │   ├── agents/           # Arsitektur Multi-Agent & LLM
 │   │   │   ├── graph/
-│   │   │   │   ├── builder.py     # Konstruktor ReAct Supervisor Swarm
-│   │   │   │   └── nodes.py       # Worker Nodes (Search, SkillGap, Advisor)
+│   │   │   ├── builder.py     # LangGraph single-node graph (START → agent → END)
+│   │   │   │   └── nodes.py       # Processing functions (Router, Matcher, SkillGap, Advisor, Compose)
 │   │   │   ├── tools/
 │   │   │   │   └── superpowers.py # Kumpulan fungsi (tools) untuk Gemini
 │   │   │   ├── memory/            # Checkpointer & conversational state
@@ -491,7 +483,7 @@ KerjaCerdas/
 │   │   │   ├── SeekerSearch.jsx      # Dual-Track Manual Search
 │   │   │   ├── SkillGapPanel.jsx     # Panel rekomendasi kursus Ed-Tech
 │   │   │   ├── ApplicationsPage.jsx  # Pelacakan status lamaran milestone
-│   │   │   ├── FloatingAdvisor.jsx   # Antarmuka chat interaktif dengan Swarm
+│   │   │   ├── FloatingAdvisor.jsx   # Antarmuka chat interaktif (JSON response, bukan SSE streaming)
 │   │   │   ├── JobDetailModal.jsx    # Detail lowongan + Explainable AI Breakdown
 │   │   │   ├── EmployerDashboard.jsx # Analitik kolam kandidat untuk HRD
 │   │   │   ├── EmployerCandidates.jsx# AI Shortlist & tombol "Unlock Kontak"

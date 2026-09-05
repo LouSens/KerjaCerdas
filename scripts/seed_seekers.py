@@ -11,7 +11,7 @@ from backend.app.db.schemas import (
     WorkExperience,
 )
 from backend.app.services.matching.matcher import SemanticMatcher
-from backend.scripts.seed_all import SEEKERS, _seed_auth_user
+from scripts.seed_all import SEEKERS, _seed_auth_user
 
 
 async def seed_seekers_data():

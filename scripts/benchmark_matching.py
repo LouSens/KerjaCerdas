@@ -11,7 +11,7 @@ be deliberately sparse and informal.
 Headline metric = LIFT = (semantic top-band recall) − (keyword top-band recall)
 on the lexically-varied "good" candidates.
 
-Run:  python -m backend.scripts.benchmark_matching --manual-seconds-per-cv 30
+Run:  python -m scripts.benchmark_matching --manual-seconds-per-cv 30
 
 Needs a real GEMINI_API_KEY to be meaningful; without it the embedder is the
 offline HashEmbedder (cosine ≈ 0) and a loud NOT-VALID banner is printed.

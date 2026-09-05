@@ -23,7 +23,7 @@
 
 KerjaCerdas adalah platform karier berbasis kecerdasan buatan (*AI-powered talent infrastructure*) yang menyelesaikan krisis ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja Indonesia dari dua sisi: pencari kerja (B2C) yang kesulitan mengidentifikasi peluang relevan dan memahami celah keahlian mereka, serta perusahaan/HRD (B2B) yang kewalahan menyaring volume lamaran tidak relevan.
 
-Sistem mengonversi CV dan lowongan menjadi representasi vektor semantik 768-dimensi menggunakan Gemini Embeddings, lalu mencocokkannya melalui algoritma **Hybrid Ranking** (Semantik 50%, Skill 30%, Lokasi 10%, Gaji 5%, Pengalaman 5%) dengan **Explainable AI Score Breakdown** yang transparan. *Multi-Agent Swarm* berbasis LangGraph menganalisis celah keahlian (*skill gap*) dan merekomendasikan pelatihan terstruktur. HRD menyaring kandidat terbaik dalam hitungan menit dan membayar biaya mikro bersahabat (**Pay-to-Unlock Rp 50.000 / 10 kandidat atau Rp 5.000/kontak**) tanpa beban langganan mahal di muka.
+Sistem mengonversi CV dan lowongan menjadi representasi vektor semantik 768-dimensi menggunakan Gemini Embeddings, lalu mencocokkannya melalui algoritma **Hybrid Ranking** (Semantik 50%, Skill 30%, Lokasi 10%, Gaji 5%, Pengalaman 5%) dengan **Explainable AI Score Breakdown** yang transparan. *Pipeline AI prosedural* berbasis LangGraph menganalisis celah keahlian (*skill gap*) dan merekomendasikan pelatihan terstruktur. HRD menyaring kandidat terbaik dalam hitungan menit dan membayar biaya mikro bersahabat (**Pay-to-Unlock Rp 50.000 / 10 kandidat atau Rp 5.000/kontak**) tanpa beban langganan mahal di muka.
 
 **Status saat ini:** MVP v1.0.0 fungsional penuh — dieksekusi via Docker dengan latensi API <200ms, mencakup infrastruktur CI/CD otomatis, A/B testing, Onboarding Wizard, Kanban Pipeline Employer, dan dual-layer caching.
 
@@ -114,7 +114,7 @@ Aplikasi web (React 18 + FastAPI), diakses secara publik via browser dengan navi
 - **Mitra EdTech (Rencana):** Dicoding, Coursera, Skill Academy — rekomendasi kursus dari skill gap output.
 
 **Yang Dapat Dilakukan (saat ini):**
-Semantic matching real-time, explainable score breakdown, skill gap analysis, pelacakan lamaran visual, verifikasi identitas & OTP (mock/demo), streaming AI response, Job Pack bulk uploader, Employer Step Timeline, Pay-to-Unlock backend API, A/B testing, event tracking, rate limiting & sanitasi input.
+Semantic matching real-time, explainable score breakdown, skill gap analysis, pelacakan lamaran visual, verifikasi identitas & OTP (mock/demo), natural language AI response, Job Pack bulk uploader, Employer Step Timeline, Pay-to-Unlock backend API, A/B testing, event tracking, rate limiting & sanitasi input.
 
 **Yang Belum Dapat Dilakukan:**
 Payment gateway produksi (Midtrans/Xendit live token), E-KYC dengan API pemerintah langsung (Vida/Privy live B2B agreement), fine-tuning dari feedback loop nyata, integrasi ATS enterprise.
@@ -130,7 +130,7 @@ Payment gateway produksi (Midtrans/Xendit live token), E-KYC dengan API pemerint
 
 **Level: Functional Prototype — Advanced MVP (v1.0.0)**
 
-Bukti: Platform berjalan end-to-end via Docker; 11 router API aktif; Hybrid Ranking Algorithm tervalidasi dengan 5 komponen skor; LangGraph Multi-Agent Swarm berfungsi; middleware keamanan berlapis aktif; 21 lowongan + 20 kandidat Indonesia sebagai demo data real.
+Bukti: Platform berjalan end-to-end via Docker; 11 router API aktif; Hybrid Ranking Algorithm tervalidasi dengan 5 komponen skor; LangGraph-assisted response layer berfungsi; middleware keamanan berlapis aktif; 21 lowongan + 20 kandidat Indonesia sebagai demo data real.
 
 ---
 
@@ -142,7 +142,7 @@ KerjaCerdas bukan sekadar prototipe konsep — ini adalah platform beroperasi en
 - Autentikasi JWT dengan kontrol akses berbasis peran (seeker/employer), aktif di 11 router API FastAPI yang terpisah.
 - Pipeline CV Parsing: dari dokumen PDF ke vektor 768 dimensi menggunakan Gemini multimodal dan model embedding text-embedding-2 (MRL-truncated dari 3072 dimensi), tersimpan di PostgreSQL dengan ekstensi pgvector berindeks HNSW (ef_construction=64, m=16).
 - Hybrid Semantic Matching dua tingkat: ANN prefilter pgvector diikuti structured reranking dengan formula skor yang dapat diaudit.
-- LangGraph Multi-Agent Swarm dengan empat node: route_intent, run_matcher, run_skill_gap, dan run_advisor — klasifikasi intent menggunakan Gemini zero-shot JSON dengan fallback regex Bahasa Indonesia.
+- Pipeline AI prosedural terhubung ke LangGraph response layer dengan tahap: route_intent, run_matcher, run_skill_gap, dan run_advisor — klasifikasi intent menggunakan Gemini zero-shot JSON dengan fallback regex Bahasa Indonesia.
 - Skill Gap Analyzer menghasilkan gap analysis dan rekomendasi kursus dari tiga sumber berlapis: LLM Gemini, database kursus internal, serta katalog 35+ skill dari 12 provider Indonesia.
 - Employer Reverse Matching dengan pengelompokan band deterministik (Strong/Possible/Stretch) dan pengacakan berbasis SHA256(job_id) dalam satu band.
 - Keamanan berlapis fungsional: Rate Limiter sliding-window per IP, batas ukuran request 10 MB, modul sanitasi teks dengan 10 pola regex prompt-injection guard, HTML escape, serta security headers. Informasi pribadi (email, nomor telepon) di-redact via regex sebelum menyentuh LLM — kepatuhan UU PDP No.27/2022 diterapkan di lapisan preprocessing.

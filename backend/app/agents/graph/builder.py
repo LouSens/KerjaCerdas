@@ -1,13 +1,17 @@
-"""LangGraph topology for the KerjaCerdas agent (V2 Autonomous Swarm).
+"""LangGraph topology for the KerjaCerdas agent.
 
 Compatible with LangGraph >= 1.1.x (no `langgraph.prebuilt` / `create_react_agent`).
 
 Architecture
 ------------
-The graph is intentionally simple: one agent node that calls the Gemini LLM
-and returns the AI text response.  Job *matching* is handled by SemanticMatcher
-before the graph runs (see agent.py); the graph's sole job is to generate the
-natural-language `final_response`.
+The graph is a single agent node that calls the Gemini LLM and returns the
+AI text response.  Job *matching*, skill-gap analysis, and intent routing are
+handled procedurally in the API router (see agent.py) before the graph runs;
+the graph's sole job is to generate the natural-language `final_response`.
+
+The node functions in nodes.py (route_intent, run_matcher, run_skill_gap,
+run_advisor, compose_response) are called procedurally by the API router —
+they are NOT wired as LangGraph graph nodes.
 
 Tool calling via bind_tools() is disabled in this build because the installed
 version of google-generativeai raises:
@@ -15,10 +19,13 @@ version of google-generativeai raises:
     AttributeError: 'bool' object has no attribute 'items'
 
 when converting Pydantic v2 tool schemas (which emit `additionalProperties: false`)
-to Gemini FunctionDeclaration format.  The fix is to invoke the LLM without
-tool-binding; tool logic is described in the system prompt instead.
+to Gemini FunctionDeclaration format.
 
   START → agent_node → END
+
+[Future Implementation] Migrating to a multi-node StateGraph topology where
+each processing function runs as a proper LangGraph node with conditional
+routing is on the technical roadmap.
 """
 
 from __future__ import annotations
