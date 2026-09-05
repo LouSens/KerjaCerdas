@@ -19,7 +19,6 @@ from backend.app.api.middleware.rate_limiter import (
     _get_bucket,
     _get_client_ip,
 )
-from backend.app.config.settings import settings
 
 
 def _make_request(
