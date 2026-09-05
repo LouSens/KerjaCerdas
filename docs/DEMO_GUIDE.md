@@ -57,9 +57,10 @@ Semua akun menggunakan kata sandi default: **`demo`** (atau nilai dari `SEED_DEF
 - **Aksi:** Pada lowongan kategori *Stretch*, klik tombol **"Lihat skill yang perlu dilengkapi →"** atau navigasi ke `/skill-gap`.
 - **Narasi Juri:** *"Jika kandidat belum 100% cocok, AI tidak hanya menolak melainkan merinci missing skills dan merekomendasikan kursus terkurasi dari mitra Ed-Tech untuk menutup celah tersebut."*
 
-### Langkah 1.4 — Verifikasi Identitas & Phone OTP
+### Langkah 1.4 — Verifikasi Identitas & Phone OTP *(Demo/Mock)*
 - **Aksi:** Buka menu **Verifikasi** (`/verifikasi`). Klik verifikasi pada kartu **Nomor HP**, masukkan nomor (misal `+6281234567890`), klik **Kirim Kode OTP**. Masukkan 6 digit kode OTP yang tertera pada notifikasi toast demo.
-- **Narasi Juri:** *"Sistem verifikasi kami menjamin validitas pelamar dengan enkripsi AES-256-GCM. Fitur OTP demo ini siap dihubungkan langsung ke WhatsApp Gateway resmi di tahap komersial."*
+- **Narasi Juri:** *"Alur verifikasi ini mendemonstrasikan pengalaman pengguna yang dirancang untuk integrasi dengan WhatsApp Gateway resmi di tahap komersial. Saat ini kode OTP ditampilkan langsung di layar untuk keperluan pengujian."*
+- **⚠️ Catatan:** Endpoint OTP bersifat mock — tidak terhubung ke provider SMS/WhatsApp sungguhan.
 
 ### Langkah 1.5 — Pelacakan Lamaran (Milestone Pipeline)
 - **Aksi:** Buka menu **Lamaran Saya** (`/lamaran`). Tunjukkan visual timeline progres lamaran (*Tersimpan* $\rightarrow$ *Melamar* $\rightarrow$ *Ditinjau* $\rightarrow$ *Interview* $\rightarrow$ *Diterima*).
@@ -83,9 +84,10 @@ Semua akun menggunakan kata sandi default: **`demo`** (atau nilai dari `SEED_DEF
 - **Aksi:** Buka menu **Pasang Lowongan** (`/employer/pasang`). Ketik judul posisi seperti **"Senior Backend Engineer"**.
 - **Narasi Juri:** *"Saat HRD mengetik spesifikasi, widget AI Live Pool memprediksi ketersediaan kandidat yang cocok (>80% match score) secara real-time sebelum lowongan diterbitkan."*
 
-### Langkah 2.4 — Shortlisting Bebas Bias & Pay-to-Unlock
-- **Aksi:** Buka menu **Top Kandidat** (`/employer/kandidat`). Tunjukkan daftar kandidat yang telah disortir AI.
-- **Narasi Juri:** *"Nama kandidat disamarkan dengan The Teaser Method (contoh: 'Someone at Tokopedia'). HRD dapat mengevaluasi kualitas dan skor kandidat terlebih dahulu, lalu membayar biaya mikro Rp 50.000 via Pay-to-Unlock hanya ketika ingin menghubungi kandidat terpilih."*
+### Langkah 2.4 — Sourcing Kandidat AI & Pipeline Rekrutmen
+- **Aksi:** Buka menu **Top Kandidat** (`/employer/kandidat`). Tunjukkan daftar kandidat yang telah di-rank oleh sistem matching.
+- **Narasi Juri:** *"Sistem mencocokkan profil pencari kerja yang tersedia dengan kebutuhan lowongan menggunakan hybrid ranking (semantik + skill). HRD dapat melihat skor kecocokan, skill yang sesuai, dan alasan kecocokan untuk setiap kandidat."*
+- **⚠️ Catatan:** Model monetisasi Pay-to-Unlock (Rp 50.000/kontak) telah dirancang namun belum terintegrasi dengan payment gateway di prototipe ini.
 
 ---
 

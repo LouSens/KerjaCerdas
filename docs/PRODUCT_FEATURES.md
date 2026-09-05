@@ -35,7 +35,7 @@ Kandidat dapat membuka kartu lowongan untuk melihat rincian kalkulasi skor (*Sco
 
 ## 2. Proactive Skill Gap Analyzer (Analisis Celah Keahlian)
 
-Sistem tidak hanya menyortir kandidat, tetapi secara proaktif memberi tahu apa kekurangan mereka terhadap target posisi impian. Melalui arsitektur agen AI otonom, sistem menganalisis kesenjangan (*gap*) antara spesifikasi lowongan dan keahlian yang tercantum di CV.
+Sistem tidak hanya menyortir kandidat, tetapi secara proaktif memberi tahu apa kekurangan mereka terhadap target posisi impian. Melalui pipeline pemrosesan AI, sistem menganalisis kesenjangan (*gap*) antara spesifikasi lowongan dan keahlian yang tercantum di CV.
 
 Jika kandidat memiliki celah kemampuan (misalnya belum menguasai *Docker* atau *Go Concurrency*), agen AI akan:
 1. Merinci daftar skill yang hilang (*missing skills*).
@@ -61,7 +61,7 @@ Perusahaan dapat mengunggah 1 dokumen PDF berisi kumpulan banyak posisi sekaligu
 
 ### 🔓 Pay-to-Unlock Model
 - Profil kandidat dalam daftar pendek (*Shortlist*) ditampilkan dengan **The Teaser Method** (misal: "Someone at Tokopedia", "Someone from ITB") lengkap dengan skor kecocokan teknis.
-- Perusahaan dapat membuka akses kontak langsung (Nama lengkap, email, nomor HP) dengan tarif mikro **Rp 50.000 / 10x unlock**, menghilangkan kebutuhan berlangganan jutaan rupiah di muka.
+- Perusahaan dapat membuka akses kontak langsung (Nama lengkap, email, nomor HP) dengan tarif mikro **Rp 50.000 / 10x unlock** — **[Implementasi Mendatang]** integrasi payment gateway belum tersedia di prototipe ini, fitur ditampilkan sebagai demo alur interaksi.
 
 **Komponen terkait:** `EmployerDashboard`, `EmployerJobs`, `EmployerPostJob`, `JobPackUploader`, `EmployerProfile`, `EmployerCandidates`, `PricingPage`  
 **API:** `POST /api/v1/employer/jobs`, `POST /api/v1/uploads/job-pack`, `POST /api/v1/employer/jobs/{id}/candidates`, `POST /api/v1/employer/jobs/{id}/unlock/{seeker_id}`, `GET/POST /api/v1/employer/profile`
@@ -70,7 +70,9 @@ Perusahaan dapat mengunggah 1 dokumen PDF berisi kumpulan banyak posisi sekaligu
 
 ## 4. E-KYC Identity, Credential & Phone OTP Verification
 
-Platform ini menyelesaikan krisis kepercayaan (*Trust Crisis*) dengan validasi kredensial berlapis:
+> **[Status: Mock/Demo]** Fitur verifikasi saat ini menggunakan mock endpoint internal untuk demonstrasi alur pengguna. Integrasi resmi dengan API Dukcapil, SIVIL Kemdikbud, dan DJP Online memerlukan kontrak kerjasama resmi dengan instansi terkait serta kepatuhan terhadap regulasi yang berlaku.
+
+Platform ini dirancang untuk menyelesaikan krisis kepercayaan (*Trust Crisis*) dengan validasi kredensial berlapis:
 
 | Dokumen / Identitas | Integrasi Validasi | Field yang Diperiksa |
 |---|---|---|

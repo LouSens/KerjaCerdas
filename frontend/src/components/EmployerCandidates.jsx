@@ -3,16 +3,12 @@
  */
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
-import toast from 'react-hot-toast'
 import { fetchCandidatesForJob } from '../services/api'
 import { KC, BrutalCard, Tag, BandLegend, topBtn, DesignStyles, BAND_META, BAND_ORDER } from './_design'
 import {
     Users,
-    ShieldCheck,
     CheckCircle2,
     AlertCircle,
-    FileText,
-    Lock,
     ChevronRight,
     Building2,
     MapPin,
@@ -55,14 +51,6 @@ const ALLOWED_NEXT = {
 const canMoveTo = (current, target) =>
     current === target || (ALLOWED_NEXT[current] || []).includes(target)
 
-const DEMO_CANDIDATES = [
-    { name: 'Rina Pertiwi', band: 'strong', verified: true, score: 94, title: 'Senior Backend Engineer · 6 tahun pengalaman', location: 'Jakarta · Hybrid', exp: '6 thn', edu: 'S1 Teknik Informatika ITB', prev: 'Bukalapak', skills: ['Go', 'PostgreSQL', 'gRPC', 'Kafka', 'Kubernetes'], gap: [], ai: 'Stack 100% selaras. Berpengalaman menangani throughput skala 100k RPS pada payment gateway.' },
-    { name: 'Andika Pratama', band: 'strong', verified: true, score: 91, title: 'Backend Tech Lead · 7 tahun pengalaman', location: 'Jakarta · Remote', exp: '7 thn', edu: 'S1 Ilmu Komputer UI', prev: 'Bibit', skills: ['Go', 'PostgreSQL', 'Redis', 'gRPC'], gap: ['Kafka'], ai: 'Pengalaman arsitektur terdistribusi kuat. Gap Apache Kafka dapat diadaptasi dalam tempo singkat.' },
-    { name: 'Sari Ningrum', band: 'possible', verified: true, score: 87, title: 'Staff Software Engineer · 8 tahun pengalaman', location: 'Bandung · Hybrid', exp: '8 thn', edu: 'S1 Teknik Elektro ITB', prev: 'GoTo Group', skills: ['Go', 'Microservices', 'Docker'], gap: ['gRPC'], ai: 'Kedalaman arsitektur microservices sangat baik dengan rekam jejak kepemimpinan proyek engineering.' },
-    { name: 'Bayu Wicaksono', band: 'possible', verified: true, score: 83, title: 'Senior Backend Developer · 5 tahun pengalaman', location: 'Jakarta · Onsite', exp: '5 thn', edu: 'S1 Ilmu Komputer UGM', prev: 'Tokopedia', skills: ['Go', 'PostgreSQL', 'gRPC'], gap: ['Kubernetes'], ai: 'Kesesuaian stack inti solid dan bersedia bekerja secara on-site di kantor pusat.' },
-    { name: 'Mira Anggraini', band: 'stretch', verified: false, score: 80, title: 'Software Engineer · 4 tahun pengalaman', location: 'Jakarta · Hybrid', exp: '4 thn', edu: 'S1 Sistem Informasi ITS', prev: 'Xendit', skills: ['Node.js', 'TypeScript', 'PostgreSQL'], gap: ['Go', 'gRPC'], ai: 'Memiliki fundamental software engineering yang kuat dan rekam jejak cepat dalam menguasai teknologi baru.' },
-]
-
 export default function EmployerCandidates() {
     const {
         employerJobs,
@@ -75,9 +63,10 @@ export default function EmployerCandidates() {
     } = useStore()
 
     const [activeTab, setActiveTab] = useState('applications') // 'applications' | 'sourcing'
-    const [candidates, setCandidates] = useState(DEMO_CANDIDATES)
+    const [candidates, setCandidates] = useState([])
+    const [candidatesLoading, setCandidatesLoading] = useState(false)
+    const [candidatesError, setCandidatesError] = useState(null)
     const [selectedJobId, setSelectedJobId] = useState(selectedCandidateJobId || null)
-    const [cvModalOpen, setCvModalOpen] = useState(null)
     const [noteModalApp, setNoteModalApp] = useState(null)
     const [noteText, setNoteText] = useState('')
     const [savingStatus, setSavingStatus] = useState(false)
@@ -98,6 +87,27 @@ export default function EmployerCandidates() {
             loadEmployerApplications(selectedJobId)
         }
     }, [selectedJobId]) // eslint-disable-line
+
+    useEffect(() => {
+        if (activeTab !== 'sourcing' || !selectedJobId) return undefined
+        let cancelled = false
+        setCandidatesLoading(true)
+        setCandidatesError(null)
+        fetchCandidatesForJob(selectedJobId, 10)
+            .then((data) => {
+                if (!cancelled) setCandidates(data.candidates || [])
+            })
+            .catch((err) => {
+                if (!cancelled) {
+                    setCandidates([])
+                    setCandidatesError(err.message || 'Kandidat tidak dapat dimuat saat ini.')
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setCandidatesLoading(false)
+            })
+        return () => { cancelled = true }
+    }, [activeTab, selectedJobId])
 
     const selectedJob = employerJobs.find(j => j.id === selectedJobId) || (employerJobs.length ? employerJobs[0] : { title: 'Semua Lowongan' })
 
@@ -323,6 +333,26 @@ export default function EmployerCandidates() {
             {activeTab === 'sourcing' && (
                 <>
                     <BandLegend side="employer" />
+                    <p style={{ margin: 0, fontSize: 12, color: KC.mute }}>
+                        Hasil bersumber dari profil pencari kerja yang tersedia. Kontak, CV lengkap, dan status verifikasi tidak ditampilkan pada prototipe ini.
+                    </p>
+                    {candidatesLoading && (
+                        <BrutalCard color="#FFFFFF" padding={24}>
+                            <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Mencari kandidat yang relevan…</p>
+                        </BrutalCard>
+                    )}
+                    {candidatesError && (
+                        <BrutalCard color="#FFF7ED" padding={24}>
+                            <p style={{ margin: 0, fontSize: 13, color: '#9A3412' }}>{candidatesError}</p>
+                        </BrutalCard>
+                    )}
+                    {!candidatesLoading && !candidatesError && candidates.length === 0 && (
+                        <BrutalCard color="#FFFFFF" padding={24}>
+                            <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>
+                                Belum ada profil yang cocok untuk lowongan ini. Coba lengkapi kebutuhan keterampilan pada lowongan atau tambahkan profil demo yang relevan.
+                            </p>
+                        </BrutalCard>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                         {BAND_ORDER.map(bandKey => {
                             const bandInfo = BAND_META[bandKey]
@@ -346,36 +376,30 @@ export default function EmployerCandidates() {
                                                     <div style={{ flex: 1, minWidth: 0 }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                                                             <h3 style={{ fontSize: 17, fontWeight: 900, margin: 0, color: KC.ink }}>
-                                                                {cand.name}
+                                                            {cand.full_name || 'Profil pencari kerja'}
                                                             </h3>
                                                             <Tag color={bandInfo.bg} ink={bandInfo.color} border={bandInfo.border} size="sm">
                                                                 {bandInfo.badgeLabel}
                                                             </Tag>
-                                                            {cand.verified && (
-                                                                <Tag color={KC.limeSoft} ink={KC.lime} border={KC.lime} size="sm">
-                                                                    <ShieldCheck size={12} /> Terverifikasi Dukcapil
-                                                                </Tag>
-                                                            )}
                                                         </div>
 
                                                         <div style={{ fontSize: 13, fontWeight: 600, color: KC.inkLight, marginBottom: 6 }}>
-                                                            {cand.title} · Sebelumnya di <b>{cand.prev}</b>
+                                                            {cand.headline || 'Profil keterampilan tersedia'}
                                                         </div>
 
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: KC.mute, marginBottom: 10, flexWrap: 'wrap' }}>
-                                                            <span>{cand.location}</span>
-                                                            <span>·</span>
-                                                            <span>Pendidikan: {cand.edu}</span>
+                                                            <MapPin size={13} />
+                                                            <span>{cand.region_code || 'Lokasi belum diisi'}</span>
                                                         </div>
 
                                                         {/* Skills matching / missing */}
                                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                                                            {cand.skills.map((s, sIdx) => (
+                                                            {(cand.matching_skills || []).map((s, sIdx) => (
                                                                 <span key={sIdx} style={{ padding: '3px 8px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#047857' }}>
                                                                     ✓ {s}
                                                                 </span>
                                                             ))}
-                                                            {cand.gap.map((s, sIdx) => (
+                                                            {(cand.missing_skills || []).map((s, sIdx) => (
                                                                 <span key={sIdx} style={{ padding: '3px 8px', background: KC.yellowSoft, border: `1px solid ${KC.yellow}`, borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#B45309' }}>
                                                                     + {s}
                                                                 </span>
@@ -385,27 +409,7 @@ export default function EmployerCandidates() {
                                                         {/* AI Grounded Reasoning */}
                                                         <div style={{ padding: '10px 12px', background: KC.surface, border: `1px solid ${KC.ash}`, borderRadius: 8, fontSize: 12, color: KC.inkLight, lineHeight: 1.45, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                                                             <Sparkles size={14} color={KC.orange} style={{ flexShrink: 0, marginTop: 2 }} />
-                                                            <span><b>Analisis AI:</b> {cand.ai}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Action Buttons */}
-                                                    <div className="kc-card-actions">
-                                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: '100%', justifyContent: 'flex-end' }}>
-                                                            <button
-                                                                onClick={() => setCvModalOpen(cand)}
-                                                                className="kc-btn"
-                                                                style={{ ...topBtn('#fff', KC.ink), padding: '8px 14px', fontSize: 12 }}
-                                                            >
-                                                                <FileText size={14} /> Lihat CV
-                                                            </button>
-                                                            <button
-                                                                onClick={() => toast.success(`Akses kontak resmi ${cand.name} terbuka! (Menggunakan 1 kuota unlock)`)}
-                                                                className="kc-btn"
-                                                                style={{ ...topBtn(KC.orange, '#fff'), padding: '8px 16px', fontSize: 12 }}
-                                                            >
-                                                                <Lock size={13} /> Buka Kontak (1 Kuota)
-                                                            </button>
+                                                            <span><b>Alasan kecocokan:</b> {cand.explanation || 'Kecocokan dihitung dari keterampilan yang dicantumkan pada profil.'}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -500,58 +504,6 @@ export default function EmployerCandidates() {
                 </div>
             )}
 
-            {/* CV Viewer Modal */}
-            {cvModalOpen && (
-                <div
-                    onClick={() => setCvModalOpen(null)}
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(9, 10, 15, 0.65)',
-                        zIndex: 1000,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 20,
-                        backdropFilter: 'blur(3px)',
-                    }}
-                >
-                    <div
-                        onClick={e => e.stopPropagation()}
-                        style={{
-                            background: '#FFFFFF',
-                            border: `1.5px solid ${KC.ink}`,
-                            borderRadius: 14,
-                            boxShadow: `6px 6px 0 ${KC.ink}`,
-                            maxWidth: 580,
-                            width: '100%',
-                            padding: 24,
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                            <div>
-                                <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0, color: KC.ink }}>{cvModalOpen.name}</h3>
-                                <span style={{ fontSize: 12, color: KC.mute }}>{cvModalOpen.title}</span>
-                            </div>
-                            <button onClick={() => setCvModalOpen(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                                <X size={18} />
-                            </button>
-                        </div>
-                        <div style={{ fontSize: 13, color: KC.inkLight, lineHeight: 1.6, marginBottom: 16 }}>
-                            <p><b>Riwayat Pengalaman:</b> 6 tahun di {cvModalOpen.prev} menangani arsitektur backend berskala tinggi, microservices gRPC, dan caching multi-region.</p>
-                            <p><b>Pendidikan:</b> {cvModalOpen.edu}</p>
-                            <p><b>Keahlian Teknis:</b> {cvModalOpen.skills.join(', ')}</p>
-                        </div>
-                        <button
-                            onClick={() => { toast.success(`Kontak ${cvModalOpen.name} telah di-unlock!`); setCvModalOpen(null) }}
-                            className="kc-btn"
-                            style={{ ...topBtn(KC.orange, '#fff'), width: '100%', padding: '10px 0', fontSize: 13 }}
-                        >
-                            Buka Kontak & Jadwalkan Wawancara →
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

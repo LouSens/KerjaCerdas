@@ -38,7 +38,7 @@ flowchart LR
 ### 1.1 Fase 1 (Bulan 1 - 3): Enterprise Relational Backend (PostgreSQL + pgvector)
 *Target: Menjamin integritas data untuk 50.000 pengguna MVP dan kueri analitik dengan latensi di bawah 200ms.*
 
-- **pgvector & LangGraph Swarm:** Vektor 768-dimensi (MRL-truncated dari 3072-dimensi Gemini Embedding 2) diolah langsung di PostgreSQL dengan indeks HNSW (`ef_construction=64, m=16`).
+- **pgvector & LangGraph-Assisted Pipeline:** Vektor 768-dimensi (MRL-truncated dari 3072-dimensi Gemini Embedding 2) diolah langsung di PostgreSQL dengan indeks HNSW (`ef_construction=64, m=16`).
 - **Alembic ORM Migrations:** Skema tabel dikelola progresif menggunakan Alembic, menjamin *Zero-Downtime Migration*.
 - **Injeksi Kontainer Otomatis:** Infrastruktur diorkestrasi mutlak menggunakan Docker Compose, mendemonstrasikan keandalan peluncuran (*plug-and-play*).
 

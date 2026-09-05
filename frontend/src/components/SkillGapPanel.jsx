@@ -1,195 +1,139 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
 import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'
-import { BookOpen, Sparkles, TrendingUp, CheckCircle2, AlertCircle, ExternalLink, GraduationCap, Award, Clock, Star } from 'lucide-react'
+import {
+    AlertCircle,
+    BookOpen,
+    CheckCircle2,
+    Clock,
+    ExternalLink,
+    GraduationCap,
+    Sparkles,
+    TrendingUp,
+} from 'lucide-react'
 
-const MOCK_COURSES = [
-    {
-        name: 'Membangun Arsitektur Back-End Skala Enterprise',
-        provider: 'Dicoding Academy',
-        duration: '40 Jam Belajar',
-        rating: 4.9,
-        price: 'Gratis / Beasiswa',
-        description: 'Kurikulum resmi pembangunan REST & gRPC API, caching Redis, dan arsitektur database relasional PostgreSQL untuk standar industri.',
-        url: 'https://www.dicoding.com',
-        targetSkill: 'Go & Microservices',
-    },
-    {
-        name: 'Cloud Infrastructure & DevOps Essentials',
-        provider: 'Dicoding Academy',
-        duration: '25 Jam Belajar',
-        rating: 4.8,
-        price: 'Gratis',
-        description: 'Fondasi orkestrasi container Kubernetes, Docker multi-stage build, serta otomatisasi pipeline CI/CD GitHub Actions.',
-        url: 'https://www.dicoding.com',
-        targetSkill: 'Kubernetes & CI/CD',
-    },
-    {
-        name: 'Data Engineering & Stream Processing with Kafka',
-        provider: 'Coursera Enterprise',
-        duration: '6 Minggu',
-        rating: 4.8,
-        price: 'Bersertifikat',
-        description: 'Spesialisasi arsitektur data streaming skala besar, event-driven design, dan integrasi distributed message queue.',
-        url: 'https://www.coursera.org',
-        targetSkill: 'Apache Kafka',
-    },
-    {
-        name: 'Full-Stack Modern Web Engineering',
-        provider: 'RevoU Tech Program',
-        duration: '12 Minggu',
-        rating: 4.8,
-        price: 'Subsidi Karier',
-        description: 'Bootcamp intensif dengan studi kasus riil industri: React, Next.js, Node.js, dan optimasi arsitektur frontend skala jutaan pengguna.',
-        url: 'https://revou.co',
-        targetSkill: 'React & TypeScript',
-    },
-    {
-        name: 'Pelatihan Digital Prakerja — Pemrograman Lanjutan',
-        provider: 'Kementerian Tenaga Kerja',
-        duration: '8 Minggu',
-        rating: 4.7,
-        price: 'Subsidi Pemerintah',
-        description: 'Program akselerasi talenta digital bersertifikasi BNSP dengan fokus pada pengembangan sistem perangkat lunak terintegrasi.',
-        url: 'https://www.prakerja.go.id',
-        targetSkill: 'System Design',
-    },
-]
+const skillName = (skill) => typeof skill === 'string' ? skill : skill?.name
 
 export default function SkillGapPanel() {
-    const { missingSkills, profile, matches, navigate } = useStore()
-    const currentSkills = profile?.skills || ['Go', 'PostgreSQL', 'Docker', 'REST API']
-    const gaps = missingSkills?.length ? missingSkills : ['Kubernetes', 'Apache Kafka', 'gRPC']
+    const {
+        profile, matches, navigate, skillGapResult, skillGapLoading,
+        skillGapError, runSkillGap, loadSkillGap,
+    } = useStore()
+    const [targetJobId, setTargetJobId] = useState('')
+
+    const targetJobs = useMemo(() => matches
+        .filter(match => match?.job_id || match?.id)
+        .map(match => ({
+            id: match.job_id || match.id,
+            title: match.title || match.job_title || 'Lowongan tanpa judul',
+        })), [matches])
+
+    useEffect(() => { loadSkillGap() }, [loadSkillGap])
+
+    const currentSkills = (profile?.skills || []).map(skillName).filter(Boolean)
+    const result = skillGapResult
+    const matchingSkills = result?.matching_skills || []
+    const missingSkills = result?.missing_skills || []
+    const courses = result?.recommended_courses || []
+
+    const runAnalysis = async () => {
+        const analysis = await runSkillGap(targetJobId || null)
+        if (analysis) toast.success('Analisis skill gap diperbarui untuk lowongan yang dipilih.')
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <DesignStyles />
-
-            {/* Header */}
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
+            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}`, gap: 12, flexWrap: 'wrap' }}>
                 <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
-                        Skill Gap Analysis & Rekomendasi Kursus
-                    </h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Analisis otomatis keselarasan keahlian terhadap kriteria lowongan incaran Anda
-                    </p>
+                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>Skill Gap dan Rencana Belajar</h1>
+                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>Bandingkan profil Anda dengan kebutuhan lowongan dan pilih langkah belajar yang relevan.</p>
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                    <button className="kc-btn" onClick={() => navigate('seeker-match')} style={topBtn('#fff')}>
-                        ← Kembali ke Match
-                    </button>
-                </div>
+                <button className="kc-btn" onClick={() => navigate('seeker-match')} style={topBtn('#fff')}>Kembali ke Match</button>
             </header>
 
-            {/* Summary Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
-                {/* Current Skills */}
-                <BrutalCard color="#FFFFFF" padding={22}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: KC.limeSoft, border: `1px solid ${KC.lime}`, display: 'grid', placeItems: 'center', color: KC.lime }}>
-                            <CheckCircle2 size={18} />
-                        </div>
-                        <div>
-                            <h3 style={{ fontSize: 15, fontWeight: 900, margin: 0, color: KC.ink }}>Keahlian Saat Ini (Verified)</h3>
-                            <span style={{ fontSize: 12, color: KC.mute }}>Terdata aktif pada resume Anda</span>
-                        </div>
+            {/* Analysis controls — always shown when user has any profile data */}
+            <BrutalCard color="#FFFFFF" padding={22}>
+                <div style={{ display: 'flex', alignItems: 'end', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 240 }}>
+                        <label htmlFor="skill-gap-target" style={{ display: 'block', fontSize: 12, fontWeight: 800, color: KC.ink, marginBottom: 6 }}>Lowongan target</label>
+                        <select id="skill-gap-target" value={targetJobId} onChange={event => setTargetJobId(event.target.value)} style={{ width: '100%', border: `1.5px solid ${KC.ink}`, borderRadius: 8, padding: '10px 12px', background: '#fff', fontFamily: 'inherit', fontSize: 13 }}>
+                            <option value="">Pilih otomatis dari lowongan paling relevan</option>
+                            {targetJobs.map(job => <option key={job.id} value={job.id}>{job.title}</option>)}
+                        </select>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {currentSkills.map((s, idx) => (
-                            <span key={idx} style={{ padding: '5px 12px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#047857' }}>
-                                ✓ {typeof s === 'string' ? s : s.name}
-                            </span>
-                        ))}
-                    </div>
-                </BrutalCard>
-
-                {/* Missing Skills */}
-                <BrutalCard color="#FFFFFF" padding={22}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: KC.yellowSoft, border: `1px solid ${KC.yellow}`, display: 'grid', placeItems: 'center', color: KC.yellow }}>
-                            <TrendingUp size={18} />
-                        </div>
-                        <div>
-                            <h3 style={{ fontSize: 15, fontWeight: 900, margin: 0, color: KC.ink }}>Skill Gaps (Peluang Peningkatan)</h3>
-                            <span style={{ fontSize: 12, color: KC.mute }}>Keahlian yang paling dicari oleh rekruter</span>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {gaps.map((s, idx) => (
-                            <span key={idx} style={{ padding: '5px 12px', background: KC.yellowSoft, border: `1px solid ${KC.yellow}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#B45309' }}>
-                                + {typeof s === 'string' ? s : s.name}
-                            </span>
-                        ))}
-                    </div>
-                </BrutalCard>
-            </div>
-
-            {/* Recommended Courses Section */}
-            <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                    <div>
-                        <h2 style={{ fontSize: 18, fontWeight: 900, letterSpacing: -0.4, margin: 0, color: KC.ink }}>
-                            Rekomendasi Modul & Kurikulum Terkurasi
-                        </h2>
-                        <p style={{ fontSize: 13, color: KC.mute, margin: '2px 0 0' }}>
-                            Program pelatihan terverifikasi dari mitra institusi untuk menutup celah kompetensi
+                    <button className="kc-btn" disabled={skillGapLoading} onClick={runAnalysis} style={{ ...topBtn(KC.orange, '#fff'), opacity: skillGapLoading ? 0.65 : 1 }}>
+                        <Sparkles size={15} /> {skillGapLoading ? 'Menganalisis...' : 'Analisis Skill Gap'}
+                    </button>
+                </div>
+                {!currentSkills.length && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '12px 14px', background: '#FFF7ED', border: `1px solid ${KC.orange}`, borderRadius: 8 }}>
+                        <AlertCircle size={17} color={KC.orange} style={{ flexShrink: 0, marginTop: 2 }} />
+                        <p style={{ fontSize: 12, color: '#9A3412', lineHeight: 1.5, margin: 0 }}>
+                            Profil Anda belum memiliki keahlian tercatat. Unggah CV atau tambahkan skill secara manual di halaman profil agar hasil analisis lebih akurat.
+                            Anda tetap bisa menjalankan analisis — sistem akan mencocokkan berdasarkan seluruh profil yang tersedia.
                         </p>
                     </div>
-                    <Tag color={KC.indigoSoft} ink={KC.indigo} border={KC.indigo} size="sm">
-                        <GraduationCap size={13} /> {MOCK_COURSES.length} Modul Tersedia
-                    </Tag>
+                )}
+                <p style={{ fontSize: 12, color: KC.mute, lineHeight: 1.5, margin: '12px 0 0' }}>Gap dihitung dari skill wajib pada lowongan dan skill yang tersimpan di profil. Rekomendasi kursus adalah referensi belajar, bukan kemitraan atau sertifikasi resmi.</p>
+            </BrutalCard>
+
+            {skillGapError && <BrutalCard color="#FFF4ED" padding={18}><div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', color: '#9A3412', fontSize: 13, lineHeight: 1.5 }}><AlertCircle size={17} style={{ flexShrink: 0, marginTop: 2 }} /><span>Analisis belum dapat dijalankan: {skillGapError}</span></div></BrutalCard>}
+
+            {result && <>
+                <BrutalCard color={KC.indigoSoft} padding={18}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <TrendingUp size={18} color={KC.indigo} />
+                        <strong style={{ color: KC.ink }}>Target: {result.target_job_title || 'Lowongan terpilih'}</strong>
+                        <Tag color="#fff" ink={KC.indigo} border={KC.indigo} size="sm">Gap {result.gap_severity || 'belum dihitung'}</Tag>
+                        <span style={{ fontSize: 12, color: KC.inkLight }}>Kecocokan saat ini: {result.match_before ?? 0}%</span>
+                        <span style={{ fontSize: 12, color: KC.inkLight }}>Estimasi upaya: {result.estimated_hours ?? 0} jam</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: KC.inkLight, lineHeight: 1.5, margin: '10px 0 0' }}>Potensi setelah semua gap ditutup: {result.match_after ?? 0}%. Ini adalah estimasi skenario dari rubric yang sama, bukan jaminan diterima bekerja.</p>
+                </BrutalCard>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
+                    <SkillCard icon={<CheckCircle2 size={18} color={KC.lime} />} title="Skill yang sudah sesuai" subtitle="Irisan profil dengan kebutuhan lowongan" skills={matchingSkills} color={KC.lime} background={KC.limeSoft} prefix="✓" empty="Belum ada skill wajib yang sama persis. Lengkapi profil jika ada pengalaman relevan." />
+                    <SkillCard icon={<TrendingUp size={18} color={KC.yellow} />} title="Skill yang perlu dipelajari" subtitle="Kebutuhan wajib yang belum ada di profil" skills={missingSkills} color={KC.yellow} background={KC.yellowSoft} prefix="+" empty="Tidak ada gap skill wajib untuk lowongan ini." />
                 </div>
 
-                <div className="kc-stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-                    {MOCK_COURSES.map((course, idx) => (
-                        <BrutalCard key={idx} color="#FFFFFF" padding={20} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 14 }}>
-                            <div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute }}>
-                                        {course.provider}
-                                    </span>
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#047857', background: KC.limeSoft, padding: '2px 8px', borderRadius: 6, border: `1px solid ${KC.lime}` }}>
-                                        {course.price}
-                                    </span>
-                                </div>
-                                <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 8px', color: KC.ink, lineHeight: 1.3 }}>
-                                    {course.name}
-                                </h3>
-                                <p style={{ fontSize: 12, color: KC.inkLight, lineHeight: 1.5, margin: '0 0 12px' }}>
-                                    {course.description}
-                                </p>
-                            </div>
+                <section>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
+                        <div>
+                            <h2 style={{ fontSize: 18, fontWeight: 900, letterSpacing: -0.4, margin: 0, color: KC.ink }}>Referensi pembelajaran</h2>
+                            <p style={{ fontSize: 13, color: KC.mute, margin: '2px 0 0' }}>Dihasilkan dari gap saat ini. Periksa informasi penyedia sebelum mendaftar.</p>
+                        </div>
+                        <Tag color={KC.indigoSoft} ink={KC.indigo} border={KC.indigo} size="sm"><GraduationCap size={13} /> {courses.length} rekomendasi</Tag>
+                    </div>
+                    {courses.length ? <div className="kc-stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>{courses.map((course, index) => <CourseCard key={`${course.name || 'course'}-${index}`} course={course} />)}</div> : <EmptyCopy text="Tidak ada rekomendasi karena tidak ada gap skill wajib untuk lowongan ini." />}
+                </section>
+            </>}
 
-                            <div style={{ paddingTop: 12, borderTop: `1px solid ${KC.ash}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: KC.mute, fontWeight: 600 }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                        <Clock size={12} /> {course.duration}
-                                    </span>
-                                    {course.rating != null && (
-                                        <>
-                                            <span>·</span>
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#D97706' }}>
-                                                <Star size={12} fill="#D97706" /> {course.rating}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                                <a
-                                    href={course.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="kc-btn"
-                                    style={{ ...topBtn(KC.ink, '#fff'), padding: '6px 12px', fontSize: 11, textDecoration: 'none' }}
-                                >
-                                    Pelajari Modul <ExternalLink size={12} />
-                                </a>
-                            </div>
-                        </BrutalCard>
-                    ))}
-                </div>
-            </div>
+            {!result && currentSkills.length && !skillGapLoading && !skillGapError && <BrutalCard color="#FFFFFF" padding={24}><div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}><BookOpen size={21} color={KC.indigo} style={{ flexShrink: 0, marginTop: 2 }} /><p style={{ fontSize: 13, color: KC.inkLight, lineHeight: 1.5, margin: 0 }}>Pilih target lowongan lalu jalankan analisis. Hasil akan tersimpan untuk akun Anda sehingga dapat dibandingkan setelah profil diperbarui.</p></div></BrutalCard>}
         </div>
     )
+}
+
+function SkillCard({ icon, title, subtitle, skills, color, background, prefix, empty }) {
+    return <BrutalCard color="#FFFFFF" padding={22}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>{icon}<div><h2 style={{ fontSize: 15, fontWeight: 900, margin: 0, color: KC.ink }}>{title}</h2><span style={{ fontSize: 12, color: KC.mute }}>{subtitle}</span></div></div>
+        {skills.length ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{skills.map((skill, index) => <span key={`${skillName(skill)}-${index}`} style={{ padding: '5px 10px', background, border: `1px solid ${color}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: KC.ink }}>{prefix} {skillName(skill)}</span>)}</div> : <EmptyCopy text={empty} />}
+    </BrutalCard>
+}
+
+function EmptyCopy({ text }) {
+    return <p style={{ fontSize: 13, color: KC.mute, lineHeight: 1.5, margin: 0 }}>{text}</p>
+}
+
+function CourseCard({ course }) {
+    const hasUrl = typeof course.url === 'string' && /^https:\/\//i.test(course.url)
+    return <BrutalCard color="#FFFFFF" padding={20} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 14 }}>
+        <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}><span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute }}>{course.provider || 'Penyedia belum diverifikasi'}</span><span style={{ fontSize: 11, fontWeight: 700, color: KC.inkLight, background: KC.surface, padding: '2px 8px', borderRadius: 6, border: `1px solid ${KC.ash}` }}>{course.price || 'Biaya belum diverifikasi'}</span></div>
+            <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 8px', color: KC.ink, lineHeight: 1.3 }}>{course.name || 'Rekomendasi pembelajaran'}</h3>
+            <p style={{ fontSize: 12, color: KC.inkLight, lineHeight: 1.5, margin: 0 }}>{course.description || 'Periksa kurikulum dan persyaratan langsung pada penyedia.'}</p>
+        </div>
+        <div style={{ paddingTop: 12, borderTop: `1px solid ${KC.ash}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: KC.mute, fontWeight: 600 }}><Clock size={12} /> {course.duration || 'Durasi belum diverifikasi'}</span>{hasUrl && <a href={course.url} target="_blank" rel="noreferrer" className="kc-btn" style={{ ...topBtn(KC.ink, '#fff'), padding: '6px 12px', fontSize: 11, textDecoration: 'none' }}>Periksa penyedia <ExternalLink size={12} /></a>}</div>
+    </BrutalCard>
 }
