@@ -3,7 +3,7 @@ import useStore from '../store/useStore'
 import { KC, BrutalCard, Tag, FilledStat, topBtn, DesignStyles } from './_design'
 import { updateSeekerProfile } from '../services/api'
 import toast from 'react-hot-toast'
-import { UploadCloud, FileText, CheckCircle2, ShieldCheck, ArrowRight, RefreshCw, Plus, Trash2, Edit3 } from 'lucide-react'
+import { UploadCloud, FileText, CheckCircle2, ShieldCheck, Plus, Edit3 } from 'lucide-react'
 
 export default function CVUploader() {
     const { uploadResume, cvUploading, seekerId, profile, navigate, loadSeekerProfile } = useStore()

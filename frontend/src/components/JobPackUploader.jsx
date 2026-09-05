@@ -2,7 +2,7 @@
  * JobPackUploader — Clean enterprise bulk PDF job pack uploader.
  */
 import { useState, useRef } from 'react'
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react'
+import { UploadCloud, CheckCircle2 } from 'lucide-react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
 import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'

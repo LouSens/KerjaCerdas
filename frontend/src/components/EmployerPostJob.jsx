@@ -3,7 +3,7 @@ import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
 import { KC, BrutalCard, Tag, ScoreDonut, topBtn, DesignStyles } from './_design'
 import { createEmployerJob, estimateJobPool } from '../services/api'
-import { Sparkles, Building2, CheckCircle2, Users, Plus, X, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Sparkles, Plus, ShieldCheck } from 'lucide-react'
 
 export default function EmployerPostJob() {
     const { navigate } = useStore()

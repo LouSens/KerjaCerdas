@@ -6,7 +6,7 @@
 import {
     LayoutDashboard, Search, BarChart3, ShieldCheck, Bookmark,
     Building2, Briefcase, Users, Upload, LogOut, Crown,
-    FileText, User, ClipboardList, Sparkles, PlusCircle, CheckCircle2,
+    FileText, ClipboardList, Sparkles, PlusCircle,
 } from 'lucide-react'
 import useStore from '../store/useStore'
 import { ALLOWED_VIEWS } from '../routes'

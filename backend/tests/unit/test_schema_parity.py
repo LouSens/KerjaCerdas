@@ -28,11 +28,7 @@ _REPO_ATTRS = [
     "employers",
     "jobs",
     "applications",
-    "matches",
     "skill_gaps",
-    "chats",
-    "ai_logs",
-    "gamification",
     "courses",
 ]
 

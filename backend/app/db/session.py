@@ -14,8 +14,6 @@ which is built from settings on import for standalone scripts).
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -25,9 +23,3 @@ def async_session() -> AsyncSession:
     from backend.app.api.database import async_session_factory
 
     return async_session_factory()
-
-
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency for providing a database session."""
-    async with async_session() as session:
-        yield session

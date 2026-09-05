@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, Tag, DesignStyles, BandLegend, ScoreDonut, topBtn, BAND_META, BAND_ORDER } from './_design'
-import { Filter, SlidersHorizontal, RefreshCw, Bookmark, BookmarkCheck, Building2, MapPin, DollarSign, CheckCircle2, ArrowRight } from 'lucide-react'
+import { Filter, SlidersHorizontal, RefreshCw, Bookmark, BookmarkCheck, Building2, MapPin, DollarSign, ArrowRight } from 'lucide-react'
 import JobDetailModal from './JobDetailModal'
 
 const bandOf = (m) => {

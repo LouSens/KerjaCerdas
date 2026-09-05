@@ -3,7 +3,7 @@
  * Redesigned with Enterprise Neobrutalism styling, prompt suggestion chips, and responsive layout.
  */
 import { useEffect, useRef } from 'react'
-import { X, Send, Loader2, Sparkles, Bot, CheckCircle2, MessageSquare, ArrowRight, User } from 'lucide-react'
+import { X, Send, Loader2, Sparkles, ArrowRight } from 'lucide-react'
 import useStore from '../store/useStore'
 import { KC, DesignStyles } from './_design'
 

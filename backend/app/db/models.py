@@ -141,17 +141,6 @@ class OTPRecord(Base, TimestampedMixin):
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
-class MatchBundle(Base, TimestampedMixin):
-    __tablename__ = "matches"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    subject_kind: Mapped[str] = mapped_column(String(20))
-    subject_id: Mapped[str] = mapped_column(String(36), index=True)
-    top_k: Mapped[int] = mapped_column(Integer)
-    results: Mapped[list[Any]] = mapped_column(JSON, default=list)
-    embedding_model: Mapped[str] = mapped_column(String(100))
-
-
 class SkillGapResult(Base, TimestampedMixin):
     __tablename__ = "skill_gaps"
 
@@ -165,16 +154,6 @@ class SkillGapResult(Base, TimestampedMixin):
     recommended_courses: Mapped[list[Any]] = mapped_column(JSON, default=list)
     estimated_readiness_months: Mapped[int] = mapped_column(Integer)
     summary: Mapped[str] = mapped_column(Text)
-
-
-class ChatSession(Base, TimestampedMixin):
-    __tablename__ = "conversations"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), index=True)
-    seeker_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    title: Mapped[str] = mapped_column(String(255), default="")
-    messages: Mapped[list[Any]] = mapped_column(JSON, default=list)
 
 
 class Course(Base, TimestampedMixin):
@@ -191,36 +170,6 @@ class Course(Base, TimestampedMixin):
     level: Mapped[str] = mapped_column(String(50), default="beginner")
     url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str] = mapped_column(Text, default="")
-
-
-class AIPerformanceLog(Base, TimestampedMixin):
-    __tablename__ = "ai_logs"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    request_id: Mapped[str] = mapped_column(String(100))
-    user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    role: Mapped[str] = mapped_column(String(100))
-    task: Mapped[str] = mapped_column(String(100))
-    model: Mapped[str] = mapped_column(String(100))
-    latency_ms: Mapped[int] = mapped_column(Integer)
-    tokens_in: Mapped[int] = mapped_column(Integer, default=0)
-    tokens_out: Mapped[int] = mapped_column(Integer, default=0)
-    success: Mapped[bool] = mapped_column(Boolean, default=True)
-    error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    flagged: Mapped[bool] = mapped_column(Boolean, default=False)
-    rating: Mapped[str | None] = mapped_column(String(20), nullable=True)
-
-
-class GamificationStats(Base, TimestampedMixin):
-    __tablename__ = "gamification"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    seeker_id: Mapped[str] = mapped_column(String(36), index=True)
-    xp: Mapped[int] = mapped_column(Integer, default=0)
-    level: Mapped[int] = mapped_column(Integer, default=1)
-    streak_days: Mapped[int] = mapped_column(Integer, default=0)
-    badges: Mapped[list[Any]] = mapped_column(JSON, default=list)
-    quests_completed: Mapped[list[Any]] = mapped_column(JSON, default=list)
 
 
 class QueryEmbedding(Base):

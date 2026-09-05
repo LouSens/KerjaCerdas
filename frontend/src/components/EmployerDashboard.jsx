@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, FilledStat, Tag, topBtn, DesignStyles } from './_design'
-import { Briefcase, Users, Plus, ArrowRight, ShieldCheck, TrendingUp, Building2, MapPin } from 'lucide-react'
+import { Briefcase, Users, Plus, ShieldCheck } from 'lucide-react'
 
 function formatRelativeAge(iso) {
     if (!iso) return null

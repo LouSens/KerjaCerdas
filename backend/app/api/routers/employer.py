@@ -10,6 +10,7 @@ import logging
 from datetime import UTC, datetime
 
 from backend.app.api.dependencies import get_current_user, require_employer
+from backend.app.api.routers.jobs import invalidate_jobs_cache
 from backend.app.api.schemas.employer import (
     ApplicationStatusUpdate,
     CandidateSearchRequest,
@@ -132,6 +133,7 @@ async def create_job(payload: JobCreateRequest, current_user: User = Depends(get
     matcher = SemanticMatcher()
     await matcher.embed_job(job)
     await repos.jobs.upsert(job)
+    invalidate_jobs_cache()
     logger.info("Job created: %s by user_id=%s", job.id, current_user.id)
     return {"job_id": job.id, "title": job.title}
 
@@ -190,6 +192,7 @@ async def update_job(
         await matcher.embed_job(job)
 
     await repos.jobs.upsert(job)
+    invalidate_jobs_cache()
     return {"job_id": job.id, "updated": sorted(updates)}
 
 
@@ -203,6 +206,7 @@ async def delete_job(job_id: str, current_user: User = Depends(get_current_user)
     if not employer or job.employer_id != employer.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan milik Anda")
     await repos.jobs.delete(job_id)
+    invalidate_jobs_cache()
     return None
 
 

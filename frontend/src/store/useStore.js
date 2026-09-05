@@ -31,7 +31,6 @@ import {
     fetchEmployerApplications,
     updateApplicationStatus,
     fetchEmployerProfile,
-    updateEmployerProfile,
     trackEvent,
     fetchExperimentAssignments,
     triggerSkillGap,

@@ -50,7 +50,9 @@ class StubEmbedder:
         import hashlib
 
         digest = hashlib.sha256(text.encode("utf-8")).digest()
-        return [(b - 128) / 128.0 for b in digest[:16]]
+        base_vec = [(b - 128) / 128.0 for b in digest[:16]]
+        # Pad to 768 dimensions to satisfy pgvector Vector(768) type coercion
+        return (base_vec * (768 // 16))[:768]
 
 
 class StubLLM:

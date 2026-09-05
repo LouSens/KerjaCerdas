@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import { verifyEducation, verifyIdentity, verifyNPWP, listVerificationDocs, sendOTP, verifyOTP } from '../services/api'
 import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'
 import useStore from '../store/useStore'
-import { ShieldCheck, CreditCard, GraduationCap, Phone, Building2, FileText, Mail, CheckCircle2, AlertCircle, ArrowRight, Lock, Loader2, X } from 'lucide-react'
+import { CreditCard, GraduationCap, Phone, Building2, FileText, Mail, CheckCircle2, Lock, X } from 'lucide-react'
 
 const EMPLOYER_DOCS = [
     { id: 'npwp', name: 'NPWP Perusahaan (DJP)', desc: 'Validasi legalitas institusi dan nomor pokok wajib pajak via DJP Online', icon: Building2 },
