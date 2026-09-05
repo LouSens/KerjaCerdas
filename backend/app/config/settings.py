@@ -78,12 +78,10 @@ class Settings(BaseSettings):
     ]
 
     # ── Matching tuning ──────────────────────────────────────────────────
+    # The score formula's per-factor weights (cosine/skill/experience/education/
+    # recency) are fixed constants in matcher.py, not settings — see that
+    # module's docstring for why they aren't .env-tunable.
     matching_top_k: int = 10
-    matching_cosine_weight: float = 0.50
-    matching_skill_weight: float = 0.30
-    matching_region_weight: float = 0.10
-    matching_salary_weight: float = 0.05
-    matching_experience_weight: float = 0.05
     # Band thresholds for the recruiter shortlist (employer-side). Tunable so
     # they can be calibrated against the real score distribution
     # (see scripts/benchmark_matching.py). Scores are in [0..1].

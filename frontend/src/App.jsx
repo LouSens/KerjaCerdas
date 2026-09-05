@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import useStore from './store/useStore'
+import { VIEW_TO_PATH, PATH_TO_VIEW } from './routes'
 
 import PublicHeader from './components/PublicHeader'
 import Sidebar, { MobileBottomNav } from './components/Sidebar'
@@ -33,51 +34,6 @@ import EmployerCandidates from './components/EmployerCandidates'
 import EmployerVerification from './components/EmployerVerification'
 import JobPackUploader from './components/JobPackUploader'
 import EmployerProfile from './components/EmployerProfile'
-
-// ── Route map: view key ↔ URL path ─────────────────────────────────────────
-export const VIEW_TO_PATH = {
-    'home':                  '/',
-    'pricing':               '/harga',
-    'about':                 '/tentang',
-    'privacy':               '/privasi',
-    'seeker-dashboard':      '/dashboard',
-    'seeker-match':          '/lowongan',
-    'seeker-skill-gap':      '/skill-gap',
-    'seeker-saved':          '/tersimpan',
-    'seeker-verification':   '/verifikasi',
-    'seeker-profile':        '/profil',
-    'seeker-search':         '/cari',
-    'seeker-applications':   '/lamaran',
-    'employer-dashboard':    '/employer/dashboard',
-    'employer-jobs':         '/employer/lowongan',
-    'employer-post-job':     '/employer/pasang',
-    'employer-candidates':   '/employer/kandidat',
-    'employer-verification': '/employer/verifikasi',
-    'employer-upload':       '/employer/upload',
-    'employer-profile':      '/employer/profil',
-}
-
-export const PATH_TO_VIEW = {
-    '/':                     'home',
-    '/harga':                'pricing',
-    '/tentang':              'about',
-    '/privasi':              'privacy',
-    '/dashboard':            'seeker-dashboard',
-    '/lowongan':             'seeker-match',
-    '/skill-gap':            'seeker-skill-gap',
-    '/tersimpan':            'seeker-saved',
-    '/verifikasi':           'seeker-verification',
-    '/profil':               'seeker-profile',
-    '/cari':                 'seeker-search',
-    '/lamaran':              'seeker-applications',
-    '/employer/dashboard':   'employer-dashboard',
-    '/employer/lowongan':    'employer-jobs',
-    '/employer/pasang':      'employer-post-job',
-    '/employer/kandidat':    'employer-candidates',
-    '/employer/verifikasi':  'employer-verification',
-    '/employer/upload':      'employer-upload',
-    '/employer/profil':      'employer-profile',
-}
 
 /**
  * NavigationSync — bridges React Router ↔ Zustand store.
@@ -158,6 +114,9 @@ export default function App() {
             <Routes>
                 {/* ── Public routes ───────────────────────────────────────────── */}
                 <Route path="/" element={<LandingHero />} />
+                {/* 'pricing' is an anchor-scroll on the home page (see useStore's
+                    navigate()), not a page — this only exists so an old/shared
+                    /harga link redirects home instead of 404ing. */}
                 <Route path="/harga" element={<Navigate to="/" replace />} />
                 <Route path="/tentang" element={<AboutPage />} />
                 <Route path="/privasi" element={<PrivacyPolicyPage />} />

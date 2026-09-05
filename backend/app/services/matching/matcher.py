@@ -7,7 +7,12 @@ Pipeline:
   3. Rerank with structured features (region, salary, experience, skill overlap).
   4. Return top-K MatchResult with human-readable Bahasa Indonesia explanations.
 
-Weights are read from settings so they can be tuned via .env without a code change.
+The five per-factor weights below (cosine/skill/experience/education/recency)
+are fixed constants, not settings: they are a hand-calibrated starting point
+for the demo dataset, not yet validated against a labelled evaluation set, so
+there is no meaningful per-deployment ".env" value to tune them to. If/when a
+labelled set exists, recalibrate the constants here directly and re-run the
+matching parity tests.
 """
 
 from __future__ import annotations
@@ -180,6 +185,44 @@ def _normalize_filters(filters: dict | None) -> dict:
     return out
 
 
+# ── Scoring weights ───────────────────────────────────────────────────────────
+# Shared by both ranking directions (job→seekers and seeker→jobs) so a
+# recalibration only ever happens in one place.
+_W_COSINE = 0.45
+_W_SKILL = 0.25
+_W_EXPERIENCE = 0.15
+_W_EDUCATION = 0.10
+_W_RECENCY = 0.05
+
+
+def _experience_fit_boost(years_exp: float, required_years_min: int) -> float:
+    """Experience-fit boost in [0, _W_EXPERIENCE], scaled by shortfall.
+
+    A posting with no minimum (entry-level) always gets the full boost;
+    otherwise the boost scales linearly up to the requirement.
+    """
+    if required_years_min <= 0:
+        return _W_EXPERIENCE
+    if years_exp >= required_years_min:
+        return _W_EXPERIENCE
+    return _W_EXPERIENCE * (years_exp / required_years_min)
+
+
+def _hybrid_score(
+    cos: float, skill_overlap: float, years_exp: float, required_years_min: int, has_education: bool
+) -> float:
+    """The one formula both ranking directions score against.
+
+    recency_boost is a flat _W_RECENCY for every candidate today (all demo
+    users are treated as recently active) — kept as a named term rather than
+    folded into the constant so a future recency signal only changes one line.
+    """
+    exp_boost = _experience_fit_boost(years_exp, required_years_min)
+    edu_boost = _W_EDUCATION if has_education else 0.0
+    recency_boost = _W_RECENCY
+    return _W_COSINE * max(cos, 0.0) + _W_SKILL * skill_overlap + exp_boost + edu_boost + recency_boost
+
+
 def _band_label(score: float, strong_th: float, possible_th: float) -> str:
     """Map a final score to a confidence band. Single source of truth for the
     Strong / Possible / Stretch cutoffs — used by both the seeker ranking and
@@ -297,8 +340,6 @@ def _query_cache_key(model: str, text: str) -> str:
 class SemanticMatcher:
     def __init__(self) -> None:
         self.embedder = get_embedder()
-        # Weights from settings — lazy-loaded once
-        self._w: dict | None = None
 
     async def _embed_query_cached(self, text: str) -> list[float]:
         """Embed query text with a two-tier cache: in-process LRU, then a small
@@ -327,26 +368,6 @@ class SemanticMatcher:
         while len(_query_cache) > _QUERY_CACHE_MAX:
             _query_cache.popitem(last=False)
         return vec
-
-    def _weights(self) -> dict:
-        if self._w is None:
-            from backend.app.config.settings import settings as s
-
-            total = (
-                s.matching_cosine_weight
-                + s.matching_skill_weight
-                + s.matching_region_weight
-                + s.matching_salary_weight
-                + s.matching_experience_weight
-            )
-            self._w = {
-                "cosine": s.matching_cosine_weight / total,
-                "skill": s.matching_skill_weight / total,
-                "region": s.matching_region_weight / total,
-                "salary": s.matching_salary_weight / total,
-                "experience": s.matching_experience_weight / total,
-            }
-        return self._w
 
     # ── Indexing ──────────────────────────────────────────────────────────────
 
@@ -474,11 +495,19 @@ class SemanticMatcher:
             matched = [s for s in j.required_skills if s.lower() in s_lower]
             missing = [s for s in j.required_skills if s.lower() not in s_lower]
 
-            # 1. Base Score (Semantic + Skill Only)
-            base_score = 0.60 * max(cos, 0.0) + 0.40 * skill
+            years_exp = _experience_years(seeker)
+            score = _hybrid_score(
+                cos, skill, years_exp, j.experience_years_min, bool(seeker.education)
+            )
+            band = _band_label(
+                score,
+                settings.band_strong_threshold,
+                settings.band_possible_threshold,
+            )
 
-            # 2. Hybrid AI Boosts (Only applied if user actively sets filters)
-            loc_boost = 0.0
+            # Region and salary matching, used for both UI badges and hard
+            # filtering (a filter the user actively set eliminates non-matches
+            # outright rather than merely de-prioritizing them).
             region_ok = False
             target_loc = filters.get("location")
             if target_loc:
@@ -489,29 +518,17 @@ class SemanticMatcher:
                     or (j.region_code.lower().startswith("317") and target_loc == "jakarta")
                     or target_loc in [r.lower() for r in (seeker.preferred_regions or [])]
                 ):
-                    loc_boost = 0.15
                     region_ok = True
+                else:
+                    continue  # Hard filter: Eliminate job not in preferred region
 
-            sal_boost = 0.0
             salary_ok = False
             target_sal = filters.get("salary_min")
             if target_sal:
                 if j.salary_max >= target_sal:
-                    sal_boost = 0.10
                     salary_ok = True
-
-            exp_boost = 0.0
-            target_exp = filters.get("experience_min")
-            if target_exp:
-                if j.experience_years_min <= target_exp:
-                    exp_boost = 0.10
-
-            score = base_score + loc_boost + sal_boost + exp_boost
-            band = _band_label(
-                score,
-                settings.band_strong_threshold,
-                settings.band_possible_threshold,
-            )
+                else:
+                    continue  # Hard filter: Eliminate job below expected salary
 
             scored.append(
                 MatchResult(
@@ -585,18 +602,19 @@ class SemanticMatcher:
                 cos = cosine(query_vec, seeker_vec or [])
             skill = _skill_overlap([sk.name for sk in s.skills], job.required_skills)
 
-            # Hybrid AI Boost based on filters
-            loc_boost = 0.0
-            if filters.get("location") and filters["location"] == (s.region_code or "").lower():
-                loc_boost = 0.15
+            # Hard AI Filters based on UI
+            target_loc = filters.get("location")
+            if target_loc and target_loc != (s.region_code or "").lower():
+                continue  # Hard filter: Eliminate seeker outside preferred location
 
-            exp_boost = 0.0
-            if filters.get("experience_min"):
-                years_exp = _experience_years(s)
-                if years_exp >= filters["experience_min"]:
-                    exp_boost = 0.10
+            target_exp = filters.get("experience_min")
+            years_exp = _experience_years(s)
+            if target_exp and years_exp < target_exp:
+                continue  # Hard filter: Eliminate seeker below minimum experience
 
-            score = round(0.60 * max(cos, 0.0) + 0.40 * skill + loc_boost + exp_boost, 4)
+            score = round(
+                _hybrid_score(cos, skill, years_exp, job.experience_years_min, bool(s.education)), 4
+            )
             seeker_skill_lower = {sk.name.lower() for sk in s.skills}
             matched_skills = [r for r in job.required_skills if r.lower() in seeker_skill_lower]
             missing_skills = [r for r in job.required_skills if r.lower() not in seeker_skill_lower]

@@ -1,12 +1,16 @@
 """
-KerjaCerdas — canonical Pydantic schemas.
+KerjaCerdas — API-layer Pydantic schemas.
 
-These models are the single source of truth for:
-  • request/response shapes (FastAPI)
-  • the JSON file store under /data (dev mode)
-  • the Supabase / Postgres+pgvector migration target (prod mode)
+`backend.app.db.models` (SQLAlchemy ORM) is the single source of truth for
+persisted column definitions. The entity classes in this module are typed
+projections of those tables — used as FastAPI request/response shapes and as
+the repository layer's read/write contract (`backend.app.db.postgres_store`)
+— plus validators/enums (e.g. `can_transition`, `normalize_company_size`)
+that the ORM layer has no room to express. Every field here must have a
+same-named column on its paired ORM model; `tests/unit/test_schema_parity.py`
+enforces this so the two representations cannot silently drift apart again.
 
-Field naming follows snake_case so models map 1:1 to Supabase tables.
+Field naming follows snake_case so models map 1:1 to their ORM/SQL columns.
 The `embedding` field uses list[float] in Python and `vector(768)` in pgvector.
 """
 
@@ -152,10 +156,12 @@ class VerificationStatus(str, Enum):
 
 
 class User(TimestampedModel):
-    """`auth.users` equivalent. Supabase auth provides id; we mirror it."""
+    """Mirrors `backend.app.db.models.User` — every field here must have a
+    same-named ORM column (checked by test_schema_parity.py)."""
 
     id: str = Field(default_factory=_uid)
     email: EmailStr
+    name: str = ""
     password_hash: str
     role: UserRole
     is_active: bool = True

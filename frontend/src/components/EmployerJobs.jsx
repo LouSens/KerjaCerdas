@@ -3,6 +3,13 @@ import useStore from '../store/useStore'
 import { KC, BrutalCard, topBtn, Tag, DesignStyles } from './_design'
 import { Plus, Users, ChevronDown, ChevronUp, Edit3, ArrowLeft, ArrowRight, Building2, MapPin } from 'lucide-react'
 
+function formatSalaryRange(min, max) {
+    if (!min && !max) return null
+    const fmt = (n) => `Rp ${n.toLocaleString('id-ID')}`
+    if (min && max) return `${fmt(min)} - ${fmt(max)}`
+    return fmt(min || max)
+}
+
 export default function EmployerJobs() {
     const { employerJobs, refreshEmployerJobs, navigate } = useStore()
     const [openJobId, setOpenJobId] = useState(null)
@@ -11,7 +18,7 @@ export default function EmployerJobs() {
         refreshEmployerJobs()
     }, []) // eslint-disable-line
 
-    const display = employerJobs && employerJobs.length ? employerJobs : DEMO_JOBS
+    const display = employerJobs || []
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -38,6 +45,11 @@ export default function EmployerJobs() {
             </header>
 
             {/* Job List */}
+            {display.length === 0 ? (
+                <BrutalCard color="#FFFFFF" padding={24} style={{ textAlign: 'center', color: KC.mute }}>
+                    Belum ada lowongan. Pasang lowongan pertama Anda untuk mulai menerima pelamar.
+                </BrutalCard>
+            ) : (
             <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {display.map((job, idx) => {
                     const isOpen = openJobId === (job.id || idx)
@@ -51,23 +63,20 @@ export default function EmployerJobs() {
                                         <span style={{ padding: '2px 8px', background: isLive ? KC.limeSoft : KC.surfaceAlt, border: `1px solid ${isLive ? KC.lime : KC.borderMuted}`, borderRadius: 6, fontSize: 10, fontWeight: 800, color: isLive ? '#047857' : KC.mute }}>
                                             {isLive ? '● LIVE' : 'DRAFT'}
                                         </span>
-                                        <span style={{ fontSize: 12, color: KC.mute }}>
-                                            {job.age || 'Aktif'}
-                                        </span>
                                     </div>
                                     <h3 style={{ fontSize: 17, fontWeight: 900, margin: '0 0 6px', color: KC.ink, letterSpacing: -0.3 }}>
                                         {job.title}
                                     </h3>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute }}>
-                                        <span>{job.location || 'Jakarta · Hybrid'}</span>
+                                        <span>{job.remote_allowed ? 'Remote' : job.region_code || '—'}</span>
                                         <span>·</span>
-                                        <span>{job.salary_range || 'Rp 28.000.000 - Rp 42.000.000'}</span>
+                                        <span>{formatSalaryRange(job.salary_min, job.salary_max) || '—'}</span>
                                     </div>
                                 </div>
 
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                                     <div style={{ textAlign: 'center', minWidth: 60 }}>
-                                        <div style={{ fontSize: 18, fontWeight: 900, color: KC.ink }}>{job.application_count || job.app || 84}</div>
+                                        <div style={{ fontSize: 18, fontWeight: 900, color: KC.ink }}>{job.application_count ?? 0}</div>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: KC.mute, textTransform: 'uppercase' }}>Pelamar</div>
                                     </div>
                                     <button
@@ -89,10 +98,10 @@ export default function EmployerJobs() {
 
                             {isOpen && (
                                 <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${KC.ash}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, fontSize: 12 }}>
-                                    <div style={{ display: 'flex', gap: 20, color: KC.mute }}>
-                                        <span>Kategori: <b>Software Engineering</b></span>
-                                        <span>Konversi Lamaran: <b>14 / minggu</b></span>
-                                        <span>Tingkat Kecocokan: <b>88% Rata-rata</b></span>
+                                    <div style={{ display: 'flex', gap: 20, color: KC.mute, flexWrap: 'wrap' }}>
+                                        <span>Keahlian Wajib: <b>{(job.required_skills || []).slice(0, 3).join(', ') || '—'}</b></span>
+                                        <span>Pengalaman Min.: <b>{job.experience_years_min ? `${job.experience_years_min} tahun` : 'Entry-level'}</b></span>
+                                        <span>Pendidikan Min.: <b>{job.education_min || '—'}</b></span>
                                     </div>
                                     <button onClick={() => navigate('employer-post-job')} style={{ ...topBtn('#fff', KC.ink), padding: '6px 12px', fontSize: 11 }}>
                                         <Edit3 size={12} /> Edit Lowongan
@@ -103,13 +112,7 @@ export default function EmployerJobs() {
                     )
                 })}
             </div>
+            )}
         </div>
     )
 }
-
-const DEMO_JOBS = [
-    { id: 'd1', title: 'Senior Backend Engineer', location: 'Jakarta · Hybrid', salary_range: 'Rp 28jt - Rp 42jt', age: 'Dipublikasi 3 hari lalu', app: 94 },
-    { id: 'd2', title: 'Product Designer (UI/UX)', location: 'Jakarta · Remote', salary_range: 'Rp 18jt - Rp 26jt', age: 'Dipublikasi 7 hari lalu', app: 112 },
-    { id: 'd3', title: 'Tech Lead Infrastructure', location: 'Jakarta · Hybrid', salary_range: 'Rp 35jt - Rp 50jt', age: 'Dipublikasi 12 hari lalu', app: 58 },
-    { id: 'd4', title: 'Data Platform Engineer', location: 'Bandung · Onsite', salary_range: 'Rp 20jt - Rp 32jt', age: 'Draft tersimpan', app: 0, is_active: false },
-]

@@ -4,7 +4,7 @@ KerjaCerdas — Database Engine
 Async SQLAlchemy engine and session factory for PostgreSQL.
 Supports fallback to SQLite for demo/development mode.
 
-ANTIGRAVITY PROTOCOL §7: Database = PostgreSQL 15 with pgvector.
+Production target: PostgreSQL 15 with the pgvector extension.
 """
 
 from __future__ import annotations

@@ -3,7 +3,8 @@ KerjaCerdas — Auth Service
 ============================
 JWT token management and password hashing via bcrypt.
 
-ANTIGRAVITY PROTOCOL: RULE-01 — No hardcoded secrets.
+Convention: no hardcoded secrets — JWT_SECRET_KEY is read from settings, and
+main.py refuses to start in production without one.
 """
 
 from __future__ import annotations

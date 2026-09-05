@@ -145,12 +145,19 @@ async def list_my_jobs(current_user: User = Depends(get_current_user)):
         return {"total": 0, "items": []}
     jobs = await repos.jobs.find(lambda j: j.employer_id == employer.id)
 
-    # Attach real application counts from the applications store
+    # Batch the application count instead of one query per job: fetch every
+    # application once and tally by job_id in Python.
+    job_ids = {j.id for j in jobs}
+    all_apps = await repos.applications.list()
+    counts_by_job: dict[str, int] = {}
+    for a in all_apps:
+        if a.job_id in job_ids:
+            counts_by_job[a.job_id] = counts_by_job.get(a.job_id, 0) + 1
+
     enriched = []
     for j in jobs:
-        apps = await repos.applications.find(lambda a: a.job_id == j.id)
         job_dict = j.model_dump()
-        job_dict["application_count"] = len(apps)
+        job_dict["application_count"] = counts_by_job.get(j.id, 0)
         enriched.append(job_dict)
 
     return {"total": len(enriched), "items": enriched}
@@ -337,6 +344,7 @@ async def find_candidates(
 # Xendit (free API, transaction fee only) for production pay-to-unlock.
 
 _UNLOCKED_CONTACTS: dict[str, set[str]] = {}  # employer_id → set of seeker_ids
+_DEMO_PHONE_FALLBACK = "+628123456789"  # placeholder shown when no real phone is on file
 
 
 @router.post("/jobs/{job_id}/unlock/{seeker_id}")
@@ -386,7 +394,7 @@ async def unlock_candidate(
         "seeker_id": seeker_id,
         "name": seeker.full_name or (real_user.name if real_user else "Kandidat"),
         "email": real_user.email if real_user else "demo@kerjacerdas.id",
-        "phone": getattr(seeker, "phone", "+628123456789") or "+628123456789",
+        "phone": getattr(seeker, "phone", _DEMO_PHONE_FALLBACK) or _DEMO_PHONE_FALLBACK,
         "unlock_id": f"unlock_{employer.id[:8]}_{seeker_id[:8]}",
         "unlock_cost_idr": 50000,  # Rp 50.000 per unlock
         "note": "[DEMO] Dalam produksi, verifikasi payment_token Midtrans/Xendit terlebih dahulu.",
@@ -421,18 +429,31 @@ async def list_employer_applications(
         a for a in all_apps if a.job_id in target_job_ids and a.status != ApplicationStatus.SAVED
     ]
 
+    # Batch-load seekers and their auth users instead of two queries per
+    # application row. If a seeker profile is missing (orphan application),
+    # fall back to treating the application's seeker_id as a user id — this
+    # matches the previous per-row lookup's fallback behavior.
+    seeker_ids = list({a.seeker_id for a in relevant_apps})
+    seekers = await repos.seekers.get_many(seeker_ids) if seeker_ids else []
+    seeker_by_id = {s.id: s for s in seekers}
+
+    user_lookup_ids = {
+        (seeker_by_id[a.seeker_id].user_id if a.seeker_id in seeker_by_id else a.seeker_id)
+        for a in relevant_apps
+    }
+    users = await repos.users.get_many(list(user_lookup_ids)) if user_lookup_ids else []
+    user_by_id = {u.id: u for u in users}
+
     enriched = []
     for app in relevant_apps:
         job = job_map.get(app.job_id)
-        seeker = await repos.seekers.get(app.seeker_id)
-        users = await repos.users.find(
-            lambda u: u.id == (seeker.user_id if seeker else app.seeker_id)
-        )
-        user_record = users[0] if users else None
+        seeker = seeker_by_id.get(app.seeker_id)
+        user_record = user_by_id.get(seeker.user_id if seeker else app.seeker_id)
 
         skill_names = [getattr(s, "name", str(s)) for s in (getattr(seeker, "skills", []) or [])]
         applied_dt = getattr(app, "created_at", None)
         updated_dt = getattr(app, "updated_at", None) or applied_dt
+        now_fallback = datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
 
         enriched.append(
             {
@@ -445,7 +466,7 @@ async def list_employer_applications(
                 if seeker and seeker.full_name
                 else (user_record.name if user_record else "Pelamar"),
                 "seeker_email": user_record.email if user_record else "pelamar@kerjacerdas.id",
-                "seeker_phone": getattr(seeker, "phone", "") or "+628123456789",
+                "seeker_phone": getattr(seeker, "phone", "") or _DEMO_PHONE_FALLBACK,
                 "headline": getattr(seeker, "headline", "") if seeker else "",
                 "skills": skill_names,
                 "status": app.status,
@@ -456,12 +477,12 @@ async def list_employer_applications(
                 if hasattr(applied_dt, "strftime")
                 else str(applied_dt)[:16]
                 if applied_dt
-                else "2026-08-26 10:00",
+                else now_fallback,
                 "updated_at": updated_dt.strftime("%Y-%m-%d %H:%M")
                 if hasattr(updated_dt, "strftime")
                 else str(updated_dt)[:16]
                 if updated_dt
-                else "2026-08-26 10:00",
+                else now_fallback,
             }
         )
 

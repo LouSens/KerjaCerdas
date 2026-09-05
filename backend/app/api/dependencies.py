@@ -3,7 +3,9 @@ KerjaCerdas — API Dependencies
 ================================
 FastAPI dependencies for authentication, database sessions, and role checks.
 
-ANTIGRAVITY PROTOCOL: Every secured endpoint MUST use get_current_user.
+Convention: every secured endpoint must depend on get_current_user (or a
+role-scoped wrapper built on top of it) rather than reading the bearer token
+itself.
 """
 
 from __future__ import annotations
