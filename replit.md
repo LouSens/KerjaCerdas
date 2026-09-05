@@ -1,12 +1,12 @@
 # KerjaCerdas
 
-AI-powered job matching platform for Indonesia. Semantic CV matching, skill-gap analysis, and employer candidate shortlisting — all backed by Google Gemini and LangGraph agents.
+AI-powered job matching platform for Indonesia. Semantic CV matching, skill-gap analysis, and employer candidate shortlisting — all backed by Google Gemini and a single-node LangGraph response layer.
 
 ## Stack
 
 - **Backend**: FastAPI + SQLAlchemy (async) + PostgreSQL (pgvector) — port 8000
 - **Frontend**: React 18 + Vite + TailwindCSS — port 5000 (webview)
-- **AI**: Google Gemini embeddings + chat, LangGraph ReAct agents
+- **AI**: Google Gemini embeddings + chat; one LangGraph node (`START → agent_node → END`) for response synthesis. Matching/skill-gap/routing run as procedural Python, not as graph nodes. Tool-calling is disabled (library incompatibility) — not a ReAct agent. See `docs/ARCHITECTURE.md`.
 
 ## Running on Replit
 
@@ -51,7 +51,7 @@ frontend/         React + Vite app
     services/     api.js — fetch wrapper with auto-logout
     store/        Zustand global state
 database/         init.sql reference dump
-docs/             Business proposals, API spec, sequence diagrams
+docs/             Architecture, product docs, API spec, sequence diagrams
 ```
 
 ## Linting & Git Hook

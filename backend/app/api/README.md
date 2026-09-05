@@ -5,18 +5,20 @@
 This directory contains the FastAPI-powered backend that orchestrates the AI agents, manages the database, and serves the frontend.
 
 ## 🚀 Tech Stack
-- **Framework**: FastAPI (High-performance Python API)
-- **Database**: PostgreSQL with `pgvector` for semantic search
-- **Task Queue/Cache**: Redis
+- **Framework**: FastAPI (High-performance async Python API)
+- **Database**: PostgreSQL with `pgvector` for semantic search (via `backend/app/db/postgres_store.py`)
+- **Rate limiting**: in-process sliding-window middleware (Redis is a config field for a future distributed deployment — **not currently used**; see `docs/ARCHITECTURE.md`)
 - **Validation**: Pydantic v2
 - **Documentation**: Swagger UI & Redoc (auto-generated)
 
-## 🤖 AI Orchestration
-The API is built on a **Multi-Agent** architecture:
-1. **Orchestrator**: Routes requests and ensures Protocol compliance.
-2. **Matching Agent**: Interfaces with **Semantic Search (pgvector)** and **Google Gemini** for semantic job-skill relevance.
-3. **Skill Gap Agent**: Performs RAG-enhanced analysis using **Google Gemini**.
-4. **Advisor Agent**: Provides conversational career advice in Bahasa Indonesia.
+## 🤖 AI Pipeline
+
+This is not a multi-agent orchestrator. It's a procedural pipeline (`route_intent → run_matcher → run_skill_gap/run_advisor → compose_response`, in `backend/app/agents/graph/nodes.py`), called directly from `agent.py`, plus **one** LangGraph node (`START → agent_node → END`) that makes a single Gemini call to synthesize the final natural-language reply. There is no orchestrator/agent-to-agent handoff and no tool-calling loop — see `docs/ARCHITECTURE.md` for the full architecture and roadmap.
+
+1. **Intent routing**: classifies the message (Gemini zero-shot JSON with a regex fallback), procedurally, before any graph is invoked.
+2. **Matching**: `SemanticMatcher` — pgvector HNSW search + structured hybrid reranking.
+3. **Skill gap**: deterministic set-difference + Gemini-narrated course recommendations.
+4. **Response synthesis**: the single LangGraph node calls Gemini to phrase the final reply in Bahasa Indonesia.
 
 ## 🛠️ Development Setup
 
@@ -42,17 +44,15 @@ or on PowerShell:
 
 ### 2. Run Locally
 ```bash
-uvicorn src.api.main:app --reload --port 8000
+uvicorn backend.app.api.main:app --reload --port 8000
 ```
 Interactive documentation: `http://localhost:8000/docs`
 
 ## 📂 Key Endpoints
-- `POST /match/`: Get AI-ranked job matches for a seeker profile.
-- `GET /skill-gap/{job_id}`: Analyze skill gaps and get course recommendations.
-- `POST /advisor/chat`: Interact with the AI Career Advisor.
-- `GET /health`: System health monitoring.
 
----
-<div align="center">
-*Built for Hackathon 2026*
-</div>
+Full contract (all 10 routers, request/response schemas, rate limits, error codes): [`docs/API_SPEC.md`](../../../docs/API_SPEC.md). Most-used during a demo:
+- `POST /api/v1/uploads/cv`: Parse a seeker's PDF CV into a structured profile + embedding.
+- `POST /api/v1/agent/invoke`: AI-ranked job matches, skill gap, or career-advisor chat (routed procedurally — see above).
+- `POST /api/v1/seeker/skill-gap`: Deterministic skill-gap computation for a target job.
+- `POST /api/v1/employer/jobs/{id}/candidates`: Reverse-match candidates for an employer's job (ownership-guarded).
+- `GET /health`: System liveness check.

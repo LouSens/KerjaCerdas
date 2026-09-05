@@ -2,6 +2,8 @@
 
 Common workflows documented as Mermaid sequence diagrams.
 
+> The storage layer throughout is PostgreSQL via `backend/app/db/postgres_store.py` repositories. The AI agent invocation (#3) is a single-node LangGraph call, not a ReAct tool-calling loop — tool-calling is explicitly disabled (see [`ARCHITECTURE.md`](ARCHITECTURE.md)). The Zustand persist key is `kerjacerdas-v4`.
+
 ## Table of Contents
 
 1. [User Registration](#1-user-registration)
@@ -24,10 +26,9 @@ sequenceDiagram
     participant SZ as SanitizationMiddleware
     participant AR as Auth Router
     participant DB as PostgreSQL
-    participant JS as JSON Store
 
     U->>F: Fill registration form (name, email, password, role)
-    F->>F: Client-side validation (Zod schema)
+    F->>F: Client-side validation (plain JS checks — no schema library)
     F->>RL: POST /api/v1/auth/register
     RL->>RL: Check IP: max 10 req/60s
     alt Rate limit exceeded
@@ -50,11 +51,11 @@ sequenceDiagram
         F-->>U: Show error message
     end
     DB-->>AR: new_user (id, email, role)
-    AR->>JS: upsert JsonUser + Employer profile (if role=employer)
+    AR->>DB: upsert SeekerProfile / EmployerProfile row (if role=employer)
     AR->>AR: jwt.encode(payload, SECRET_KEY)
     AR-->>F: 201 {access_token, user: {id, name, email, role}}
     F->>F: Zustand: setAuth(token, user)
-    F->>F: localStorage.setItem('kerjacerdas-v3', ...)
+    F->>F: localStorage.setItem('kerjacerdas-v4', ...)
     F-->>U: Redirect to Dashboard
 ```
 
@@ -109,8 +110,9 @@ sequenceDiagram
     participant DP as Dependencies (JWT guard)
     participant AG as Agent Router
     participant SN as sanitize_text()
-    participant LG as LangGraph / Gemini
-    participant DB as JSON Store (Jobs, Seekers)
+    participant PR as Procedural pipeline (nodes.py)
+    participant LG as LangGraph single node (agent_node)
+    participant DB as PostgreSQL (Jobs, Seekers)
 
     S->>F: Type message in FloatingAdvisor chat
     F->>RL: POST /api/v1/agent/invoke<br/>{user_message, seeker_id, explicit_intent}
@@ -125,15 +127,22 @@ sequenceDiagram
     end
     AG->>DB: Resolve seeker profile (by seeker_id or inline)
     AG->>DB: Load all job postings
-    AG->>LG: ainvoke({messages: [("user", sanitized_context)]})
-    LG->>LG: ReAct agent: route intent → tool call (e.g. SemanticMatcher)
-    LG->>LG: Token Efficiency Gate: Check if top_cosine < 0.10. If yes, skip LLM.
-    LG-->>AG: {messages: [...], intent, matches}
+    AG->>PR: route_intent(message) → run_matcher / run_skill_gap / run_advisor
+    Note over PR: Plain Python function calls, not LangGraph graph edges.<br/>SemanticMatcher ranking happens here, before any LLM call.
+    PR->>PR: Token Efficiency Gate: if top_cosine < 0.10, skip the LLM call entirely
+    alt Skip condition met
+        PR-->>AG: templated reply, no Gemini call
+    else
+        PR->>LG: ainvoke single agent_node (Gemini call, no tool-calling)
+        LG-->>PR: {messages: [...]}
+    end
     AG->>AG: Hallucination Guard: Verify match job_ids exist in DB. Drop invalid.
     AG->>AG: Enrich valid matches with job metadata + employer names
     AG-->>F: 200 AgentInvokeResponse
     F-->>S: Render job cards + AI response
 ```
+
+**Catatan arsitektur:** intent routing dan pemanggilan `SemanticMatcher`/skill-gap berjalan sebagai fungsi Python prosedural (`nodes.py`), **bukan** sebagai node/edge LangGraph, dan **bukan** ReAct tool-calling loop — `bind_tools()` dinonaktifkan secara eksplisit di `builder.py` karena inkompatibilitas library. LangGraph hanya dipanggil sekali sebagai node tunggal untuk menghasilkan teks jawaban akhir. Lihat [`ARCHITECTURE.md`](ARCHITECTURE.md) untuk detail lengkap.
 
 ---
 
@@ -191,7 +200,7 @@ sequenceDiagram
     participant UP as Uploads Router
     participant SZ as sanitize_filename()
     participant GM as Gemini API (PDF extraction)
-    participant DB as JSON Store
+    participant DB as PostgreSQL
 
     S->>F: Drop PDF file on CVUploader
     F->>F: Validate: file.type === 'application/pdf'<br/>file.size ≤ 10MB
@@ -218,7 +227,7 @@ sequenceDiagram
     participant RL as RateLimiter
     participant DP as require_employer()
     participant EP as Employer Router
-    participant DB as JSON Store
+    participant DB as PostgreSQL
     participant SM as SemanticMatcher (embed)
 
     E->>F: Fill job form (title, skills, salary, etc.)
@@ -302,5 +311,6 @@ sequenceDiagram
     S->>F: View verified documents panel
     F->>VR: GET /api/v1/verify/documents
     VR-->>F: {encryption: "AES-256-GCM", compliance: ["UU-PDP-2022","ISO-27001"], documents: [...]}
+    Note over VR,F: "encryption": "AES-256-GCM" is a descriptive string literal in this mock<br/>response, not an implemented encryption routine. NIK/OTP are stored as<br/>one-way SHA-256 hashes. Do not present this as an active capability.
     F-->>S: Render privacy promise row with masked file_id
 ```

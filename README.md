@@ -34,7 +34,7 @@
 
 ## 📌 Platform Overview
 
-**KerjaCerdas** memecahkan masalah ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja melalui pendekatan AI semantik. Untuk melihat detail latar belakang masalah dan perbedaan dengan portal konvensional, silakan baca [Business Proposal](docs/PROPOSAL.md).
+**KerjaCerdas** memecahkan masalah ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja melalui pendekatan AI semantik. Untuk melihat detail latar belakang masalah dan perbedaan dengan portal konvensional, silakan baca [Product Overview](docs/PRODUCT_OVERVIEW.md).
 
 ## 🎯 Fitur Utama
 
@@ -73,7 +73,7 @@ Setiap komponen dalam aplikasi ini dirancang tidak hanya untuk fungsi teknis, me
 | **`EmployerProfile`** | Formulir informasi legalitas dan identitas institusi perusahaan. | Membangun kredibilitas perusahaan sebelum proses verifikasi NPWP. |
 | **`EmployerCandidates`** | Menampilkan hasil reverse-matching dari backend API. | Sourcing kandidat real-time dari profil pencari kerja yang tersedia. |
 | **`PricingPage`** | Konfigurasi limit tiering, paywall, dan ATS enterprise coming soon. | Transparansi harga B2B/B2C dengan strategi freemium untuk akuisisi awal agresif. |
-| **`VerificationDashboard`** | Antarmuka verifikasi identitas (KTP, Ijazah, NPWP, OTP). | **[Implementasi Mendatang]** Saat ini menggunakan mock endpoint. Integrasi resmi Dukcapil/SIVIL/DJP memerlukan kontrak dan kepatuhan regulasi. |
+| **`VerificationDashboard`** | Antarmuka verifikasi identitas (KTP, Ijazah, NPWP, OTP). | Status: mock/demo. Saat ini menggunakan endpoint format-check internal. Integrasi resmi Dukcapil/SIVIL/DJP memerlukan kontrak dan kepatuhan regulasi. |
 
 ---
 
@@ -342,7 +342,7 @@ Sebelum diproses oleh model eksternal, komponen PII (Personally Identifiable Inf
 Infrastruktur relasional kami direkayasa untuk menangani entitas dalam skala tinggi (High-Volume) sekaligus memfasilitasi pencarian jarak vektor komputasional menggunakan `pgvector`.
 
 ### 5. Data Acquisition & AI Feedback Loop
-**[Implementasi Mendatang]** Sistem dirancang untuk mengakuisisi data melalui tiga jalur di masa depan: **Kemitraan Data** dengan institusi ketenagakerjaan, **Internal Feedback Loop** dari aktivitas pengguna (lolos wawancara, tingkat retensi), serta integrasi kursus terverifikasi. Saat ini, data bersumber dari seeder manual dan input pengguna langsung.
+Roadmap item: sistem dirancang untuk mengakuisisi data melalui tiga jalur di masa depan: **Kemitraan Data** dengan institusi ketenagakerjaan, **Internal Feedback Loop** dari aktivitas pengguna (lolos wawancara, tingkat retensi), serta integrasi kursus terverifikasi. Saat ini, data bersumber dari seeder manual dan input pengguna langsung.
 
 ```mermaid
 ---
@@ -430,7 +430,7 @@ erDiagram
 ```
 KerjaCerdas/
 │
-├── backend/                  # API FastAPI & Logika LangGraph Swarm
+├── backend/                  # API FastAPI & Logika Single-Node LangGraph Response Layer
 │   ├── app/
 │   │   ├── api/              # Interface Endpoints FastAPI
 │   │   │   ├── routers/
@@ -446,7 +446,7 @@ KerjaCerdas/
 │   │   │   │   └── verify.py      # E-KYC Dukcapil/SIVIL & DB-backed OTP
 │   │   │   ├── schemas/           # Pydantic validation schemas
 │   │   │   └── services/          # Business logic helpers
-│   │   ├── agents/           # Arsitektur Multi-Agent & LLM
+│   │   ├── agents/           # LLM & LangGraph single-node response layer (routing antar matcher/skill-gap/advisor berjalan prosedural, bukan multi-agent graph)
 │   │   │   ├── graph/
 │   │   │   ├── builder.py     # LangGraph single-node graph (START → agent → END)
 │   │   │   │   └── nodes.py       # Processing functions (Router, Matcher, SkillGap, Advisor, Compose)
@@ -510,14 +510,18 @@ KerjaCerdas/
 ├── database/                 # Basis Data
 │   └── init.sql              # Dump awal PostgreSQL (pgvector)
 │
-├── docs/                     # Dokumentasi Resmi & Presentasi
-│   ├── PROPOSAL.md           # Proposal Solusi Inovasi & Bisnis Lengkap
+├── docs/                     # Dokumentasi Resmi
+│   ├── ARCHITECTURE.md       # Arsitektur Sistem & Pemetaan 3-Layer (UX/Logic/Infra)
+│   ├── PRODUCT_OVERVIEW.md   # Masalah, Pengguna, Use Case, Model Bisnis Ringkas, Tim
 │   ├── PRODUCT_FEATURES.md   # Deskripsi Detail Fitur Utama Produk
 │   ├── BUSINESS_MODEL.md     # Dokumen Detail Keuangan, Arus Kas & Anggaran Pre-Seed
-│   ├── TECHNICAL_ROADMAP.md  # Roadmap Teknis, A/B Testing & Skalabilitas Cloud
-│   ├── DEMO_GUIDE.md         # Panduan Live Demo & Daftar Akun Pengujian
+│   ├── ROADMAP.md            # Roadmap Teknis, A/B Testing & Skalabilitas Cloud
+│   ├── KNOWN_ISSUES.md       # Utang Teknis & Prioritas Perbaikan
+│   ├── DEMO_GUIDE.md         # Panduan Live Demo
+│   ├── DEMO_ACCOUNTS.md      # Daftar Akun Pengujian (Pre-Seeded)
 │   ├── API_SPEC.md           # Spesifikasi API Lengkap (semua endpoint + schema)
 │   ├── SEQUENCE_DIAGRAMS.md  # 7 Diagram Alur Mermaid (Auth, AI, E-KYC, dll.)
+│   ├── THREAT_MODEL.md       # Model Ancaman & Mitigasi Keamanan
 │   └── internals/            # Dokumentasi Teknis Internal Modul (00-09)
 ```
 
@@ -525,17 +529,21 @@ KerjaCerdas/
 
 ## 📚 Dokumen Referensi
 
-Semua panduan demonstrasi, proposal korporat, dokumen finansial, dan pemetaan arsitektur masa depan kini dipisahkan ke dalam struktur dokumentasi formal (folder `docs/`) untuk memudahkan peninjauan komprehensif oleh dewan juri dan investor.
+Seluruh dokumentasi produk, teknis, dan bisnis ada di folder `docs/`. Mulai dari [ARCHITECTURE.md](docs/ARCHITECTURE.md) untuk gambaran sistem secara keseluruhan.
 
 | Dokumen | Deskripsi | Tautan |
 |---|---|---|
-| **Proposal Solusi & Bisnis** | Proposal solusi inovasi lengkap — problem, validasi pengguna, arsitektur, pemetaan fitur, dan rencana eksekusi. | [PROPOSAL.md](docs/PROPOSAL.md) |
+| **Arsitektur** | Arsitektur sistem, pemetaan Layer 1/2/3 (UX/System Logic/Technical Architecture), dan status Built vs Planned, disitasi ke file kode. | [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| **Ringkasan Produk** | Masalah, pengguna, use case inti, diferensiasi, dan tim. | [PRODUCT_OVERVIEW.md](docs/PRODUCT_OVERVIEW.md) |
 | **Fitur Produk** | Uraian mendalam kapabilitas AI, Explainable AI, Phone OTP, Job Pack Uploader, dan pelacakan lamaran. | [PRODUCT_FEATURES.md](docs/PRODUCT_FEATURES.md) |
-| **Laporan Finansial & Bisnis** | Model keuntungan (Profit Model), budget awal pilot bulan 1 (Rp 3,85jt/bln), peta pemicu upgrade infrastruktur, dan proyeksi realistis 3 tahun. | [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) |
-| **Peta Jalan Teknis & A/B Testing** | Arsitektur A/B testing, mitigasi dependensi vendor, integrasi mitra, dan roadmap skalabilitas cloud. | [TECHNICAL_ROADMAP.md](docs/TECHNICAL_ROADMAP.md) |
-| **Panduan Live Demo & Akun** | Skrip presentasi rinci (*step-by-step*) beserta daftar seluruh akun uji coba (*pre-seeded credentials*). | [DEMO_GUIDE.md](docs/DEMO_GUIDE.md) |
+| **Model Bisnis** | Model monetisasi, budget operasional, peta pemicu upgrade infrastruktur, dan proyeksi finansial. | [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) |
+| **Roadmap** | Roadmap infrastruktur cloud, A/B testing, integrasi mitra, dan roadmap algoritma matching/AI agent. | [ROADMAP.md](docs/ROADMAP.md) |
+| **Known Issues** | Utang teknis dan bug terbuka, disitasi ke file kode, dengan prioritas perbaikan. | [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) |
+| **Panduan Live Demo** | Skrip presentasi langkah demi langkah untuk alur seeker dan employer. | [DEMO_GUIDE.md](docs/DEMO_GUIDE.md) |
+| **Akun Demo** | Daftar seluruh akun uji coba (*pre-seeded credentials*). | [DEMO_ACCOUNTS.md](docs/DEMO_ACCOUNTS.md) |
 | **Spesifikasi API** | Kontrak lengkap semua endpoint FastAPI: skema request/response, rate limit, middleware, dan error codes. | [API_SPEC.md](docs/API_SPEC.md) |
 | **Diagram Alur (Sequence)** | 7 diagram Mermaid yang mendokumentasikan alur kerja kritis: Auth, AI Agent, CV Upload, E-KYC, dan lainnya. | [SEQUENCE_DIAGRAMS.md](docs/SEQUENCE_DIAGRAMS.md) |
+| **Threat Model** | Aset, batas kepercayaan, dan mitigasi per kategori ancaman (STRIDE). | [THREAT_MODEL.md](docs/THREAT_MODEL.md) |
 
 ---
 <div align="center">

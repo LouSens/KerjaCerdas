@@ -6,7 +6,7 @@
 
 ## 1. Definisi Persona Target Pengguna Nyata (*Target User Persona*)
 
-Untuk memastikan proyeksi keuangan dapat dipertanggungjawabkan di hadapan dewan juri, target pengguna pada tahap awal didefinisikan secara spesifik dan terukur:
+Untuk memastikan proyeksi keuangan dapat dipertanggungjawabkan, target pengguna pada tahap awal didefinisikan secara spesifik dan terukur:
 
 ```mermaid
 flowchart TD
@@ -42,7 +42,7 @@ flowchart TD
 
 ## 3. Rencana Alokasi Budget yang Dibutuhkan (Bulan ke-1 Pilot: Rp 3.850.000)
 
-Rincian alokasi budget awal untuk tahap pembuktian konsep (*proof of concept*) dan demonstrasi *pitching*:
+Rincian alokasi budget awal untuk tahap pembuktian konsep (*proof of concept*) dan validasi pilot:
 
 | Pos Alokasi Pengeluaran | Biaya (IDR) | Proporsi | Rasionalisasi & Peruntukan Operasional |
 |---|---|---|---|
@@ -54,7 +54,7 @@ Rincian alokasi budget awal untuk tahap pembuktian konsep (*proof of concept*) d
 | **Domain Resmi `.id` & Keamanan SSL Cloudflare** | Rp 250.000 | 6.5% | Registrasi domain resmi `.id` 1 tahun + proteksi mitigasi serangan DDoS |
 | **Program Outreach Pilot (5 UMKM & 100 Penguji)** | Rp 1.800.000 | 46.7% | Insentif pengujian validasi, onboarding langsung 5 UMKM, dan akuisisi talenta awal |
 | **Cadangan Kontinjensi & Operasional (10%)** | Rp 450.000 | 11.7% | Buffer fluktuasi kurs mata uang dan kebutuhan operasional tak terduga |
-| **TOTAL BUDGET BULAN KE-1 (PITCHING / PILOT)** | **Rp 3.850.000** | **100.0%** | **Budget awal yang rasional untuk tahap validasi pilot (rentang Rp 2–5 jt/bln)** |
+| **TOTAL BUDGET BULAN KE-1 (PILOT)** | **Rp 3.850.000** | **100.0%** | **Budget awal yang rasional untuk tahap validasi pilot (rentang Rp 2–5 jt/bln)** |
 
 ---
 

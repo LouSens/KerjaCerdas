@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-KerjaCerdas is an AI-powered job matching platform for Indonesia. A FastAPI backend (port 8000) serves a React/Vite frontend (port 5000 / 3000). Core features: user registration/login, seeker CV upload and profile management, employer job posting, semantic AI matching via Google Gemini embeddings, and a LangGraph ReAct agent for conversational job search.
+KerjaCerdas is an AI-powered job matching platform for Indonesia. A FastAPI backend (port 8000) serves a React/Vite frontend (port 5000 / 3000). Core features: user registration/login, seeker CV upload and profile management, employer job posting, semantic AI matching via Google Gemini embeddings, and a single-node LangGraph response layer (`START → agent_node → END`) that generates natural-language text for conversational job search. Routing between matcher/skill-gap/advisor logic is procedural Python, not graph edges, and tool-calling (`bind_tools()`) is currently disabled — see [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full architecture. This is not a ReAct or multi-agent tool-calling agent.
 
 ## Assets
 
