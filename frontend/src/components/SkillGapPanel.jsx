@@ -134,6 +134,6 @@ function CourseCard({ course }) {
             <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 8px', color: KC.ink, lineHeight: 1.3 }}>{course.name || 'Rekomendasi pembelajaran'}</h3>
             <p style={{ fontSize: 12, color: KC.inkLight, lineHeight: 1.5, margin: 0 }}>{course.description || 'Periksa kurikulum dan persyaratan langsung pada penyedia.'}</p>
         </div>
-        <div style={{ paddingTop: 12, borderTop: `1px solid ${KC.ash}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: KC.mute, fontWeight: 600 }}><Clock size={12} /> {course.duration || 'Durasi belum diverifikasi'}</span>{hasUrl && <a href={course.url} target="_blank" rel="noreferrer" className="kc-btn" style={{ ...topBtn(KC.ink, '#fff'), padding: '6px 12px', fontSize: 11, textDecoration: 'none' }}>Periksa penyedia <ExternalLink size={12} /></a>}</div>
+        <div style={{ paddingTop: 12, borderTop: `1px solid ${KC.ash}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: KC.mute, fontWeight: 600 }}><Clock size={12} /> {course.duration || 'Durasi belum diverifikasi'}</span>{hasUrl && <a href={course.url} target="_blank" rel="noopener noreferrer" className="kc-btn" style={{ ...topBtn(KC.ink, '#fff'), padding: '6px 12px', fontSize: 11, textDecoration: 'none' }}>Periksa penyedia <ExternalLink size={12} /></a>}</div>
     </BrutalCard>
 }
