@@ -44,6 +44,9 @@ dependencies = [
     "langchain-google-genai>=4.0.0",
     # Observability
     "structlog>=24.0.0",
+    # Distributed rate limiting (RATE_LIMIT_BACKEND=redis) — required once the
+    # deployment runs more than one instance (e.g. Replit autoscale).
+    "redis>=5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -57,6 +60,7 @@ dev = [
     "ruff>=0.3.0",
     "mypy>=1.9.0",
     "pip-audit>=2.7.0",
+    "fakeredis>=2.20.0",  # in-memory redis.asyncio double for rate-limiter tests
 ]
 
 [tool.ruff]

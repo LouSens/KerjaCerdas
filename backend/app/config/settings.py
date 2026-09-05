@@ -64,9 +64,6 @@ class Settings(BaseSettings):
     # ── JSON store root ──────────────────────────────────────────────────
     kerja_data_root: str = "data"
 
-    # ── Redis ────────────────────────────────────────────────────────────
-    redis_url: str = "redis://localhost:6379/0"
-
     # ── CORS ─────────────────────────────────────────────────────────────
     cors_allow_origins: list[str] = [
         "http://localhost:3000",

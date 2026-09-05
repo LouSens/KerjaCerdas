@@ -220,7 +220,9 @@ def _hybrid_score(
     exp_boost = _experience_fit_boost(years_exp, required_years_min)
     edu_boost = _W_EDUCATION if has_education else 0.0
     recency_boost = _W_RECENCY
-    return _W_COSINE * max(cos, 0.0) + _W_SKILL * skill_overlap + exp_boost + edu_boost + recency_boost
+    return (
+        _W_COSINE * max(cos, 0.0) + _W_SKILL * skill_overlap + exp_boost + edu_boost + recency_boost
+    )
 
 
 def _band_label(score: float, strong_th: float, possible_th: float) -> str:
