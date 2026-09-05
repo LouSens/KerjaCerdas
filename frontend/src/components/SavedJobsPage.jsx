@@ -2,7 +2,7 @@ import { useState } from 'react'
 import useStore from '../store/useStore'
 import JobDetailModal from './JobDetailModal'
 import { KC, BrutalCard, topBtn, Tag, DesignStyles } from './_design'
-import { Bookmark, Building2, MapPin, Trash2, ArrowRight, BookmarkCheck } from 'lucide-react'
+import { Bookmark, Building2, MapPin, Trash2, ArrowRight } from 'lucide-react'
 
 export default function SavedJobsPage() {
     const { savedJobs, toggleSaveJob, navigate } = useStore()

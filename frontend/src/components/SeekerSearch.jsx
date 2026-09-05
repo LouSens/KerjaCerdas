@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { searchJobs } from '../services/api'
 import useStore from '../store/useStore'
 import { BrutalCard, KC, topBtn, Tag, DesignStyles } from './_design'
-import { Search, MapPin, Briefcase, DollarSign, Building2, Filter, ArrowRight } from 'lucide-react'
+import { Search, MapPin, Building2, Filter, ArrowRight } from 'lucide-react'
 import JobDetailModal from './JobDetailModal'
 
 export default function SeekerSearch() {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, topBtn, Tag, DesignStyles } from './_design'
-import { Plus, Users, ChevronDown, ChevronUp, Edit3, ArrowLeft, ArrowRight, Building2, MapPin } from 'lucide-react'
+import { Plus, Users, ChevronDown, ChevronUp, Edit3, ArrowLeft } from 'lucide-react'
 
 function formatSalaryRange(min, max) {
     if (!min && !max) return null

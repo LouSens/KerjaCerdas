@@ -327,11 +327,11 @@ flowchart TD
 Sistem menggunakan komposit metrik matematis untuk mereplikasi prioritas SDM:
 ```python
 final_score = (
-    cosine_similarity * 0.50 +   # Relevansi Semantik (Vektor Gemini)
-    skill_overlap     * 0.30 +   # Irisan Keahlian Eksplisit
-    region_boost      * 0.10 +   # Kesesuaian Geografis
-    salary_fit        * 0.05 +   # Penyesuaian Anggaran
-    experience_fit    * 0.05     # Validasi Masa Kerja
+    cosine_similarity  * 0.45 +   # Relevansi Konteks AI (Pemahaman makna CV & Loker)
+    skill_overlap      * 0.25 +   # Syarat Teknis Mutlak (Hard Skills)
+    experience_fit     * 0.15 +   # Senioritas (Junior vs Senior)
+    education_fit      * 0.10 +   # Kesesuaian Pendidikan (Min. S1/D3 dll)
+    recency_activity   * 0.05     # Aktivitas Kandidat (Login terakhir)
 )
 ```
 

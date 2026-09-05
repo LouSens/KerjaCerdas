@@ -1,14 +1,12 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import useStore from './store/useStore'
-import { VIEW_TO_PATH, PATH_TO_VIEW } from './routes'
+import { PATH_TO_VIEW } from './routes'
 
-import PublicHeader from './components/PublicHeader'
 import Sidebar, { MobileBottomNav } from './components/Sidebar'
 import FloatingAdvisor from './components/FloatingAdvisor'
 import EmployerHelpPanel from './components/EmployerHelpPanel'
 import AuthModal from './components/AuthModal'
-import Footer from './components/Footer'
 import OnboardingWizard from './components/OnboardingWizard'
 
 // Public views

@@ -68,7 +68,7 @@ class TestSecretHygiene:
         assert not hits, f"credentials committed: {hits}"
 
     def test_env_file_is_gitignored(self) -> None:
-        ignored = (REPO_ROOT / ".gitignore").read_text()
+        ignored = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
         assert re.search(r"^\.env$", ignored, re.M), ".env is not gitignored"
 
     def test_no_dotenv_is_tracked(self) -> None:
@@ -80,7 +80,7 @@ class TestSecretHygiene:
         assert not [f for f in tracked if f.endswith(".env")]
 
     def test_env_example_carries_no_real_values(self) -> None:
-        text = (REPO_ROOT / ".env.example").read_text()
+        text = (REPO_ROOT / ".env.example").read_text(encoding="utf-8")
         for line in text.splitlines():
             if "=" not in line or line.strip().startswith("#"):
                 continue
@@ -100,7 +100,7 @@ class TestSecretHygiene:
         hits = [
             f"{p.relative_to(REPO_ROOT)}:{i}"
             for p in app_dir.rglob("*.py")
-            for i, line in enumerate(p.read_text().splitlines(), 1)
+            for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
             if bad.search(line)
         ]
         assert not hits, f"hardcoded secrets: {hits}"
@@ -109,7 +109,7 @@ class TestSecretHygiene:
 class TestSecretConfiguration:
     def test_production_refuses_to_start_without_a_jwt_secret(self) -> None:
         """The lifespan raises rather than minting an ephemeral prod secret."""
-        source = (REPO_ROOT / "backend/app/api/main.py").read_text()
+        source = (REPO_ROOT / "backend/app/api/main.py").read_text(encoding="utf-8")
         assert 'raise RuntimeError("JWT_SECRET_KEY must be set in production")' in source
 
     def test_settings_ship_no_default_secret(self) -> None:
@@ -274,7 +274,7 @@ class TestSqlInjection:
         hits = [
             f"{p.relative_to(REPO_ROOT)}:{i}"
             for p in app_dir.rglob("*.py")
-            for i, line in enumerate(p.read_text().splitlines(), 1)
+            for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
             if dangerous.search(line)
         ]
         assert not hits, f"dynamically built SQL: {hits}"
@@ -285,7 +285,7 @@ class TestSqlInjection:
         hits = [
             f"{p.relative_to(REPO_ROOT)}:{i}"
             for p in app_dir.rglob("*.py")
-            for i, line in enumerate(p.read_text().splitlines(), 1)
+            for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
             if dangerous.search(line)
         ]
         assert not hits, f"f-string passed to execute(): {hits}"
@@ -484,12 +484,12 @@ class TestTenantIsolation:
 
 class TestPiiHandling:
     def test_nik_is_stored_only_as_a_hash(self) -> None:
-        source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text()
+        source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text(encoding="utf-8")
         assert "seeker.nik = nik_hash" in source
         assert "seeker.nik = req.nik" not in source
 
     def test_otp_codes_are_stored_only_as_hashes(self) -> None:
-        source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text()
+        source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text(encoding="utf-8")
         assert "code_hash=code_hash" in source
         assert "code_hash=code," not in source
 
@@ -654,9 +654,20 @@ class TestAiLayerSecurity:
     def test_building_a_chat_llm_without_a_key_raises_a_validation_error(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """GAP: a missing key surfaces as a pydantic ValidationError at build
-        time, before any LLMBusyError degrade path can run."""
+        """GAP: a missing key surfaces as a hard error at build time, before
+        any LLMBusyError degrade path can run.
+
+        The exact exception class here is an implementation detail of the
+        installed langchain-google-genai version, not something this
+        application controls: older versions raised pydantic.ValidationError
+        for a required-but-missing field; the version currently pinned
+        instead falls through to google-auth's Application Default
+        Credentials lookup, which fails with DefaultCredentialsError. Either
+        way, construction must fail loudly rather than silently proceeding
+        with no usable client — that's the actual behavior under test.
+        """
         import pydantic
+        from google.auth.exceptions import DefaultCredentialsError
 
         from backend.app.config.settings import settings
         from backend.app.services import llm_factory
@@ -665,7 +676,7 @@ class TestAiLayerSecurity:
         monkeypatch.setattr(settings, "gemini_api_key", "")
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-        with pytest.raises(pydantic.ValidationError):
+        with pytest.raises((pydantic.ValidationError, DefaultCredentialsError)):
             llm_factory.build_chat_llm()
 
     def test_agent_endpoint_500s_when_no_api_key_is_configured(

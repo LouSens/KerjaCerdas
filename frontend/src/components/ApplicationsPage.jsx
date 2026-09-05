@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'
-import { Send, FileSearch, PhoneCall, CheckCircle2, XCircle, Building2, Calendar, Clock, RefreshCw, Briefcase, ChevronRight } from 'lucide-react'
+import { Send, FileSearch, PhoneCall, CheckCircle2, XCircle, Building2, Calendar, Clock, RefreshCw, Briefcase } from 'lucide-react'
 
 const STAGES = [
     { key: 'applied', label: 'Terkirim', icon: Send, color: KC.cyan, bg: KC.cyanSoft },

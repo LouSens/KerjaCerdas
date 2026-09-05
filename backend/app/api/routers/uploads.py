@@ -6,6 +6,7 @@ Files are parsed by Gemini and merged into the user's profile / posting list.
 from __future__ import annotations
 
 from backend.app.api.dependencies import require_employer, require_seeker
+from backend.app.api.routers.jobs import invalidate_jobs_cache
 from backend.app.db.models import User
 from backend.app.db.postgres_store import (
     find_employer_by_user_id,
@@ -164,6 +165,11 @@ async def upload_job_pack(
         await matcher.embed_job(job)
         await repos.jobs.upsert(job)
         created.append(job.id)
+        # Invalidate right after each commit, not once after the whole loop:
+        # if a later posting in the same pack raises (embedding/persistence
+        # error), the postings already upserted here must not be served from
+        # a stale pre-upload cache for the remaining TTL.
+        invalidate_jobs_cache()
 
     return {
         "employer_id": employer.id,

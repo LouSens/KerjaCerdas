@@ -31,6 +31,19 @@ from backend.app.config.settings import settings  # noqa: E402
 settings.database_url = os.environ["DATABASE_URL"]
 settings.prod_database_url = ""
 settings.jwt_secret_key = os.environ["JWT_SECRET_KEY"]
+# A developer's local .env can freely override CORS_ALLOW_ORIGINS (e.g. to a
+# single narrowed-down origin while debugging) — Settings() already picked
+# that up before this module could intervene. Pin it back to the code's own
+# default set so CORS tests exercise the application's real defaults instead
+# of whatever happens to be in one machine's .env file.
+settings.cors_allow_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 
 # ── Deterministic stand-ins for the AI layer ─────────────────────────────────
@@ -50,7 +63,9 @@ class StubEmbedder:
         import hashlib
 
         digest = hashlib.sha256(text.encode("utf-8")).digest()
-        return [(b - 128) / 128.0 for b in digest[:16]]
+        base_vec = [(b - 128) / 128.0 for b in digest[:16]]
+        # Pad to 768 dimensions to satisfy pgvector Vector(768) type coercion
+        return (base_vec * (768 // 16))[:768]
 
 
 class StubLLM:
@@ -145,6 +160,10 @@ def _clean_database():
     from backend.app.agents.graph import builder as builder_mod
 
     builder_mod._graph_v2 = None
+
+    from backend.app.api.routers import jobs as jobs_mod
+
+    jobs_mod.invalidate_jobs_cache()
 
 
 @pytest.fixture(autouse=True)

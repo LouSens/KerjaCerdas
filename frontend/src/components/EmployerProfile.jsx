@@ -6,7 +6,7 @@ import useStore from '../store/useStore'
 import { KC, BrutalCard, topBtn, Tag, DesignStyles } from './_design'
 import { updateEmployerProfile } from '../services/api'
 import toast from 'react-hot-toast'
-import { Building2, ShieldCheck, Globe, Users, FileText, CheckCircle2 } from 'lucide-react'
+import { Building2, ShieldCheck, CheckCircle2 } from 'lucide-react'
 
 const INDUSTRIES = [
     'Teknologi & Perangkat Lunak',

@@ -89,12 +89,12 @@ async def create_inquiry(
         ) from exc
 
 
-@router.get("", response_model=list[dict[str, Any]])
+@router.get("", response_model=list[InquiryResponse])
 async def list_inquiries(
     category: str | None = None,
     status_filter: str | None = None,
     current_user=Depends(get_current_user),
-) -> list[dict[str, Any]]:
+) -> list[PartnershipInquiry]:
     """List all inquiries."""
     async with async_session() as session:
         query = select(PartnershipInquiry).order_by(desc(PartnershipInquiry.created_at))
@@ -104,22 +104,7 @@ async def list_inquiries(
             query = query.where(PartnershipInquiry.status == status_filter)
 
         result = await session.execute(query)
-        inquiries = result.scalars().all()
-
-        return [
-            {
-                "id": inq.id,
-                "category": inq.category,
-                "name": inq.name,
-                "organization": inq.organization,
-                "email": inq.email,
-                "message": inq.message,
-                "status": inq.status,
-                "notes": inq.notes,
-                "created_at": inq.created_at.isoformat() if inq.created_at else None,
-            }
-            for inq in inquiries
-        ]
+        return list(result.scalars().all())
 
 
 @router.patch("/{inquiry_id}", response_model=dict[str, Any])

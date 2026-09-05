@@ -1,9 +1,7 @@
-"""Seeker-side profile, bookmarks, and gamification endpoints.
+"""Seeker-side profile, bookmarks, applications, and skill-gap endpoints.
 
-Uses the JSON store (same layer as the agent/uploads/admin), so seeker
-profiles created here are immediately visible to the matching engine.
-Auth still goes through JWT (auth.py / SQLAlchemy User), but all seeker
-data lives in data/seekers/ and data/applications/.
+Uses the postgres_store layer (same layer as the agent/uploads/admin), so
+seeker profiles created here are immediately visible to the matching engine.
 """
 
 from __future__ import annotations
@@ -21,7 +19,6 @@ from backend.app.api.schemas.seeker import (
 from backend.app.db.models import User
 from backend.app.db.postgres_store import (
     find_applications_by_seeker_id,
-    find_gamification_by_seeker_id,
     find_seeker_by_user_id,
     find_skill_gaps_by_seeker_id,
     get_repositories,
@@ -29,7 +26,6 @@ from backend.app.db.postgres_store import (
 from backend.app.db.schemas import (
     Application,
     ApplicationStatus,
-    GamificationStats,
     SeekerProfile,
     Skill,
 )
@@ -133,16 +129,6 @@ async def create_or_update_profile(
 
     background_tasks.add_task(_embed_and_save, profile)
 
-    # Ensure gamification record exists
-    gam = await find_gamification_by_seeker_id(profile.id)
-    if not gam:
-        gam = GamificationStats(seeker_id=profile.id)
-        # Award first badge for completing profile
-        if skills:
-            gam.badges.append("profile_complete")
-            gam.xp += 100
-        await repos.gamification.upsert(gam)
-
     logger.info(
         "Profile upserted for user_id=%s → seeker %s (embedding queued)",
         current_user.id,
@@ -152,26 +138,6 @@ async def create_or_update_profile(
         "seeker_id": profile.id,
         "skills_count": len(profile.skills),
         "embedding_status": "queued",
-    }
-
-
-# ── Gamification ──────────────────────────────────────────────────────────────
-
-
-@router.get("/gamification")
-async def get_gamification(current_user: User = Depends(get_current_user)):
-    profile = await find_seeker_by_user_id(current_user.id)
-    if not profile:
-        return {"xp": 0, "level": 1, "streak_days": 0, "badges": []}
-    g = await find_gamification_by_seeker_id(profile.id)
-    if not g:
-        return {"xp": 0, "level": 1, "streak_days": 0, "badges": []}
-    return {
-        "xp": g.xp,
-        "level": max(1, g.xp // 250 + 1),
-        "streak_days": g.streak_days,
-        "badges": g.badges,
-        "quests_completed": g.quests_completed,
     }
 
 
@@ -311,14 +277,6 @@ async def apply_to_job(
             note=_APPLIED_NOTE,
         )
     await repos.applications.upsert(app)
-
-    # Award XP for applying
-    gam = await find_gamification_by_seeker_id(seeker_id)
-    if gam:
-        gam.xp += 50
-        if "first_apply" not in gam.badges:
-            gam.badges.append("first_apply")
-        await repos.gamification.upsert(gam)
 
     logger.info("Application created: seeker %s → job %s", seeker_id, job_id)
     return {

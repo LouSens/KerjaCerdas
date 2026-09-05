@@ -6,22 +6,16 @@ import useStore from '../store/useStore'
 import { fetchCandidatesForJob } from '../services/api'
 import { KC, BrutalCard, Tag, BandLegend, topBtn, DesignStyles, BAND_META, BAND_ORDER } from './_design'
 import {
-    Users,
     CheckCircle2,
     AlertCircle,
-    ChevronRight,
-    Building2,
     MapPin,
     Sparkles,
-    Filter,
     X,
     Inbox,
     Edit3,
     Send,
     FileSearch,
     PhoneCall,
-    Check,
-    RefreshCw,
 } from 'lucide-react'
 
 const bandOf = (c) => c.band || (c.score >= 65 ? 'strong' : c.score >= 45 ? 'possible' : 'stretch')

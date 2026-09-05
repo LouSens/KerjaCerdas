@@ -47,11 +47,3 @@ def build_system_prompt(role: str, task: str | None = None) -> str:
     parts.append(_read_agent_rule("memory_context.md"))
 
     return "\n".join(p for p in parts if p)
-
-
-def list_available() -> dict[str, list[str]]:
-    return {
-        "roles": [p.stem for p in (PROMPTS_ROOT / "roles").glob("*.md")],
-        "tasks": [p.stem for p in (PROMPTS_ROOT / "tasks").glob("*.md")],
-        "policies": [p.stem for p in (PROMPTS_ROOT / "policies").glob("*.md")],
-    }

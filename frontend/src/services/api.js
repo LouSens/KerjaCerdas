@@ -135,9 +135,6 @@ export const updateSeekerProfile = (data) =>
         body: JSON.stringify(data),
     })
 
-// ── Seeker gamification ─────────────────────────────────────────────────────
-export const fetchGamification = () => request(`${API_BASE}/seeker/gamification`)
-
 // ── Seeker skill gap (AI-powered) ───────────────────────────────────────────
 export const triggerSkillGap = (targetJobId = null) =>
     request(`${API_BASE}/seeker/skill-gap`, {
@@ -261,13 +258,6 @@ export const fetchExperimentAssignments = () =>
 // ── Health ──────────────────────────────────────────────────────────────────
 export const healthCheck = () => request('/health')
 
-// ── Pay-to-Unlock candidate contact (3.5) ───────────────────────────────────
-export const unlockCandidate = (jobId, seekerId, paymentToken = 'demo') =>
-    request(`${API_BASE}/employer/jobs/${jobId}/unlock/${seekerId}`, {
-        method: 'POST',
-        body: JSON.stringify({ payment_token: paymentToken }),
-    })
-
 // ── Phone OTP (3.4) ─────────────────────────────────────────────────────────
 export const sendOTP = (phone) =>
     request(`${API_BASE}/verify/otp/send`, {
@@ -299,9 +289,4 @@ export const submitPartnershipInquiry = (data) =>
         method: 'POST',
         body: JSON.stringify(data),
     })
-
-export const fetchPartnershipInquiries = (params = {}) => {
-    const qs = new URLSearchParams(params).toString()
-    return request(`${API_BASE}/inquiries${qs ? `?${qs}` : ''}`)
-}
 

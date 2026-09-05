@@ -324,17 +324,6 @@ class MatchResult(BaseModel):
     explanation: str = ""
 
 
-class MatchBundle(TimestampedModel):
-    """A point-in-time top-K result for a (seeker, query) or (job, query)."""
-
-    id: str = Field(default_factory=_uid)
-    subject_kind: Literal["seeker", "job"]
-    subject_id: str
-    top_k: int
-    results: list[MatchResult]
-    embedding_model: str
-
-
 # ── Skill gap & advisor ───────────────────────────────────────────────────────
 
 
@@ -362,12 +351,6 @@ class SkillGapResult(TimestampedModel):
     summary: str
 
 
-class ChatMessage(BaseModel):
-    role: Literal["user", "assistant", "system", "tool"]
-    content: str
-    ts: datetime = Field(default_factory=_now)
-
-
 class Course(TimestampedModel):
     """Indonesian online course / bootcamp catalog entry."""
 
@@ -386,45 +369,3 @@ class Course(TimestampedModel):
     description: str = ""
 
 
-class ChatSession(TimestampedModel):
-    id: str = Field(default_factory=_uid)
-    user_id: str
-    seeker_id: str | None = None
-    title: str = ""
-    messages: list[ChatMessage] = []
-
-
-# ── AI observability ──────────────────────────────────────────────────────────
-
-
-class AIPerformanceLog(TimestampedModel):
-    """One row per Gemini call. Admin reviews these in the AI dashboard."""
-
-    id: str = Field(default_factory=_uid)
-    request_id: str
-    user_id: str | None = None
-    role: str  # which prompt role was used
-    task: str  # which task file was used
-    model: str
-    latency_ms: int
-    tokens_in: int = 0
-    tokens_out: int = 0
-    success: bool = True
-    error: str | None = None
-    flagged: bool = False  # set true when output triggered a guardrail
-    rating: Literal["up", "down", None] = None  # user thumbs
-
-
-# ── Gamification ──────────────────────────────────────────────────────────────
-
-
-class GamificationStats(TimestampedModel):
-    """Per-seeker quest progress. Stored alongside the seeker profile."""
-
-    id: str = Field(default_factory=_uid)
-    seeker_id: str
-    xp: int = 0
-    level: int = 1
-    streak_days: int = 0
-    badges: list[str] = []  # e.g. ["profile_complete", "first_match", "cv_uploaded"]
-    quests_completed: list[str] = []
