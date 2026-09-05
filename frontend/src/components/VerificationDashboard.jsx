@@ -22,10 +22,14 @@ export default function VerificationDashboard() {
     const handleSimulateKTP = async () => {
         setKtpChecking(true)
         try {
-            await verifyIdentity({ nik: '3271012345670004', full_name: profile?.full_name || 'Budi Santoso' })
-            setKtpVerified(true)
-            toast.success('NIK 3271••••••••0004 berhasil divalidasi!')
-            await loadSeekerProfile()
+            const res = await verifyIdentity({ nik: '3271012345670004', full_name: profile?.full_name || 'Budi Santoso' })
+            if (res?.status === 'VERIFIED') {
+                setKtpVerified(true)
+                toast.success('NIK 3271••••••••0004 berhasil divalidasi!')
+                await loadSeekerProfile()
+            } else {
+                toast.error(res?.message || 'Verifikasi NIK gagal')
+            }
         } catch (e) {
             toast.error('Verifikasi NIK gagal: ' + (e.message || 'Terjadi kesalahan'))
         } finally {
@@ -41,10 +45,14 @@ export default function VerificationDashboard() {
         setIjazahChecking(true)
         try {
             const institution = profile?.education?.[0]?.institution || 'Institut Teknologi Bandung'
-            await verifyEducation({ ijazah_number: ijazahInput.trim(), institution_name: institution })
-            setIjazahVerified(true)
-            toast.success('Nomor ijazah terverifikasi via format SIVIL Dikti!')
-            await loadSeekerProfile()
+            const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), institution_name: institution })
+            if (res?.status === 'VERIFIED') {
+                setIjazahVerified(true)
+                toast.success('Nomor ijazah terverifikasi via format SIVIL Dikti!')
+                await loadSeekerProfile()
+            } else {
+                toast.error(res?.message || 'Nomor ijazah tidak ditemukan pada PDDikti/SIVIL')
+            }
         } catch (e) {
             toast.error('Verifikasi Ijazah gagal: ' + (e.message || 'Terjadi kesalahan'))
         } finally {

@@ -9,7 +9,6 @@ export default function JobPackUploader() {
     const [selectedFile, setSelectedFile] = useState(null)
     const [isParsing, setIsParsing] = useState(false)
     const [parsedResult, setParsedResult] = useState(null)
-    const [selectedIndices, setSelectedIndices] = useState([0, 1])
     const inputRef = useRef(null)
 
     const handleFile = async (file) => {
@@ -45,7 +44,6 @@ export default function JobPackUploader() {
                 time: '< 2 s',
                 jobs: jobsList,
             })
-            setSelectedIndices(jobsList.map((_, i) => i))
         } catch (e) {
             setIsParsing(false)
             setSelectedFile(null)
@@ -53,21 +51,9 @@ export default function JobPackUploader() {
         }
     }
 
-    const toggleSelect = (idx) => {
-        if (selectedIndices.includes(idx)) {
-            setSelectedIndices(selectedIndices.filter(i => i !== idx))
-        } else {
-            setSelectedIndices([...selectedIndices, idx])
-        }
-    }
-
-    const handlePublishAll = async () => {
-        if (selectedIndices.length === 0) {
-            toast.error('Pilih minimal satu lowongan untuk dipublikasikan')
-            return
-        }
+    const handleViewJobs = async () => {
         await useStore.getState().refreshEmployerJobs()
-        toast.success(`${selectedIndices.length} lowongan berhasil dipublikasikan dan tersimpan!`)
+        toast.success(`${parsedResult?.jobs?.length || 0} lowongan berhasil dipublikasikan dan siap dikelola!`)
         navigate('employer-jobs')
     }
 
@@ -175,54 +161,48 @@ export default function JobPackUploader() {
                     </div>
 
                     <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 15, animation: 'kcSlideUp .35s .07s both' }}>
-                        <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#64748B', marginBottom: 12 }}>
-                            Pratinjau · centang untuk publikasi
+                        <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#059669', marginBottom: 12 }}>
+                            Daftar lowongan terunggah · tersimpan di database
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {parsedResult.jobs.map((job, idx) => {
-                                const isChecked = selectedIndices.includes(idx)
-
-                                return (
-                                    <div
-                                        key={idx}
-                                        onClick={() => job.valid && toggleSelect(idx)}
+                            {parsedResult.jobs.map((job, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: 10,
+                                        paddingBottom: 10,
+                                        borderBottom: idx < parsedResult.jobs.length - 1 ? '1px dashed #E2E8F0' : 'none',
+                                    }}
+                                >
+                                    <span
                                         style={{
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            gap: 10,
-                                            paddingBottom: 10,
-                                            borderBottom: idx < parsedResult.jobs.length - 1 ? '1px dashed #E2E8F0' : 'none',
-                                            cursor: job.valid ? 'pointer' : 'default',
+                                            width: 19,
+                                            height: 19,
+                                            borderRadius: 5,
+                                            background: '#10B981',
+                                            border: '1.5px solid #10B981',
+                                            display: 'grid',
+                                            placeItems: 'center',
+                                            color: '#fff',
+                                            font: '900 11px/1 "Plus Jakarta Sans", sans-serif',
+                                            flex: 'none',
+                                            marginTop: 1,
                                         }}
                                     >
-                                        <span
-                                            style={{
-                                                width: 19,
-                                                height: 19,
-                                                borderRadius: 5,
-                                                background: isChecked ? '#10B981' : '#fff',
-                                                border: `1.5px solid ${isChecked ? '#10B981' : (job.valid ? '#CBD5E1' : '#F59E0B')}`,
-                                                display: 'grid',
-                                                placeItems: 'center',
-                                                color: '#fff',
-                                                font: '900 11px/1 "Plus Jakarta Sans", sans-serif',
-                                                flex: 'none',
-                                                marginTop: 1,
-                                            }}
-                                        >
-                                            {isChecked ? '✓' : ''}
-                                        </span>
-                                        <div>
-                                            <div style={{ font: '800 12.5px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
-                                                {job.title}
-                                            </div>
-                                            <div style={{ font: job.valid ? '600 10.5px/1.35 "Plus Jakarta Sans", sans-serif' : '700 10.5px/1.35 "Plus Jakarta Sans", sans-serif', color: job.valid ? '#94A3B8' : '#B45309', marginTop: 3 }}>
-                                                {job.details}
-                                            </div>
+                                        ✓
+                                    </span>
+                                    <div>
+                                        <div style={{ font: '800 12.5px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
+                                            {job.title}
+                                        </div>
+                                        <div style={{ font: '600 10.5px/1.35 "Plus Jakarta Sans", sans-serif', color: '#64748B', marginTop: 3 }}>
+                                            {job.details}
                                         </div>
                                     </div>
-                                )
-                            })}
+                                </div>
+                            ))}
                         </div>
                     </div>
 
@@ -248,7 +228,7 @@ export default function JobPackUploader() {
                             ← Unggah Ulang
                         </button>
                         <button
-                            onClick={handlePublishAll}
+                            onClick={handleViewJobs}
                             className="kc-btn"
                             style={{
                                 flex: 1,
@@ -267,7 +247,7 @@ export default function JobPackUploader() {
                                 animation: 'kcSlideUp .35s .14s both',
                             }}
                         >
-                            Publikasikan {selectedIndices.length} Lowongan →
+                            Buka Kelola Lowongan ({parsedResult.jobs.length}) →
                         </button>
                     </div>
                 </div>
