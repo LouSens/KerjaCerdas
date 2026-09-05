@@ -131,3 +131,10 @@ class SkillGapRequest(BaseModel):
     """Run the skill-gap analysis, optionally against a specific job."""
 
     target_job_id: str | None = Field(default=None, max_length=64)
+
+
+class SkillAssessmentSubmission(BaseModel):
+    """Answers for one skill's micro-assessment — a list of selected option
+    indices, one per question, in question order."""
+
+    answers: list[int] = Field(default_factory=list, max_length=50)

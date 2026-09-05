@@ -15,11 +15,25 @@ from backend.app.db.models import (
     Employer,
     GamificationStats,
     JobPosting,
+    JobSkillRequirement,
+    LearningAction,
     MatchBundle,
+    Occupation,
+    OccupationSkill,
     QueryEmbedding,
+    RegionalMinimumWage,
     SeekerProfile,
+    SeekerSkillAssessmentAttempt,
+    Skill,
+    SkillAssessment,
     SkillGapResult,
     User,
+)
+from backend.app.db.models import (
+    SeekerSkill as SeekerSkillModel,
+)
+from backend.app.db.models import (
+    SkillDemandSnapshot as SkillDemandSnapshotModel,
 )
 from backend.app.db.schemas import AIPerformanceLog as LogSchema
 from backend.app.db.schemas import Application as ApplicationSchema
@@ -28,9 +42,18 @@ from backend.app.db.schemas import Course as CourseSchema
 from backend.app.db.schemas import Employer as EmployerSchema
 from backend.app.db.schemas import GamificationStats as GameSchema
 from backend.app.db.schemas import JobPosting as JobSchema
+from backend.app.db.schemas import JobSkillRequirementLink, OccupationSkillLink
+from backend.app.db.schemas import LearningAction as LearningActionSchema
 from backend.app.db.schemas import MatchBundle as MatchSchema
+from backend.app.db.schemas import RegionalMinimumWage as RegionalMinimumWageSchema
 from backend.app.db.schemas import SeekerProfile as SeekerSchema
+from backend.app.db.schemas import SeekerSkill as SeekerSkillSchema
+from backend.app.db.schemas import SeekerSkillAssessmentAttempt as AttemptSchema
+from backend.app.db.schemas import SkillAssessment as SkillAssessmentSchema
+from backend.app.db.schemas import SkillDemandSnapshot as SkillDemandSnapshotSchema
 from backend.app.db.schemas import SkillGapResult as SkillGapSchema
+from backend.app.db.schemas import TaxonomyOccupation as OccupationSchema
+from backend.app.db.schemas import TaxonomySkill as SkillSchema
 from backend.app.db.schemas import User as UserSchema
 from backend.app.db.session import async_session
 
@@ -389,6 +412,184 @@ async def find_skill_gaps_by_seeker_id(seeker_id: str) -> list[SkillGapSchema]:
         return []
 
 
+# ── Taxonomy: composite-PK association tables ────────────────────────────────
+# OccupationSkill / JobSkillRequirement have no synthetic `id`, so they don't
+# fit PostgresRepository's id-keyed contract — these are the dedicated
+# data-access functions for them instead.
+
+
+async def set_occupation_skills(occupation_id: str, links: list[OccupationSkillLink]) -> None:
+    """Replace an occupation's full skill template with `links`."""
+    async with async_session() as session:
+        await session.execute(
+            delete(OccupationSkill).where(OccupationSkill.occupation_id == occupation_id)
+        )
+        for link in links:
+            session.add(
+                OccupationSkill(
+                    occupation_id=occupation_id,
+                    skill_id=link.skill_id,
+                    min_level=link.min_level,
+                    is_core=link.is_core,
+                )
+            )
+        await session.commit()
+
+
+async def list_occupation_skills(occupation_id: str) -> list[OccupationSkillLink]:
+    async with async_session() as session:
+        stmt = select(OccupationSkill).where(OccupationSkill.occupation_id == occupation_id)
+        result = await session.execute(stmt)
+        return [
+            OccupationSkillLink(
+                occupation_id=row.occupation_id,
+                skill_id=row.skill_id,
+                min_level=row.min_level,
+                is_core=row.is_core,
+            )
+            for row in result.scalars().all()
+        ]
+
+
+async def set_job_skill_requirements(job_id: str, links: list[JobSkillRequirementLink]) -> None:
+    """Replace a job's full normalized skill-requirement set with `links`."""
+    async with async_session() as session:
+        await session.execute(
+            delete(JobSkillRequirement).where(JobSkillRequirement.job_id == job_id)
+        )
+        for link in links:
+            session.add(
+                JobSkillRequirement(
+                    job_id=job_id,
+                    skill_id=link.skill_id,
+                    min_level=link.min_level,
+                    is_required=link.is_required,
+                )
+            )
+        await session.commit()
+
+
+async def list_job_skill_requirements(job_id: str) -> list[JobSkillRequirementLink]:
+    async with async_session() as session:
+        stmt = select(JobSkillRequirement).where(JobSkillRequirement.job_id == job_id)
+        result = await session.execute(stmt)
+        return [
+            JobSkillRequirementLink(
+                job_id=row.job_id,
+                skill_id=row.skill_id,
+                min_level=row.min_level,
+                is_required=row.is_required,
+            )
+            for row in result.scalars().all()
+        ]
+
+
+async def upsert_seeker_skill(
+    seeker_id: str, skill_id: str, level: str, years: float, verified_via: str | None = None
+) -> SeekerSkillSchema:
+    """Insert or update the (seeker_id, skill_id) row, keyed by the unique
+    constraint rather than a caller-supplied `id` — the natural key for this
+    entity is the pair, not a synthetic id."""
+    async with async_session() as session:
+        stmt = select(SeekerSkillModel).where(
+            SeekerSkillModel.seeker_id == seeker_id, SeekerSkillModel.skill_id == skill_id
+        )
+        existing = (await session.execute(stmt)).scalar_one_or_none()
+        if existing:
+            existing.level = level
+            existing.years = years
+            if verified_via:
+                existing.verified_via = verified_via
+            await session.commit()
+            row = existing
+        else:
+            row = SeekerSkillModel(
+                seeker_id=seeker_id,
+                skill_id=skill_id,
+                level=level,
+                years=years,
+                verified_via=verified_via or "self_report",
+            )
+            session.add(row)
+            await session.commit()
+        data = {c.name: getattr(row, c.name) for c in SeekerSkillModel.__table__.columns}
+        return SeekerSkillSchema.model_validate(data)
+
+
+async def upsert_skill_demand_snapshot(
+    skill_id: str,
+    region_code: str,
+    period: str,
+    demand_count: int,
+    supply_count: int,
+    avg_salary_offered: int,
+) -> SkillDemandSnapshotSchema:
+    """Insert or update the (skill_id, region_code, period) row.
+
+    The generic PostgresRepository.upsert() keys on `id`, but this entity's
+    natural key is the (skill, region, period) triple — a fresh `id` per call
+    would violate that unique constraint on a second run instead of updating
+    in place, so this looks the row up by its real key first.
+    """
+    async with async_session() as session:
+        stmt = select(SkillDemandSnapshotModel).where(
+            SkillDemandSnapshotModel.skill_id == skill_id,
+            SkillDemandSnapshotModel.region_code == region_code,
+            SkillDemandSnapshotModel.period == period,
+        )
+        existing = (await session.execute(stmt)).scalar_one_or_none()
+        if existing:
+            existing.demand_count = demand_count
+            existing.supply_count = supply_count
+            existing.avg_salary_offered = avg_salary_offered
+            await session.commit()
+            row = existing
+        else:
+            row = SkillDemandSnapshotModel(
+                skill_id=skill_id,
+                region_code=region_code,
+                period=period,
+                demand_count=demand_count,
+                supply_count=supply_count,
+                avg_salary_offered=avg_salary_offered,
+            )
+            session.add(row)
+            await session.commit()
+        data = {c.name: getattr(row, c.name) for c in SkillDemandSnapshotModel.__table__.columns}
+        return SkillDemandSnapshotSchema.model_validate(data)
+
+
+async def list_skill_demand(region_code: str | None = None, period: str | None = None):
+    """Read path for GET /insights/skill-demand — filters over precomputed
+    snapshots, never aggregates at request time."""
+    async with async_session() as session:
+        stmt = select(SkillDemandSnapshotModel)
+        if region_code:
+            stmt = stmt.where(SkillDemandSnapshotModel.region_code == region_code)
+        if period:
+            stmt = stmt.where(SkillDemandSnapshotModel.period == period)
+        rows = (await session.execute(stmt)).scalars().all()
+        out = []
+        for row in rows:
+            data = {c.name: getattr(row, c.name) for c in SkillDemandSnapshotModel.__table__.columns}
+            out.append(SkillDemandSnapshotSchema.model_validate(data))
+        return out
+
+
+async def get_regional_minimum_wage(region_code: str, year: int) -> int | None:
+    """Latest-known UMR for (region_code, year), or None if unseeded.
+
+    Seed data shipped with this migration is illustrative only — see
+    RegionalMinimumWage's model docstring.
+    """
+    async with async_session() as session:
+        stmt = select(RegionalMinimumWage).where(
+            RegionalMinimumWage.region_code == region_code, RegionalMinimumWage.year == year
+        )
+        row = (await session.execute(stmt)).scalar_one_or_none()
+        return row.umr_amount if row else None
+
+
 class Repositories:
     """Convenience bundle, injected via FastAPI dependency."""
 
@@ -404,6 +605,18 @@ class Repositories:
         self.ai_logs = PostgresRepository(LogSchema, AIPerformanceLog)
         self.gamification = PostgresRepository(GameSchema, GamificationStats)
         self.courses = PostgresRepository(CourseSchema, Course)
+        self.skills = PostgresRepository(SkillSchema, Skill)
+        self.occupations = PostgresRepository(OccupationSchema, Occupation)
+        self.seeker_skills = PostgresRepository(SeekerSkillSchema, SeekerSkillModel)
+        self.skill_demand_snapshots = PostgresRepository(
+            SkillDemandSnapshotSchema, SkillDemandSnapshotModel
+        )
+        self.learning_actions = PostgresRepository(LearningActionSchema, LearningAction)
+        self.regional_minimum_wages = PostgresRepository(
+            RegionalMinimumWageSchema, RegionalMinimumWage
+        )
+        self.skill_assessments = PostgresRepository(SkillAssessmentSchema, SkillAssessment)
+        self.skill_assessment_attempts = PostgresRepository(AttemptSchema, SeekerSkillAssessmentAttempt)
 
 
 _repos: Repositories | None = None

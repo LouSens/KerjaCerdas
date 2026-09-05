@@ -60,7 +60,7 @@ export default function EmployerPostJob() {
         }
         setPublishing(true)
         try {
-            await createEmployerJob({
+            const res = await createEmployerJob({
                 title: form.title,
                 description: form.description,
                 required_skills: form.required_skills,
@@ -70,6 +70,11 @@ export default function EmployerPostJob() {
                 salary_max: Number(form.salary_max) || 0,
             })
             toast.success('Lowongan berhasil dipublikasikan!')
+            if (res?.umr_warning) {
+                // Separate, longer-lived toast — a compliance flag shouldn't
+                // get lost under the success toast's default auto-dismiss.
+                toast(res.umr_warning, { icon: '⚠️', duration: 8000 })
+            }
             useStore.getState().refreshEmployerJobs()
             navigate('employer-dashboard')
         } catch (e) {

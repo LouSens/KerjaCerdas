@@ -2,7 +2,18 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    PrimaryKeyConstraint,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # pgvector is only available when using PostgreSQL. For SQLite dev mode we fall
@@ -276,3 +287,158 @@ class PartnershipInquiry(Base, TimestampedMixin):
     message: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
     notes: Mapped[str] = mapped_column(Text, default="")
+
+
+# ── Skill / occupation taxonomy ───────────────────────────────────────────────
+# Normalized alongside (not instead of) SeekerProfile.skills / JobPosting.
+# required_skills, which stay as the free-text source the user actually typed.
+# These tables are a resolved, canonical projection of that text — see
+# services/taxonomy/resolver.py — so matching/analytics can key on skill_id
+# instead of re-normalizing strings at query time.
+
+
+class Skill(Base, TimestampedMixin):
+    __tablename__ = "skills"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    canonical_name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    category: Mapped[str] = mapped_column(String(50), default="")
+    aliases: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    skkni_unit_code: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+
+class Occupation(Base, TimestampedMixin):
+    """A KBJI (Klasifikasi Baku Jenis Jabatan) occupation entry."""
+
+    __tablename__ = "occupations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    kbji_code: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+
+
+class OccupationSkill(Base):
+    """The core skill+proficiency template for an occupation.
+
+    Composite PK (no synthetic id) — this is a pure association row, not an
+    entity with its own identity, so it's accessed via dedicated
+    postgres_store helpers rather than the generic PostgresRepository (which
+    assumes a single `.id` column).
+    """
+
+    __tablename__ = "occupation_skills"
+
+    occupation_id: Mapped[str] = mapped_column(String(36), ForeignKey("occupations.id"))
+    skill_id: Mapped[str] = mapped_column(String(36), ForeignKey("skills.id"))
+    min_level: Mapped[str] = mapped_column(String(20), default="intermediate")
+    is_core: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    __table_args__ = (PrimaryKeyConstraint("occupation_id", "skill_id"),)
+
+
+class SeekerSkill(Base, TimestampedMixin):
+    """Normalized mirror of one entry in SeekerProfile.skills."""
+
+    __tablename__ = "seeker_skills"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    seeker_id: Mapped[str] = mapped_column(String(36), ForeignKey("seekers.id"), index=True)
+    skill_id: Mapped[str] = mapped_column(String(36), ForeignKey("skills.id"), index=True)
+    level: Mapped[str] = mapped_column(String(20), default="intermediate")
+    years: Mapped[float] = mapped_column(Float, default=0.0)
+    # self_report | assessment | course_completion
+    verified_via: Mapped[str] = mapped_column(String(30), default="self_report")
+
+    __table_args__ = (UniqueConstraint("seeker_id", "skill_id", name="uq_seeker_skill"),)
+
+
+class JobSkillRequirement(Base):
+    """Normalized mirror of one entry in JobPosting.required_skills /
+    nice_to_have_skills. Composite PK — see OccupationSkill's docstring."""
+
+    __tablename__ = "job_skill_requirements"
+
+    job_id: Mapped[str] = mapped_column(String(36), ForeignKey("jobs.id"))
+    skill_id: Mapped[str] = mapped_column(String(36), ForeignKey("skills.id"))
+    min_level: Mapped[str] = mapped_column(String(20), default="intermediate")
+    is_required: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    __table_args__ = (PrimaryKeyConstraint("job_id", "skill_id"),)
+
+
+class SkillDemandSnapshot(Base, TimestampedMixin):
+    """Precomputed (not query-time) supply/demand aggregate for one
+    (skill, region, period) triple — see services/taxonomy/demand.py."""
+
+    __tablename__ = "skill_demand_snapshots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    skill_id: Mapped[str] = mapped_column(String(36), ForeignKey("skills.id"), index=True)
+    region_code: Mapped[str] = mapped_column(String(50), index=True)
+    period: Mapped[str] = mapped_column(String(10), index=True)  # "YYYY-MM"
+    demand_count: Mapped[int] = mapped_column(Integer, default=0)
+    supply_count: Mapped[int] = mapped_column(Integer, default=0)
+    avg_salary_offered: Mapped[int] = mapped_column(Integer, default=0)
+
+    __table_args__ = (
+        UniqueConstraint("skill_id", "region_code", "period", name="uq_skill_demand_period"),
+    )
+
+
+class LearningAction(Base, TimestampedMixin):
+    """A seeker's plan (and, once completed, outcome) for closing one skill
+    gap — closes the loop that skill-gap recommendations previously dead-ended
+    at ("here's a course"), with no record of whether it was ever done."""
+
+    __tablename__ = "learning_actions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    seeker_id: Mapped[str] = mapped_column(String(36), ForeignKey("seekers.id"), index=True)
+    skill_id: Mapped[str] = mapped_column(String(36), ForeignKey("skills.id"))
+    course_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("courses.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="planned")  # planned|in_progress|completed
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RegionalMinimumWage(Base, TimestampedMixin):
+    """UMR/UMK (regional minimum wage) by region and year, used to flag job
+    postings priced below the legal floor at creation time.
+
+    SEED DATA IS PLACEHOLDER: the rows shipped with this migration are
+    illustrative, not verified BPS/Kemnaker figures — see
+    scripts/seed_taxonomy.py's module docstring before using this for
+    anything beyond a demo.
+    """
+
+    __tablename__ = "regional_minimum_wages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    region_code: Mapped[str] = mapped_column(String(50), index=True)
+    year: Mapped[int] = mapped_column(Integer)
+    umr_amount: Mapped[int] = mapped_column(Integer)
+
+    __table_args__ = (UniqueConstraint("region_code", "year", name="uq_umr_region_year"),)
+
+
+class SkillAssessment(Base, TimestampedMixin):
+    """A short auto-graded quiz for one skill. `questions` is a list of
+    {question, options: [str, ...], correct_index}. Correct answers never
+    leave the backend — the seeker-facing endpoint strips them."""
+
+    __tablename__ = "skill_assessments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    skill_id: Mapped[str] = mapped_column(String(36), ForeignKey("skills.id"), unique=True)
+    questions: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    passing_score: Mapped[float] = mapped_column(Float, default=0.7)
+
+
+class SeekerSkillAssessmentAttempt(Base, TimestampedMixin):
+    __tablename__ = "seeker_skill_assessment_attempts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    seeker_id: Mapped[str] = mapped_column(String(36), ForeignKey("seekers.id"), index=True)
+    skill_id: Mapped[str] = mapped_column(String(36), ForeignKey("skills.id"), index=True)
+    score: Mapped[float] = mapped_column(Float)
+    passed: Mapped[bool] = mapped_column(Boolean, default=False)

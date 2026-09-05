@@ -37,6 +37,7 @@ from backend.app.api.routers.experiments import router as experiments_router
 from backend.app.api.routers.inquiries import router as inquiries_router
 from backend.app.api.routers.jobs import router as jobs_router
 from backend.app.api.routers.seeker import router as seeker_router
+from backend.app.api.routers.taxonomy import router as taxonomy_router
 from backend.app.api.routers.uploads import router as uploads_router
 from backend.app.api.routers.verify import router as verify_router
 from backend.app.api.services.auth_service import configure as configure_auth
@@ -157,6 +158,7 @@ for r in (
     events_router,
     experiments_router,
     inquiries_router,
+    taxonomy_router,
 ):
     app.include_router(r, prefix="/api/v1")
 

@@ -428,3 +428,118 @@ class GamificationStats(TimestampedModel):
     streak_days: int = 0
     badges: list[str] = []  # e.g. ["profile_complete", "first_match", "cv_uploaded"]
     quests_completed: list[str] = []
+
+
+# ── Skill / occupation taxonomy ───────────────────────────────────────────────
+# Mirrors backend.app.db.models' taxonomy tables — see that module's comment
+# for why these exist alongside (not instead of) the free-text skill lists.
+
+ProficiencyLevel = Literal["beginner", "intermediate", "advanced", "expert"]
+SkillVerification = Literal["self_report", "assessment", "course_completion"]
+
+
+class TaxonomySkill(TimestampedModel):
+    """Mirrors `db.models.Skill`."""
+
+    id: str = Field(default_factory=_uid)
+    canonical_name: str
+    category: str = ""
+    aliases: list[str] = []
+    skkni_unit_code: str | None = None
+
+
+class TaxonomyOccupation(TimestampedModel):
+    """Mirrors `db.models.Occupation`."""
+
+    id: str = Field(default_factory=_uid)
+    kbji_code: str
+    title: str
+    description: str = ""
+
+
+class SeekerSkill(TimestampedModel):
+    """Mirrors `db.models.SeekerSkill`."""
+
+    id: str = Field(default_factory=_uid)
+    seeker_id: str
+    skill_id: str
+    level: ProficiencyLevel = "intermediate"
+    years: float = 0.0
+    verified_via: SkillVerification = "self_report"
+
+
+class SkillDemandSnapshot(TimestampedModel):
+    """Mirrors `db.models.SkillDemandSnapshot`."""
+
+    id: str = Field(default_factory=_uid)
+    skill_id: str
+    region_code: str
+    period: str
+    demand_count: int = 0
+    supply_count: int = 0
+    avg_salary_offered: int = 0
+
+
+class LearningAction(TimestampedModel):
+    """Mirrors `db.models.LearningAction`."""
+
+    id: str = Field(default_factory=_uid)
+    seeker_id: str
+    skill_id: str
+    course_id: str | None = None
+    status: Literal["planned", "in_progress", "completed"] = "planned"
+    completed_at: datetime | None = None
+
+
+class RegionalMinimumWage(TimestampedModel):
+    """Mirrors `db.models.RegionalMinimumWage`. See that model's docstring —
+    seed values are placeholders, not verified BPS/Kemnaker figures."""
+
+    id: str = Field(default_factory=_uid)
+    region_code: str
+    year: int
+    umr_amount: int
+
+
+class AssessmentQuestion(BaseModel):
+    question: str
+    options: list[str]
+    correct_index: int
+
+
+class SkillAssessment(TimestampedModel):
+    """Mirrors `db.models.SkillAssessment`."""
+
+    id: str = Field(default_factory=_uid)
+    skill_id: str
+    questions: list[AssessmentQuestion] = []
+    passing_score: float = 0.7
+
+
+class SeekerSkillAssessmentAttempt(TimestampedModel):
+    """Mirrors `db.models.SeekerSkillAssessmentAttempt`."""
+
+    id: str = Field(default_factory=_uid)
+    seeker_id: str
+    skill_id: str
+    score: float
+    passed: bool = False
+
+
+# OccupationSkill / JobSkillRequirement are composite-PK association rows
+# (see db.models) with no repository — these are plain request/response DTOs
+# for the taxonomy/employer routers, not schema-parity-checked projections.
+
+
+class OccupationSkillLink(BaseModel):
+    occupation_id: str
+    skill_id: str
+    min_level: ProficiencyLevel = "intermediate"
+    is_core: bool = True
+
+
+class JobSkillRequirementLink(BaseModel):
+    job_id: str
+    skill_id: str
+    min_level: ProficiencyLevel = "intermediate"
+    is_required: bool = True

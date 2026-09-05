@@ -1,9 +1,7 @@
 """Seeker-side profile, bookmarks, and gamification endpoints.
 
-Uses the JSON store (same layer as the agent/uploads/admin), so seeker
-profiles created here are immediately visible to the matching engine.
-Auth still goes through JWT (auth.py / SQLAlchemy User), but all seeker
-data lives in data/seekers/ and data/applications/.
+Uses the postgres_store layer (same layer as the agent/uploads/admin), so
+seeker profiles created here are immediately visible to the matching engine.
 """
 
 from __future__ import annotations
@@ -16,6 +14,7 @@ from backend.app.api.schemas.seeker import (
     ApplyRequest,
     SaveJobRequest,
     SeekerProfileUpsert,
+    SkillAssessmentSubmission,
     SkillGapRequest,
 )
 from backend.app.db.models import User
@@ -25,12 +24,14 @@ from backend.app.db.postgres_store import (
     find_seeker_by_user_id,
     find_skill_gaps_by_seeker_id,
     get_repositories,
+    upsert_seeker_skill,
 )
 from backend.app.db.schemas import (
     Application,
     ApplicationStatus,
     GamificationStats,
     SeekerProfile,
+    SeekerSkillAssessmentAttempt,
     Skill,
 )
 from backend.app.services.matching.matcher import SemanticMatcher
@@ -546,6 +547,87 @@ async def get_latest_skill_gap(current_user: User = Depends(get_current_user)):
         "estimated_hours": min(len(latest.missing_skills) * 10, 120),
         "gap_severity": latest.gap_severity,
     }
+
+
+# ── Skill verification (micro-assessment) ─────────────────────────────────────
+# Upgrades a claimed skill from self-reported to assessed: employers can filter
+# on verified_via, and it's a concrete answer to "how do you know a match's
+# skills are real" beyond trusting a free-text profile field.
+
+
+@router.get("/skills/{skill_id}/assessment")
+async def get_skill_assessment(skill_id: str, current_user: User = Depends(get_current_user)):
+    """Return a short quiz for `skill_id`, with correct answers stripped.
+
+    404 if no assessment has been authored for this skill — assessments are
+    seeded per-skill (see scripts/seed_taxonomy.py), not generated on the fly.
+    """
+    repos = get_repositories()
+    assessments = await repos.skill_assessments.find(lambda a: a.skill_id == skill_id)
+    if not assessments:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Belum ada asesmen untuk skill ini")
+    assessment = assessments[0]
+    return {
+        "assessment_id": assessment.id,
+        "skill_id": skill_id,
+        "questions": [{"question": q.question, "options": q.options} for q in assessment.questions],
+    }
+
+
+@router.post("/skills/{skill_id}/assessment")
+async def submit_skill_assessment(
+    skill_id: str,
+    payload: SkillAssessmentSubmission,
+    current_user: User = Depends(get_current_user),
+):
+    """Grade the submitted answers server-side and, if the seeker passes,
+    upgrade their SeekerSkill.verified_via from self_report to assessment."""
+    repos = get_repositories()
+    profile = await find_seeker_by_user_id(current_user.id)
+    if not profile:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile tidak ditemukan.")
+
+    assessments = await repos.skill_assessments.find(lambda a: a.skill_id == skill_id)
+    if not assessments:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Belum ada asesmen untuk skill ini")
+    assessment = assessments[0]
+
+    if len(payload.answers) != len(assessment.questions):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Jumlah jawaban tidak sesuai jumlah soal")
+
+    correct = sum(
+        1
+        for q, a in zip(assessment.questions, payload.answers, strict=True)
+        if q.correct_index == a
+    )
+    total = len(assessment.questions)
+    score = correct / total if total else 0.0
+    passed = score >= assessment.passing_score
+
+    attempt = SeekerSkillAssessmentAttempt(
+        seeker_id=profile.id, skill_id=skill_id, score=round(score, 3), passed=passed
+    )
+    await repos.skill_assessment_attempts.upsert(attempt)
+
+    if passed:
+        # The assessment verifies a claim, it doesn't invent one — default to
+        # "intermediate"/0 years rather than guessing a level from nothing.
+        await upsert_seeker_skill(
+            seeker_id=profile.id,
+            skill_id=skill_id,
+            level="intermediate",
+            years=0.0,
+            verified_via="assessment",
+        )
+
+    logger.info(
+        "skill_assessment seeker=%s skill=%s score=%.2f passed=%s",
+        profile.id,
+        skill_id,
+        score,
+        passed,
+    )
+    return {"score": round(score, 3), "passed": passed, "passing_score": assessment.passing_score}
 
 
 @router.get("/applications")

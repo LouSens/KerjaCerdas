@@ -34,6 +34,14 @@ _REPO_ATTRS = [
     "ai_logs",
     "gamification",
     "courses",
+    "skills",
+    "occupations",
+    "seeker_skills",
+    "skill_demand_snapshots",
+    "learning_actions",
+    "regional_minimum_wages",
+    "skill_assessments",
+    "skill_assessment_attempts",
 ]
 
 

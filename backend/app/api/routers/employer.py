@@ -20,7 +20,11 @@ from backend.app.api.schemas.employer import (
     UnlockCandidateRequest,
 )
 from backend.app.db.models import User
-from backend.app.db.postgres_store import find_employer_by_user_id, get_repositories
+from backend.app.db.postgres_store import (
+    find_employer_by_user_id,
+    get_regional_minimum_wage,
+    get_repositories,
+)
 from backend.app.db.schemas import (
     EMPLOYER_SETTABLE_STATUSES,
     ApplicationStatus,
@@ -133,7 +137,21 @@ async def create_job(payload: JobCreateRequest, current_user: User = Depends(get
     await matcher.embed_job(job)
     await repos.jobs.upsert(job)
     logger.info("Job created: %s by user_id=%s", job.id, current_user.id)
-    return {"job_id": job.id, "title": job.title}
+
+    # UMR/UMK compliance check: flag (never block) a posting priced below the
+    # region's regional minimum wage. Seed data for regional_minimum_wages is
+    # illustrative, not verified BPS/Kemnaker figures — see that model's
+    # docstring in db/models.py.
+    umr_warning = None
+    umr = await get_regional_minimum_wage(job.region_code, datetime.now(UTC).year)
+    if umr and job.salary_min and job.salary_min < umr:
+        umr_warning = (
+            f"Gaji minimum yang ditawarkan (Rp {job.salary_min:,}) berada di bawah UMR/UMK "
+            f"wilayah {job.region_code} tahun {datetime.now(UTC).year} (Rp {umr:,}). "
+            "Lowongan di bawah UMR biasanya menerima lebih sedikit pelamar yang memenuhi syarat."
+        )
+
+    return {"job_id": job.id, "title": job.title, "umr_warning": umr_warning}
 
 
 @router.get("/jobs")
