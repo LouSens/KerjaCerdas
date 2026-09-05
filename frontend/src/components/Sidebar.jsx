@@ -62,20 +62,19 @@ const EMPLOYER_GROUPS = [
     },
 ]
 
-// Mobile bottom nav: 5 items max
+// Mobile bottom nav: 5 items for seeker, 4 items for employer (per mobile design spec)
 const SEEKER_MOBILE_NAV = [
     { id: 'seeker-dashboard', label: 'Home', icon: LayoutDashboard },
-    { id: 'seeker-search', label: 'Cari', icon: Search },
     { id: 'seeker-match', label: 'Match', icon: Sparkles },
+    { id: 'seeker-skill-gap', label: 'Skill', icon: BarChart3 },
     { id: 'seeker-applications', label: 'Lamaran', icon: ClipboardList },
-    { id: 'seeker-verification', label: 'Verifikasi', icon: ShieldCheck },
+    { id: 'seeker-advisor', label: 'Advisor', icon: Bot },
 ]
 
 const EMPLOYER_MOBILE_NAV = [
     { id: 'employer-dashboard', label: 'Home', icon: LayoutDashboard },
-    { id: 'employer-jobs', label: 'Lowongan', icon: Briefcase },
-    { id: 'employer-post-job', label: 'Pasang', icon: PlusCircle },
     { id: 'employer-candidates', label: 'Kandidat', icon: Users },
+    { id: 'employer-post-job', label: 'Pasang', icon: PlusCircle },
     { id: 'employer-profile', label: 'Profil', icon: Building2 },
 ]
 

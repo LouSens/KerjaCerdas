@@ -101,36 +101,191 @@ const QUICK_PROMPTS = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function FloatingAdvisor() {
+export default function FloatingAdvisor({ asPage = false }) {
     const {
         floatingAdvisorOpen, toggleFloatingAdvisor,
         advisorLog, advisorInput, setAdvisorInput,
         agentLoading, runAgent, isAuthenticated, userRole,
-        profile, seekerId,
+        profile, seekerId, activeView,
     } = useStore()
     const scrollRef = useRef(null)
 
     useEffect(() => {
-        if (floatingAdvisorOpen) {
+        if (floatingAdvisorOpen || asPage) {
             scrollRef.current?.scrollTo({ top: 99999, behavior: 'smooth' })
         }
-    }, [floatingAdvisorOpen, advisorLog.length])
+    }, [floatingAdvisorOpen, asPage, advisorLog?.length])
 
     // Only show for authenticated seekers
     if (!isAuthenticated || userRole !== 'seeker') return null
 
+    // If activeView is already seeker-advisor and this is the global FloatingAdvisor instance, don't show duplicate floating button
+    if (!asPage && activeView === 'seeker-advisor') return null
+
     const hasCV = Boolean(seekerId || profile?.skills?.length > 0)
     const topSkills = (profile?.skills || []).slice(0, 3).map(s => s.name || s).join(', ')
 
-    const placeholder = hasCV
-        ? `Tanya seputar ${topSkills ? topSkills + '…' : 'karir Anda…'}`
-        : 'Ketik pertanyaan karir atau upload CV Anda…'
+    const placeholder = 'Tanya soal karir Anda…'
 
     const submit = (e, customMsg = null) => {
         if (e) e.preventDefault()
         const text = customMsg || advisorInput
-        if (!text.trim() || agentLoading) return
-        runAgent({ message: text, explicitIntent: 'advise' })
+        if (!text || !text.trim() || agentLoading) return
+        runAgent({ message: text.trim(), explicitIntent: 'advise' })
+        if (!customMsg) setAdvisorInput('')
+    }
+
+    const PRESET_CHIPS = [
+        { label: 'Bandingkan gaji', prompt: 'Bandingkan gaji backend vs DevOps di pasar saat ini' },
+        { label: 'Gap tercepat', prompt: 'Apa gap tercepat yang bisa saya tutup untuk menaikkan skor match?' },
+        { label: 'Perbaiki CV', prompt: 'Bantu berikan saran perbaikan poin-poin pengalaman pada CV saya' },
+    ]
+
+    // Standalone Page Mode (Frame 12)
+    if (asPage) {
+        return (
+            <div style={{
+                width: '100%', maxWidth: 500, margin: '0 auto',
+                background: '#EDEAE2', border: `1.5px solid ${KC.ink}`,
+                borderRadius: 18, boxShadow: `4px 4px 0 ${KC.ink}`,
+                overflow: 'hidden', display: 'flex', flexDirection: 'column',
+                height: 'calc(100vh - 120px)', minHeight: 480,
+            }}>
+                <DesignStyles />
+
+                {/* Top Header (Frame 12) */}
+                <div style={{
+                    padding: '13px 18px', background: '#090A0F',
+                    display: 'flex', alignItems: 'center', gap: 11, flexShrink: 0,
+                }}>
+                    <div style={{
+                        width: 36, height: 36, borderRadius: 10, background: KC.orange,
+                        border: '1.5px solid #FFFFFF', display: 'grid', placeItems: 'center',
+                        flexShrink: 0,
+                    }}>
+                        <div style={{ width: 13, height: 13, background: '#FFFFFF', transform: 'rotate(45deg)', borderRadius: 2 }} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: '#FFFFFF', lineHeight: 1.2 }}>
+                            AI Career Advisor
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+                            <span style={{ width: 6, height: 6, background: '#10B981', borderRadius: '50%' }} />
+                            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)' }}>
+                                Aktif · konteks profil Anda
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Chat Message Thread */}
+                <div
+                    ref={scrollRef}
+                    style={{
+                        flex: 1, overflowY: 'auto', padding: '16px 16px',
+                        display: 'flex', flexDirection: 'column', gap: 11,
+                    }}
+                >
+                    {advisorLog.map((msg, i) => {
+                        const isUser = msg.role === 'user'
+                        return (
+                            <div
+                                key={i}
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: isUser ? 'flex-end' : 'flex-start',
+                                    animation: 'kcSlideUp .3s both',
+                                }}
+                            >
+                                <div style={{
+                                    maxWidth: '82%', padding: '11px 13px',
+                                    background: isUser ? '#090A0F' : '#FFFFFF',
+                                    color: isUser ? '#FFFFFF' : '#1E293B',
+                                    border: `1.5px solid ${KC.ink}`,
+                                    borderRadius: 13,
+                                    borderBottomLeftRadius: isUser ? 13 : 4,
+                                    borderBottomRightRadius: isUser ? 4 : 13,
+                                    boxShadow: isUser ? 'none' : `2px 2px 0 ${KC.ink}`,
+                                    fontSize: 12.5, lineHeight: 1.5, fontWeight: 600,
+                                }}>
+                                    {isUser ? msg.content : renderMarkdown(msg.content)}
+                                </div>
+                            </div>
+                        )
+                    })}
+                    {agentLoading && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                            <div style={{
+                                padding: '10px 14px', background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 13, borderBottomLeftRadius: 4, fontSize: 12, color: KC.mute,
+                                display: 'flex', alignItems: 'center', gap: 6,
+                            }}>
+                                <Loader2 size={14} className="animate-spin" /> Sedang menganalisis profil…
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Preset Prompt Chips (Frame 12) */}
+                <div style={{
+                    padding: '8px 14px', display: 'flex', gap: 7, overflowX: 'auto',
+                    flexShrink: 0, WebkitOverflowScrolling: 'touch',
+                }}>
+                    {PRESET_CHIPS.map(chip => (
+                        <button
+                            key={chip.label}
+                            type="button"
+                            onClick={() => submit(null, chip.prompt)}
+                            style={{
+                                padding: '8px 12px', background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 999, fontSize: 11, fontWeight: 800, color: KC.ink,
+                                whiteSpace: 'nowrap', cursor: 'pointer', minHeight: 36,
+                                display: 'inline-flex', alignItems: 'center', fontFamily: 'inherit',
+                                flexShrink: 0,
+                            }}
+                        >
+                            {chip.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Input Bar (Frame 12) */}
+                <form
+                    onSubmit={submit}
+                    style={{
+                        padding: '10px 14px calc(14px + env(safe-area-inset-bottom, 0px))',
+                        display: 'flex', gap: 9, alignItems: 'center',
+                        borderTop: '1.5px solid #CBD5E1', background: '#FAF9F5', flexShrink: 0,
+                    }}
+                >
+                    <input
+                        type="text"
+                        value={advisorInput}
+                        onChange={(e) => setAdvisorInput(e.target.value)}
+                        placeholder={placeholder}
+                        style={{
+                            flex: 1, minWidth: 0, padding: '12px 14px', background: '#FFFFFF',
+                            border: `1.5px solid ${KC.ink}`, borderRadius: 11,
+                            fontSize: 12.5, fontWeight: 600, color: KC.ink, outline: 'none',
+                            fontFamily: 'inherit', minHeight: 46, boxSizing: 'border-box',
+                        }}
+                    />
+                    <button
+                        type="submit"
+                        disabled={agentLoading || !advisorInput.trim()}
+                        style={{
+                            width: 46, height: 46, background: KC.orange,
+                            border: `1.5px solid ${KC.ink}`, borderRadius: 11,
+                            boxShadow: `2.5px 2.5px 0 ${KC.ink}`, display: 'grid', placeItems: 'center',
+                            cursor: 'pointer', fontSize: 16, fontWeight: 900, color: '#FFFFFF',
+                            fontFamily: 'inherit', flexShrink: 0,
+                        }}
+                    >
+                        →
+                    </button>
+                </form>
+            </div>
+        )
     }
 
     return (

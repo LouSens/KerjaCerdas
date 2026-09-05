@@ -226,7 +226,16 @@ const KC_CSS = `
 
 @media (max-width: 768px) {
   .kc-metrics-desktop {
-    display: none !important;
+    display: flex !important;
+    gap: 10px !important;
+    padding-top: 16px !important;
+    border-top: 1.5px dashed #CBD5E1 !important;
+  }
+  .kc-metrics-desktop > div {
+    flex: 1 !important;
+  }
+  .kc-mobile-sticky-cta {
+    display: flex !important;
   }
 }
 
@@ -1648,6 +1657,39 @@ export default function LandingHero() {
                     </div>
                 </div>
             </footer>
+
+            {/* Mobile Sticky Action Bar (Frame 00) */}
+            <div className="kc-mobile-sticky-cta" style={{
+                display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0,
+                background: '#FFFFFF', borderTop: `1.5px solid ${KC.ink}`, padding: '12px 18px calc(16px + env(safe-area-inset-bottom, 0px))',
+                zIndex: 65, flexDirection: 'column', gap: 9,
+                boxShadow: '0 -4px 16px rgba(0,0,0,0.12)',
+            }}>
+                <button
+                    onClick={onDaftar}
+                    style={{
+                        padding: '13px 14px', background: KC.ink, border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 11, boxShadow: `3px 3px 0 ${KC.orange}`,
+                        fontFamily: FONT, fontWeight: 800, fontSize: 13.5, color: '#fff',
+                        minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                        cursor: 'pointer', width: '100%',
+                    }}
+                >
+                    Cari Lowongan Kerja →
+                </button>
+                <button
+                    onClick={onEmployer}
+                    style={{
+                        padding: '12px 14px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                        fontFamily: FONT, fontWeight: 800, fontSize: 13, color: KC.ink,
+                        minHeight: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                        cursor: 'pointer', width: '100%',
+                    }}
+                >
+                    Pasang Lowongan HR
+                </button>
+            </div>
         </div>
     )
 }

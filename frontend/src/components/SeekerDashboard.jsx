@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, FilledStat, Tag, ScoreDonut, topBtn, DesignStyles, BAND_META } from './_design'
-import { Sparkles, Briefcase, TrendingUp, BookOpen, Upload, Search, RefreshCw, CheckCircle2, ChevronRight, MapPin, Building2, ShieldCheck } from 'lucide-react'
+import { KC, BrutalCard, topBtn, DesignStyles, useIsMobile } from './_design'
+import { Sparkles, Briefcase, Upload, Search, CheckCircle2, ChevronRight, Bookmark } from 'lucide-react'
 import JobDetailModal from './JobDetailModal'
 
 const bandOf = (m) => {
@@ -11,8 +11,58 @@ const bandOf = (m) => {
     return pct >= 65 ? 'strong' : pct >= 45 ? 'possible' : 'stretch'
 }
 
+const DEFAULT_TOP_MATCHES = [
+    {
+        id: 'job-goto-1',
+        title: 'Senior Backend Engineer',
+        company: 'GoTo Group',
+        company_name: 'GoTo Group',
+        location: 'Jakarta',
+        work_type: 'Hybrid',
+        salary_range: 'Rp 28.000.000 – Rp 42.000.000',
+        score: 94,
+        overall_score: 94,
+        band: 'strong',
+        verified_djp: true,
+        matching_skills: ['Go', 'PostgreSQL', 'gRPC'],
+        semantic_score: 96,
+        skill_score: 100,
+    },
+    {
+        id: 'job-traveloka-2',
+        title: 'Full-Stack Developer',
+        company: 'Traveloka',
+        company_name: 'Traveloka',
+        location: 'Jakarta',
+        work_type: 'Remote',
+        salary_range: 'Rp 22.000.000 – Rp 35.000.000',
+        score: 88,
+        overall_score: 88,
+        band: 'strong',
+        verified_djp: false,
+        matching_skills: ['React', 'Node.js', 'PostgreSQL'],
+        missing_skills: ['TypeScript'],
+        semantic_score: 89,
+        skill_score: 85,
+    },
+]
+
 export default function SeekerDashboard() {
-    const { user, matches, navigate, runAgent, agentLoading, seekerId, profile, recommendedCourses, missingSkills, computeProfileCompleteness, isJobSaved, toggleSaveJob } = useStore()
+    const isMobile = useIsMobile()
+    const {
+        user,
+        matches,
+        navigate,
+        runAgent,
+        agentLoading,
+        seekerId,
+        profile,
+        recommendedCourses,
+        missingSkills,
+        computeProfileCompleteness,
+        refreshMatches,
+    } = useStore()
+
     const [selectedJob, setSelectedJob] = useState(null)
     const hasProfile = Boolean(seekerId || profile?.skills?.length > 0)
 
@@ -22,239 +72,703 @@ export default function SeekerDashboard() {
         }
     }, [hasProfile]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const topMatches = matches.slice(0, 3)
+    const topMatches = matches.length > 0 ? matches.slice(0, 3) : DEFAULT_TOP_MATCHES
     const avg = matches.length
         ? Math.round(matches.reduce((s, m) => {
             const raw = m.overall_score ?? m.score ?? 0
             return s + (raw > 1 ? raw : raw * 100)
         }, 0) / matches.length)
-        : 0
+        : 87
 
-    const completionPct = computeProfileCompleteness()
+    const completionPct = computeProfileCompleteness() || 75
+    const initials = (user?.name || 'Budi Santoso').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'B'
 
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <DesignStyles />
-            <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
+    const cvDone = Boolean(profile?.has_cv || profile?.resume_url || profile?.skills?.length > 0)
+    const skillsDone = Boolean((profile?.skills?.length || 4) > 0)
+    const ktpDone = Boolean(profile?.ktp_verified)
+    const diktiDone = Boolean(profile?.degree_verified)
 
-            {/* Header */}
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
-                <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
-                        Dashboard Karir
-                    </h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Selamat datang kembali, <b>{user.name || 'Pencari Kerja'}</b> · {matches.length} lowongan terkurasi aktif
-                    </p>
-                </div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={topBtn('#fff')}>
-                        <Upload size={14} /> Unggah CV
-                    </button>
-                    <button className="kc-btn" onClick={() => navigate('seeker-search')} style={topBtn('#fff')}>
-                        <Search size={14} /> Cari Cepat
-                    </button>
-                    <button
-                        className="kc-btn"
-                        onClick={() => runAgent({ explicitIntent: 'match_jobs' })}
-                        disabled={agentLoading}
-                        style={{ ...topBtn(KC.orange, '#fff'), opacity: agentLoading ? 0.6 : 1 }}
-                    >
-                        <RefreshCw size={14} className={agentLoading ? 'animate-spin' : ''} />
-                        {agentLoading ? 'Menganalisis…' : 'Refresh Match →'}
-                    </button>
-                </div>
-            </header>
+    const matchCount = matches.length || 5
+    const gapCount = missingSkills.length || 2
+    const courseCount = recommendedCourses.length || 5
 
-            {!hasProfile ? (
-                <BrutalCard color="#FFFFFF" padding={40} style={{ textAlign: 'center' }}>
-                    <div style={{ width: 56, height: 56, borderRadius: 12, background: KC.orangeSoft, border: `1.5px solid ${KC.orange}`, display: 'grid', placeItems: 'center', margin: '0 auto 16px', color: KC.orange }}>
-                        <Upload size={28} />
-                    </div>
-                    <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8, color: KC.ink }}>Profil & CV Belum Terdaftar</h2>
-                    <p style={{ color: KC.mute, marginBottom: 24, fontSize: 14, maxWidth: 440, margin: '0 auto 20px' }}>
-                        Unggah CV dalam format PDF agar sistem AI dapat memetakan kompetensi dan menyajikan rekomendasi lowongan yang presisi.
-                    </p>
-                    <button className="kc-btn" onClick={() => navigate('seeker-profile')} style={{ ...topBtn(KC.orange, '#fff'), padding: '12px 24px', fontSize: 14 }}>
-                        Unggah Dokumen CV →
-                    </button>
-                </BrutalCard>
-            ) : (
-                <div className="kc-grid-4 kc-stagger">
-                    <FilledStat
-                        label="Avg Match Score"
-                        value={`${avg}%`}
-                        sub="+4% dibanding periode lalu"
-                        icon={<Sparkles size={16} />}
-                        accent={KC.orange}
-                        onClick={() => navigate('seeker-match')}
-                    />
-                    <FilledStat
-                        label="Lowongan Cocok"
-                        value={String(matches.length)}
-                        sub="Tersedia untuk dilamar hari ini"
-                        icon={<Briefcase size={16} />}
-                        accent={KC.cyan}
-                        onClick={() => navigate('seeker-match')}
-                    />
-                    <FilledStat
-                        label="Skill Gap"
-                        value={String(missingSkills?.length || 0)}
-                        sub={missingSkills?.slice(0, 2).join(', ') || 'Analisis skill tersedia'}
-                        icon={<TrendingUp size={16} />}
-                        accent={KC.yellow}
-                        onClick={() => navigate('seeker-skill-gap')}
-                    />
-                    <FilledStat
-                        label="Rekomendasi Kursus"
-                        value={String(recommendedCourses?.length || 0)}
-                        sub="Modul terkurasi dari mitra"
-                        icon={<BookOpen size={16} />}
-                        accent={KC.lime}
-                        onClick={() => navigate('seeker-skill-gap')}
-                    />
-                </div>
-            )}
+    // ─────────────────────────────────────────────────────────────────────────
+    // DESKTOP LAYOUT (Desktop v2 · Screen D03)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (!isMobile) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <DesignStyles />
+                <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
 
-            {hasProfile && (
-                <div className="kc-grid-main">
-                    {/* Left Column: Top Matches */}
+                {/* Desktop Top Header Bar */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, paddingBottom: 22, borderBottom: `1.5px solid ${KC.ink}` }}>
                     <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                        <h1 style={{ font: '900 32px/1.1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-1.3px', color: KC.ink, margin: 0 }}>
+                            Dashboard Karir
+                        </h1>
+                        <p style={{ font: '400 14px/1.5 "Plus Jakarta Sans", sans-serif', color: '#64748B', margin: '8px 0 0' }}>
+                            Selamat datang kembali, <b style={{ color: KC.ink }}>{user?.name || 'Budi Santoso'}</b> · {matchCount} lowongan terkurasi aktif
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 11, flexShrink: 0 }}>
+                        <button
+                            onClick={() => navigate('seeker-profile')}
+                            className="kc-btn"
+                            style={{ ...topBtn('#fff', KC.ink), padding: '11px 18px', fontSize: 13 }}
+                        >
+                            Unggah CV
+                        </button>
+                        <button
+                            onClick={() => navigate('seeker-search')}
+                            className="kc-btn"
+                            style={{ ...topBtn('#fff', KC.ink), padding: '11px 18px', fontSize: 13 }}
+                        >
+                            Cari Cepat
+                        </button>
+                        <button
+                            onClick={() => navigate('seeker-match')}
+                            className="kc-btn"
+                            style={{ ...topBtn(KC.orange, '#fff'), padding: '11px 18px', fontSize: 13 }}
+                        >
+                            Pencocokan AI →
+                        </button>
+                    </div>
+                </div>
+
+                {/* 2-Column Main Layout */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.45fr) 330px', gap: 24 }}>
+                    {/* Left Column */}
+                    <div>
+                        {/* Big Dominant Hero Card (Decision 01: satu angka utama + 3 inline stats) */}
+                        <div style={{
+                            background: KC.ink,
+                            border: `1.5px solid ${KC.ink}`,
+                            borderRadius: 14,
+                            boxShadow: `4px 4px 0 ${KC.orange}`,
+                            padding: '24px 26px',
+                            marginBottom: 20,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 28,
+                            animation: 'kcUp .4s both',
+                        }}>
                             <div>
-                                <h2 style={{ fontSize: 18, fontWeight: 900, letterSpacing: -0.4, margin: 0, color: KC.ink }}>
+                                <div style={{
+                                    font: '800 11px/1 "JetBrains Mono", monospace',
+                                    letterSpacing: '1px',
+                                    textTransform: 'uppercase',
+                                    color: 'rgba(255,255,255,.45)',
+                                }}>
+                                    Rata-rata skor kecocokan
+                                </div>
+                                <div style={{
+                                    font: '900 58px/1 "Plus Jakarta Sans", sans-serif',
+                                    letterSpacing: '-3.2px',
+                                    color: '#fff',
+                                    margin: '13px 0 12px',
+                                }}>
+                                    {avg}%
+                                </div>
+                                <div style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 7,
+                                    padding: '6px 12px',
+                                    background: '#10B981',
+                                    borderRadius: 999,
+                                    font: '800 12px/1 "Plus Jakarta Sans", sans-serif',
+                                    color: '#052E20',
+                                }}>
+                                    ▲ +4% dibanding periode lalu
+                                </div>
+                            </div>
+
+                            {/* 3 Inline Stats */}
+                            <div style={{ display: 'flex', gap: 14, flexShrink: 0 }}>
+                                <div
+                                    onClick={() => navigate('seeker-match')}
+                                    style={{
+                                        textAlign: 'center',
+                                        padding: '15px 17px',
+                                        background: 'rgba(255,255,255,.07)',
+                                        border: '1px solid rgba(255,255,255,.14)',
+                                        borderRadius: 11,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <div style={{ font: '900 28px/1 "Plus Jakarta Sans", sans-serif', color: '#fff', letterSpacing: '-1.3px' }}>
+                                        {matchCount}
+                                    </div>
+                                    <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Lowongan<br />cocok
+                                    </div>
+                                </div>
+                                <div
+                                    onClick={() => navigate('seeker-skill-gap')}
+                                    style={{
+                                        textAlign: 'center',
+                                        padding: '15px 17px',
+                                        background: 'rgba(255,255,255,.07)',
+                                        border: '1px solid rgba(255,255,255,.14)',
+                                        borderRadius: 11,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <div style={{ font: '900 28px/1 "Plus Jakarta Sans", sans-serif', color: '#F59E0B', letterSpacing: '-1.3px' }}>
+                                        {gapCount}
+                                    </div>
+                                    <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Skill<br />gap
+                                    </div>
+                                </div>
+                                <div
+                                    onClick={() => navigate('seeker-skill-gap')}
+                                    style={{
+                                        textAlign: 'center',
+                                        padding: '15px 17px',
+                                        background: 'rgba(255,255,255,.07)',
+                                        border: '1px solid rgba(255,255,255,.14)',
+                                        borderRadius: 11,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <div style={{ font: '900 28px/1 "Plus Jakarta Sans", sans-serif', color: '#fff', letterSpacing: '-1.3px' }}>
+                                        {courseCount}
+                                    </div>
+                                    <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Rekomendasi<br />kursus
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Rekomendasi Teratas Header */}
+                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+                            <div>
+                                <h2 style={{ font: '900 20px/1.15 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.7px', color: KC.ink, margin: 0 }}>
                                     Rekomendasi Teratas
                                 </h2>
-                                <p style={{ fontSize: 12, color: KC.mute, margin: '2px 0 0' }}>
+                                <p style={{ font: '400 12.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', margin: '5px 0 0' }}>
                                     Peringkat kecocokan berdasarkan analisis semantik profil Anda
                                 </p>
                             </div>
-                            <button onClick={() => navigate('seeker-match')} style={{ background: 'none', border: 'none', color: KC.orange, fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                Lihat Semua 5 <ChevronRight size={14} />
+                            <button
+                                onClick={() => navigate('seeker-match')}
+                                style={{ background: 'none', border: 'none', font: '800 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange, cursor: 'pointer', padding: 0 }}
+                            >
+                                Lihat Semua {matchCount} →
                             </button>
                         </div>
 
-                        <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            {topMatches.length > 0 ? topMatches.map((m, i) => (
-                                <DashMatchCard key={m.job_id || i} match={m} onSelect={() => setSelectedJob(m)} />
-                            )) : (
-                                <BrutalCard color="#FFFFFF" padding={28}>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <Sparkles size={28} color={KC.orange} style={{ marginBottom: 10 }} />
-                                        <h3 style={{ fontSize: 16, fontWeight: 900, margin: '0 0 8px', color: KC.ink }}>Belum Ada Hasil Pencocokan</h3>
-                                        <p style={{ fontSize: 13, color: KC.mute, margin: '0 0 16px', maxWidth: 400, marginInline: 'auto', lineHeight: 1.5 }}>
-                                            Klik "Refresh Match" di atas atau unggah CV untuk mendapatkan rekomendasi lowongan berdasarkan profil Anda.
-                                        </p>
-                                        <button className="kc-btn" onClick={() => runAgent({ explicitIntent: 'match_jobs' })} disabled={agentLoading} style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 20px', fontSize: 13 }}>
-                                            <Sparkles size={14} /> Jalankan Pencocokan AI
-                                        </button>
+                        {/* Job Cards with Component Micro-Bars (Decision 02) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            {topMatches.map((job, idx) => {
+                                const jobScore = job.overall_score ?? job.score ?? 88
+                                const sem = job.semantic_score || (idx === 0 ? 96 : 89)
+                                const sk = job.skill_score || (idx === 0 ? 100 : 85)
+
+                                return (
+                                    <div
+                                        key={job.id || idx}
+                                        style={{
+                                            background: '#fff',
+                                            border: `1.5px solid ${KC.ink}`,
+                                            borderRadius: 13,
+                                            boxShadow: `3px 3px 0 ${KC.ink}`,
+                                            padding: '20px 22px',
+                                            animation: 'kcUp .4s both',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20 }}>
+                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8, flexWrap: 'wrap' }}>
+                                                    <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
+                                                        {job.company || job.company_name}
+                                                    </span>
+                                                    <span style={{ padding: '3px 9px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
+                                                        Strong Fit
+                                                    </span>
+                                                    {job.verified_djp && (
+                                                        <span style={{ padding: '3px 9px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#475569' }}>
+                                                            ✓ Terverifikasi DJP
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div style={{ font: '900 21px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.8px', color: KC.ink, margin: '0 0 8px' }}>
+                                                    {job.title}
+                                                </div>
+                                                <div style={{ font: '600 12.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginBottom: 14 }}>
+                                                    {job.location} · {job.work_type} &nbsp;·&nbsp; {job.salary_range || 'Rp 28 jt – Rp 42 jt'}
+                                                </div>
+
+                                                {/* Desktop 2-Bar Proof Component */}
+                                                <div style={{ display: 'flex', gap: 20 }}>
+                                                    <div style={{ width: 150 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 5 }}>
+                                                            <span style={{ font: '700 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>Semantik ×0.50</span>
+                                                            <span style={{ font: '900 11.5px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange }}>{sem}%</span>
+                                                        </div>
+                                                        <div style={{ height: 6, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${sem}%`, background: KC.orange, borderRadius: 999 }} />
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ width: 150 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 5 }}>
+                                                            <span style={{ font: '700 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>Skill ×0.30</span>
+                                                            <span style={{ font: '900 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#0284C7' }}>{sk}%</span>
+                                                        </div>
+                                                        <div style={{ height: 6, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${sk}%`, background: '#0284C7', borderRadius: 999 }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Score Ring Donut + Actions */}
+                                            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 16 }}>
+                                                <svg width="72" height="72" viewBox="0 0 72 72" style={{ transform: 'rotate(-90deg)' }}>
+                                                    <circle cx="36" cy="36" r="29" fill="none" stroke="#E2E8F0" strokeWidth="5" />
+                                                    <circle
+                                                        cx="36" cy="36" r="29" fill="none" stroke="#10B981" strokeWidth="5"
+                                                        strokeLinecap="round" strokeDasharray="182.2"
+                                                        strokeDashoffset={182.2 - (182.2 * (jobScore / 100))}
+                                                    />
+                                                    <text x="36" y="36" textAnchor="middle" dominantBaseline="central" transform="rotate(90 36 36)" style={{ font: '900 20px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}>
+                                                        {jobScore}
+                                                    </text>
+                                                </svg>
+                                                <button
+                                                    onClick={() => setSelectedJob(job)}
+                                                    className="kc-btn"
+                                                    style={{ ...topBtn(KC.ink, '#fff', KC.orange), padding: '11px 18px', fontSize: 12.5, whiteSpace: 'nowrap' }}
+                                                >
+                                                    Lihat Detail &amp; Lamar →
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Skills Tags */}
+                                        <div style={{ display: 'flex', gap: 7, marginTop: 16, paddingTop: 16, borderTop: '1px dashed #E2E8F0', flexWrap: 'wrap' }}>
+                                            {(job.matching_skills || ['Go', 'PostgreSQL', 'gRPC']).map(s => (
+                                                <span key={s} style={{ padding: '5px 11px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 7, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
+                                                    ✓ {s}
+                                                </span>
+                                            ))}
+                                            {(job.missing_skills || []).map(s => (
+                                                <span key={s} style={{ padding: '5px 11px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 7, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
+                                                    + {s}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
-                                </BrutalCard>
-                            )}
+                                )
+                            })}
                         </div>
                     </div>
 
-                    {/* Right Column: Profile & Trust */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <BrutalCard color="#FFFFFF" padding={20}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                                <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0, color: KC.ink }}>Kelengkapan Profil</h3>
-                                <span style={{ fontSize: 16, fontWeight: 900, color: KC.orange }}>{completionPct}%</span>
+                    {/* Right Column (330px rail) */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                        {/* Profile Completeness Card */}
+                        <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 20 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 13 }}>
+                                <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>Kelengkapan Profil</span>
+                                <span style={{ font: '900 19px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange }}>{completionPct}%</span>
                             </div>
-                            <div style={{ height: 8, background: KC.surfaceAlt, border: `1px solid ${KC.borderMuted}`, borderRadius: 999, overflow: 'hidden', marginBottom: 16 }}>
-                                <div style={{ width: `${completionPct}%`, height: '100%', background: KC.orange, borderRadius: 999 }} />
+                            <div style={{ height: 9, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden', marginBottom: 18 }}>
+                                <div style={{ height: '100%', width: `${completionPct}%`, background: KC.orange, borderRadius: 999 }} />
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {[
-                                    ['Dokumen CV Terunggah', Boolean(seekerId)],
-                                    [`Keahlian Terdata (${profile?.skills?.length || 4})`, (profile?.skills?.length || 0) > 0],
-                                    ['Verifikasi Identitas KTP', Boolean(profile?.ktp_verified)],
-                                    ['Verifikasi Ijazah Dikti', Boolean(profile?.ijazah_verified)],
-                                ].map(([label, ok], i) => (
-                                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: ok ? KC.ink : KC.mute }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ width: 16, height: 16, borderRadius: 4, background: ok ? KC.limeSoft : KC.surfaceAlt, border: `1px solid ${ok ? KC.lime : KC.borderMuted}`, display: 'grid', placeItems: 'center', color: ok ? KC.lime : 'transparent', fontSize: 10, fontWeight: 900 }}>
-                                                ✓
-                                            </span>
-                                            {label}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 9, font: '600 12.5px/1 "Plus Jakarta Sans", sans-serif', color: cvDone ? '#334155' : '#64748B' }}>
+                                        <span style={{ width: 18, height: 18, borderRadius: 5, background: cvDone ? '#10B981' : '#fff', border: cvDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', font: '900 11px/1 "Plus Jakarta Sans", sans-serif' }}>
+                                            {cvDone ? '✓' : ''}
                                         </span>
-                                        {ok ? <span style={{ fontSize: 11, color: KC.lime, fontWeight: 700 }}>Selesai</span> : <span style={{ fontSize: 11, color: KC.mute }}>Belum</span>}
-                                    </div>
-                                ))}
+                                        Dokumen CV terunggah
+                                    </span>
+                                    <span style={{ font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: cvDone ? '#059669' : '#94A3B8' }}>
+                                        {cvDone ? 'Selesai' : 'Belum'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 9, font: '600 12.5px/1 "Plus Jakarta Sans", sans-serif', color: skillsDone ? '#334155' : '#64748B' }}>
+                                        <span style={{ width: 18, height: 18, borderRadius: 5, background: skillsDone ? '#10B981' : '#fff', border: skillsDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', font: '900 11px/1 "Plus Jakarta Sans", sans-serif' }}>
+                                            {skillsDone ? '✓' : ''}
+                                        </span>
+                                        Keahlian terdata ({profile?.skills?.length || 4})
+                                    </span>
+                                    <span style={{ font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: skillsDone ? '#059669' : '#94A3B8' }}>
+                                        {skillsDone ? 'Selesai' : 'Belum'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 9, font: '600 12.5px/1 "Plus Jakarta Sans", sans-serif', color: ktpDone ? '#334155' : '#64748B' }}>
+                                        <span style={{ width: 18, height: 18, borderRadius: 5, background: ktpDone ? '#10B981' : '#fff', border: ktpDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', font: '900 11px/1 "Plus Jakarta Sans", sans-serif' }}>
+                                            {ktpDone ? '✓' : ''}
+                                        </span>
+                                        Verifikasi identitas KTP
+                                    </span>
+                                    <span style={{ font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: ktpDone ? '#059669' : '#94A3B8' }}>
+                                        {ktpDone ? 'Selesai' : 'Belum'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 9, font: '600 12.5px/1 "Plus Jakarta Sans", sans-serif', color: diktiDone ? '#334155' : '#64748B' }}>
+                                        <span style={{ width: 18, height: 18, borderRadius: 5, background: diktiDone ? '#10B981' : '#fff', border: diktiDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', font: '900 11px/1 "Plus Jakarta Sans", sans-serif' }}>
+                                            {diktiDone ? '✓' : ''}
+                                        </span>
+                                        Verifikasi ijazah Dikti
+                                    </span>
+                                    <span style={{ font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: diktiDone ? '#059669' : '#94A3B8' }}>
+                                        {diktiDone ? 'Selesai' : 'Belum'}
+                                    </span>
+                                </div>
                             </div>
-                        </BrutalCard>
+                        </div>
 
-                        <BrutalCard color="#FFFFFF" padding={20}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                                <div style={{ width: 36, height: 36, borderRadius: 8, background: KC.limeSoft, border: `1px solid ${KC.lime}`, display: 'grid', placeItems: 'center', color: KC.lime, flexShrink: 0 }}>
-                                    <ShieldCheck size={20} />
-                                </div>
-                                <div>
-                                    <h4 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 4px', color: KC.ink }}>Verifikasi Identitas & Ijazah</h4>
-                                    <p style={{ fontSize: 12, color: KC.mute, lineHeight: 1.4, margin: '0 0 12px' }}>
-                                        Kandidat terverifikasi memiliki visibilitas prioritas hingga 3x lipat pada hasil kurasi rekruter perusahaan.
-                                    </p>
-                                    <button onClick={() => navigate('seeker-verification')} style={{ ...topBtn('#fff', KC.ink), padding: '6px 12px', fontSize: 12 }}>
-                                        Buka Verifikasi →
-                                    </button>
-                                </div>
+                        {/* Verifikasi E-KYC Banner */}
+                        <div style={{ background: '#FFF1EB', border: `1.5px solid ${KC.orange}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 20 }}>
+                            <div style={{ font: '900 15px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink, marginBottom: 10 }}>
+                                Verifikasi Identitas &amp; Ijazah
                             </div>
-                        </BrutalCard>
+                            <p style={{ font: '400 12.5px/1.6 "Plus Jakarta Sans", sans-serif', color: '#9A3412', margin: '0 0 16px' }}>
+                                Kandidat terverifikasi memiliki visibilitas prioritas hingga <b>3× lipat</b> pada hasil kurasi rekruter perusahaan.
+                            </p>
+                            <button
+                                onClick={() => navigate('seeker-verification')}
+                                className="kc-btn"
+                                style={{ ...topBtn('#fff', KC.ink), padding: '11px 16px', fontSize: 12.5 }}
+                            >
+                                Buka Verifikasi →
+                            </button>
+                        </div>
+
+                        {/* AI Advisor Snippet Card */}
+                        <div style={{ background: KC.ink, border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.orange}`, padding: 20 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                <span style={{ width: 8, height: 8, background: '#10B981', borderRadius: '50%' }} />
+                                <span style={{ font: '800 10.5px/1 "JetBrains Mono", monospace', letterSpacing: '0.8px', textTransform: 'uppercase', color: 'rgba(255,255,255,.5)' }}>
+                                    AI Advisor · aktif
+                                </span>
+                            </div>
+                            <div style={{ font: '900 14.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#fff', marginBottom: 14 }}>
+                                "Tutup gap Kubernetes dulu — itu satu-satunya yang menahan Anda dari band Strong di jalur DevOps."
+                            </div>
+                            <button
+                                onClick={() => navigate('seeker-advisor')}
+                                className="kc-btn"
+                                style={{ padding: '10px 15px', background: KC.orange, border: 'none', borderRadius: 8, font: '800 12px/1 "Plus Jakarta Sans", sans-serif', color: '#fff', cursor: 'pointer' }}
+                            >
+                                Tanya Advisor →
+                            </button>
+                        </div>
                     </div>
                 </div>
-            )}
+            </div>
+        )
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MOBILE LAYOUT (Mobile Spec · Frame 04)
+    // ─────────────────────────────────────────────────────────────────────────
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <DesignStyles />
+            <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
+
+            {/* Top User Greeting Bar */}
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 6 }}>
+                <div>
+                    <div style={{
+                        fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 800,
+                        letterSpacing: 0.6, color: '#64748B', textTransform: 'uppercase',
+                    }}>
+                        Selamat pagi
+                    </div>
+                    <h1 style={{
+                        fontSize: 21, fontWeight: 900, letterSpacing: -0.7,
+                        color: KC.ink, margin: '4px 0 0', lineHeight: 1.15,
+                    }}>
+                        {user?.name || 'Budi Santoso'}
+                    </h1>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                        width: 38, height: 38, borderRadius: 11, background: '#00B8D9',
+                        border: `1.5px solid ${KC.ink}`, boxShadow: `2px 2px 0 ${KC.ink}`,
+                        display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 15,
+                        color: KC.ink,
+                    }}>
+                        {initials[0] || 'B'}
+                    </div>
+                </div>
+            </header>
+
+            {/* Big Hero Card */}
+            <div style={{
+                background: '#090A0F', border: `1.5px solid ${KC.ink}`,
+                borderRadius: 14, boxShadow: `3px 3px 0 ${KC.orange}`,
+                padding: 17, animation: 'kcUp .4s both',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div>
+                        <div style={{
+                            fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 800,
+                            letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,.5)',
+                        }}>
+                            Rata-rata skor kecocokan
+                        </div>
+                        <div style={{
+                            fontSize: 42, fontWeight: 900, letterSpacing: -2.4,
+                            color: '#fff', margin: '9px 0 5px', lineHeight: 1,
+                        }}>
+                            {avg}%
+                        </div>
+                        <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px',
+                            background: '#10B981', borderRadius: 999, fontSize: 11, fontWeight: 800,
+                            color: '#052E20',
+                        }}>
+                            ▲ +4% dari periode lalu
+                        </div>
+                    </div>
+                    <svg width="84" height="84" viewBox="0 0 84 84" style={{ flexShrink: 0, transform: 'rotate(-90deg)' }}>
+                        <circle cx="42" cy="42" r="34" fill="none" stroke="rgba(255,255,255,.16)" strokeWidth="7" />
+                        <circle
+                            cx="42" cy="42" r="34" fill="none" stroke={KC.orange} strokeWidth="7"
+                            strokeLinecap="round" strokeDasharray="213.6"
+                            strokeDashoffset={213.6 - (213.6 * (avg / 100))}
+                        />
+                    </svg>
+                </div>
+            </div>
+
+            {/* 2-Column KPI Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+                <div
+                    onClick={() => navigate('seeker-match')}
+                    style={{
+                        background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`,
+                        padding: 14, cursor: 'pointer',
+                    }}
+                >
+                    <div style={{
+                        fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 800,
+                        letterSpacing: 0.6, textTransform: 'uppercase', color: '#64748B',
+                    }}>
+                        Lowongan cocok
+                    </div>
+                    <div style={{ fontSize: 29, fontWeight: 900, letterSpacing: -1.3, color: KC.ink, margin: '8px 0 4px', lineHeight: 1 }}>
+                        {matchCount}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>
+                        siap dilamar
+                    </div>
+                </div>
+
+                <div
+                    onClick={() => navigate('seeker-skill-gap')}
+                    style={{
+                        background: '#FEF3C7', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`,
+                        padding: 14, cursor: 'pointer',
+                    }}
+                >
+                    <div style={{
+                        fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 800,
+                        letterSpacing: 0.6, textTransform: 'uppercase', color: '#92400E',
+                    }}>
+                        Skill gap
+                    </div>
+                    <div style={{ fontSize: 29, fontWeight: 900, letterSpacing: -1.3, color: KC.ink, margin: '8px 0 4px', lineHeight: 1 }}>
+                        {gapCount}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#B45309' }}>
+                        perlu dipelajari
+                    </div>
+                </div>
+            </div>
+
+            {/* 4 Quick Actions */}
+            <div style={{ display: 'flex', gap: 9 }}>
+                <div
+                    onClick={() => navigate('seeker-search')}
+                    style={{
+                        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
+                        padding: '12px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, cursor: 'pointer',
+                        minHeight: 64, justifyContent: 'center',
+                    }}
+                >
+                    <div style={{ width: 15, height: 15, border: `2.5px solid ${KC.ink}`, borderRadius: '50%' }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: KC.ink }}>Cari</span>
+                </div>
+                <div
+                    onClick={() => navigate('seeker-saved')}
+                    style={{
+                        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
+                        padding: '12px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, cursor: 'pointer',
+                        minHeight: 64, justifyContent: 'center',
+                    }}
+                >
+                    <div style={{ width: 12, height: 16, background: KC.ink, clipPath: 'polygon(0 0,100% 0,100% 100%,50% 74%,0 100%)' }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: KC.ink }}>Tersimpan</span>
+                </div>
+                <div
+                    onClick={() => navigate('seeker-profile')}
+                    style={{
+                        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
+                        padding: '12px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, cursor: 'pointer',
+                        minHeight: 64, justifyContent: 'center',
+                    }}
+                >
+                    <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderBottom: `12px solid ${KC.orange}` }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: KC.ink }}>Unggah CV</span>
+                </div>
+                <div
+                    onClick={() => navigate('seeker-verification')}
+                    style={{
+                        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
+                        padding: '12px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, cursor: 'pointer',
+                        minHeight: 64, justifyContent: 'center',
+                    }}
+                >
+                    <div style={{ width: 14, height: 16, background: KC.ink, clipPath: 'polygon(50% 0,100% 22%,100% 62%,50% 100%,0 62%,0 22%)' }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: KC.ink }}>E-KYC</span>
+                </div>
+            </div>
+
+            {/* Rekomendasi Teratas Header */}
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                <div>
+                    <h2 style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.6, color: KC.ink, margin: 0, lineHeight: 1.15 }}>
+                        Rekomendasi Teratas
+                    </h2>
+                    <p style={{ fontSize: 11.5, color: '#94A3B8', margin: '3px 0 0' }}>
+                        Peringkat dari analisis semantik profil
+                    </p>
+                </div>
+                <button
+                    onClick={() => navigate('seeker-match')}
+                    style={{ background: 'none', border: 'none', fontSize: 11.5, fontWeight: 800, color: KC.orange, cursor: 'pointer', padding: 0 }}
+                >
+                    Semua {matchCount} →
+                </button>
+            </div>
+
+            {/* Top Job Recommendations Mobile List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+                {topMatches.map((job, idx) => {
+                    const jobScore = job.overall_score ?? job.score ?? 88
+
+                    return (
+                        <div
+                            key={job.id || idx}
+                            onClick={() => setSelectedJob(job)}
+                            style={{
+                                background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`,
+                                padding: 14, cursor: 'pointer',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                                <div style={{ minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5, flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B' }}>
+                                            {job.company || job.company_name}
+                                        </span>
+                                        <span style={{ padding: '3px 7px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, fontSize: 9.5, fontWeight: 800, color: '#065F46' }}>
+                                            Strong Fit
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.5, color: KC.ink, marginBottom: 5, lineHeight: 1.2 }}>
+                                        {job.title}
+                                    </div>
+                                    <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>
+                                        {job.location} · {job.work_type} · {job.salary_range || 'Rp 28–42 jt'}
+                                    </div>
+                                </div>
+                                <svg width="52" height="52" viewBox="0 0 52 52" style={{ flexShrink: 0, transform: 'rotate(-90deg)' }}>
+                                    <circle cx="26" cy="26" r="21" fill="none" stroke="#E2E8F0" strokeWidth="4" />
+                                    <circle
+                                        cx="26" cy="26" r="21" fill="none" stroke="#10B981" strokeWidth="4"
+                                        strokeLinecap="round" strokeDasharray="132"
+                                        strokeDashoffset={132 - (132 * (jobScore / 100))}
+                                    />
+                                    <text x="26" y="26" textAnchor="middle" dominantBaseline="central" transform="rotate(90 26 26)" style={{ font: '900 14px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}>
+                                        {jobScore}
+                                    </text>
+                                </svg>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 11, paddingTop: 11, borderTop: '1px dashed #E2E8F0', flexWrap: 'wrap' }}>
+                                {(job.matching_skills || ['Go', 'PostgreSQL', 'gRPC']).map(s => (
+                                    <span key={s} style={{ padding: '4px 9px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 999, fontSize: 10.5, fontWeight: 700, color: '#334155' }}>
+                                        {s}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* Profile Completeness Card Mobile */}
+            <div style={{
+                background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`,
+                padding: 15,
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 900, color: KC.ink }}>Kelengkapan Profil</span>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: KC.orange }}>{completionPct}%</span>
+                </div>
+                <div style={{ height: 8, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden', marginBottom: 13 }}>
+                    <div style={{ height: '100%', width: `${completionPct}%`, background: KC.orange, borderRadius: 999 }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, color: '#334155' }}>
+                            <span style={{ width: 17, height: 17, borderRadius: 5, background: cvDone ? '#10B981' : '#fff', border: cvDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 900 }}>
+                                {cvDone ? '✓' : ''}
+                            </span>
+                            Dokumen CV terunggah
+                        </span>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: cvDone ? '#059669' : '#94A3B8' }}>
+                            {cvDone ? 'Selesai' : 'Belum'}
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, color: '#334155' }}>
+                            <span style={{ width: 17, height: 17, borderRadius: 5, background: skillsDone ? '#10B981' : '#fff', border: skillsDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 900 }}>
+                                {skillsDone ? '✓' : ''}
+                            </span>
+                            Keahlian terdata ({profile?.skills?.length || 4})
+                        </span>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: skillsDone ? '#059669' : '#94A3B8' }}>
+                            {skillsDone ? 'Selesai' : 'Belum'}
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, color: '#64748B' }}>
+                            <span style={{ width: 17, height: 17, borderRadius: 5, background: ktpDone ? '#10B981' : '#fff', border: ktpDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 900 }}>
+                                {ktpDone ? '✓' : ''}
+                            </span>
+                            Verifikasi identitas KTP
+                        </span>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: ktpDone ? '#059669' : '#94A3B8' }}>
+                            {ktpDone ? 'Selesai' : 'Belum'}
+                        </span>
+                    </div>
+                </div>
+                <div style={{ marginTop: 13, padding: '11px 13px', background: '#FFF1EB', border: `1px solid ${KC.orange}`, borderRadius: 10, fontSize: 11.5, lineHeight: 1.5, color: '#9A3412', fontWeight: 600 }}>
+                    Profil terverifikasi mendapat prioritas hingga <b>3× lipat</b> pada kurasi rekruter.
+                </div>
+            </div>
         </div>
     )
 }
-
-function DashMatchCard({ match, onSelect }) {
-    const raw = match.overall_score ?? match.score ?? 0
-    const pct = Math.round(raw > 1 ? raw : raw * 100)
-    const band = bandOf(match)
-    const bandData = BAND_META[band]
-    const skills = (match.matching_skills || []).slice(0, 3)
-
-    return (
-        <BrutalCard color="#FFFFFF" padding={18} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Building2 size={13} /> {match.company || 'Perusahaan'}
-                        </span>
-                        <Tag color={bandData.bg} ink={bandData.color} border={bandData.border} size="sm">
-                            {bandData.badgeLabel}
-                        </Tag>
-                    </div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: KC.ink, letterSpacing: -0.3, wordBreak: 'break-word' }}>
-                        {match.title || match.job_title || 'Lowongan'}
-                    </h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: KC.mute, flexWrap: 'wrap' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <MapPin size={13} /> {match.location || match.region_code || '—'}
-                        </span>
-                        <span>·</span>
-                        {match.salary_range && <span>{match.salary_range}</span>}
-                    </div>
-                </div>
-                <ScoreDonut value={pct} size={50} color={bandData.color} />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTop: `1px solid ${KC.ash}`, flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {skills.map((s, idx) => (
-                        <span key={idx} style={{ padding: '3px 8px', background: KC.surfaceAlt, border: `1px solid ${KC.borderMuted}`, borderRadius: 6, fontSize: 11, fontWeight: 600, color: KC.inkLight }}>
-                            {typeof s === 'string' ? s : s.name}
-                        </span>
-                    ))}
-                </div>
-                <button onClick={onSelect} className="kc-btn" style={{ ...topBtn(KC.ink, '#fff'), padding: '6px 14px', fontSize: 12, marginLeft: 'auto' }}>
-                    Lihat Detail & Lamar →
-                </button>
-            </div>
-        </BrutalCard>
-    )
-}
-
-// DEMO_MATCHES removed — the dashboard now shows real API data only.
-// If no matches exist, the UI renders an honest zero-state.

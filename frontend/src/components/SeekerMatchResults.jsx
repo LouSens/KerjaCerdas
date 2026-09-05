@@ -1,276 +1,684 @@
-import { useEffect, useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, Tag, DesignStyles, BandLegend, ScoreDonut, topBtn, BAND_META, BAND_ORDER } from './_design'
-import { Filter, SlidersHorizontal, RefreshCw, Bookmark, BookmarkCheck, Building2, MapPin, DollarSign, CheckCircle2, ArrowRight } from 'lucide-react'
+import { KC, BrutalCard, ScoreDonut, topBtn, DesignStyles, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
 
 const bandOf = (m) => {
     if (m.band) return m.band
     const raw = m.overall_score ?? m.score ?? 0
     const pct = raw > 1 ? raw : raw * 100
-    return pct >= 65 ? 'strong' : pct >= 45 ? 'possible' : 'stretch'
+    return pct >= 85 ? 'strong' : pct >= 70 ? 'possible' : 'stretch'
 }
 
-const FACETS = {
-    location: {
-        label: 'Lokasi',
-        options: ['Jakarta', 'Bandung', 'Surabaya', 'Yogyakarta', 'Denpasar'],
-        match: (m, v) => new RegExp(v, 'i').test(m.location || m.region_code || ''),
+const DEMO_MATCH_FEED = [
+    {
+        id: 'job-goto-backend',
+        title: 'Senior Backend Engineer',
+        company: 'GoTo Group',
+        company_name: 'GoTo Group',
+        location: 'Jakarta',
+        work_type: 'Hybrid',
+        salary_range: 'Rp 28.000.000 – Rp 42.000.000',
+        score: 94,
+        overall_score: 94,
+        band: 'strong',
+        verified_djp: true,
+        matching_skills: ['Go', 'PostgreSQL', 'gRPC'],
+        missing_skills: [],
+        ai_summary: 'Penguasaan arsitektur microservices Go dan throughput tinggi selaras dengan spesifikasi posisi.',
+        semantic_score: 96,
+        skill_score: 100,
+        location_score: 90,
+        salary_score: 95,
+        seniority_score: 95,
     },
-    workMode: {
-        label: 'Mode Kerja',
-        options: ['Onsite', 'Hybrid', 'Remote'],
-        match: (m, v) => {
-            if (v === 'Remote') return m.remote_allowed || /remote/i.test(m.location || '')
-            if (v === 'Hybrid') return /hybrid/i.test(m.location || '')
-            if (v === 'Onsite') return !m.remote_allowed && !/remote|hybrid/i.test(m.location || '')
-            return true
-        }
+    {
+        id: 'job-traveloka-fullstack',
+        title: 'Full-Stack Developer',
+        company: 'Traveloka',
+        company_name: 'Traveloka',
+        location: 'Jakarta',
+        work_type: 'Remote',
+        salary_range: 'Rp 22.000.000 – Rp 35.000.000',
+        score: 88,
+        overall_score: 88,
+        band: 'strong',
+        verified_djp: false,
+        matching_skills: ['React', 'Node.js', 'PostgreSQL'],
+        missing_skills: ['TypeScript'],
+        ai_summary: 'Kompetensi fullstack modern cocok dengan sistem reservasi microfrontend.',
+        semantic_score: 88,
+        skill_score: 85,
+        location_score: 95,
+        salary_score: 90,
+        seniority_score: 90,
     },
-    role: {
-        label: 'Divisi / Spesialisasi',
-        options: ['Backend', 'Frontend', 'Full-Stack', 'Data', 'DevOps', 'Product'],
-        match: (m, v) => new RegExp(v, 'i').test(m.title || m.job_title || ''),
+    {
+        id: 'job-mandiri-devops',
+        title: 'DevOps Platform Engineer',
+        company: 'Bank Mandiri Digital',
+        company_name: 'Bank Mandiri Digital',
+        location: 'Jakarta',
+        work_type: 'Onsite',
+        salary_range: 'Rp 25.000.000 – Rp 38.000.000',
+        score: 78,
+        overall_score: 78,
+        band: 'possible',
+        verified_djp: true,
+        matching_skills: ['Docker', 'Go'],
+        missing_skills: ['Kubernetes', 'CI/CD Pipeline'],
+        ai_summary: 'Fondasi kontainerisasi kuat. Gap Kubernetes dan CI/CD dapat ditutup dalam 44 jam belajar terarah.',
+        semantic_score: 78,
+        skill_score: 70,
+        location_score: 90,
+        salary_score: 85,
+        seniority_score: 80,
     },
-    experience: {
-        label: 'Tingkat Pengalaman',
-        options: ['Fresh grad', '1-3 thn', '3-5 thn', '5+ thn'],
-        match: (m, v) => {
-            const exp = typeof m.experience_years_min === 'number'
-                ? m.experience_years_min
-                : parseInt(String(m.experience_range || '').match(/\d+/)?.[0] || '0')
-            if (v === 'Fresh grad') return exp <= 1
-            if (v === '1-3 thn') return exp >= 1 && exp <= 3
-            if (v === '3-5 thn') return exp >= 3 && exp <= 5
-            if (v === '5+ thn') return exp >= 5
-            return true
-        },
-    },
-}
-
-const DEFAULT_FACETS = {
-    location: new Set(),
-    workMode: new Set(),
-    role: new Set(),
-    experience: new Set(),
-}
+]
 
 export default function SeekerMatchResults() {
-    const { matches, agentLoading, runAgent, toggleSaveJob, isJobSaved, seekerId, profile, navigate } = useStore()
-    const [facets, setFacets] = useState(DEFAULT_FACETS)
-    const [showFilters, setShowFilters] = useState(true)
+    const isMobile = useIsMobile()
+    const { matches, agentLoading, runAgent, navigate, savedJobs, bookmarkJob, unbookmarkJob } = useStore()
     const [selectedJob, setSelectedJob] = useState(null)
+    const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'strong' | 'possible' | 'stretch'
+    const [refreshing, setRefreshing] = useState(false)
+    const [showFreshNotice, setShowFreshNotice] = useState(false)
+    const [lastUpdatedText, setLastUpdatedText] = useState('Diperbarui 4 menit lalu')
+    const [bandsExpanded, setBandsExpanded] = useState(false)
+    const [savedMap, setSavedMap] = useState({})
 
-    const baseList = matches.length ? matches : DEMO_MATCHES
-    const activeCount = Object.values(facets).reduce((n, s) => n + s.size, 0)
-    const list = (activeCount === 0
+    const baseList = matches.length > 0 ? matches : DEMO_MATCH_FEED
+
+    // Filter by band
+    const filteredList = activeFilter === 'all'
         ? baseList
-        : baseList.filter(m => Object.entries(facets).some(([k, sel]) => {
-            if (sel.size === 0) return false
-            return [...sel].some(v => FACETS[k].match(m, v))
-        }))
-    ).slice(0, 5)
+        : baseList.filter(m => bandOf(m) === activeFilter)
 
-    const toggleFacet = (key, value) => {
-        setFacets(prev => {
-            const next = { ...prev, [key]: new Set(prev[key]) }
-            next[key].has(value) ? next[key].delete(value) : next[key].add(value)
-            return next
-        })
+    const strongMatches = baseList.filter(m => bandOf(m) === 'strong')
+    const possibleMatches = baseList.filter(m => bandOf(m) === 'possible')
+    const stretchMatches = baseList.filter(m => bandOf(m) === 'stretch')
+
+    const handleRefresh = () => {
+        setRefreshing(true)
+        setTimeout(() => {
+            setRefreshing(false)
+            setShowFreshNotice(true)
+            setLastUpdatedText('Diperbarui baru saja')
+            runAgent({ explicitIntent: 'match_jobs' })
+        }, 1100)
     }
 
-    const resetAll = () => setFacets({
-        location: new Set(),
-        workMode: new Set(),
-        role: new Set(),
-        experience: new Set(),
-    })
+    const toggleSaveJob = (job) => {
+        const id = job.id || job.job_id
+        const isSaved = savedMap[id] || (savedJobs || []).some(s => (s.id || s.job_id) === id)
+        if (isSaved) {
+            unbookmarkJob(id)
+            setSavedMap(prev => ({ ...prev, [id]: false }))
+        } else {
+            bookmarkJob(job)
+            setSavedMap(prev => ({ ...prev, [id]: true }))
+        }
+    }
 
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <DesignStyles />
-            <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
+    // ─────────────────────────────────────────────────────────────────────────
+    // DESKTOP LAYOUT (Desktop v2 · Screen D04)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (!isMobile) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+                <DesignStyles />
+                <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
 
-            {/* Top Bar */}
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
+                {/* Desktop Header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, paddingBottom: 22, borderBottom: `1.5px solid ${KC.ink}` }}>
+                    <div>
+                        <h1 style={{ font: '900 30px/1.1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-1.2px', color: KC.ink, margin: 0 }}>
+                            Hasil Pencocokan AI
+                        </h1>
+                        <p style={{ font: '400 13.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#64748B', margin: '8px 0 0' }}>
+                            {baseList.length} lowongan dari kolam aktif · dikelompokkan berdasarkan sinyal kompetensi riil, bukan kata kunci
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 11, flexShrink: 0, alignItems: 'center' }}>
+                        <span style={{ font: '700 12px/1 "JetBrains Mono", monospace', color: '#94A3B8' }}>
+                            {lastUpdatedText}
+                        </span>
+                        <button
+                            onClick={handleRefresh}
+                            disabled={refreshing || agentLoading}
+                            className="kc-btn"
+                            style={{ ...topBtn('#fff', KC.ink), padding: '11px 17px', fontSize: 12.5 }}
+                        >
+                            <span style={{ display: 'inline-block', transform: refreshing ? 'rotate(180deg)' : 'none', transition: 'transform .5s ease' }}>↻</span>
+                            {refreshing ? 'Memuat…' : 'Segarkan Kurasi'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Expandable Confidence Bands Guide */}
                 <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
-                        Pencocokan Lowongan AI
-                    </h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        {agentLoading ? 'Menganalisis puluhan ribu data lowongan…' : `Menampilkan Top-${list.length} hasil kecocokan berbasis kapabilitas riil`}
-                    </p>
-                </div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <button className="kc-btn" onClick={() => setShowFilters(v => !v)} style={topBtn('#fff')}>
-                        <SlidersHorizontal size={14} /> Filter Kriteria {activeCount > 0 && `(${activeCount})`}
-                    </button>
-                    <button
-                        className="kc-btn"
-                        disabled={agentLoading}
-                        onClick={() => runAgent({ explicitIntent: 'match_jobs' })}
-                        style={{ ...topBtn(KC.orange, '#fff'), opacity: agentLoading ? 0.6 : 1 }}
+                    <div
+                        onClick={() => setBandsExpanded(!bandsExpanded)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '15px 19px',
+                            background: '#fff',
+                            border: `1.5px solid ${KC.ink}`,
+                            borderRadius: 12,
+                            boxShadow: `3px 3px 0 ${KC.ink}`,
+                            cursor: 'pointer',
+                        }}
                     >
-                        <RefreshCw size={14} className={agentLoading ? 'animate-spin' : ''} />
-                        {agentLoading ? 'Mengevaluasi…' : 'Hitung Ulang Match'}
-                    </button>
-                </div>
-            </header>
-
-            {/* Filter Section */}
-            {showFilters && (
-                <BrutalCard color="#FFFFFF" padding={18}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Filter size={14} color={KC.ink} />
-                            <span style={{ fontSize: 13, fontWeight: 800, color: KC.ink }}>Penyaringan Multi-Dimensi</span>
-                        </div>
-                        {activeCount > 0 && (
-                            <button onClick={resetAll} style={{ background: 'none', border: 'none', color: KC.orange, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                                Reset Filter ({activeCount})
-                            </button>
-                        )}
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 10, font: '900 14px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
+                            <span style={{ width: 9, height: 9, background: KC.orange, borderRadius: '50%' }} />
+                            Panduan Evaluasi Kecocokan (Confidence Bands)
+                        </span>
+                        <span style={{ font: '900 21px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
+                            {bandsExpanded ? '−' : '+'}
+                        </span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                        {Object.entries(FACETS).map(([key, facet]) => (
-                            <div key={key}>
-                                <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 6 }}>
-                                    {facet.label}
-                                </span>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                    {facet.options.map(opt => {
-                                        const active = facets[key].has(opt)
-                                        return (
-                                            <button
-                                                key={opt}
-                                                onClick={() => toggleFacet(key, opt)}
-                                                style={{
-                                                    padding: '4px 9px',
-                                                    fontSize: 11,
-                                                    fontWeight: 700,
-                                                    borderRadius: 6,
-                                                    border: `1px solid ${active ? KC.ink : KC.borderMuted}`,
-                                                    background: active ? KC.ink : KC.surface,
-                                                    color: active ? '#fff' : KC.inkLight,
-                                                    cursor: 'pointer',
-                                                    fontFamily: 'inherit',
-                                                    transition: 'all 0.12s ease',
-                                                }}
-                                            >
-                                                {opt}
-                                            </button>
-                                        )
-                                    })}
+
+                    {bandsExpanded && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, marginTop: 14, animation: 'kcSlideUp .3s both' }}>
+                            <div style={{ padding: '16px 18px', background: '#ECFDF5', border: '1px solid #059669', borderRadius: 9 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#10B981' }} />
+                                    <span style={{ font: '900 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>Strong Fit</span>
                                 </div>
+                                <span style={{ font: '400 12.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#1E293B' }}>
+                                    Keahlian dan pengalaman Anda sangat selaras dengan kebutuhan lowongan ini.
+                                </span>
                             </div>
-                        ))}
-                    </div>
-                </BrutalCard>
-            )}
-
-            {/* Band Legend */}
-            <BandLegend side="seeker" />
-
-            {/* Match Cards Grouped by Band */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {BAND_ORDER.map(bandKey => {
-                    const bandInfo = BAND_META[bandKey]
-                    const items = list.filter(m => bandOf(m) === bandKey)
-                    if (!items.length) return null
-
-                    return (
-                        <div key={bandKey} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ width: 10, height: 10, borderRadius: '50%', background: bandInfo.color }} />
-                                <h2 style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.3, margin: 0, color: KC.ink }}>
-                                    {bandInfo.label} ({items.length})
-                                </h2>
-                                <span style={{ fontSize: 12, color: KC.mute }}>— {bandInfo.seeker}</span>
+                            <div style={{ padding: '16px 18px', background: '#FEF3C7', border: '1px solid #D97706', borderRadius: 9 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#F59E0B' }} />
+                                    <span style={{ font: '900 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>Possible Fit</span>
+                                </div>
+                                <span style={{ font: '400 12.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#1E293B' }}>
+                                    Kompetensi inti Anda relevan dengan potensi peningkatan pada beberapa keahlian pelengkap.
+                                </span>
                             </div>
+                            <div style={{ padding: '16px 18px', background: '#E0F2FE', border: '1px solid #0284C7', borderRadius: 9 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#0284C7' }} />
+                                    <span style={{ font: '900 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>Stretch Fit</span>
+                                </div>
+                                <span style={{ font: '400 12.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#1E293B' }}>
+                                    Posisi yang menantang untuk pengembangan karir dan peningkatan kapabilitas baru.
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-                            <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                {items.map((m, idx) => {
-                                    const raw = m.overall_score ?? m.score ?? 0.85
-                                    const pct = Math.round(raw > 1 ? raw : raw * 100)
-                                    const saved = isJobSaved(m.job_id || m.id)
-                                    const matchingSkills = m.matching_skills || ['Go', 'PostgreSQL', 'Docker']
-                                    const missingSkills = m.missing_skills || []
+                {/* Section 1: Strong Fit */}
+                {strongMatches.length > 0 && (
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
+                            <span style={{ width: 10, height: 10, background: '#10B981', borderRadius: '50%' }} />
+                            <span style={{ font: '900 17px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink }}>
+                                Strong Fit (Kecocokan Kuat)
+                            </span>
+                            <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                                {strongMatches.length} lowongan
+                            </span>
+                            <span style={{ flex: 1, height: 1.5, background: '#E2E8F0' }} />
+                        </div>
 
-                                    return (
-                                        <BrutalCard key={m.job_id || idx} color="#FFFFFF" padding={18}>
-                                            <div className="kc-card-split">
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                                                        <span style={{ fontSize: 13, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 5 }}>
-                                                            <Building2 size={14} /> {m.company || 'GoTo Group'}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            {strongMatches.map((job, idx) => {
+                                const jobScore = job.overall_score ?? job.score ?? 94
+                                const sem = job.semantic_score || 96
+                                const sk = job.skill_score || 100
+                                const loc = job.location_score || 90
+                                const sal = job.salary_score || 95
+                                const sen = job.seniority_score || 95
+                                const isSaved = savedMap[job.id] || (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
+
+                                return (
+                                    <div
+                                        key={job.id || idx}
+                                        style={{
+                                            background: '#fff',
+                                            border: `1.5px solid ${KC.ink}`,
+                                            borderRadius: 13,
+                                            boxShadow: `3px 3px 0 ${KC.ink}`,
+                                            padding: '22px 24px',
+                                            animation: 'kcUp .4s both',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 26 }}>
+                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9, flexWrap: 'wrap' }}>
+                                                    <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
+                                                        {job.company || job.company_name}
+                                                    </span>
+                                                    <span style={{ padding: '3px 9px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
+                                                        Strong Fit
+                                                    </span>
+                                                    {job.verified_djp && (
+                                                        <span style={{ padding: '3px 9px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#475569' }}>
+                                                            ✓ Terverifikasi DJP
                                                         </span>
-                                                        <Tag color={bandInfo.bg} ink={bandInfo.color} border={bandInfo.border} size="sm">
-                                                            {bandInfo.badgeLabel}
-                                                        </Tag>
-                                                        {m.verified && (
-                                                            <Tag color={KC.limeSoft} ink={KC.lime} border={KC.lime} size="sm">
-                                                                Terverifikasi DJP
-                                                            </Tag>
-                                                        )}
-                                                    </div>
-
-                                                    <h3 style={{ fontSize: 18, fontWeight: 900, margin: '0 0 8px', color: KC.ink, letterSpacing: -0.4, wordBreak: 'break-word' }}>
-                                                        {m.title || m.job_title || 'Senior Backend Engineer'}
-                                                    </h3>
-
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: KC.mute, marginBottom: 12, flexWrap: 'wrap' }}>
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                            <MapPin size={14} /> {m.location || 'Jakarta · Hybrid'}
-                                                        </span>
-                                                        <span>·</span>
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                            <DollarSign size={14} /> {m.salary_range || 'Rp 28.000.000 - Rp 42.000.000'}
-                                                        </span>
-                                                    </div>
-
-                                                    {/* Skills Pills */}
-                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                                                        <span style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', marginRight: 4 }}>
-                                                            Keahlian Sesuai:
-                                                        </span>
-                                                        {matchingSkills.map((s, sIdx) => (
-                                                            <span key={sIdx} style={{ padding: '3px 8px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#047857' }}>
-                                                                ✓ {typeof s === 'string' ? s : s.name}
-                                                            </span>
-                                                        ))}
-                                                        {missingSkills.slice(0, 2).map((s, sIdx) => (
-                                                            <span key={sIdx} style={{ padding: '3px 8px', background: KC.yellowSoft, border: `1px solid ${KC.yellow}`, borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#B45309' }}>
-                                                                + {typeof s === 'string' ? s : s.name}
-                                                            </span>
-                                                        ))}
-                                                    </div>
+                                                    )}
                                                 </div>
 
-                                                {/* Score Donut & Action */}
-                                                <div className="kc-card-actions">
-                                                    <ScoreDonut value={pct} size={52} color={bandInfo.color} />
-                                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                                        <button
-                                                            onClick={() => toggleSaveJob(m)}
-                                                            className="kc-btn"
-                                                            style={{ ...topBtn('#fff', saved ? KC.orange : KC.ink), padding: '8px 12px' }}
-                                                            title={saved ? 'Tersimpan' : 'Simpan lowongan'}
-                                                        >
-                                                            {saved ? <BookmarkCheck size={15} color={KC.orange} /> : <Bookmark size={15} />}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setSelectedJob(m)}
-                                                            className="kc-btn"
-                                                            style={{ ...topBtn(KC.ink, '#fff'), padding: '8px 16px', fontSize: 13 }}
-                                                        >
-                                                            Detail & Lamar <ArrowRight size={14} />
-                                                        </button>
+                                                <div style={{ font: '900 23px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.9px', color: KC.ink, marginBottom: 9 }}>
+                                                    {job.title}
+                                                </div>
+                                                <div style={{ font: '600 13px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginBottom: 16 }}>
+                                                    {job.location} · {job.work_type} &nbsp;·&nbsp; {job.salary_range || 'Rp 28 jt – Rp 42 jt'}
+                                                </div>
+
+                                                {/* AI Analysis */}
+                                                <div style={{ padding: '14px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, font: '600 13px/1.6 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 16 }}>
+                                                    <b style={{ color: KC.orange }}>Analisis AI:</b> {job.ai_summary || 'Penguasaan keahlian selaras dengan kriteria posisi rekrutmen.'}
+                                                </div>
+
+                                                {/* 5-Component Breakdown Micro-Bars (Desktop Proof) */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
+                                                    <div>
+                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Semantik</div>
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
+                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange }}>{sem}</span>
+                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.50</span>
+                                                        </div>
+                                                        <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${sem}%`, background: KC.orange, borderRadius: 999 }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Skill</div>
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
+                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#0284C7' }}>{sk}</span>
+                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.30</span>
+                                                        </div>
+                                                        <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${sk}%`, background: '#0284C7', borderRadius: 999 }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Lokasi</div>
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
+                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#10B981' }}>{loc}</span>
+                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.10</span>
+                                                        </div>
+                                                        <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${loc}%`, background: '#10B981', borderRadius: 999 }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Gaji</div>
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
+                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#F59E0B' }}>{sal}</span>
+                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.05</span>
+                                                        </div>
+                                                        <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${sal}%`, background: '#F59E0B', borderRadius: 999 }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Senioritas</div>
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
+                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#6366F1' }}>{sen}</span>
+                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.05</span>
+                                                        </div>
+                                                        <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${sen}%`, background: '#6366F1', borderRadius: 999 }} />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </BrutalCard>
-                                    )
-                                })}
+
+                                            {/* Score Ring Donut & Action Buttons */}
+                                            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, width: 150 }}>
+                                                <svg width="104" height="104" viewBox="0 0 104 104" style={{ transform: 'rotate(-90deg)' }}>
+                                                    <circle cx="52" cy="52" r="43" fill="none" stroke="#E2E8F0" strokeWidth="7" />
+                                                    <circle
+                                                        cx="52" cy="52" r="43" fill="none" stroke="#10B981" strokeWidth="7"
+                                                        strokeLinecap="round" strokeDasharray="270.2"
+                                                        strokeDashoffset={270.2 - (270.2 * (jobScore / 100))}
+                                                    />
+                                                    <text x="52" y="52" textAnchor="middle" dominantBaseline="central" transform="rotate(90 52 52)" style={{ font: '900 29px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}>
+                                                        {jobScore}
+                                                    </text>
+                                                </svg>
+                                                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 9 }}>
+                                                    <button
+                                                        onClick={() => setSelectedJob(job)}
+                                                        className="kc-btn"
+                                                        style={{ ...topBtn(KC.orange, '#fff'), padding: 12, fontSize: 12.5, width: '100%', textAlign: 'center' }}
+                                                    >
+                                                        Lihat Detail &amp; Lamar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => toggleSaveJob(job)}
+                                                        className="kc-btn"
+                                                        style={{ ...topBtn(isSaved ? '#FFF1EB' : '#fff', isSaved ? '#9A3412' : KC.ink, isSaved ? KC.orange : KC.ink), padding: 11, fontSize: 12, width: '100%', textAlign: 'center' }}
+                                                    >
+                                                        {isSaved ? 'Tersimpan ✓' : 'Simpan Lowongan'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Section 2: Possible Fit */}
+                {possibleMatches.length > 0 && (
+                    <div style={{ marginTop: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
+                            <span style={{ width: 10, height: 10, background: '#F59E0B', borderRadius: '50%' }} />
+                            <span style={{ font: '900 17px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink }}>
+                                Possible Fit (Potensial)
+                            </span>
+                            <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                                {possibleMatches.length} lowongan
+                            </span>
+                            <span style={{ flex: 1, height: 1.5, background: '#E2E8F0' }} />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            {possibleMatches.map((job, idx) => {
+                                const jobScore = job.overall_score ?? job.score ?? 78
+                                const isSaved = savedMap[job.id] || (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
+
+                                return (
+                                    <div
+                                        key={job.id || idx}
+                                        style={{
+                                            background: '#fff',
+                                            border: `1.5px solid ${KC.ink}`,
+                                            borderRadius: 13,
+                                            boxShadow: `3px 3px 0 ${KC.ink}`,
+                                            padding: '22px 24px',
+                                            animation: 'kcUp .4s both',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 26 }}>
+                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9 }}>
+                                                    <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
+                                                        {job.company || job.company_name}
+                                                    </span>
+                                                    <span style={{ padding: '3px 9px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
+                                                        Possible Fit
+                                                    </span>
+                                                </div>
+                                                <div style={{ font: '900 23px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.9px', color: KC.ink, marginBottom: 9 }}>
+                                                    {job.title}
+                                                </div>
+                                                <div style={{ font: '600 13px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginBottom: 16 }}>
+                                                    {job.location} · {job.work_type} &nbsp;·&nbsp; {job.salary_range || 'Rp 25 jt – Rp 38 jt'}
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 16 }}>
+                                                    {(job.matching_skills || ['Docker', 'Go']).map(s => (
+                                                        <span key={s} style={{ padding: '6px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 7, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
+                                                            ✓ {s}
+                                                        </span>
+                                                    ))}
+                                                    {(job.missing_skills || ['Kubernetes', 'CI/CD Pipeline']).map(s => (
+                                                        <span key={s} style={{ padding: '6px 12px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 7, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
+                                                            + {s}
+                                                        </span>
+                                                    ))}
+                                                </div>
+
+                                                <div
+                                                    onClick={() => navigate('seeker-skill-gap')}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 12,
+                                                        padding: '13px 17px',
+                                                        background: '#FFF1EB',
+                                                        border: `1.5px solid ${KC.orange}`,
+                                                        borderRadius: 10,
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    <span style={{ font: '700 12.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#9A3412' }}>
+                                                        Tutup {job.missing_skills?.length || 2} gap wajib → kecocokan naik ke <b>89%</b>
+                                                    </span>
+                                                    <span style={{ font: '800 12.5px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange }}>
+                                                        Lihat rencana belajar →
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, width: 150 }}>
+                                                <svg width="104" height="104" viewBox="0 0 104 104" style={{ transform: 'rotate(-90deg)' }}>
+                                                    <circle cx="52" cy="52" r="43" fill="none" stroke="#E2E8F0" strokeWidth="7" />
+                                                    <circle
+                                                        cx="52" cy="52" r="43" fill="none" stroke="#F59E0B" strokeWidth="7"
+                                                        strokeLinecap="round" strokeDasharray="270.2"
+                                                        strokeDashoffset={270.2 - (270.2 * (jobScore / 100))}
+                                                    />
+                                                    <text x="52" y="52" textAnchor="middle" dominantBaseline="central" transform="rotate(90 52 52)" style={{ font: '900 29px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}>
+                                                        {jobScore}
+                                                    </text>
+                                                </svg>
+                                                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 9 }}>
+                                                    <button
+                                                        onClick={() => setSelectedJob(job)}
+                                                        className="kc-btn"
+                                                        style={{ ...topBtn(KC.ink, '#fff', KC.orange), padding: 12, fontSize: 12.5, width: '100%', textAlign: 'center' }}
+                                                    >
+                                                        Lihat Detail
+                                                    </button>
+                                                    <button
+                                                        onClick={() => toggleSaveJob(job)}
+                                                        className="kc-btn"
+                                                        style={{ ...topBtn(isSaved ? '#FFF1EB' : '#fff', isSaved ? '#9A3412' : KC.ink, isSaved ? KC.orange : KC.ink), padding: 11, fontSize: 12, width: '100%', textAlign: 'center' }}
+                                                    >
+                                                        {isSaved ? 'Tersimpan ✓' : 'Simpan Lowongan'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MOBILE LAYOUT (Mobile Spec · Frame 05)
+    // ─────────────────────────────────────────────────────────────────────────
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <DesignStyles />
+            <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
+
+            {/* Header */}
+            <div style={{ paddingBottom: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                    <div>
+                        <h1 style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.9, color: KC.ink, margin: 0, lineHeight: 1.1 }}>
+                            Pencocokan AI
+                        </h1>
+                        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700, color: '#94A3B8', marginTop: 4 }}>
+                            {lastUpdatedText} · {baseList.length} lowongan
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleRefresh}
+                        disabled={refreshing || agentLoading}
+                        style={{
+                            padding: '9px 12px', background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                            borderRadius: 9, boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                            fontSize: 11.5, fontWeight: 800, color: KC.ink, cursor: 'pointer',
+                            minHeight: 38, display: 'flex', alignItems: 'center', gap: 6,
+                            fontFamily: 'inherit', flexShrink: 0,
+                        }}
+                    >
+                        <span style={{ display: 'inline-block', transform: refreshing ? 'rotate(180deg)' : 'none', transition: 'transform .5s ease' }}>↻</span>
+                        {refreshing ? 'Memuat…' : 'Refresh'}
+                    </button>
+                </div>
+
+                {/* Horizontal Filter Pill Carousel */}
+                <div style={{ display: 'flex', gap: 6, marginTop: 13, overflowX: 'auto', paddingBottom: 4, WebkitOverflowScrolling: 'touch' }}>
+                    <button
+                        onClick={() => setActiveFilter('all')}
+                        style={{
+                            padding: '7px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 800,
+                            whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit',
+                            background: activeFilter === 'all' ? KC.ink : '#FFFFFF',
+                            color: activeFilter === 'all' ? '#FFFFFF' : KC.ink,
+                            border: `1.5px solid ${KC.ink}`,
+                        }}
+                    >
+                        Semua {baseList.length}
+                    </button>
+                    <button
+                        onClick={() => setActiveFilter('strong')}
+                        style={{
+                            padding: '7px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 800,
+                            whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit',
+                            background: activeFilter === 'strong' ? '#ECFDF5' : '#FFFFFF',
+                            color: '#065F46',
+                            border: '1.5px solid #10B981',
+                        }}
+                    >
+                        ● Strong {strongMatches.length}
+                    </button>
+                    <button
+                        onClick={() => setActiveFilter('possible')}
+                        style={{
+                            padding: '7px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 800,
+                            whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit',
+                            background: activeFilter === 'possible' ? '#FEF3C7' : '#FFFFFF',
+                            color: '#B45309',
+                            border: '1.5px solid #F59E0B',
+                        }}
+                    >
+                        ● Possible {possibleMatches.length}
+                    </button>
+                    {stretchMatches.length > 0 && (
+                        <button
+                            onClick={() => setActiveFilter('stretch')}
+                            style={{
+                                padding: '7px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 800,
+                                whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit',
+                                background: activeFilter === 'stretch' ? '#E0F2FE' : '#FFFFFF',
+                                color: '#075985',
+                                border: '1.5px solid #0284C7',
+                            }}
+                        >
+                            ● Stretch {stretchMatches.length}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Fresh Notification */}
+            {showFreshNotice && (
+                <div style={{
+                    background: '#090A0F', border: `1.5px solid ${KC.ink}`,
+                    borderRadius: 12, boxShadow: `3px 3px 0 ${KC.orange}`,
+                    padding: '13px 15px', animation: 'kcSlideUp .35s both',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ width: 7, height: 7, background: KC.orange, borderRadius: '50%', animation: 'kcPulse 1.4s infinite' }} />
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 800, letterSpacing: 0.7, textTransform: 'uppercase', color: 'rgba(255,255,255,.5)' }}>
+                            Kurasi Terbaru
+                        </span>
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 900, color: '#fff' }}>
+                        {baseList[0]?.company || 'GoTo Group'} · {baseList[0]?.title || 'Senior Backend Engineer'} — {baseList[0]?.score || 94}% Strong Fit
+                    </div>
+                </div>
+            )}
+
+            {/* Mobile Feed Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {filteredList.map((job, idx) => {
+                    const jobScore = job.overall_score ?? job.score ?? 88
+                    const band = bandOf(job)
+                    const isStrong = band === 'strong'
+
+                    return (
+                        <div
+                            key={job.id || idx}
+                            onClick={() => setSelectedJob(job)}
+                            style={{
+                                background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`,
+                                padding: 15, cursor: 'pointer', animation: 'kcUp .4s both',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                                <div style={{ minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6, flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B' }}>
+                                            {job.company || job.company_name}
+                                        </span>
+                                        <span style={{
+                                            padding: '3px 7px', borderRadius: 999, fontSize: 9.5, fontWeight: 800,
+                                            background: isStrong ? '#ECFDF5' : '#FEF3C7',
+                                            border: `1px solid ${isStrong ? '#10B981' : '#F59E0B'}`,
+                                            color: isStrong ? '#065F46' : '#B45309',
+                                        }}>
+                                            {isStrong ? 'Strong Fit' : 'Possible Fit'}
+                                        </span>
+                                        {job.verified_djp && (
+                                            <span style={{ padding: '3px 7px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 999, fontSize: 9.5, fontWeight: 800, color: '#475569' }}>
+                                                ✓ DJP
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.6, color: KC.ink, marginBottom: 6, lineHeight: 1.2 }}>
+                                        {job.title}
+                                    </div>
+                                    <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>
+                                        {job.location} · {job.work_type} · {job.salary_range || 'Rp 28–42 jt'}
+                                    </div>
+                                </div>
+                                <svg width="58" height="58" viewBox="0 0 58 58" style={{ flexShrink: 0, transform: 'rotate(-90deg)' }}>
+                                    <circle cx="29" cy="29" r="23" fill="none" stroke="#E2E8F0" strokeWidth="4.5" />
+                                    <circle
+                                        cx="29" cy="29" r="23" fill="none"
+                                        stroke={isStrong ? '#10B981' : '#F59E0B'} strokeWidth="4.5"
+                                        strokeLinecap="round" strokeDasharray="144.5"
+                                        strokeDashoffset={144.5 - (144.5 * (jobScore / 100))}
+                                    />
+                                    <text x="29" y="29" textAnchor="middle" dominantBaseline="central" transform="rotate(90 29 29)" style={{ font: '900 16px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}>
+                                        {jobScore}
+                                    </text>
+                                </svg>
+                            </div>
+
+                            {/* AI Summary Quote */}
+                            {job.ai_summary && (
+                                <div style={{ marginTop: 12, padding: '10px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 9, fontSize: 11.5, lineHeight: 1.5, color: '#334155', fontWeight: 600 }}>
+                                    <b style={{ color: KC.orange }}>Analisis AI:</b> {job.ai_summary}
+                                </div>
+                            )}
+
+                            {/* Skills Tags */}
+                            <div style={{ display: 'flex', gap: 6, marginTop: 11, flexWrap: 'wrap' }}>
+                                {(job.matching_skills || ['Go', 'PostgreSQL']).map(s => (
+                                    <span key={s} style={{ padding: '4px 9px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 7, fontSize: 10.5, fontWeight: 800, color: '#065F46' }}>
+                                        ✓ {s}
+                                    </span>
+                                ))}
+                                {(job.missing_skills || []).map(s => (
+                                    <span key={s} style={{ padding: '4px 9px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 7, fontSize: 10.5, fontWeight: 800, color: '#B45309' }}>
+                                        + {s}
+                                    </span>
+                                ))}
                             </div>
                         </div>
                     )
@@ -279,11 +687,3 @@ export default function SeekerMatchResults() {
         </div>
     )
 }
-
-const DEMO_MATCHES = [
-    { job_id: 'j1', company: 'GoTo Group', title: 'Senior Backend Engineer', location: 'Jakarta · Hybrid', salary_range: 'Rp 28jt - Rp 42jt', score: 0.94, band: 'strong', verified: true, matching_skills: ['Go', 'PostgreSQL', 'gRPC', 'Kubernetes'], missing_skills: [] },
-    { job_id: 'j2', company: 'Traveloka', title: 'Full-Stack Developer', location: 'Jakarta · Remote', salary_range: 'Rp 22jt - Rp 35jt', score: 0.88, band: 'strong', verified: true, matching_skills: ['React', 'Node.js', 'PostgreSQL'], missing_skills: ['TypeScript'] },
-    { job_id: 'j3', company: 'Bank Mandiri Digital', title: 'DevOps Platform Engineer', location: 'Jakarta · Onsite', salary_range: 'Rp 25jt - Rp 38jt', score: 0.78, band: 'possible', verified: true, matching_skills: ['Kubernetes', 'CI/CD'], missing_skills: ['Terraform'] },
-    { job_id: 'j4', company: 'Bukalapak', title: 'Data Platform Engineer', location: 'Jakarta · Hybrid', salary_range: 'Rp 24jt - Rp 36jt', score: 0.74, band: 'possible', verified: false, matching_skills: ['Python', 'SQL'], missing_skills: ['Spark'] },
-    { job_id: 'j5', company: 'Tiket.com', title: 'Lead Site Reliability Engineer', location: 'Jakarta · Hybrid', salary_range: 'Rp 35jt - Rp 50jt', score: 0.62, band: 'stretch', verified: true, matching_skills: ['Linux', 'Networking'], missing_skills: ['Golang', 'Prometheus'] },
-]

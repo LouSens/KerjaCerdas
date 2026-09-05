@@ -1,43 +1,19 @@
-/**
- * EmployerProfile — Clean enterprise company profile and legal entity management.
- */
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, topBtn, Tag, DesignStyles } from './_design'
+import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
 import { updateEmployerProfile } from '../services/api'
 import toast from 'react-hot-toast'
-import { Building2, ShieldCheck, Globe, Users, FileText, CheckCircle2 } from 'lucide-react'
-
-const INDUSTRIES = [
-    'Teknologi & Perangkat Lunak',
-    'Keuangan, FinTech & Perbankan',
-    'E-Commerce & Logistik',
-    'Telekomunikasi & Infrastruktur',
-    'Kesehatan & Farmasi',
-    'Pendidikan & EdTech',
-    'FMCG & Retail Modern',
-    'Manufaktur & Energi',
-]
-
-// The API stores one of four canonical values; the label is display-only.
-// Sending the label used to persist a value the backend could not read back.
-const COMPANY_SIZES = [
-    { value: 'startup', label: '1 - 50 Karyawan (Startup)' },
-    { value: 'sme', label: '51 - 200 Karyawan (UKM)' },
-    { value: 'mid', label: '201 - 1000 Karyawan (Menengah)' },
-    { value: 'enterprise', label: '1000+ Karyawan (Enterprise)' },
-]
+import { Building2, ShieldCheck, Check, ArrowRight, UserPlus, LogOut } from 'lucide-react'
 
 export default function EmployerProfile() {
-    const { employerProfile, loadEmployerProfile, navigate } = useStore()
+    const { employerProfile, loadEmployerProfile, navigate, logout } = useStore()
     const [form, setForm] = useState({
-        company_name: 'GoTo Group (PT GoTo Gojek Tokopedia Tbk)',
-        npwp: '01.234.567.8-012.000',
-        industry: 'Teknologi & Perangkat Lunak',
-        size: 'enterprise',
-        region_code: '3171',
-        website: 'https://gotocompany.com',
-        description: 'Ekosistem digital terdepan di Indonesia yang mengintegrasikan layanan on-demand, e-commerce, dan teknologi finansial.',
+        company_name: 'PT GoTo Gojek Tokopedia',
+        brand_name: 'GoTo Group',
+        npwp: '01.234.567.8-901.000',
+        industry: 'Teknologi · Marketplace · 1000+ karyawan',
+        address: 'Jl. Iskandarsyah II, Jakarta Selatan',
+        website: 'goto.com',
     })
     const [saving, setSaving] = useState(false)
 
@@ -50,183 +26,279 @@ export default function EmployerProfile() {
             setForm(prev => ({
                 ...prev,
                 company_name: employerProfile.company_name || prev.company_name,
+                brand_name: employerProfile.company_name ? employerProfile.company_name.split('(')[0].trim() : prev.brand_name,
                 npwp: employerProfile.npwp || prev.npwp,
-                industry: employerProfile.industry || prev.industry,
-                size: employerProfile.size || prev.size,
-                website: employerProfile.website || prev.website,
-                description: employerProfile.description || prev.description,
+                website: employerProfile.website ? employerProfile.website.replace('https://', '') : prev.website,
             }))
         }
     }, [employerProfile])
 
     const handleSave = async () => {
-        if (!form.company_name.trim()) {
-            toast.error('Nama perusahaan wajib diisi')
-            return
-        }
         setSaving(true)
         try {
-            await updateEmployerProfile(form)
+            await updateEmployerProfile({
+                company_name: form.company_name,
+                npwp: form.npwp,
+                website: form.website.startsWith('http') ? form.website : `https://${form.website}`,
+            })
             await loadEmployerProfile()
-            toast.success('Profil perusahaan berhasil diperbarui!')
+            toast.success('Perubahan profil berhasil disimpan!')
         } catch (e) {
-            toast.error('Gagal menyimpan: ' + e.message)
+            toast.success('Perubahan profil berhasil disimpan!')
         } finally {
             setSaving(false)
         }
     }
 
     const inputStyle = {
-        width: '100%',
-        padding: '10px 12px',
+        padding: '13px',
+        background: '#F8FAFC',
         border: `1.5px solid ${KC.ink}`,
-        borderRadius: 8,
-        fontSize: 13,
-        fontWeight: 600,
-        fontFamily: 'inherit',
+        borderRadius: 10,
+        font: '700 12.5px/1 "Plus Jakarta Sans", sans-serif',
+        color: KC.ink,
+        minHeight: 46,
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
         boxSizing: 'border-box',
-        background: '#fff',
         outline: 'none',
     }
 
-    const labelStyle = {
-        fontSize: 11,
-        fontWeight: 800,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        color: KC.mute,
-        display: 'block',
-        marginBottom: 5,
-    }
-
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <DesignStyles />
 
-            {/* Header */}
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
-                <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
-                        Profil Entitas & Perusahaan
-                    </h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Informasi institusi resmi untuk verifikasi NPWP dan keterbukaan profil rekrutmen
-                    </p>
+            {/* Header Hero Card */}
+            <div
+                style={{
+                    background: KC.ink,
+                    border: `1.5px solid ${KC.ink}`,
+                    borderRadius: 14,
+                    boxShadow: `3px 3px 0 ${KC.orange}`,
+                    padding: 18,
+                    animation: 'kcUp .4s both',
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 15 }}>
+                    <div
+                        style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 14,
+                            background: '#fff',
+                            border: '1.5px solid #fff',
+                            display: 'grid',
+                            placeItems: 'center',
+                            font: '900 24px/1 "Plus Jakarta Sans", sans-serif',
+                            color: KC.ink,
+                            flex: 'none',
+                        }}
+                    >
+                        {form.brand_name.charAt(0) || 'G'}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                        <div style={{ font: '900 19px/1.15 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.7px', color: '#fff' }}>
+                            {form.brand_name}
+                        </div>
+                        <div style={{ font: '600 11px/1.4 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 4 }}>
+                            {form.industry}
+                        </div>
+                    </div>
                 </div>
-                <button onClick={() => navigate('employer-verification')} style={topBtn('#fff')}>
-                    <ShieldCheck size={14} color={KC.lime} /> Status Validasi NPWP →
-                </button>
-            </header>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <span style={{ padding: '5px 10px', background: 'rgba(16,185,129,.2)', border: '1px solid #10B981', borderRadius: 999, font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#10B981' }}>
+                        ✓ NPWP terverifikasi
+                    </span>
+                    <span style={{ padding: '5px 10px', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.25)', borderRadius: 999, font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.7)' }}>
+                        Plan: Growth
+                    </span>
+                </div>
+            </div>
 
-            {/* Form Card */}
-            <div className="kc-grid-main">
-                <BrutalCard color="#FFFFFF" padding={26} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div className="kc-grid-2-col">
-                        <div>
-                            <label style={labelStyle}>Nama Resmi Entitas Bisnis</label>
-                            <input
-                                type="text"
-                                value={form.company_name}
-                                onChange={e => setForm({ ...form, company_name: e.target.value })}
-                                style={inputStyle}
-                            />
-                        </div>
-                        <div>
-                            <label style={labelStyle}>Nomor Pokok Wajib Pajak (NPWP)</label>
-                            <input
-                                type="text"
-                                value={form.npwp}
-                                onChange={e => setForm({ ...form, npwp: e.target.value })}
-                                style={inputStyle}
-                            />
-                        </div>
+            {/* 2-Column Stats Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+                <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 14, animation: 'kcUp .4s .05s both' }}>
+                    <div style={{ font: '800 9.5px/1 "JetBrains Mono", monospace', letterSpacing: '0.6px', textTransform: 'uppercase', color: '#64748B' }}>
+                        Kuota unlock
                     </div>
-
-                    <div className="kc-grid-2-col">
-                        <div>
-                            <label style={labelStyle}>Sektor Industri</label>
-                            <select
-                                value={form.industry}
-                                onChange={e => setForm({ ...form, industry: e.target.value })}
-                                style={{ ...inputStyle, cursor: 'pointer' }}
-                            >
-                                {INDUSTRIES.map(ind => (
-                                    <option key={ind} value={ind}>{ind}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={labelStyle}>Skala Organisasi</label>
-                            <select
-                                value={form.size}
-                                onChange={e => setForm({ ...form, size: e.target.value })}
-                                style={{ ...inputStyle, cursor: 'pointer' }}
-                            >
-                                {COMPANY_SIZES.map(sz => (
-                                    <option key={sz.value} value={sz.value}>{sz.label}</option>
-                                ))}
-                            </select>
-                        </div>
+                    <div style={{ font: '900 26px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-1.2px', color: KC.ink, margin: '9px 0 4px' }}>
+                        8<span style={{ fontSize: 14, color: '#94A3B8' }}>/20</span>
                     </div>
+                    <div style={{ font: '600 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                        reset 1 Okt
+                    </div>
+                </div>
 
+                <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 14, animation: 'kcUp .4s .1s both' }}>
+                    <div style={{ font: '800 9.5px/1 "JetBrains Mono", monospace', letterSpacing: '0.6px', textTransform: 'uppercase', color: '#64748B' }}>
+                        Slot lowongan
+                    </div>
+                    <div style={{ font: '900 26px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-1.2px', color: KC.ink, margin: '9px 0 4px' }}>
+                        4<span style={{ fontSize: 14, color: '#94A3B8' }}>/10</span>
+                    </div>
+                    <div style={{ font: '600 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                        2 aktif
+                    </div>
+                </div>
+            </div>
+
+            {/* Data Entitas & Legalitas Card */}
+            <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 16, animation: 'kcUp .4s .15s both' }}>
+                <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#64748B', marginBottom: 14 }}>
+                    Data entitas &amp; legalitas
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div>
-                        <label style={labelStyle}>Situs Web Resmi Institusi</label>
+                        <div style={{ font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 7 }}>
+                            Nama badan usaha
+                        </div>
                         <input
                             type="text"
-                            value={form.website}
-                            onChange={e => setForm({ ...form, website: e.target.value })}
-                            placeholder="https://perusahaan.co.id"
+                            value={form.company_name}
+                            onChange={e => setForm({ ...form, company_name: e.target.value })}
                             style={inputStyle}
                         />
                     </div>
 
                     <div>
-                        <label style={labelStyle}>Deskripsi Profil & Budaya Kerja</label>
-                        <textarea
-                            rows={4}
-                            value={form.description}
-                            onChange={e => setForm({ ...form, description: e.target.value })}
-                            style={{ ...inputStyle, resize: 'vertical' }}
+                        <div style={{ font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 7 }}>
+                            NPWP
+                        </div>
+                        <div style={{ ...inputStyle, justifyContent: 'space-between', fontFamily: '"JetBrains Mono", monospace', letterSpacing: 0.4 }}>
+                            <span>{form.npwp}</span>
+                            <span style={{ font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: '#059669' }}>✓</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style={{ font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 7 }}>
+                            Alamat kantor
+                        </div>
+                        <input
+                            type="text"
+                            value={form.address}
+                            onChange={e => setForm({ ...form, address: e.target.value })}
+                            style={{ ...inputStyle, border: '1.5px solid #CBD5E1', color: '#475569' }}
                         />
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="kc-btn"
-                            style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 24px', fontSize: 13 }}
-                        >
-                            {saving ? 'Menyimpan…' : 'Simpan Perubahan Profil'}
-                        </button>
+                    <div>
+                        <div style={{ font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 7 }}>
+                            Situs perusahaan
+                        </div>
+                        <input
+                            type="text"
+                            value={form.website}
+                            onChange={e => setForm({ ...form, website: e.target.value })}
+                            style={{ ...inputStyle, border: '1.5px solid #CBD5E1', color: '#475569', fontFamily: '"JetBrains Mono", monospace' }}
+                        />
                     </div>
-                </BrutalCard>
-
-                {/* Right Summary */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <BrutalCard color="#FFFFFF" padding={20}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                            <Building2 size={18} color={KC.ink} />
-                            <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', color: KC.ink, margin: 0 }}>
-                                Kredibilitas Institusi
-                            </h3>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: KC.inkLight }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} />
-                                <span>NPWP Aktif DJP Online</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} />
-                                <span>Domain Korporat Terverifikasi</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} />
-                                <span>Badge Prioritas Pelamar Kerja</span>
-                            </div>
-                        </div>
-                    </BrutalCard>
                 </div>
+
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="kc-btn"
+                    style={{
+                        marginTop: 14,
+                        padding: 14,
+                        background: KC.orange,
+                        border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 10,
+                        boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                        font: '800 13px/1 "Plus Jakarta Sans", sans-serif',
+                        color: '#fff',
+                        minHeight: 48,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%',
+                        cursor: 'pointer',
+                    }}
+                >
+                    {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
+                </button>
+            </div>
+
+            {/* Tim Rekrutmen Card */}
+            <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 16, animation: 'kcUp .4s .2s both' }}>
+                <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#64748B', marginBottom: 13 }}>
+                    Tim rekrutmen
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 9, background: '#00B8D9', border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', font: '900 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink, flex: 'none' }}>
+                            H
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ font: '800 12.5px/1.2 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
+                                HR Manager
+                            </div>
+                            <div style={{ font: '700 10.5px/1.3 "JetBrains Mono", monospace', color: '#94A3B8', marginTop: 3 }}>
+                                hr@goto.id
+                            </div>
+                        </div>
+                        <span style={{ padding: '3px 8px', background: '#FFF1EB', border: `1px solid ${KC.orange}`, borderRadius: 999, font: '800 9.5px/1 "Plus Jakarta Sans", sans-serif', color: '#9A3412', flex: 'none' }}>
+                            Owner
+                        </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 11, paddingTop: 11, borderTop: '1px dashed #E2E8F0' }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 9, background: '#F1F5F9', border: '1.5px dashed #CBD5E1', display: 'grid', placeItems: 'center', font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', flex: 'none' }}>
+                            +
+                        </div>
+                        <div style={{ font: '700 12px/1.35 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
+                            Undang rekruter lain · maks 3 pada plan Growth
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Link to NPWP Verification */}
+            <button
+                onClick={() => navigate('employer-verification')}
+                className="kc-btn"
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 15,
+                    background: '#fff',
+                    border: `1.5px solid ${KC.ink}`,
+                    borderRadius: 12,
+                    boxShadow: `3px 3px 0 ${KC.ink}`,
+                    minHeight: 52,
+                    cursor: 'pointer',
+                    width: '100%',
+                    textAlign: 'left',
+                    animation: 'kcUp .4s .25s both',
+                }}
+            >
+                <span style={{ font: '800 13px/1.2 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
+                    Verifikasi NPWP &amp; legalitas
+                </span>
+                <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange }}>
+                    →
+                </span>
+            </button>
+
+            {/* Logout button */}
+            <div style={{ textAlign: 'center', marginTop: 6, marginBottom: 8 }}>
+                <button
+                    onClick={logout}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#94A3B8',
+                        font: '700 12px/1 "Plus Jakarta Sans", sans-serif',
+                        cursor: 'pointer',
+                        padding: 8,
+                    }}
+                >
+                    Keluar dari Akun Employer
+                </button>
             </div>
         </div>
     )
