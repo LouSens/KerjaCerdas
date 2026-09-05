@@ -23,7 +23,6 @@ audit:
 from typing import Sequence, Union
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -46,7 +45,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
+    """Downgrade schema.
+
+    Recreates the schema exactly as it stood at down_revision 9a1b2c3d4e5f:
+    plain `sa.JSON()` (not JSONB) for the four JSON-typed columns below —
+    migration 3ec45615212f converted them from JSONB to JSON — and no
+    server_default on created_at/updated_at, matching the original
+    5a748883f1d9 create_table calls, which none of the migrations between
+    that revision and this one's down_revision ever added.
+    """
     op.create_table(
         "ai_logs",
         sa.Column("id", sa.String(length=36), nullable=False),
@@ -62,8 +69,8 @@ def downgrade() -> None:
         sa.Column("error", sa.Text(), nullable=True),
         sa.Column("flagged", sa.Boolean(), nullable=False),
         sa.Column("rating", sa.String(length=20), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -72,9 +79,9 @@ def downgrade() -> None:
         sa.Column("user_id", sa.String(length=36), nullable=False),
         sa.Column("seeker_id", sa.String(length=36), nullable=True),
         sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column("messages", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("messages", sa.JSON(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_conversations_user_id"), "conversations", ["user_id"], unique=False)
@@ -85,10 +92,10 @@ def downgrade() -> None:
         sa.Column("xp", sa.Integer(), nullable=False),
         sa.Column("level", sa.Integer(), nullable=False),
         sa.Column("streak_days", sa.Integer(), nullable=False),
-        sa.Column("badges", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-        sa.Column("quests_completed", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("badges", sa.JSON(), nullable=False),
+        sa.Column("quests_completed", sa.JSON(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_gamification_seeker_id"), "gamification", ["seeker_id"], unique=False)
@@ -98,10 +105,10 @@ def downgrade() -> None:
         sa.Column("subject_kind", sa.String(length=20), nullable=False),
         sa.Column("subject_id", sa.String(length=36), nullable=False),
         sa.Column("top_k", sa.Integer(), nullable=False),
-        sa.Column("results", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("results", sa.JSON(), nullable=False),
         sa.Column("embedding_model", sa.String(length=100), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_matches_subject_id"), "matches", ["subject_id"], unique=False)

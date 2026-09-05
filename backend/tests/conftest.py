@@ -161,6 +161,10 @@ def _clean_database():
 
     builder_mod._graph_v2 = None
 
+    from backend.app.api.routers import jobs as jobs_mod
+
+    jobs_mod.invalidate_jobs_cache()
+
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limiter(_app):
