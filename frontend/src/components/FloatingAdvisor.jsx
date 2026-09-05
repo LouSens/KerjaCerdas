@@ -5,7 +5,7 @@
 import { useEffect, useRef } from 'react'
 import { X, Send, Loader2, Sparkles, Bot, CheckCircle2, MessageSquare, ArrowRight, User } from 'lucide-react'
 import useStore from '../store/useStore'
-import { KC, DesignStyles } from './_design'
+import { KC, DesignStyles, useIsMobile } from './_design'
 
 // ─── Markdown helpers ─────────────────────────────────────────────────────────
 
@@ -102,11 +102,12 @@ const QUICK_PROMPTS = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FloatingAdvisor({ asPage = false }) {
+    const isMobile = useIsMobile()
     const {
         floatingAdvisorOpen, toggleFloatingAdvisor,
         advisorLog, advisorInput, setAdvisorInput,
         agentLoading, runAgent, isAuthenticated, userRole,
-        profile, seekerId, activeView,
+        profile, seekerId, activeView, navigate,
     } = useStore()
     const scrollRef = useRef(null)
 
@@ -165,7 +166,7 @@ export default function FloatingAdvisor({ asPage = false }) {
                     }}>
                         <div style={{ width: 13, height: 13, background: '#FFFFFF', transform: 'rotate(45deg)', borderRadius: 2 }} />
                     </div>
-                    <div style={{ minWidth: 0 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 900, color: '#FFFFFF', lineHeight: 1.2 }}>
                             AI Career Advisor
                         </div>
@@ -176,6 +177,26 @@ export default function FloatingAdvisor({ asPage = false }) {
                             </span>
                         </div>
                     </div>
+                    <button
+                        type="button"
+                        onClick={() => navigate('seeker-dashboard')}
+                        style={{
+                            background: 'rgba(255,255,255,0.12)',
+                            border: '1px solid rgba(255,255,255,0.25)',
+                            color: '#fff',
+                            borderRadius: 8,
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                        }}
+                    >
+                        ✕ Tutup
+                    </button>
                 </div>
 
                 {/* Chat Message Thread */}
@@ -334,7 +355,13 @@ export default function FloatingAdvisor({ asPage = false }) {
             {/* Bubble toggle button */}
             <button
                 id="floating-advisor-toggle-btn"
-                onClick={toggleFloatingAdvisor}
+                onClick={() => {
+                    if (isMobile) {
+                        navigate('seeker-advisor')
+                    } else {
+                        toggleFloatingAdvisor()
+                    }
+                }}
                 className="kc-advisor-btn"
                 style={{
                     padding: floatingAdvisorOpen ? '0 16px' : '0 20px',
