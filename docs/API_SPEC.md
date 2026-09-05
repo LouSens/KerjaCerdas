@@ -3,7 +3,7 @@
 > **Schema-first contract** — Every endpoint here corresponds 1-to-1 with a FastAPI router module.
 > Interactive Swagger UI is available at `http://localhost:8000/docs` when the server is running.
 
-Infrastruktur API KerjaCerdas direkayasa khusus untuk memitigasi latensi pemrosesan data pelamar berskala masif. Spesifikasi ini mendemonstrasikan bagaimana rute pangkalan data yang dieksekusi secara asinkron (*asynchronous endpoints*) mampu mereduksi *Time-to-Shortlist* HRD dari ukuran hari menjadi milidetik. Desain arsitektural ini memampukan platform untuk secara andal melayani hingga 50.000 kueri aktif harian pada fase adopsi awal, memastikan kelancaran alur integrasi B2B tanpa terhalang *bottleneck* performa.
+API KerjaCerdas menggunakan endpoint asinkron (FastAPI + SQLAlchemy async) dan indeks vektor HNSW pada `pgvector`, yang secara desain menghindari full-table scan pada pencarian kesamaan vektor. Target latensi <200ms adalah target desain arsitektur; belum ada hasil load test produksi yang tersimpan di repositori ini untuk memvalidasi angka tersebut pada skala nyata.
 
 ## Base URL
 

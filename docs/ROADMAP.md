@@ -57,6 +57,20 @@ flowchart LR
 - **Micro-Tuning Berkelanjutan (LoRA):** Menala model secara internal dengan dialek khas rekrutmen Indonesia (nomenklatur kampus lokal, istilah teknis Disnaker).
 - **Payment Gateway Korporasi Terintegrasi:** Otomatisasi penagihan B2B (*Pay-to-Unlock* Rp 50.000 / 10 kandidat atau Rp 5.000/kontak) melalui integrasi Midtrans/Xendit live.
 
+### 1.4 AI Agent & Matching Algorithm Roadmap
+
+> **Status saat ini (desain permanen, bukan langkah antara):** satu node LangGraph (`START → agent_node → END`) memanggil Gemini untuk sintesis teks; routing intent dan pemanggilan `SemanticMatcher`/skill-gap berjalan sebagai fungsi Python prosedural, dipanggil langsung dari `agent.py` router — **bukan** node/edge LangGraph. Tool-calling (`bind_tools()`) dinonaktifkan karena inkompatibilitas `google-generativeai` dengan skema Pydantic v2. Lihat [`ARCHITECTURE.md`](ARCHITECTURE.md) untuk detail arsitektur lengkap.
+
+**Item roadmap matching/skill-gap (belum dibangun, urutan prioritas):**
+1. **Skill Taxonomy terbuka (ESCO/O*NET)** dan **Fuzzy/Semantic Subsumption Matrix** — bobot hierarkis antar skill terkait (mis. `PostgreSQL` sebagai subset `SQL/Relational DB`), menggantikan exact-match pada skill ternormalisasi saat ini.
+2. **Multi-Vector Representation** — embedding terpisah untuk *Role Summary Vector* vs *Hard Skills Vector*, dengan pencarian berbobot (*late interaction*/RRF), menggantikan satu vektor gabungan tunggal saat ini.
+3. **Dynamic Reranking Rules berbasis Seniority Level** — bobot statis saat ini tidak membedakan role junior (lebih mementingkan edukasi/potensi) dari role senior (lebih mementingkan pengalaman).
+4. **Domain-Specific Experience Tagging** — memisahkan *Total Work Experience* dari *Relevant Domain Experience* per skill/role target.
+5. **Knowledge Graph katalog kursus/sertifikasi lokal terverifikasi** untuk Skill Gap Analyzer, menggantikan katalog kurasi statis saat ini.
+6. **Local Lightweight NER (SpaCy transformer/GLiNER)** untuk fallback parsing CV saat Gemini offline, menggantikan `_SKILL_VOCAB` hardcoded yang bias ke profil software engineer.
+
+Known edge cases already handled in the current matcher (skill alias normalization via `_CANONICAL_SKILL_MAP`, overlapping-employment date merging in `_experience_years()`, and sanitization of extracted CV text before it reaches the database or the LLM) are documented in [`docs/internals/01-matching-algorithm.md`](internals/01-matching-algorithm.md).
+
 ---
 
 ## Bagian 2 — Kerangka Kerja Eksperimen A/B Testing
@@ -132,7 +146,7 @@ Anggaran ini diajukan untuk mendanai peluncuran pilot awal (rentang budget Rp 2�
 | **Domain Resmi `.id` & Keamanan SSL Cloudflare** | Rp 250.000 | 6.5% | Registrasi domain resmi `.id` 1 tahun + proteksi mitigasi DDoS |
 | **Program Outreach Pilot (5 UMKM & 100 Penguji)** | Rp 1.800.000 | 46.7% | Insentif pengujian validasi, onboarding langsung 5 UMKM, dan akuisisi talenta awal |
 | **Cadangan Kontinjensi & Operasional (10%)** | Rp 450.000 | 11.7% | Buffer fluktuasi kurs mata uang dan kebutuhan operasional tak terduga |
-| **TOTAL BUDGET BULAN KE-1 (PITCHING / PILOT)** | **Rp 3.850.000** | **100.0%** | **Budget awal yang rasional untuk tahap validasi pilot (rentang Rp 2–5 jt/bln)** |
+| **TOTAL BUDGET BULAN KE-1 (PILOT)** | **Rp 3.850.000** | **100.0%** | **Budget awal yang rasional untuk tahap validasi pilot (rentang Rp 2–5 jt/bln)** |
 
 ---
 

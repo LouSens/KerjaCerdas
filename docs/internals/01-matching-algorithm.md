@@ -3,17 +3,18 @@
 Core files:
 - `backend/app/services/matching/matcher.py` — scoring, banding, explanations
 - `backend/app/services/matching/embeddings/gemini.py` — embedding client
-- `backend/app/config/settings.py` — thresholds, top-k, (partially unused) weights
+- `backend/app/config/settings.py` — thresholds and top-k
 - `backend/app/db/models.py` — `vector(768)` pgvector columns
+- `backend/alembic/versions/3ec45615212f_add_events_table_and_hnsw_indexes.py` — HNSW index definitions
 
-The pipeline is a **bi-encoder semantic ranker with structured boosts and band-based presentation**. It runs in three stages: embed → score → band.
+The pipeline is a **bi-encoder semantic ranker with structured boosts and band-based presentation**, run in three stages: embed → score → band.
 
 ---
 
 ## 1. Embedding Stage (offline, at write time)
 
 **Model:** `gemini-embedding-001`, requested at `output_dimensionality=768`.
-The native model is 3072-dim; Gemini applies **Matryoshka Representation Learning (MRL)** truncation, so the first 768 dims retain most of the semantic signal. 768 was chosen to match the `vector(768)` pgvector column (a 3072-dim write crashes with a dimension mismatch — this happened; see git history).
+The native model is 3072-dim; Gemini applies **Matryoshka Representation Learning (MRL)** truncation, so the first 768 dims retain most of the semantic signal. 768 was chosen to match the `vector(768)` pgvector column.
 
 **Task types matter:** documents are embedded with `task_type="RETRIEVAL_DOCUMENT"`, queries with `"RETRIEVAL_QUERY"`. Gemini optimizes the two spaces to be asymmetric-retrieval-compatible (like DPR/GTR-style dual encoders).
 
@@ -33,111 +34,74 @@ Job:     {title}
          Tanggung jawab: {responsibilities}
 ```
 
-Embeddings are computed when a profile/job is created or updated (`embed_seeker` / `embed_job`) and stored on the row. Job re-embedding triggers on `description` or `required_skills` changes (`routers/employer.py`).
+Embeddings are computed when a profile/job is created or updated (`embed_seeker` / `embed_job`) and stored on the row. Job re-embedding triggers on `description` or `required_skills` changes (`routers/employer.py`). If Gemini is unavailable, the row is left unembedded rather than storing a junk vector — it degrades to a cosine of 0 at query time instead of crashing.
 
-## 2. Scoring Stage (online, per request)
+## 2. Retrieval Stage (online, per request)
 
-Both directions share the same shape (`match_jobs_for_seeker` ~line 236, `match_seekers_for_job` ~line 335):
+Candidate retrieval runs DB-side through the pgvector HNSW index (`embedding <=> query`, `m=16, ef_construction=64`) rather than scanning every row in Python: `_job_candidates` / `_seeker_candidates` fetch a prefiltered pool of `max(top_k * 5, 200)` candidates with their cosine already computed by Postgres, plus any rows still missing an embedding (scored at cosine 0). If the query embedding or the pgvector index is unavailable, the matcher falls back to a full in-memory scan instead of failing the request.
+
+The query vector itself is cached two ways: an in-process LRU (512 entries, keyed by `sha256(model + text)`) and a persistent `query_embeddings` table in Postgres, so repeat requests for the same profile/job text skip the ~1s Gemini embedding call entirely. Any edit to the underlying text changes the cache key automatically.
+
+## 3. Scoring Stage
+
+Both directions (`rank_jobs_for_seeker`, `rank_seekers_for_job`) share one formula (`_hybrid_score`):
 
 ```python
-base_score = 0.60 * max(cosine, 0.0) + 0.40 * skill_overlap
-score      = base_score + loc_boost + sal_boost + exp_boost
+final_score = (
+    cosine_similarity   * 0.45 +   # _W_COSINE
+    skill_overlap       * 0.25 +   # _W_SKILL
+    experience_fit_boost         +   # up to 0.15 (_W_EXPERIENCE), scaled by shortfall
+    education_boost              +   # 0.10 (_W_EDUCATION) flat if the seeker has any listed education
+    recency_boost                    # 0.05 (_W_RECENCY), currently flat for every candidate
+)
 ```
+
+These five weights are fixed constants in `matcher.py`, not `.env`-configurable settings — the module docstring is explicit that they're a hand-calibrated starting point for the current dataset, not yet validated against a labelled evaluation set.
 
 **Components:**
 
 | Component | Definition | Notes |
 |---|---|---|
-| `cosine` | cosine similarity of the two 768-dim vectors, floored at 0 | computed in pure Python (`cosine()` helper), **in memory over all rows** — pgvector is used for storage, not ANN search |
-| `skill_overlap` | `|seeker_skills ∩ required_skills| / |required_skills|` | **case-insensitive exact string match**; skill `level`/`years` are ignored |
-| `loc_boost` | `+0.15` | only when a location filter is active AND (job region == filter OR filter ∈ seeker preferred regions) |
-| `sal_boost` | `+0.10` | only when salary filter active AND `job.salary_max >= filter.salary_min` (seeker direction only) |
-| `exp_boost` | `+0.10` | seeker direction: `job.experience_years_min <= filter.experience_min`; employer direction: seeker years ≥ job minimum |
+| `cosine_similarity` | cosine similarity of the two 768-dim vectors, floored at 0 | precomputed by pgvector during retrieval when available, else computed in Python |
+| `skill_overlap` | `\|seeker_skills ∩ required_skills\| / \|required_skills\|` | skills are canonicalized first via `_normalize_skill()`/`_CANONICAL_SKILL_MAP` (e.g. `React.js`, `ReactJS` → `react`) before the exact-match comparison |
+| `experience_fit_boost` | `0.15` if `years_exp >= required_years_min` (or the posting has no minimum), else scaled linearly by `years_exp / required_years_min` | `years_exp` comes from `_experience_years()`, which merges overlapping work-history date ranges before summing calendar duration — a freelancer with three concurrent 2024 contracts is not credited with 3 years |
+| `education_boost` | flat `0.10` if the seeker has any listed education, else `0` | not weighted by degree level |
+| `recency_boost` | flat `0.05` for every candidate today | named as its own term so a real recency signal can replace the constant without touching the rest of the formula |
 
-**Boosts are conditional on filters** — with no filters set, ranking is purely `0.60·cos + 0.40·overlap`. Max possible score with all boosts: 1.35 (uncalibrated; see research notes).
+**Region and salary filters are hard eliminations, not soft boosts.** When a seeker actively sets a location or salary filter (or an employer sets a location/experience filter), non-matching candidates are dropped from the result set entirely rather than merely scored lower.
 
-> ⚠️ **Config drift, worth knowing:** `settings.py` defines `matching_cosine_weight=0.50, matching_skill_weight=0.30, matching_region_weight=0.10, matching_salary_weight=0.05, matching_experience_weight=0.05`, and `matcher.py` has a `_weights()` normalizer — but **the live scoring paths do not use them**; the `0.60/0.40/+0.15/+0.10/+0.10` constants are hardcoded. Changing the settings values does nothing today. Unify before tuning.
+## 4. Banding & Presentation Stage
 
-## 3. Banding & Presentation Stage
+Raw scores map to confidence bands (`_band_label`, shared by both ranking directions so seeker-side and employer-side bands can't drift apart):
 
-Raw scores are mapped to **confidence bands** (`_band_label`, single source of truth for both sides):
-
-| Band | Condition | Seeker-facing framing |
+| Band | Condition (`settings.py`) | Seeker-facing framing |
 |---|---|---|
 | `strong` | `score ≥ 0.65` (`band_strong_threshold`) | "Skill kamu nyambung kuat…" |
 | `possible` | `score ≥ 0.45` (`band_possible_threshold`) | worth a look, some gaps |
 | `stretch` | below | growth option |
 
-Then a deliberate anti-false-precision step: **results are shuffled within each band** using a stable seed (job_id for seeker view, seeker_id for employer view). Order is deterministic across requests but tiny score deltas (0.612 vs 0.608) never imply a ranking the model can't actually support. The employer card **never displays the numeric score** — band only.
+Results are then shuffled within each band using a seed stable per job (seeker view) or per seeker (employer view) — order is deterministic across requests, but a tiny score delta (0.612 vs 0.608) never implies a ranking the model can't actually support. The employer card never displays the numeric score, only the band.
 
 **Explanations:**
-- Seeker side: template-based Bahasa Indonesia (`_seeker_summary`) driven by band + matched/missing skill lists. No LLM call — zero cost, zero hallucination.
-- Employer side: evidence summary (`_candidate_summary`, matched/missing skills) plus an optional ≤15-word LLM evaluation via `gemini-3.1-flash-lite` when an API key is present.
+- Seeker side: template-based Bahasa Indonesia (`_seeker_summary`), driven by band + matched/missing skill lists. No LLM call.
+- Employer side: a neutral evidence summary (`_candidate_summary`, matched/missing skills against required skills) — optionally upgraded to a ≤15-word Gemini-generated evaluation per candidate when an API key is configured.
 
-## 4. Serving Paths
+## 5. Serving Paths
 
 | Entry point | Flow |
 |---|---|
-| `POST /api/v1/agent/invoke` | fetch all jobs (repo cache 300 s) → rank in memory → **token gate:** if `max_score < 0.10`, skip the LLM entirely and return a cheap templated reply |
+| `POST /api/v1/agent/invoke` | rank jobs via the ANN-backed path → token gate: if `max_score < 0.10`, skip the LLM entirely and return a cheap templated reply |
 | `POST /api/v1/employer/jobs/{id}/candidates` | rank all seekers against one job |
 | `POST /api/v1/employer/jobs/estimate` | no-LLM heuristic (skill overlap + location) to preview candidate-pool size while composing a job |
 
-`matching_top_k = 10` limits returned results.
+`matching_top_k = 10` limits returned results by default.
 
 ---
 
-# Extra Insights
+## Known Limitations & Research Directions
 
-1. **It's a hybrid ranker, not pure vector search.** The 40% exact-skill term anchors the semantic score against embedding noise — a job needing "Figma, User Research" won't rank a backend dev highly just because both texts "sound tech." Conversely the 60% semantic term rescues matches where skill vocabularies differ.
-
-2. **The in-memory scan is O(N) per request.** At 21 jobs / 20 seekers this is microseconds. At 100k jobs it's a real problem: every request embeds the query (≈100 ms Gemini latency) then scans every row in Python. The pgvector column already exists — the natural evolution is `ORDER BY embedding <=> query LIMIT K` with an HNSW index, then rescoring the top-K with the full formula.
-
-3. **Boost cliffs.** `salary_max ≥ filter` is binary: a job 1 rupiah above threshold gets +0.10, one 1 rupiah below gets nothing. Same for experience. Smooth utility functions (e.g., sigmoid over salary gap) would remove rank instability near thresholds.
-
-4. **Skill matching is string equality.** "PostgreSQL" ≠ "Postgres", "JavaScript" ≠ "JS", "Bahasa Inggris" ≠ "English". Every miss both lowers `skill_overlap` and pollutes the "missing skills" explanation. This is likely the single highest-ROI fix (see research §2).
-
-5. **Bands are honest UX.** Shuffle-within-band + hidden numeric scores is a genuinely good pattern — it communicates model uncertainty instead of manufacturing precision, and it removes position bias *within* a band from feedback data, which will matter if you ever train on clicks (research §4).
-
-6. **Scores are not calibrated.** 0.65 doesn't mean "65% chance of a good hire" — thresholds were picked by inspection. Fine for presentation bands; not fine if scores ever gate automated decisions.
-
----
-
-# Suggested Research Directions
-
-Ordered roughly by ROI-to-effort.
-
-### 1. Two-stage retrieval: ANN + rerank
-Use pgvector HNSW (`CREATE INDEX ... USING hnsw (embedding vector_cosine_ops)`) to retrieve top-200, then apply the full hybrid formula only on that set. Standard retrieve-then-rerank; removes the O(N) scan. *Read: pgvector docs on HNSW recall/ef_search tradeoffs.*
-
-### 2. Skill normalization via taxonomy
-Map free-text skills to a canonical taxonomy before overlap: **ESCO** (EU, has Indonesian translations), **O*NET**, or Kemnaker's KBJI occupation codes (already stored on jobs, currently unused in scoring!). Cheap version: curated synonym dictionary + lowercase/lemmatize. Better: embed skill names themselves and match with a similarity threshold (≥0.85) instead of equality. Also weight skills by `level`/`years` (currently ignored) — a "beginner Python, 0.5 yr" matching a senior requirement shouldn't count as full overlap.
-
-### 3. Cross-encoder reranking
-Bi-encoders compress each side independently — they can't model interactions like "5 years Go but the job wants Go *for payments infra*." A cross-encoder (reads both texts jointly) on the top-20 fixes this. Options: multilingual **BGE-reranker-v2-m3**, or LLM-as-reranker (RankGPT-style listwise prompting with Gemini Flash — zero training, some latency/cost). *Read: Nogueira & Cho, "Passage Re-ranking with BERT" (2019); Sun et al., "RankGPT" (2023).*
-
-### 4. Learning to Rank from your own events
-`events.py` already logs `job_viewed`, `apply_clicked`, `band_clicked` with band + variant. Once volume exists: train a gradient-boosted LTR model (**LambdaMART** via XGBoost/LightGBM) on features you already compute (cosine, overlap, region match, salary gap, experience gap) with clicks/applies as labels. Correct for **position bias** with inverse-propensity weighting — your within-band shuffle is an unusual advantage here since it randomizes exposure within bands, giving you nearly unbiased click data per band. *Read: Joachims et al., "Unbiased Learning-to-Rank with Biased Feedback" (2017).*
-
-### 5. Two-sided (reciprocal) matching
-Job platforms are two-sided markets: a "strong" match a seeker will never accept (salary 3× below expectation) wastes both sides' time, and popular jobs get congested. Score `P(seeker applies) × P(employer responds)` instead of one-directional relevance, and add exposure caps per job. *Read: Palomares et al., "Reciprocal Recommender Systems" survey (2021); LinkedIn's economic-graph matching papers.*
-
-### 6. Embedding fine-tuning / domain adaptation
-Gemini embeddings are general-purpose. With a few thousand apply/hire pairs you can fine-tune an open multilingual model (e.g., **bge-m3**, **multilingual-e5**) with contrastive loss, mining **hard negatives** from "viewed but not applied." Self-hosting also removes per-call embedding costs and latency. Benchmark against Gemini on a held-out set first — don't assume fine-tuned-small beats frozen-large.
-
-### 7. Score calibration
-Map raw scores to outcome probabilities with **Platt scaling / isotonic regression** against downstream funnel data (apply → interview). Then bands become "≥60% historical interview rate" instead of magic numbers, and thresholds self-justify. *Read: Niculescu-Mizil & Caruana (2005).*
-
-### 8. Fairness auditing
-Before scaling: measure **exposure parity** across gender/age/region groups within each band; scan Indonesian job descriptions for gendered language (the "maks 25 tahun, berpenampilan menarik" pattern is endemic in the local market and often unlawful under Indonesian labor regs); consider counterfactual tests (swap names/gender markers in CV text, check score deltas). UU PDP 2022 also constrains which personal features may legally influence scoring. *Read: Singh & Joachims, "Fairness of Exposure in Rankings" (2018).*
-
-### 9. Cold start & exploration
-New jobs/seekers have no behavioral signal (content-based scoring covers this reasonably). If LTR (§4) is adopted, add an exploration policy — **Thompson sampling** over near-band-boundary items — so the feedback loop doesn't ossify early winners.
-
-### 10. Matryoshka dimension study
-768 was forced by the column type, not measured. Run recall@K on a labeled set at 256 / 512 / 768 / 1536 / 3072 dims. If 3072 wins materially, migrate the column (or store `halfvec(3072)` — half-precision halves storage and speeds HNSW).
-
-### 11. Constraint modeling
-Replace binary boosts with smooth utilities: `sal_fit = σ((salary_max − expectation_min)/σ_salary)`, experience as a saturating curve (2 yrs over minimum ≈ no extra credit, 2 yrs under ≈ steep penalty). Kills the cliff effects in §Insights-3. And actually wire `settings.matching_*_weight` into the formula so tuning doesn't require code edits.
-
-### Evaluation harness (prerequisite for most of the above)
-Build a golden set (~200 seeker-job pairs, human-labeled strong/possible/stretch — you have Indonesian-market-realistic seed data already). Track **nDCG@10** and **Recall@50** offline on every change; run online **interleaving** or A/B through the existing `experiments.py` framework (deterministic MD5 assignment is already in place). Guard metric: apply-rate on `stretch` band (if it rises toward `strong`'s, bands have lost meaning).
+1. **Skill matching is still exact string match after canonicalization.** The alias map (`_CANONICAL_SKILL_MAP`) covers common cases (`React.js`/`ReactJS` → `react`, `PostgreSQL`/`Postgres` → `postgres`, …) but has no fuzzy or hierarchical matching — `PostgreSQL` still won't credit a candidate who only lists `SQL`. A proper skill taxonomy (ESCO, O*NET) with subsumption relationships would generalize this; see [`ROADMAP.md`](../ROADMAP.md) §1.4.
+2. **Weights are uncalibrated.** `0.65`/`0.45` band thresholds and the five hybrid weights were picked by inspection against the demo dataset, not validated against a labelled evaluation set. Recalibrating requires a golden set of human-labeled seeker-job pairs (~200+) and tracking nDCG@10/Recall@50 offline before changing constants.
+3. **One embedding vector per entity.** Profile and job text are each embedded as a single concatenated string, so a long, detailed CV can dilute the signal against a short job description. A separate role-summary vector and hard-skills vector, combined via late interaction or reciprocal rank fusion, is the natural next step — see [`ROADMAP.md`](../ROADMAP.md) §1.4.
+4. **Fairness auditing has not been done.** Before scaling, exposure parity across gender/age/region groups within each band should be measured, and Indonesian job descriptions scanned for language that would be unlawful to score on under local labor regulation and UU PDP 2022.
+5. **No learning-to-rank loop yet.** `events.py` logs `job_viewed`/`apply_clicked`/band data, which is enough to eventually train a ranking model (e.g. LambdaMART) on real click/apply signal — see [`ROADMAP.md`](../ROADMAP.md) for A/B testing and event-tracking status.

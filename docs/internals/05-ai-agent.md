@@ -10,13 +10,15 @@ Files:
 
 ## Architecture
 
-**V2 (current): autonomous ReAct swarm.** Built with LangGraph's `create_react_agent`; a **supervisor** (persona in `prompts/roles/supervisor.md`) reasons about the user's message and decides per turn: call a tool, call several, or answer directly.
+`backend/app/agents/graph/builder.py`'s docstring notes the installed `langgraph` version (>=1.1.x) has no `langgraph.prebuilt`/`create_react_agent`, and that `bind_tools()` tool-calling is explicitly disabled in this build because it hits an `AttributeError` converting Pydantic v2 tool schemas for Gemini. `create_react_agent` does not appear anywhere in `backend/app`. This is not a ReAct or tool-calling agent.
 
-**V1 (legacy, still in `nodes.py` for reference): fixed pipeline** — `router → matcher → skill_gap → advisor → compose`, where the router classified intent into `match_jobs` / `skill_gap` / `advise`. V2 replaced the rigid sequence with the tool-calling loop.
+**What is actually built:** a fixed procedural pipeline — `route_intent → run_matcher → run_skill_gap/run_advisor → compose_response` (functions in `nodes.py`), called directly from `backend/app/api/routers/agent.py`, not wired as LangGraph graph edges. The LangGraph graph itself is one node: `START → agent_node → END` (`builder.py`), whose sole job is to call Gemini and return natural-language text for whatever the procedural pipeline already decided. See [`ARCHITECTURE.md`](../ARCHITECTURE.md) for the full system view.
+
+**Table below (`SUPERPOWER_TOOLS`) describes tool functions that exist in source (`superpowers.py`) but are not currently bound to or callable by the LLM**, since tool-calling is disabled. Treat this as a roadmap capability, not a built one, until `bind_tools()` is re-enabled and verified end-to-end.
 
 **State** (`state.py` — `AgentState`): append-only message history (`add_messages` reducer), plus seeker profile, current job matches, skill gaps, and recommended courses. State is the contract between turns.
 
-## Tools (`SUPERPOWER_TOOLS`)
+## Tools (`SUPERPOWER_TOOLS`) — defined in source, not currently wired to the LLM
 
 | Tool | Function |
 |---|---|
@@ -32,7 +34,7 @@ Files:
 - Prompt is assembled by `prompt_loader.py` from layered markdown files:
   - `SUPERPOWER.md` — role & mission
   - `policies/guardrails.md` — safety, PII, bias rules
-  - `roles/supervisor.md` — ReAct loop instructions
+  - `roles/supervisor.md` — persona/instruction prompt (written for a tool-calling loop; currently consumed by the single-node `agent_node`, which does not call tools — see Architecture above)
   - `policies/tools_skills.md`, `compliance.md`, `memory_context.md`
 - Prompts use **XML-style tags** (`<rule>`, `<user_input>`) so untrusted user text is fenced from instructions — the counterpart to the request-side prompt-injection regex in `02-authentication.md`.
 
@@ -44,7 +46,7 @@ Files:
 
 ## Cost & Safety Guardrails (the interesting part)
 
-1. **Token budget** (`telemetry/tracker.py`): hard cap ≈ **50k tokens** per invocation — a runaway ReAct loop gets cut, protecting billing.
+1. **Token budget** (`telemetry/tracker.py`): hard cap ≈ **50k tokens** per invocation — protects billing regardless of pipeline shape; more relevant once/if a multi-turn tool-calling loop is re-enabled (currently a single LLM call per invocation, so this budget is rarely approached).
 2. **Token efficiency gate** (`routers/agent.py`): matches are ranked *before* the LLM is called; if `max_score < 0.10` the LLM is skipped entirely and a cheap templated reply is returned. Embedding + in-memory ranking is orders of magnitude cheaper than a chat completion.
 3. **Hallucination guard:** job IDs in LLM output are validated against real matches; invented IDs are stripped so the UI can never render a job card that links nowhere.
 4. **Jobs cache:** repository fetch cached 300 s — the agent doesn't hammer the DB across turns.
@@ -57,7 +59,7 @@ POST /api/v1/agent/invoke  (JWT: seeker)
   → load seeker profile + jobs (cache 300s)
   → SemanticMatcher ranks jobs             ← see 01-matching-algorithm.md
   → max_score < 0.10 ?  → templated reply, no LLM  ✂
-  → else: supervisor loop (Gemini) with tools, token budget enforced
+  → else: single-node LangGraph call to Gemini (no tool-calling; token budget enforced)
   → strip hallucinated job IDs
   → response: message + job cards (banded) + optional courses
 ```
