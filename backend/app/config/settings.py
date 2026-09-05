@@ -66,6 +66,26 @@ class Settings(BaseSettings):
 
     # ── Redis ────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
+    # Off by default: the sliding-window rate limiter stays in-process
+    # (correct for a single instance) unless explicitly switched to Redis,
+    # which is required once the deployment runs more than one instance
+    # (e.g. Replit autoscale) — otherwise each instance tracks its own
+    # counters and the effective per-IP limit silently multiplies by the
+    # instance count. Requires redis_url to point at a reachable Redis.
+    rate_limit_backend: str = "memory"  # "memory" | "redis"
+
+    # ── Reverse proxy / tunnel ───────────────────────────────────────────
+    # When the app is only reachable through Cloudflare (a Cloudflare Tunnel,
+    # or Cloudflare proxying DNS in front of it), Cloudflare's edge sets
+    # CF-Connecting-IP to the real visitor IP on every request — unlike
+    # X-Forwarded-For, a client cannot forge this header because Cloudflare
+    # overwrites it before the request ever reaches us. This is ONLY safe to
+    # trust if the origin (this process) is unreachable except through
+    # Cloudflare — e.g. a `cloudflared` tunnel with no other public ingress.
+    # Do not enable this on a deployment that is also directly exposed to the
+    # internet on its own port/IP, since that path bypasses Cloudflare
+    # entirely and would let a client set CF-Connecting-IP to anything.
+    trust_cloudflare_tunnel: bool = False
 
     # ── CORS ─────────────────────────────────────────────────────────────
     cors_allow_origins: list[str] = [

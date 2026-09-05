@@ -48,7 +48,7 @@ Matching, skill-gap computation, and intent routing run as procedural Python in 
 | Layer | Component | Notes |
 |---|---|---|
 | Frontend | React 18 + Vite + React Router + Zustand, persisted to `localStorage` (key `kerjacerdas-v4`) | SPA with JWT-aware route guards, 27 components |
-| Backend | FastAPI (async), JWT auth, role-based dependencies, custom sliding-window `RateLimiterMiddleware` (process-local, in-memory) | 10 routers under one `/api/v1` prefix |
+| Backend | FastAPI (async), JWT auth, role-based dependencies, custom sliding-window `RateLimiterMiddleware` (in-memory by default; Redis-backed and instance-shared when `RATE_LIMIT_BACKEND=redis` + `REDIS_URL` are set) | 10 routers under one `/api/v1` prefix |
 | Database | PostgreSQL 16 + `pgvector` (HNSW), Alembic migrations | Alembic-managed schema; an RLS migration exists but defines no policies yet |
 | Model/API | Google Gemini (3.1 Flash) for embeddings + generation | Live calls, with an offline fallback stub on failure |
 | External integration | Curated static course catalogue (35+ items); demo-mode OTP/NIK/NPWP checks | Government/e-KYC and payment integrations (Dukcapil, SIVIL, DJP, WhatsApp/SMS OTP, Midtrans/Xendit) require external contracts and are not wired in this build |
@@ -82,7 +82,7 @@ These are demo-mode by design so the surrounding product flow (verification badg
 - Pay-to-Unlock (accepts any token; no payment gateway)
 
 **On the roadmap, not yet built:**
-- Redis-backed distributed rate limiting and semantic cache
+- Redis-backed semantic cache. (Distributed rate limiting is implemented in code — see `RateLimiterMiddleware`'s `rate_limit_backend` setting — but not yet activated: it needs `REDIS_URL` provisioned in the deployment, see [Known Issues](KNOWN_ISSUES.md).)
 - Vertex AI VPC / Zero Data Retention inference
 - Production e-KYC and payment gateway integrations
 - Matching-algorithm improvements (skill taxonomy, multi-vector embeddings, dynamic reranking) — see [Roadmap](ROADMAP.md)

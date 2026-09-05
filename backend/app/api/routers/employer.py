@@ -49,6 +49,29 @@ async def _get_employer(user_id: str) -> Employer | None:
     return await find_employer_by_user_id(user_id)
 
 
+async def _require_owned_job(repos, current_user: User, job_id: str) -> tuple[JobPosting, Employer]:
+    """Fetch a job and assert the current user's employer profile owns it.
+
+    Centralizes the tenant-ownership check that used to be hand-repeated at
+    every mutating job/candidate endpoint (update_job, delete_job,
+    find_candidates, unlock_candidate). Repeating "load resource, then check
+    job.employer_id == employer.id" by hand at each new endpoint means a
+    future endpoint can forget it — that was a real P0 cross-tenant finding
+    in this codebase's history (see docs/KNOWN_ISSUES.md). Routing every
+    caller through one function turns "correct everywhere it happens to be
+    checked" into "correct by construction".
+    """
+    job = await repos.jobs.get(job_id)
+    if not job:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
+
+    employer = await _get_employer(current_user.id)
+    if not employer or job.employer_id != employer.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan lowongan milik perusahaan Anda")
+
+    return job, employer
+
+
 # ── Employer Profile ──────────────────────────────────────────────────────────────────────────
 
 
@@ -170,13 +193,7 @@ async def update_job(
     current_user: User = Depends(get_current_user),
 ):
     repos = get_repositories()
-    job = await repos.jobs.get(job_id)
-    if not job:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
-
-    employer = await _get_employer(current_user.id)
-    if not employer or job.employer_id != employer.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan milik Anda")
+    job, _employer = await _require_owned_job(repos, current_user, job_id)
 
     # The model declares exactly the editable fields, so anything else in the
     # request is already dropped; `exclude_unset` keeps a PATCH partial.
@@ -196,12 +213,7 @@ async def update_job(
 @router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_job(job_id: str, current_user: User = Depends(get_current_user)):
     repos = get_repositories()
-    job = await repos.jobs.get(job_id)
-    if not job:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
-    employer = await _get_employer(current_user.id)
-    if not employer or job.employer_id != employer.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan milik Anda")
+    await _require_owned_job(repos, current_user, job_id)
     await repos.jobs.delete(job_id)
     return None
 
@@ -275,17 +287,11 @@ async def find_candidates(
 ):
     """Return top-K seekers ranked by semantic + skill fit for this job."""
     repos = get_repositories()
-    job = await repos.jobs.get(job_id)
-    if not job:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
-
     # A recruiter may only search the talent pool for a posting owned by their
     # own organisation. Router-level role enforcement alone is insufficient:
     # without this check employer B could submit employer A's public job id and
     # receive candidate-fit data for a recruitment process they do not own.
-    employer = await _get_employer(current_user.id)
-    if not employer or job.employer_id != employer.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan lowongan milik perusahaan Anda")
+    job, _employer = await _require_owned_job(repos, current_user, job_id)
 
     search = payload or CandidateSearchRequest()
     top_k = search.top_k
@@ -362,15 +368,7 @@ async def unlock_candidate(
     Returns: { unlocked: true, name, email, phone, unlock_id }
     """
     repos = get_repositories()
-    job = await repos.jobs.get(job_id)
-    if not job:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
-
-    employer = await _get_employer(current_user.id)
-    if not employer:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Profil perusahaan tidak ditemukan")
-    if job.employer_id != employer.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan lowongan milik perusahaan Anda")
+    job, employer = await _require_owned_job(repos, current_user, job_id)
 
     seeker = await repos.seekers.get(seeker_id)
     if not seeker:

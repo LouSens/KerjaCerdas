@@ -7,7 +7,7 @@ This directory contains the FastAPI-powered backend that orchestrates the AI age
 ## 🚀 Tech Stack
 - **Framework**: FastAPI (High-performance async Python API)
 - **Database**: PostgreSQL with `pgvector` for semantic search (via `backend/app/db/postgres_store.py`)
-- **Rate limiting**: in-process sliding-window middleware (Redis is a config field for a future distributed deployment — **not currently used**; see `docs/ARCHITECTURE.md`)
+- **Rate limiting**: sliding-window middleware, in-process by default; set `RATE_LIMIT_BACKEND=redis` + `REDIS_URL` for a Redis-backed shared counter across instances (see `docs/ARCHITECTURE.md`)
 - **Validation**: Pydantic v2
 - **Documentation**: Swagger UI & Redoc (auto-generated)
 

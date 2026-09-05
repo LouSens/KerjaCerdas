@@ -260,9 +260,20 @@ class TestRouting:
         assert resp.status_code == 200
         assert resp.json()["info"]["title"] == "KerjaCerdas API"
 
-    def test_interactive_docs_are_public(self, client: TestClient) -> None:
-        """/docs is served with no auth gate in every environment."""
-        assert client.get("/docs").status_code == 200, "docs are now gated — update this test"
+    def test_interactive_docs_are_public_outside_production(self, client: TestClient) -> None:
+        """/docs is served with no auth gate outside production."""
+        assert client.get("/docs").status_code == 200
+
+    def test_interactive_docs_are_gated_in_production(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Once a public tunnel/domain is in front of the API, the full route
+        and schema surface must not be browsable by default (see docs/KNOWN_ISSUES.md)."""
+        from backend.app.api.main import settings as main_settings
+
+        monkeypatch.setattr(main_settings, "app_env", "production")
+        for path in ("/docs", "/redoc", "/openapi.json"):
+            assert client.get(path).status_code == 404, path
 
     @pytest.mark.parametrize(
         "path",

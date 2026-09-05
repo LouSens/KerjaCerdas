@@ -76,6 +76,20 @@ async def lifespan(app: FastAPI):
     reconfigure(settings.effective_database_url)
     await init_db()
 
+    # A real Replit *deployment* (as opposed to the interactive dev workspace)
+    # always sets REPLIT_DEPLOYMENT — independent of whether anyone remembered
+    # to also set APP_ENV=production in that deployment's own secrets. Without
+    # this check, a deployment that forgot APP_ENV=production would silently
+    # keep every dev-mode default (ephemeral JWT secret, public /docs, in-band
+    # OTP codes) while being reachable from the public internet through the
+    # Cloudflare Tunnel, with no error raised anywhere to signal the mistake.
+    if os.environ.get("REPLIT_DEPLOYMENT") and not settings.is_production:
+        raise RuntimeError(
+            "REPLIT_DEPLOYMENT is set (this is a real Replit deployment) but "
+            "APP_ENV is not 'production'. Set APP_ENV=production in this "
+            "deployment's secrets before exposing it publicly."
+        )
+
     jwt_secret = settings.jwt_secret_key or secrets.token_urlsafe(32)
     if not settings.jwt_secret_key and settings.is_production:
         raise RuntimeError("JWT_SECRET_KEY must be set in production")
@@ -99,6 +113,24 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+_DOCS_PATHS = {"/docs", "/redoc", "/openapi.json"}
+
+
+@app.middleware("http")
+async def _gate_docs_in_production(request: Request, call_next):
+    """Swagger UI / Redoc / the raw OpenAPI schema expose every route's
+    request/response shape. Fine on a private dev workspace; not fine once
+    a tunnel or a real domain puts the API on the public internet.
+
+    Checked per-request (rather than fixed at app construction via
+    docs_url=None) so it reads the live settings.is_production value, the
+    same way every other production guard in this file does — and so tests
+    can flip it with monkeypatch without rebuilding the FastAPI app."""
+    if settings.is_production and request.url.path in _DOCS_PATHS:
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+    return await call_next(request)
+
 
 # Middleware is applied in LIFO order (last-added = outermost).
 # Outermost to innermost execution:
@@ -273,4 +305,8 @@ else:
 
     @app.get("/")
     async def root():
-        return {"service": "KerjaCerdas API", "docs": "/docs", "health": "/health"}
+        return {
+            "service": "KerjaCerdas API",
+            "docs": None if settings.is_production else "/docs",
+            "health": "/health",
+        }
