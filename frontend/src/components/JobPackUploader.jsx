@@ -11,7 +11,21 @@ export default function JobPackUploader() {
     const [parsedResult, setParsedResult] = useState(null)
     const [dragActive, setDragActive] = useState(false)
     const [publishing, setPublishing] = useState(false)
+    // Which parsed postings the employer actually wants published — a job
+    // pack can extract entries nobody asked to publish (a stray table row,
+    // a listing that's actually closed, etc.), so confirming the batch must
+    // let each one be reviewed and excluded, not just accepted wholesale.
+    const [checkedIds, setCheckedIds] = useState(() => new Set())
     const inputRef = useRef(null)
+
+    const toggleJobChecked = (localId) => {
+        setCheckedIds(prev => {
+            const next = new Set(prev)
+            if (next.has(localId)) next.delete(localId)
+            else next.add(localId)
+            return next
+        })
+    }
 
     const handleFile = async (file) => {
         if (!file) return
@@ -41,6 +55,11 @@ export default function JobPackUploader() {
                 time: `${elapsedSeconds.toFixed(1)} dtk`,
                 jobs: res.jobs,
             })
+            // Everything starts checked — reviewing is opt-out (uncheck what
+            // you don't want), which matches what most packs need (mostly
+            // real postings) without forcing a click per row for the common
+            // case.
+            setCheckedIds(new Set(res.jobs.map(j => j.local_id)))
         } catch (e) {
             toast.error('Ekstraksi dokumen gagal: ' + (e.message || 'Periksa berkas Anda lalu coba unggah ulang.'))
             setSelectedFile(null)
@@ -53,7 +72,7 @@ export default function JobPackUploader() {
     // manual "Pasang Lowongan" form uses), so an abandoned/replaced batch
     // simply never gets this far and never touches the database at all.
     const handleConfirmPublish = async () => {
-        const jobs = parsedResult?.jobs || []
+        const jobs = (parsedResult?.jobs || []).filter(job => checkedIds.has(job.local_id))
         if (!jobs.length) return
         setPublishing(true)
         try {
@@ -215,54 +234,74 @@ export default function JobPackUploader() {
                     </div>
 
                     <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 15, animation: 'kcSlideUp .35s .07s both' }}>
-                        <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#059669', marginBottom: 12 }}>
-                            Daftar lowongan terurai · belum tersimpan, menunggu konfirmasi
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                            <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#059669' }}>
+                                Daftar lowongan terurai · pilih yang ingin dipublikasikan
+                            </div>
+                            <div style={{ font: '700 10.5px/1 "JetBrains Mono", monospace', color: '#94A3B8' }}>
+                                {checkedIds.size}/{parsedResult.jobs.length} dipilih
+                            </div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {parsedResult.jobs.map((job, idx) => (
-                                <div
-                                    key={idx}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        gap: 10,
-                                        paddingBottom: 10,
-                                        borderBottom: idx < parsedResult.jobs.length - 1 ? '1px dashed #E2E8F0' : 'none',
-                                    }}
-                                >
-                                    <span
+                            {parsedResult.jobs.map((job, idx) => {
+                                const checked = checkedIds.has(job.local_id)
+                                return (
+                                    <div
+                                        key={job.local_id}
+                                        onClick={() => toggleJobChecked(job.local_id)}
+                                        role="checkbox"
+                                        aria-checked={checked}
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault()
+                                                toggleJobChecked(job.local_id)
+                                            }
+                                        }}
                                         style={{
-                                            width: 19,
-                                            height: 19,
-                                            borderRadius: 5,
-                                            background: '#10B981',
-                                            border: '1.5px solid #10B981',
-                                            display: 'grid',
-                                            placeItems: 'center',
-                                            color: '#fff',
-                                            font: '900 11px/1 "Plus Jakarta Sans", sans-serif',
-                                            flex: 'none',
-                                            marginTop: 1,
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: 10,
+                                            paddingBottom: 10,
+                                            borderBottom: idx < parsedResult.jobs.length - 1 ? '1px dashed #E2E8F0' : 'none',
+                                            cursor: 'pointer',
+                                            opacity: checked ? 1 : 0.5,
                                         }}
                                     >
-                                        ✓
-                                    </span>
-                                    <div>
-                                        <div style={{ font: '800 12.5px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
-                                            {job.title}
-                                        </div>
-                                        <div style={{ font: '600 10.5px/1.35 "Plus Jakarta Sans", sans-serif', color: '#64748B', marginTop: 3 }}>
-                                            {job.details}
+                                        <span
+                                            style={{
+                                                width: 19,
+                                                height: 19,
+                                                borderRadius: 5,
+                                                background: checked ? '#10B981' : '#fff',
+                                                border: `1.5px solid ${checked ? '#10B981' : '#CBD5E1'}`,
+                                                display: 'grid',
+                                                placeItems: 'center',
+                                                color: '#fff',
+                                                font: '900 11px/1 "Plus Jakarta Sans", sans-serif',
+                                                flex: 'none',
+                                                marginTop: 1,
+                                            }}
+                                        >
+                                            {checked ? '✓' : ''}
+                                        </span>
+                                        <div>
+                                            <div style={{ font: '800 12.5px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink, textDecoration: checked ? 'none' : 'line-through' }}>
+                                                {job.title}
+                                            </div>
+                                            <div style={{ font: '600 10.5px/1.35 "Plus Jakarta Sans", sans-serif', color: '#64748B', marginTop: 3 }}>
+                                                {job.details}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: 10 }}>
                         <button
-                            onClick={() => { setParsedResult(null); setSelectedFile(null); }}
+                            onClick={() => { setParsedResult(null); setSelectedFile(null); setCheckedIds(new Set()) }}
                             className="kc-btn"
                             style={{
                                 flex: 'none',
@@ -283,12 +322,12 @@ export default function JobPackUploader() {
                         </button>
                         <button
                             onClick={handleConfirmPublish}
-                            disabled={publishing}
+                            disabled={publishing || checkedIds.size === 0}
                             className="kc-btn"
                             style={{
                                 flex: 1,
                                 padding: 14,
-                                background: publishing ? '#64748B' : KC.ink,
+                                background: publishing || checkedIds.size === 0 ? '#64748B' : KC.ink,
                                 border: `1.5px solid ${KC.ink}`,
                                 borderRadius: 11,
                                 boxShadow: `3px 3px 0 ${KC.orange}`,
@@ -298,11 +337,15 @@ export default function JobPackUploader() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                cursor: publishing ? 'wait' : 'pointer',
+                                cursor: publishing || checkedIds.size === 0 ? 'not-allowed' : 'pointer',
                                 animation: 'kcSlideUp .35s .14s both',
                             }}
                         >
-                            {publishing ? 'Mempublikasikan…' : `Konfirmasi & Publikasikan (${parsedResult.jobs.length}) →`}
+                            {publishing
+                                ? 'Mempublikasikan…'
+                                : checkedIds.size === 0
+                                    ? 'Pilih minimal 1 lowongan'
+                                    : `Konfirmasi & Publikasikan (${checkedIds.size}) →`}
                         </button>
                     </div>
                 </div>
