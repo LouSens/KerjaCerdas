@@ -12,7 +12,7 @@ const bandOf = (m) => {
 
 export default function SeekerMatchResults() {
     const isMobile = useIsMobile()
-    const { matches, agentLoading, runAgent, navigate, savedJobs, bookmarkJob, unbookmarkJob } = useStore()
+    const { matches, agentLoading, runAgent, navigate, savedJobs, toggleSaveJob: storeSaveJob } = useStore()
     const [selectedJob, setSelectedJob] = useState(null)
     const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'strong' | 'possible' | 'stretch'
     const [refreshing, setRefreshing] = useState(false)
@@ -45,13 +45,8 @@ export default function SeekerMatchResults() {
     const toggleSaveJob = (job) => {
         const id = job.id || job.job_id
         const isSaved = savedMap[id] || (savedJobs || []).some(s => (s.id || s.job_id) === id)
-        if (isSaved) {
-            unbookmarkJob(id)
-            setSavedMap(prev => ({ ...prev, [id]: false }))
-        } else {
-            bookmarkJob(job)
-            setSavedMap(prev => ({ ...prev, [id]: true }))
-        }
+        storeSaveJob(job)
+        setSavedMap(prev => ({ ...prev, [id]: !isSaved }))
     }
 
     // ─────────────────────────────────────────────────────────────────────────

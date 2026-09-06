@@ -5,7 +5,7 @@ import { X, CheckCircle2 } from 'lucide-react'
 
 export default function JobDetailModal({ job, onClose }) {
     const isMobile = useIsMobile()
-    const { applyJob, bookmarkJob, unbookmarkJob, savedJobs } = useStore()
+    const { applyJob, toggleSaveJob, savedJobs } = useStore()
     const [xaiExpanded, setXaiExpanded] = useState(true)
     const [toastMessage, setToastMessage] = useState(null)
     const [appliedLocally, setAppliedLocally] = useState(false)
@@ -78,11 +78,7 @@ export default function JobDetailModal({ job, onClose }) {
     }
 
     const toggleSave = () => {
-        if (isSaved) {
-            unbookmarkJob(jobId)
-        } else {
-            bookmarkJob(job)
-        }
+        toggleSaveJob(job)
     }
 
     return (

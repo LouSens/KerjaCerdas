@@ -5,7 +5,7 @@ import { KC, ScoreDonut, topBtn, DesignStyles, useIsMobile } from './_design'
 
 export default function SavedJobsPage() {
     const isMobile = useIsMobile()
-    const { savedJobs, syncSavedJobs, unbookmarkJob, bookmarkJob, navigate } = useStore()
+    const { savedJobs, syncSavedJobs, toggleSaveJob, navigate } = useStore()
     const [selectedJob, setSelectedJob] = useState(null)
 
     useEffect(() => {
@@ -17,8 +17,7 @@ export default function SavedJobsPage() {
     const list = savedJobs || []
 
     const handleRemove = (job) => {
-        const id = job.id || job.job_id
-        unbookmarkJob(id)
+        toggleSaveJob(job)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
