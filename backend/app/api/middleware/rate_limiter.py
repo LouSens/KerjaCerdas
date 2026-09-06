@@ -66,6 +66,10 @@ _ROUTE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/v1/verify/identity": (10, 60),
     # Calls Gemini for course recommendations — same cost class as the agent.
     "/api/v1/seeker/skill-gap": (20, 60),
+    # Reverse-matching (/candidates) and the pool estimator both call Gemini
+    # per request — same cost class as the agent, but previously fell through
+    # to the 300/60s default bucket since no prefix here matched them.
+    "/api/v1/employer/jobs": (30, 60),
 }
 
 # Bucket name for every route without a specific rule.  All such routes share

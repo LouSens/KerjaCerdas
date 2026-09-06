@@ -10,11 +10,24 @@ import logging
 from typing import Any
 
 from backend.app.api.dependencies import get_current_user, get_current_user_optional
+from backend.app.config.settings import settings
 from backend.app.db.models import PartnershipInquiry
 from backend.app.db.session import async_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import desc, select
+
+
+def _require_admin_routes_enabled() -> None:
+    """Gate cross-user data until a real admin role/auth layer exists.
+
+    `get_current_user` only proves the caller is SOME authenticated seeker
+    or employer — it is not an authorization check. Without this gate, any
+    logged-in user could list/edit every partnership inquiry (names, emails,
+    free-text messages from other organizations).
+    """
+    if not settings.admin_routes_enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
 logger = logging.getLogger(__name__)
@@ -95,7 +108,8 @@ async def list_inquiries(
     status_filter: str | None = None,
     current_user=Depends(get_current_user),
 ) -> list[dict[str, Any]]:
-    """List all inquiries."""
+    """List all inquiries. Admin-only (see `_require_admin_routes_enabled`)."""
+    _require_admin_routes_enabled()
     async with async_session() as session:
         query = select(PartnershipInquiry).order_by(desc(PartnershipInquiry.created_at))
         if category:
@@ -128,7 +142,8 @@ async def update_inquiry_status(
     body: UpdateInquiryStatusRequest,
     current_user=Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Update status or notes of an inquiry."""
+    """Update status or notes of an inquiry. Admin-only (see `_require_admin_routes_enabled`)."""
+    _require_admin_routes_enabled()
     async with async_session() as session:
         result = await session.execute(
             select(PartnershipInquiry).where(PartnershipInquiry.id == inquiry_id)

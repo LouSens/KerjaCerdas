@@ -10,26 +10,26 @@ import useStore from '../store/useStore'
 import { KC, DesignStyles } from './_design'
 import { updateSeekerProfile } from '../services/api'
 import toast from 'react-hot-toast'
-import { FileUp, CheckCircle2, ChevronRight, ArrowRight, ArrowLeft, UploadCloud, X, Plus } from 'lucide-react'
+import { UploadCloud, X } from 'lucide-react'
 
 export default function OnboardingWizard({ onClose, isPage = false }) {
     const { user, profile, uploadResume, cvUploading, seekerId, runAgent, navigate, loadSeekerProfile } = useStore()
     const [step, setStep] = useState(1) // 1, 2, or 3
 
     // Step 1 Form
-    const [fullName, setFullName] = useState(profile?.full_name || user?.name || 'Budi Santoso')
-    const [targetPosition, setTargetPosition] = useState(profile?.headline || 'Backend Engineer')
+    const [fullName, setFullName] = useState(profile?.full_name || user?.name || '')
+    const [targetPosition, setTargetPosition] = useState(profile?.headline || '')
     const [region, setRegion] = useState('Jakarta')
     const [workModes, setWorkModes] = useState(['Hybrid', 'Remote'])
 
     // Step 2 Upload state
     const [parsedResult, setParsedResult] = useState(null)
-    const [fileName, setFileName] = useState('CV_BudiSantoso.pdf')
+    const [fileName, setFileName] = useState('')
 
     // Step 3 Form
     const [salaryRange, setSalaryRange] = useState({ min: 28, max: 40 })
     const [detectedSkills, setDetectedSkills] = useState(
-        (profile?.skills || ['Go', 'PostgreSQL', 'Docker', 'gRPC']).map(s => typeof s === 'string' ? s : s.name)
+        (profile?.skills || []).map(s => typeof s === 'string' ? s : s.name)
     )
     const [newSkill, setNewSkill] = useState('')
     const [showAddSkill, setShowAddSkill] = useState(false)
@@ -52,7 +52,7 @@ export default function OnboardingWizard({ onClose, isPage = false }) {
                 name: res?.profile?.full_name || fullName,
                 headline: res?.profile?.headline || targetPosition,
                 skills: res?.profile?.skills?.map(s => typeof s === 'string' ? s : s.name) || detectedSkills,
-                experienceCount: res?.profile?.experience?.length || 2,
+                experienceCount: res?.profile?.experience?.length ?? 0,
             })
             if (res?.profile?.skills) {
                 setDetectedSkills(res.profile.skills.map(s => typeof s === 'string' ? s : s.name))
@@ -360,7 +360,7 @@ export default function OnboardingWizard({ onClose, isPage = false }) {
                                             {fileName} terurai
                                         </div>
                                         <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: '#059669', marginTop: 2 }}>
-                                            184 ms · {detectedSkills.length} keahlian · 2 pengalaman
+                                            {detectedSkills.length} keahlian · {parsedResult.experienceCount} pengalaman
                                         </div>
                                     </div>
                                 </div>
@@ -575,7 +575,7 @@ export default function OnboardingWizard({ onClose, isPage = false }) {
                                 Pratinjau hasil
                             </div>
                             <div style={{ fontSize: 14, fontWeight: 900, color: '#fff', lineHeight: 1.35 }}>
-                                5 lowongan cocok siap ditampilkan — 2 Strong Fit, rata-rata skor 87%.
+                                AI akan mencocokkan profil Anda dengan lowongan yang tersedia begitu profil ini disimpan.
                             </div>
                         </div>
 

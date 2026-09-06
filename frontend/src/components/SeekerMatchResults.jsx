@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, ScoreDonut, topBtn, DesignStyles, useIsMobile } from './_design'
+import { KC, ScoreDonut, topBtn, DesignStyles, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
 
 const bandOf = (m) => {
@@ -193,9 +193,9 @@ export default function SeekerMatchResults() {
                                 const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
                                 const sem = Math.round(job.semantic_score ?? (jobScore > 0 ? Math.min(100, Math.round(jobScore * 1.02)) : 0))
                                 const sk = Math.round(job.skill_score ?? (jobScore > 0 ? Math.min(100, Math.round(jobScore * 0.95)) : 0))
-                                const loc = Math.round(job.location_score ?? 90)
-                                const sal = Math.round(job.salary_score ?? 85)
-                                const sen = Math.round(job.seniority_score ?? 90)
+                                const loc = Math.round(job.location_score != null ? (job.location_score > 1 ? job.location_score : job.location_score * 100) : jobScore)
+                                const sal = Math.round(job.salary_score != null ? (job.salary_score > 1 ? job.salary_score : job.salary_score * 100) : jobScore)
+                                const sen = Math.round(job.seniority_score != null ? (job.seniority_score > 1 ? job.seniority_score : job.seniority_score * 100) : jobScore)
                                 const isSaved = savedMap[job.id] || (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
 
                                 return (
@@ -347,7 +347,7 @@ export default function SeekerMatchResults() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                             {possibleMatches.map((job, idx) => {
-                                const jobScore = job.overall_score ?? job.score ?? 78
+                                const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
                                 const isSaved = savedMap[job.id] || (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
 
                                 return (
@@ -379,19 +379,22 @@ export default function SeekerMatchResults() {
                                                     {job.location} · {job.work_type} &nbsp;·&nbsp; {job.salary_range || 'Rp 25 jt – Rp 38 jt'}
                                                 </div>
 
+                                                {((job.matching_skills?.length || 0) > 0 || (job.missing_skills?.length || 0) > 0) && (
                                                 <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 16 }}>
-                                                    {(job.matching_skills || ['Docker', 'Go']).map(s => (
+                                                    {(job.matching_skills || []).map(s => (
                                                         <span key={s} style={{ padding: '6px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 7, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
                                                             ✓ {s}
                                                         </span>
                                                     ))}
-                                                    {(job.missing_skills || ['Kubernetes', 'CI/CD Pipeline']).map(s => (
+                                                    {(job.missing_skills || []).map(s => (
                                                         <span key={s} style={{ padding: '6px 12px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 7, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
                                                             + {s}
                                                         </span>
                                                     ))}
                                                 </div>
+                                                )}
 
+                                                {job.missing_skills?.length > 0 && (
                                                 <div
                                                     onClick={() => navigate('seeker-skill-gap')}
                                                     style={{
@@ -406,12 +409,13 @@ export default function SeekerMatchResults() {
                                                     }}
                                                 >
                                                     <span style={{ font: '700 12.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#9A3412' }}>
-                                                        Tutup {job.missing_skills?.length || 2} gap wajib → kecocokan naik ke <b>89%</b>
+                                                        Tutup {job.missing_skills.length} gap wajib untuk menaikkan skor kecocokan
                                                     </span>
                                                     <span style={{ font: '800 12.5px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange }}>
                                                         Lihat rencana belajar →
                                                     </span>
                                                 </div>
+                                                )}
                                             </div>
 
                                             <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, width: 150 }}>
@@ -587,7 +591,7 @@ export default function SeekerMatchResults() {
                     </div>
                 ) : (
                     filteredList.map((job, idx) => {
-                        const jobScore = job.overall_score ?? job.score ?? 88
+                        const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
                         const band = bandOf(job)
                         const isStrong = band === 'strong'
 
@@ -650,8 +654,9 @@ export default function SeekerMatchResults() {
                                 )}
 
                                 {/* Skills Tags */}
+                                {((job.matching_skills?.length || 0) > 0 || (job.missing_skills?.length || 0) > 0) && (
                                 <div style={{ display: 'flex', gap: 6, marginTop: 11, flexWrap: 'wrap' }}>
-                                    {(job.matching_skills || ['Go', 'PostgreSQL']).map(s => (
+                                    {(job.matching_skills || []).map(s => (
                                         <span key={s} style={{ padding: '4px 9px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 7, fontSize: 10.5, fontWeight: 800, color: '#065F46' }}>
                                             ✓ {s}
                                         </span>
@@ -662,6 +667,7 @@ export default function SeekerMatchResults() {
                                         </span>
                                     ))}
                                 </div>
+                                )}
                             </div>
                         )
                     }))}

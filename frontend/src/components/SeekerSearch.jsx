@@ -14,6 +14,7 @@ export default function SeekerSearch() {
     const [selectedBands, setSelectedBands] = useState(['strong', 'possible', 'stretch'])
     const [results, setResults] = useState([])
     const [loading, setLoading] = useState(false)
+    const [searchError, setSearchError] = useState(null)
     const [selectedJob, setSelectedJob] = useState(null)
 
     useEffect(() => {
@@ -23,6 +24,7 @@ export default function SeekerSearch() {
     const handleSearch = async (e) => {
         if (e) e.preventDefault()
         setLoading(true)
+        setSearchError(null)
         try {
             const res = await searchJobs(query, 0, 20, {
                 region: selectedLocation === 'Jakarta' ? '3171' : undefined,
@@ -30,8 +32,9 @@ export default function SeekerSearch() {
             })
             setResults(res?.items || [])
         } catch (err) {
-            console.error('Search error:', err)
+            console.error('Search failed', err)
             setResults([])
+            setSearchError('Pencarian gagal dimuat. Periksa koneksi Anda lalu coba lagi.')
         } finally {
             setLoading(false)
         }
@@ -240,8 +243,8 @@ export default function SeekerSearch() {
                     {/* Right Results Column */}
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                            <span style={{ font: '700 12.5px/1 "JetBrains Mono", monospace', color: '#64748B' }}>
-                                {displayList.length} hasil · {activeFilterCount} filter aktif
+                            <span style={{ font: '700 12.5px/1 "JetBrains Mono", monospace', color: searchError ? '#B91C1C' : '#64748B' }}>
+                                {searchError || `${displayList.length} hasil · ${activeFilterCount} filter aktif`}
                             </span>
                             <span style={{ font: '800 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
                                 Urutkan: Relevansi ▾

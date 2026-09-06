@@ -72,7 +72,8 @@ export default function SavedJobsPage() {
                 ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                         {list.map((job, idx) => {
-                            const score = job.score ? Math.round(job.score > 1 ? job.score : job.score * 100) : (job.overall_score ? Math.round(job.overall_score * 100) : 85)
+                            const hasScore = job.score != null || job.overall_score != null
+                            const score = job.score ? Math.round(job.score > 1 ? job.score : job.score * 100) : (job.overall_score ? Math.round(job.overall_score * 100) : 0)
                             const isStrong = score >= 85
 
                             return (
@@ -93,16 +94,18 @@ export default function SavedJobsPage() {
                                                 <span style={{ font: '700 12.5px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
                                                     {job.company || job.company_name}
                                                 </span>
-                                                <span style={{
-                                                    padding: '3px 9px',
-                                                    background: isStrong ? '#ECFDF5' : '#FEF3C7',
-                                                    border: `1px solid ${isStrong ? '#10B981' : '#F59E0B'}`,
-                                                    borderRadius: 999,
-                                                    font: '800 10px/1.3 "Plus Jakarta Sans", sans-serif',
-                                                    color: isStrong ? '#065F46' : '#B45309',
-                                                }}>
-                                                    {isStrong ? 'Strong Fit' : 'Possible Fit'}
-                                                </span>
+                                                {hasScore && (
+                                                    <span style={{
+                                                        padding: '3px 9px',
+                                                        background: isStrong ? '#ECFDF5' : '#FEF3C7',
+                                                        border: `1px solid ${isStrong ? '#10B981' : '#F59E0B'}`,
+                                                        borderRadius: 999,
+                                                        font: '800 10px/1.3 "Plus Jakarta Sans", sans-serif',
+                                                        color: isStrong ? '#065F46' : '#B45309',
+                                                    }}>
+                                                        {isStrong ? 'Strong Fit' : 'Possible Fit'}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div style={{ font: '900 20px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.7px', color: KC.ink, marginBottom: 7 }}>
                                                 {job.title}
@@ -112,19 +115,21 @@ export default function SavedJobsPage() {
                                             </div>
                                         </div>
 
-                                        {/* 66px Donut Ring */}
-                                        <svg width="66" height="66" viewBox="0 0 66 66" style={{ flexShrink: 0, transform: 'rotate(-90deg)' }}>
-                                            <circle cx="33" cy="33" r="27" fill="none" stroke="#E2E8F0" strokeWidth="5" />
-                                            <circle
-                                                cx="33" cy="33" r="27" fill="none"
-                                                stroke={isStrong ? '#10B981' : '#F59E0B'} strokeWidth="5"
-                                                strokeLinecap="round" strokeDasharray="169.6"
-                                                strokeDashoffset={169.6 - (169.6 * (score / 100))}
-                                            />
-                                            <text x="33" y="33" textAnchor="middle" dominantBaseline="central" transform="rotate(90 33 33)" style={{ font: '900 18px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}>
-                                                {score}
-                                            </text>
-                                        </svg>
+                                        {hasScore && (
+                                            /* 66px Donut Ring */
+                                            <svg width="66" height="66" viewBox="0 0 66 66" style={{ flexShrink: 0, transform: 'rotate(-90deg)' }}>
+                                                <circle cx="33" cy="33" r="27" fill="none" stroke="#E2E8F0" strokeWidth="5" />
+                                                <circle
+                                                    cx="33" cy="33" r="27" fill="none"
+                                                    stroke={isStrong ? '#10B981' : '#F59E0B'} strokeWidth="5"
+                                                    strokeLinecap="round" strokeDasharray="169.6"
+                                                    strokeDashoffset={169.6 - (169.6 * (score / 100))}
+                                                />
+                                                <text x="33" y="33" textAnchor="middle" dominantBaseline="central" transform="rotate(90 33 33)" style={{ font: '900 18px "Plus Jakarta Sans", sans-serif', fill: KC.ink }}>
+                                                    {score}
+                                                </text>
+                                            </svg>
+                                        )}
                                     </div>
 
                                     {job.missing_skills && job.missing_skills.length > 0 ? (
@@ -236,7 +241,8 @@ export default function SavedJobsPage() {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {list.map((job, idx) => {
-                        const score = job.score ? Math.round(job.score > 1 ? job.score : job.score * 100) : (job.overall_score ? Math.round(job.overall_score * 100) : 85)
+                        const hasScore = job.score != null || job.overall_score != null
+                        const score = job.score ? Math.round(job.score > 1 ? job.score : job.score * 100) : (job.overall_score ? Math.round(job.overall_score * 100) : 0)
                         const isStrong = score >= 85
 
                         return (
@@ -254,15 +260,17 @@ export default function SavedJobsPage() {
                                             <span style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B' }}>
                                                 {job.company || job.company_name}
                                             </span>
-                                            <span style={{
-                                                padding: '3px 7px',
-                                                background: isStrong ? '#ECFDF5' : '#FEF3C7',
-                                                border: `1px solid ${isStrong ? '#10B981' : '#F59E0B'}`,
-                                                borderRadius: 999, fontSize: 9.5, fontWeight: 800,
-                                                color: isStrong ? '#065F46' : '#B45309',
-                                            }}>
-                                                {isStrong ? 'Strong Fit' : 'Possible Fit'}
-                                            </span>
+                                            {hasScore && (
+                                                <span style={{
+                                                    padding: '3px 7px',
+                                                    background: isStrong ? '#ECFDF5' : '#FEF3C7',
+                                                    border: `1px solid ${isStrong ? '#10B981' : '#F59E0B'}`,
+                                                    borderRadius: 999, fontSize: 9.5, fontWeight: 800,
+                                                    color: isStrong ? '#065F46' : '#B45309',
+                                                }}>
+                                                    {isStrong ? 'Strong Fit' : 'Possible Fit'}
+                                                </span>
+                                            )}
                                         </div>
                                         <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.5, color: KC.ink, marginBottom: 4, lineHeight: 1.2 }}>
                                             {job.title}
@@ -272,7 +280,9 @@ export default function SavedJobsPage() {
                                         </div>
                                     </div>
 
-                                    <ScoreDonut value={score} size={52} color={isStrong ? '#10B981' : '#F59E0B'} />
+                                    {hasScore && (
+                                        <ScoreDonut value={score} size={52} color={isStrong ? '#10B981' : '#F59E0B'} />
+                                    )}
                                 </div>
 
                                 {job.missing_skills && job.missing_skills.length > 0 ? (

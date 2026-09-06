@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
-import { Plus, ArrowLeft, Users, Edit3, ArrowRight, FileText } from 'lucide-react'
+import { Plus, ArrowLeft, Users, Edit3, ArrowRight, FileText, Loader2 } from 'lucide-react'
 
 function formatSalary(min, max) {
     if (!min && !max) return 'Rp 20–35 jt'
@@ -11,7 +11,7 @@ function formatSalary(min, max) {
 }
 
 export default function EmployerJobs() {
-    const { employerJobs, refreshEmployerJobs, navigate } = useStore()
+    const { employerJobs, employerJobsLoading, refreshEmployerJobs, navigate } = useStore()
     const [filterTab, setFilterTab] = useState('all') // 'all' | 'active' | 'draft' | 'closed'
 
     useEffect(() => {
@@ -152,7 +152,14 @@ export default function EmployerJobs() {
 
             {/* Job List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {filteredJobs.length === 0 ? (
+                {employerJobsLoading && filteredJobs.length === 0 ? (
+                    <BrutalCard color="#FFFFFF" padding={24}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Loader2 size={16} className="animate-spin" color={KC.orange} />
+                            <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Memuat daftar lowongan…</p>
+                        </div>
+                    </BrutalCard>
+                ) : filteredJobs.length === 0 ? (
                     <BrutalCard color="#FFFFFF" padding={32}>
                         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                             <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F1F5F9', display: 'grid', placeItems: 'center', border: `1.5px solid ${KC.ink}` }}>

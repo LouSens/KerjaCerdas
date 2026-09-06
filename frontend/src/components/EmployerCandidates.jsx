@@ -16,6 +16,7 @@ import {
     PhoneCall,
     AlertCircle,
     X,
+    Loader2,
 } from 'lucide-react'
 
 const STAGE_OPTIONS = [
@@ -46,6 +47,7 @@ export default function EmployerCandidates() {
         refreshEmployerJobs,
         selectedCandidateJobId,
         employerApplications,
+        employerApplicationsLoading,
         loadEmployerApplications,
         changeApplicationStatus,
     } = useStore()
@@ -673,7 +675,14 @@ export default function EmployerCandidates() {
                 {/* TAB: Real DB Applications (Desktop) */}
                 {activeTab === 'applications' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        {filteredApplications.length === 0 ? (
+                        {employerApplicationsLoading ? (
+                            <BrutalCard color="#FFFFFF" padding={24}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <Loader2 size={16} className="animate-spin" color={KC.orange} />
+                                    <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Memuat daftar pelamar…</p>
+                                </div>
+                            </BrutalCard>
+                        ) : filteredApplications.length === 0 ? (
                             <BrutalCard color="#FFFFFF" padding={36}>
                                 <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                     <div style={{ width: 52, height: 52, borderRadius: '50%', background: KC.cyanSoft, display: 'grid', placeItems: 'center', border: `1.5px solid ${KC.ink}` }}>

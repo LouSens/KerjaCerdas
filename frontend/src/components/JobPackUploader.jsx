@@ -7,8 +7,8 @@ import { UploadCloud, CheckCircle2, ArrowRight } from 'lucide-react'
 export default function JobPackUploader() {
     const { uploadJobPack, jobPackUploading, navigate } = useStore()
     const [selectedFile, setSelectedFile] = useState(null)
-    const [isParsing, setIsParsing] = useState(false)
     const [parsedResult, setParsedResult] = useState(null)
+    const [dragActive, setDragActive] = useState(false)
     const inputRef = useRef(null)
 
     const handleFile = async (file) => {
@@ -18,11 +18,9 @@ export default function JobPackUploader() {
             return
         }
         setSelectedFile(file)
-        setIsParsing(true)
 
         try {
             const res = await uploadJobPack(file)
-            setIsParsing(false)
             if (!res || (!res.created_job_ids?.length && !res.jobs?.length)) {
                 toast.error('Tidak ada lowongan yang berhasil diurai dari berkas PDF ini.')
                 setSelectedFile(null)
@@ -45,7 +43,7 @@ export default function JobPackUploader() {
                 jobs: jobsList,
             })
         } catch (e) {
-            setIsParsing(false)
+            toast.error('Ekstraksi dokumen gagal: ' + (e.message || 'Periksa berkas Anda lalu coba unggah ulang.'))
             setSelectedFile(null)
             setParsedResult(null)
         }
@@ -90,34 +88,54 @@ export default function JobPackUploader() {
             {!parsedResult ? (
                 <>
                     <div
-                        onClick={() => inputRef.current?.click()}
+                        aria-busy={jobPackUploading}
+                        onDragOver={(e) => {
+                            if (jobPackUploading) return
+                            e.preventDefault()
+                            setDragActive(true)
+                        }}
+                        onDragLeave={() => setDragActive(false)}
+                        onDrop={(e) => {
+                            if (jobPackUploading) return
+                            e.preventDefault()
+                            setDragActive(false)
+                            if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0])
+                        }}
+                        onClick={() => {
+                            if (jobPackUploading) return
+                            inputRef.current?.click()
+                        }}
                         style={{
                             background: '#fff',
-                            border: `1.5px dashed ${KC.ink}`,
+                            border: `1.5px dashed ${dragActive ? KC.orange : KC.ink}`,
                             borderRadius: 14,
                             boxShadow: `3px 3px 0 ${KC.ink}`,
                             padding: '26px 18px',
                             textAlign: 'center',
-                            cursor: 'pointer',
+                            cursor: jobPackUploading ? 'progress' : 'pointer',
+                            pointerEvents: jobPackUploading ? 'none' : 'auto',
+                            opacity: jobPackUploading ? 0.7 : 1,
                             animation: 'kcUp .4s both',
+                            transition: 'all 0.15s ease',
                         }}
                     >
                         <div style={{ width: 52, height: 52, margin: '0 auto 12px', borderRadius: 13, background: '#FFF1EB', border: `1.5px solid ${KC.orange}`, display: 'grid', placeItems: 'center' }}>
                             <div style={{ width: 0, height: 0, borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderBottom: `13px solid ${KC.orange}` }} />
                         </div>
                         <div style={{ font: '800 14.5px/1.3 "Plus Jakarta Sans", sans-serif', color: KC.ink, marginBottom: 5 }}>
-                            {isParsing ? 'Mengurai Job Pack PDF…' : 'Ketuk untuk pilih Job Pack PDF'}
+                            {jobPackUploading ? 'Mengurai Job Pack PDF…' : 'Ketuk atau seret Job Pack PDF ke sini'}
                         </div>
                         <div style={{ font: '400 11.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
                             Maks 10 MB · header %PDF- divalidasi
                         </div>
                         <button
                             type="button"
+                            disabled={jobPackUploading}
                             className="kc-btn"
                             style={{
                                 marginTop: 14,
                                 padding: '12px 18px',
-                                background: isParsing ? '#64748B' : KC.orange,
+                                background: jobPackUploading ? '#64748B' : KC.orange,
                                 color: '#fff',
                                 border: `1.5px solid ${KC.ink}`,
                                 borderRadius: 10,
@@ -130,7 +148,7 @@ export default function JobPackUploader() {
                                 cursor: 'pointer',
                             }}
                         >
-                            {isParsing ? 'Memproses Berkas…' : 'Pilih Berkas PDF'}
+                            {jobPackUploading ? 'Memproses Berkas…' : 'Pilih Berkas PDF'}
                         </button>
                     </div>
 

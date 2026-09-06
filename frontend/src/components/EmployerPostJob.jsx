@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
-import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
+import { KC, topBtn, DesignStyles } from './_design'
 import { createEmployerJob, estimateJobPool } from '../services/api'
 import { Plus, X, ArrowLeft, ArrowRight, ShieldCheck, Building2, CheckCircle2 } from 'lucide-react'
 
@@ -52,10 +52,10 @@ export default function EmployerPostJob() {
                 .then((res) => {
                     if (!cancelled && res) {
                         setEstimate({
-                            pool_size: res.pool_size || Math.max(12, 50 - skills.length * 3),
-                            strong: 2,
-                            possible: 2,
-                            stretch: 1,
+                            pool_size: res.pool_size ?? Math.max(12, 50 - skills.length * 3),
+                            strong: res.strong ?? 0,
+                            possible: res.possible ?? 0,
+                            stretch: res.stretch ?? 0,
                         })
                     }
                 })
@@ -562,13 +562,13 @@ export default function EmployerPostJob() {
                         </div>
                         <div style={{ display: 'flex', gap: 7, marginBottom: 11 }}>
                             <span style={{ padding: '4px 9px', background: 'rgba(16,185,129,.2)', border: '1px solid #10B981', borderRadius: 999, font: '800 10px/1 "Plus Jakarta Sans", sans-serif', color: '#10B981' }}>
-                                2 Strong
+                                {estimate.strong} Strong
                             </span>
                             <span style={{ padding: '4px 9px', background: 'rgba(245,158,11,.2)', border: '1px solid #F59E0B', borderRadius: 999, font: '800 10px/1 "Plus Jakarta Sans", sans-serif', color: '#F59E0B' }}>
-                                2 Possible
+                                {estimate.possible} Possible
                             </span>
                             <span style={{ padding: '4px 9px', background: 'rgba(2,132,199,.2)', border: '1px solid #0284C7', borderRadius: 999, font: '800 10px/1 "Plus Jakarta Sans", sans-serif', color: '#38BDF8' }}>
-                                1 Stretch
+                                {estimate.stretch} Stretch
                             </span>
                         </div>
                         <div style={{ font: '600 11px/1.5 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.55)' }}>

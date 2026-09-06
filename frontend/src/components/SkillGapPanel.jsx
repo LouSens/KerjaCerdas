@@ -159,11 +159,13 @@ export default function SkillGapPanel() {
                                 <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>Gap wajib</div>
                             </div>
                             <div style={{ flex: 1, textAlign: 'center', padding: '14px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                                <div style={{ font: '900 21px/1 "Plus Jakarta Sans", sans-serif', color: '#fff' }}>44</div>
+                                <div style={{ font: '900 21px/1 "Plus Jakarta Sans", sans-serif', color: '#fff' }}>{gapSkills.length * 20}</div>
                                 <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>Jam estimasi</div>
                             </div>
                             <div style={{ flex: 1, textAlign: 'center', padding: '14px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                                <div style={{ font: '900 21px/1 "Plus Jakarta Sans", sans-serif', color: '#F59E0B' }}>Sedang</div>
+                                <div style={{ font: '900 21px/1 "Plus Jakarta Sans", sans-serif', color: gapSkills.length >= 4 ? '#EF4444' : gapSkills.length >= 2 ? '#F59E0B' : '#10B981' }}>
+                                    {gapSkills.length >= 4 ? 'Tinggi' : gapSkills.length >= 2 ? 'Sedang' : 'Rendah'}
+                                </div>
                                 <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>Severity</div>
                             </div>
                         </div>

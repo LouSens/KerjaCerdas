@@ -1,19 +1,27 @@
 /**
  * ApplicationsPage — Real milestone timeline tracking for submitted job applications (Frame 10).
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
-import { KC, DesignStyles } from './_design'
-import { Send, Clock } from 'lucide-react'
+import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
+import { Send, Clock, RefreshCw, Briefcase, Loader2 } from 'lucide-react'
 
 export default function ApplicationsPage() {
-    const { applications, loadApplications, navigate } = useStore()
+    const { applications, applicationsLoading, loadApplications, navigate } = useStore()
+    const [refreshing, setRefreshing] = useState(false)
 
     useEffect(() => {
         if (typeof loadApplications === 'function') {
             loadApplications()
         }
     }, [loadApplications])
+
+    const handleRefresh = async () => {
+        if (typeof loadApplications !== 'function') return
+        setRefreshing(true)
+        await loadApplications()
+        setRefreshing(false)
+    }
 
     const list = applications || []
 
@@ -22,19 +30,41 @@ export default function ApplicationsPage() {
             <DesignStyles />
 
             {/* Header (Frame 10) */}
-            <div>
-                <h1 style={{
-                    fontSize: 22, fontWeight: 900, letterSpacing: -0.9,
-                    color: KC.ink, margin: '0 0 5px', lineHeight: 1.1,
-                }}>
-                    Lamaran Saya
-                </h1>
-                <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600 }}>
-                    {list.length} lamaran aktif · pelacakan tahapan real-time
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                <div>
+                    <h1 style={{
+                        fontSize: 22, fontWeight: 900, letterSpacing: -0.9,
+                        color: KC.ink, margin: '0 0 5px', lineHeight: 1.1,
+                    }}>
+                        Lamaran Saya
+                    </h1>
+                    <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600 }}>
+                        {list.length} lamaran aktif · pelacakan tahapan real-time
+                    </div>
                 </div>
+                <button
+                    className="kc-btn"
+                    onClick={handleRefresh}
+                    disabled={refreshing || applicationsLoading}
+                    style={{ ...topBtn('#fff', KC.ink), opacity: refreshing || applicationsLoading ? 0.7 : 1 }}
+                    title="Segarkan data dari server"
+                >
+                    <RefreshCw size={14} className={refreshing || applicationsLoading ? 'animate-spin' : ''} /> Segarkan
+                </button>
             </div>
 
+            {/* Loading State */}
+            {applicationsLoading && list.length === 0 && (
+                <BrutalCard color="#FFFFFF" padding={24}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Loader2 size={16} className="animate-spin" color={KC.orange} />
+                        <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Memuat riwayat lamaran…</p>
+                    </div>
+                </BrutalCard>
+            )}
+
             {/* Application List */}
+            {!(applicationsLoading && list.length === 0) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
                 {list.length === 0 ? (
                     <div style={{
@@ -87,10 +117,11 @@ export default function ApplicationsPage() {
                         )
                         const isShortlisted = status === 'shortlisted' || status === 'interview'
                         const isReviewed = status === 'reviewed'
+                        const isRejected = status === 'rejected'
 
                         const company = app.company || app.company_name || 'Perusahaan Pemberi Kerja'
                         const title = app.title || app.job_title || 'Posisi Pekerjaan'
-                        const badgeText = isShortlisted ? 'Shortlisted' : isReviewed ? 'Ditinjau' : 'Terkirim'
+                        const badgeText = isRejected ? 'Ditolak' : isShortlisted ? 'Shortlisted' : isReviewed ? 'Ditinjau' : 'Terkirim'
 
                         const dateText = app.created_at
                             ? new Date(app.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -117,16 +148,22 @@ export default function ApplicationsPage() {
                                     </div>
                                     <span style={{
                                         padding: '5px 10px',
-                                        background: isShortlisted ? '#EEF2FF' : isReviewed ? '#FEF3C7' : '#F1F5F9',
-                                        border: `1px solid ${isShortlisted ? '#6366F1' : isReviewed ? '#F59E0B' : '#CBD5E1'}`,
+                                        background: isRejected ? '#FEE2E2' : isShortlisted ? '#EEF2FF' : isReviewed ? '#FEF3C7' : '#F1F5F9',
+                                        border: `1px solid ${isRejected ? '#F87171' : isShortlisted ? '#6366F1' : isReviewed ? '#F59E0B' : '#CBD5E1'}`,
                                         borderRadius: 999, fontSize: 10, fontWeight: 800,
-                                        color: isShortlisted ? '#3730A3' : isReviewed ? '#B45309' : '#475569',
+                                        color: isRejected ? '#991B1B' : isShortlisted ? '#3730A3' : isReviewed ? '#B45309' : '#475569',
                                         flexShrink: 0, whiteSpace: 'nowrap',
                                     }}>
                                         {badgeText}
                                     </span>
                                 </div>
 
+                                {isRejected ? (
+                                    <div style={{ padding: '10px 14px', background: '#FEE2E2', border: '1px solid #F87171', borderRadius: 9, fontSize: 12, color: '#991B1B', marginBottom: 10 }}>
+                                        <b>Tahapan Selesai:</b> Proses seleksi untuk posisi ini telah ditutup.
+                                    </div>
+                                ) : (
+                                <>
                                 {/* 4-Step Milestone Stepper (Frame 10) */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 10 }}>
                                     {/* Step 1: Terkirim */}
@@ -192,6 +229,8 @@ export default function ApplicationsPage() {
                                     <span style={{ color: stageIndex === 3 ? '#3730A3' : undefined }}>Wawancara</span>
                                     <span style={{ color: stageIndex >= 4 ? '#065F46' : undefined }}>Hasil</span>
                                 </div>
+                                </>
+                                )}
 
                                 {/* Dynamic Note / Schedule box */}
                                 {app.note && (
@@ -214,6 +253,7 @@ export default function ApplicationsPage() {
                     })
                 )}
             </div>
+            )}
         </div>
     )
 }

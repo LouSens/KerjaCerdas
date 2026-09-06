@@ -4,7 +4,7 @@ import logging as _logging
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from backend.app.db.models import (
@@ -13,7 +13,6 @@ from backend.app.db.models import (
     ChatSession,
     Course,
     Employer,
-    GamificationStats,
     JobPosting,
     MatchBundle,
     QueryEmbedding,
@@ -26,7 +25,6 @@ from backend.app.db.schemas import Application as ApplicationSchema
 from backend.app.db.schemas import ChatSession as ChatSchema
 from backend.app.db.schemas import Course as CourseSchema
 from backend.app.db.schemas import Employer as EmployerSchema
-from backend.app.db.schemas import GamificationStats as GameSchema
 from backend.app.db.schemas import JobPosting as JobSchema
 from backend.app.db.schemas import MatchBundle as MatchSchema
 from backend.app.db.schemas import SeekerProfile as SeekerSchema
@@ -325,6 +323,27 @@ async def find_seeker_by_user_id(user_id: str) -> SeekerSchema | None:
         return None
 
 
+async def update_seeker_embedding(
+    seeker_id: str, embedding: list[float], embedding_model: str
+) -> None:
+    """Write only the embedding columns for a seeker.
+
+    Used by the background re-embed task in `seeker.py`'s profile-upsert
+    endpoint: that task holds a snapshot of the profile taken before the
+    embed call started, so a full `upsert()` of that snapshot would silently
+    overwrite any field the user changed (or a CV upload added) while the
+    background embed was still running. A narrow UPDATE avoids that race.
+    """
+    async with async_session() as session:
+        stmt = (
+            update(SeekerProfile)
+            .where(SeekerProfile.id == seeker_id)
+            .values(embedding=embedding, embedding_model=embedding_model)
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+
 async def find_employer_by_user_id(user_id: str) -> EmployerSchema | None:
     """Return an employer by their auth user_id (indexed, O(1))."""
     try:
@@ -357,20 +376,20 @@ async def find_applications_by_seeker_id(seeker_id: str) -> list[ApplicationSche
         return []
 
 
-async def find_gamification_by_seeker_id(seeker_id: str) -> GameSchema | None:
-    """Return gamification stats for a seeker (indexed, O(1))."""
+async def find_jobs_by_employer_id(employer_id: str) -> list[JobSchema]:
+    """Return all postings for an employer (indexed on employer_id, no full scan)."""
     try:
         async with async_session() as session:
-            stmt = select(GamificationStats).where(GamificationStats.seeker_id == seeker_id)
+            stmt = select(JobPosting).where(JobPosting.employer_id == employer_id)
             result = await session.execute(stmt)
-            obj = result.scalar_one_or_none()
-            if not obj:
-                return None
-            data = {c.name: getattr(obj, c.name) for c in GamificationStats.__table__.columns}
-            return GameSchema.model_validate(data)
+            out = []
+            for obj in result.scalars().all():
+                data = {c.name: getattr(obj, c.name) for c in JobPosting.__table__.columns}
+                out.append(JobSchema.model_validate(data))
+            return out
     except Exception as exc:
-        _store_logger.warning("find_gamification_by_seeker_id failed (%s)", exc)
-        return None
+        _store_logger.warning("find_jobs_by_employer_id failed (%s)", exc)
+        return []
 
 
 async def find_skill_gaps_by_seeker_id(seeker_id: str) -> list[SkillGapSchema]:
@@ -402,7 +421,6 @@ class Repositories:
         self.skill_gaps = PostgresRepository(SkillGapSchema, SkillGapResult)
         self.chats = PostgresRepository(ChatSchema, ChatSession)
         self.ai_logs = PostgresRepository(LogSchema, AIPerformanceLog)
-        self.gamification = PostgresRepository(GameSchema, GamificationStats)
         self.courses = PostgresRepository(CourseSchema, Course)
 
 

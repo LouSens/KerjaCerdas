@@ -117,7 +117,13 @@ export default function EmployerHelpPanel() {
                         ? 'opacity-100 scale-100 pointer-events-auto'
                         : 'opacity-0 scale-90 pointer-events-none'
                 }`}
-                style={{ overflowY: 'auto' }}
+                aria-hidden={!open}
+                style={{
+                    overflowY: 'auto',
+                    // `visibility: hidden` also pulls the closed panel's buttons out
+                    // of the keyboard tab order (opacity alone does not).
+                    visibility: open ? 'visible' : 'hidden',
+                }}
             >
                 <header className="px-4 py-3 border-b-2 border-kc-dark flex items-center gap-3 bg-kc-yellow sticky top-0">
                     <div className="w-7 h-7 bg-kc-dark border border-kc-dark flex items-center justify-center text-white text-sm font-bold">

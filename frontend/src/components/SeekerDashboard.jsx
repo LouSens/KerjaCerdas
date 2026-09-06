@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
-import { KC, BrutalCard, topBtn, DesignStyles, useIsMobile } from './_design'
-import { Sparkles, Briefcase, Upload, Search, CheckCircle2, ChevronRight, Bookmark } from 'lucide-react'
+import { KC, topBtn, DesignStyles, useIsMobile } from './_design'
+import { Sparkles } from 'lucide-react'
 import JobDetailModal from './JobDetailModal'
 
 const bandOf = (m) => {
@@ -73,7 +73,7 @@ export default function SeekerDashboard() {
                             Dashboard Karir
                         </h1>
                         <p style={{ font: '400 14px/1.5 "Plus Jakarta Sans", sans-serif', color: '#64748B', margin: '8px 0 0' }}>
-                            Selamat datang kembali, <b style={{ color: KC.ink }}>{user?.name || 'Budi Santoso'}</b> · {matchCount} lowongan terkurasi aktif
+                            Selamat datang kembali, <b style={{ color: KC.ink }}>{userName}</b> · {matchCount} lowongan terkurasi aktif
                         </p>
                     </div>
                     <div style={{ display: 'flex', gap: 11, flexShrink: 0 }}>
@@ -135,18 +135,6 @@ export default function SeekerDashboard() {
                                     margin: '13px 0 12px',
                                 }}>
                                     {avg}%
-                                </div>
-                                <div style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 7,
-                                    padding: '6px 12px',
-                                    background: '#10B981',
-                                    borderRadius: 999,
-                                    font: '800 12px/1 "Plus Jakarta Sans", sans-serif',
-                                    color: '#052E20',
-                                }}>
-                                    ▲ +4% dibanding periode lalu
                                 </div>
                             </div>
 
@@ -400,7 +388,7 @@ export default function SeekerDashboard() {
                                         <span style={{ width: 18, height: 18, borderRadius: 5, background: skillsDone ? '#10B981' : '#fff', border: skillsDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', font: '900 11px/1 "Plus Jakarta Sans", sans-serif' }}>
                                             {skillsDone ? '✓' : ''}
                                         </span>
-                                        Keahlian terdata ({profile?.skills?.length || 4})
+                                        Keahlian terdata ({profile?.skills?.length || 0})
                                     </span>
                                     <span style={{ font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: skillsDone ? '#059669' : '#94A3B8' }}>
                                         {skillsDone ? 'Selesai' : 'Belum'}
@@ -457,7 +445,7 @@ export default function SeekerDashboard() {
                                 </span>
                             </div>
                             <div style={{ font: '900 14.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#fff', marginBottom: 14 }}>
-                                "Tutup gap Kubernetes dulu — itu satu-satunya yang menahan Anda dari band Strong di jalur DevOps."
+                                Tanyakan apa saja soal skill gap, strategi lamaran, atau cara menaikkan skor kecocokan Anda.
                             </div>
                             <button
                                 onClick={() => navigate('seeker-advisor')}
@@ -494,7 +482,7 @@ export default function SeekerDashboard() {
                         fontSize: 21, fontWeight: 900, letterSpacing: -0.7,
                         color: KC.ink, margin: '4px 0 0', lineHeight: 1.15,
                     }}>
-                        {user?.name || 'Budi Santoso'}
+                        {userName}
                     </h1>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -528,13 +516,6 @@ export default function SeekerDashboard() {
                             color: '#fff', margin: '9px 0 5px', lineHeight: 1,
                         }}>
                             {avg}%
-                        </div>
-                        <div style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px',
-                            background: '#10B981', borderRadius: 999, fontSize: 11, fontWeight: 800,
-                            color: '#052E20',
-                        }}>
-                            ▲ +4% dari periode lalu
                         </div>
                     </div>
                     <svg width="84" height="84" viewBox="0 0 84 84" style={{ flexShrink: 0, transform: 'rotate(-90deg)' }}>
@@ -780,7 +761,7 @@ export default function SeekerDashboard() {
                             <span style={{ width: 17, height: 17, borderRadius: 5, background: skillsDone ? '#10B981' : '#fff', border: skillsDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 900 }}>
                                 {skillsDone ? '✓' : ''}
                             </span>
-                            Keahlian terdata ({profile?.skills?.length || 4})
+                            Keahlian terdata ({profile?.skills?.length || 0})
                         </span>
                         <span style={{ fontSize: 10.5, fontWeight: 800, color: skillsDone ? '#059669' : '#94A3B8' }}>
                             {skillsDone ? 'Selesai' : 'Belum'}

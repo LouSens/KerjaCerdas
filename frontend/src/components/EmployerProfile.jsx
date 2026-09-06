@@ -7,12 +7,14 @@ import { Building2, ShieldCheck, Check, ArrowRight, UserPlus, LogOut } from 'luc
 
 export default function EmployerProfile() {
     const { employerProfile, loadEmployerProfile, navigate, logout, user } = useStore()
+    // Empty defaults — a real employer must not be able to save a pre-filled
+    // demo company as their own profile.
     const [form, setForm] = useState({
         company_name: employerProfile?.company_name || user?.full_name || '',
         brand_name: employerProfile?.company_name || user?.full_name || '',
         npwp: employerProfile?.npwp || '',
-        industry: employerProfile?.industry || 'Teknologi Informasi & Rekrutmen Digital',
-        address: employerProfile?.address || 'Indonesia',
+        industry: employerProfile?.industry || '',
+        address: employerProfile?.address || '',
         website: employerProfile?.website || '',
     })
     const [saving, setSaving] = useState(false)
@@ -23,11 +25,15 @@ export default function EmployerProfile() {
 
     useEffect(() => {
         if (employerProfile) {
+            // `??` (not `||`) so a genuinely empty server field clears the local
+            // value instead of keeping a stale default.
             setForm(prev => ({
                 ...prev,
-                company_name: employerProfile.company_name || prev.company_name,
+                company_name: employerProfile.company_name ?? prev.company_name,
                 brand_name: employerProfile.company_name ? employerProfile.company_name.split('(')[0].trim() : prev.brand_name,
-                npwp: employerProfile.npwp || prev.npwp,
+                npwp: employerProfile.npwp ?? prev.npwp,
+                industry: employerProfile.industry ?? prev.industry,
+                address: employerProfile.address ?? prev.address,
                 website: employerProfile.website ? employerProfile.website.replace('https://', '') : prev.website,
             }))
         }
@@ -39,7 +45,9 @@ export default function EmployerProfile() {
             await updateEmployerProfile({
                 company_name: form.company_name,
                 npwp: form.npwp,
-                website: form.website.startsWith('http') ? form.website : `https://${form.website}`,
+                industry: form.industry,
+                address: form.address,
+                website: form.website ? (form.website.startsWith('http') ? form.website : `https://${form.website}`) : '',
             })
             await loadEmployerProfile()
             toast.success('Perubahan profil berhasil disimpan!')
@@ -167,8 +175,10 @@ export default function EmployerProfile() {
                             NPWP
                         </div>
                         <div style={{ ...inputStyle, justifyContent: 'space-between', fontFamily: '"JetBrains Mono", monospace', letterSpacing: 0.4 }}>
-                            <span>{form.npwp}</span>
-                            <span style={{ font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: '#059669' }}>✓</span>
+                            <span>{form.npwp || '—'}</span>
+                            {form.npwp && (
+                                <span style={{ font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: '#059669' }}>✓</span>
+                            )}
                         </div>
                     </div>
 

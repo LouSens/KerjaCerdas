@@ -112,6 +112,9 @@ app = FastAPI(
     description="AI-powered job-matching platform for Indonesia",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
 
 _DOCS_PATHS = {"/docs", "/redoc", "/openapi.json"}

@@ -136,9 +136,6 @@ export const updateSeekerProfile = (data) =>
         body: JSON.stringify(data),
     })
 
-// ── Seeker gamification ─────────────────────────────────────────────────────
-export const fetchGamification = () => request(`${API_BASE}/seeker/gamification`)
-
 // ── Seeker skill gap (AI-powered) ───────────────────────────────────────────
 export const triggerSkillGap = (targetJobId = null) =>
     request(`${API_BASE}/seeker/skill-gap`, {

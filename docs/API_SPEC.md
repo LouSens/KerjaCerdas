@@ -332,7 +332,7 @@ Return the logged-in seeker's profile.
 
 ### `POST /api/v1/seeker/profile`
 
-Create or overwrite seeker profile. Re-embeds the profile vector via Gemini Embeddings on every call. Automatically creates or updates `GamificationStats` (awards `profile_complete` badge + 100 XP if skills provided).
+Create or overwrite seeker profile. Re-embeds the profile vector via Gemini Embeddings on every call.
 
 **Request Body:**
 ```json

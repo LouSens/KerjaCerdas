@@ -193,7 +193,16 @@ export default function EmployerDashboard() {
                         <h2 style={{ font: '900 19px/1.15 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.6px', color: KC.ink, margin: '0 0 14px' }}>
                             Lowongan Aktif ({activeList.length})
                         </h2>
-                        {activeList.length === 0 ? (
+                        {employerJobsLoading && activeList.length === 0 ? (
+                            <div style={{
+                                background: '#fff', border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 14, boxShadow: `3px 3px 0 ${KC.ink}`,
+                                padding: '32px 24px', textAlign: 'center', color: '#64748B',
+                                font: '600 13px "Plus Jakarta Sans", sans-serif',
+                            }}>
+                                Memuat lowongan aktif…
+                            </div>
+                        ) : activeList.length === 0 ? (
                             <div style={{
                                 background: '#fff', border: `1.5px solid ${KC.ink}`,
                                 borderRadius: 14, boxShadow: `3px 3px 0 ${KC.ink}`,

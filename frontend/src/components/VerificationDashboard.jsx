@@ -14,18 +14,25 @@ export default function VerificationDashboard() {
     const [ijazahVerified, setIjazahVerified] = useState(profile?.ijazah_verified || false)
     const [ijazahInput, setIjazahInput] = useState('')
     const [ijazahChecking, setIjazahChecking] = useState(false)
+    const phoneVerified = Boolean(profile?.phone_verified)
 
     // Calculate score based on completed items
-    const completedCount = 1 + (ktpVerified ? 1 : 0) + (ijazahVerified ? 1 : 0) // phone verified by default
+    const completedCount = (phoneVerified ? 1 : 0) + (ktpVerified ? 1 : 0) + (ijazahVerified ? 1 : 0)
     const trustScore = Math.round((completedCount / 4) * 100)
 
     const handleSimulateKTP = async () => {
         setKtpChecking(true)
         try {
-            const res = await verifyIdentity({ nik: '3271012345670004', full_name: profile?.full_name || 'Budi Santoso' })
+            const fullName = (profile?.full_name || '').trim()
+            if (!fullName) {
+                toast.error('Nama lengkap belum terisi. Lengkapi profil Anda terlebih dahulu.')
+                setKtpChecking(false)
+                return
+            }
+            const res = await verifyIdentity({ nik: profile?.nik, full_name: fullName })
             if (res?.status === 'VERIFIED') {
                 setKtpVerified(true)
-                toast.success('NIK 3271••••••••0004 berhasil divalidasi!')
+                toast.success('NIK berhasil divalidasi!')
                 await loadSeekerProfile()
             } else {
                 toast.error(res?.message || 'Verifikasi NIK gagal')
@@ -42,9 +49,13 @@ export default function VerificationDashboard() {
             toast.error('Masukkan nomor ijazah')
             return
         }
+        const institution = profile?.education?.[0]?.institution
+        if (!institution) {
+            toast.error('Riwayat pendidikan belum terisi di profil Anda. Lengkapi profil terlebih dahulu.')
+            return
+        }
         setIjazahChecking(true)
         try {
-            const institution = profile?.education?.[0]?.institution || 'Institut Teknologi Bandung'
             const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), institution_name: institution })
             if (res?.status === 'VERIFIED') {
                 setIjazahVerified(true)
@@ -186,7 +197,11 @@ export default function VerificationDashboard() {
                             <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 13, fontWeight: 900, flexShrink: 0 }}>✓</span>
                             <div>
                                 <div style={{ fontSize: 12, fontWeight: 800, color: '#065F46' }}>NIK terbaca & format valid</div>
-                                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: '#059669', marginTop: 3 }}>3271••••••••0004</div>
+                                {profile?.nik && (
+                                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: '#059669', marginTop: 3 }}>
+                                        {profile.nik.slice(0, 4)}{'•'.repeat(Math.max(0, profile.nik.length - 8))}{profile.nik.slice(-4)}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -209,7 +224,7 @@ export default function VerificationDashboard() {
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <span style={{ width: 9, height: 9, background: '#10B981', borderRadius: '50%' }} />
+                                <span style={{ width: 9, height: 9, background: phoneVerified ? '#10B981' : KC.orange, borderRadius: '50%' }} />
                                 <span style={{ fontSize: 14, fontWeight: 900, color: KC.ink }}>
                                     Nomor Telepon
                                 </span>
@@ -219,34 +234,28 @@ export default function VerificationDashboard() {
                             </div>
                         </div>
                         <span style={{
-                            padding: '4px 9px', background: '#ECFDF5', border: '1px solid #10B981',
-                            borderRadius: 999, fontSize: 9.5, fontWeight: 800, color: '#065F46', flexShrink: 0,
+                            padding: '4px 9px',
+                            background: phoneVerified ? '#ECFDF5' : '#FFF1EB',
+                            border: `1px solid ${phoneVerified ? '#10B981' : KC.orange}`,
+                            borderRadius: 999, fontSize: 9.5, fontWeight: 800,
+                            color: phoneVerified ? '#065F46' : '#9A3412', flexShrink: 0,
                         }}>
-                            Selesai ✓
+                            {phoneVerified ? 'Selesai ✓' : 'Belum'}
                         </span>
                     </div>
 
-                    {/* 6 OTP Boxes */}
-                    <div style={{ display: 'flex', gap: 7, justifyContent: 'space-between' }}>
-                        {['4', '9', '2', '7', '1', '3'].map((digit, dIdx) => (
-                            <div
-                                key={dIdx}
-                                style={{
-                                    flex: 1, aspectRatio: '1', maxWidth: 46,
-                                    background: '#F8FAFC', border: '1.5px solid #10B981',
-                                    borderRadius: 9, display: 'grid', placeItems: 'center',
-                                    fontFamily: 'JetBrains Mono, monospace', fontSize: 17,
-                                    fontWeight: 900, color: '#065F46',
-                                }}
-                            >
-                                {digit}
-                            </div>
-                        ))}
-                    </div>
-
-                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, fontWeight: 700, color: '#059669', marginTop: 11 }}>
-                        +62 812-•••-4471 terverifikasi
-                    </div>
+                    {phoneVerified ? (
+                        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, fontWeight: 700, color: '#059669' }}>
+                            {profile?.phone ? `${profile.phone} terverifikasi` : 'Nomor terverifikasi'}
+                        </div>
+                    ) : (
+                        <div style={{
+                            padding: '10px 12px', background: '#FEF3C7', border: '1px solid #F59E0B',
+                            borderRadius: 9, fontSize: 10.5, lineHeight: 1.5, color: '#92400E', fontWeight: 600,
+                        }}>
+                            Verifikasi nomor telepon via OTP belum tersedia di sesi ini.
+                        </div>
+                    )}
                 </div>
 
                 {/* 3. Ijazah SIVIL Dikti Card */}
