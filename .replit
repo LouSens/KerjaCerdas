@@ -68,6 +68,7 @@ externalPort = 80
 
 [userenv.production]
 APP_ENV = "production"
+CORS_ALLOW_ORIGINS = "[\"https://kerjacerdas.tech\"]"
 
 [postMerge]
 path = "scripts/post-merge.sh"
