@@ -337,12 +337,28 @@ async def apply_to_job(
         await repos.applications.upsert(app)
     except IntegrityError:
         # Same race as save_job: a concurrent request already created this
-        # (job_id, seeker_id) row. Report that row rather than duplicating it.
+        # (job_id, seeker_id) row. Report that row rather than duplicating it —
+        # but if the row that won the race is only a bookmark (a concurrent
+        # save_job, not an apply_to_job), it must still be promoted to
+        # `applied` here, or the caller is falsely told they already applied
+        # when no application was ever actually submitted.
         winner = await repos.applications.find(
             lambda a: a.job_id == job_id and a.seeker_id == seeker_id
         )
         if winner:
             existing_app = winner[0]
+            if ApplicationStatus(existing_app.status) == ApplicationStatus.SAVED:
+                existing_app.status = ApplicationStatus.APPLIED
+                existing_app.cover_letter = payload.cover_letter
+                existing_app.note = _APPLIED_NOTE
+                existing_app.updated_at = datetime.now(UTC)
+                await repos.applications.upsert(existing_app)
+                return {
+                    "application_id": existing_app.id,
+                    "job_id": job_id,
+                    "status": existing_app.status,
+                    "already_applied": False,
+                }
             return {
                 "application_id": existing_app.id,
                 "job_id": job_id,

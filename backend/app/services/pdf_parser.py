@@ -33,20 +33,17 @@ def _cap_pdf_pages(pdf_bytes: bytes, max_pages: int = _MAX_GEMINI_PAGES) -> byte
 
     Gemini's multimodal endpoint bills PDFs per page, so a legitimate-looking
     but very long upload costs proportionally more per parse with no cap in
-    place. Falls back to the original bytes if the PDF can't be parsed here —
-    the multimodal call will surface any real problem with the file itself.
+    place. Raises if the PDF can't be parsed here — callers must not fall
+    through to sending the original, potentially much longer, document to
+    Gemini uncapped, which would defeat the entire point of the cap.
     """
-    try:
-        import fitz  # PyMuPDF
+    import fitz  # PyMuPDF
 
-        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
-            if doc.page_count <= max_pages:
-                return pdf_bytes
-            doc.select(range(max_pages))
-            return doc.tobytes()
-    except Exception as e:
-        logger.warning("PDF page-cap truncation failed (%s) — sending original bytes", e)
-        return pdf_bytes
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        if doc.page_count <= max_pages:
+            return pdf_bytes
+        doc.select(range(max_pages))
+        return doc.tobytes()
 
 
 def _client():
@@ -257,7 +254,6 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
             return await asyncio.to_thread(_fallback_extract, pdf_bytes)
         return _offline_stub(task)
 
-    pdf_bytes = await asyncio.to_thread(_cap_pdf_pages, pdf_bytes)
     system = build_system_prompt(role=role, task=task)
 
     def _sync():
@@ -291,8 +287,9 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
         raise last_exc if last_exc else RuntimeError("no chat models configured")
 
     try:
+        pdf_bytes = await asyncio.to_thread(_cap_pdf_pages, pdf_bytes)
         raw = await asyncio.to_thread(_sync)
-    except Exception as e:  # network/SSL/quota/parsing — never crash the upload
+    except Exception as e:  # network/SSL/quota/parsing/page-cap — never crash the upload
         logger.warning("Gemini PDF call failed (task=%s): %s — falling back", task, e)
         if task == "cv_parser":
             fb = await asyncio.to_thread(_fallback_extract, pdf_bytes)
