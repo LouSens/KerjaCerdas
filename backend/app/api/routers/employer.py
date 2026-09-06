@@ -155,7 +155,11 @@ async def create_job(payload: JobCreateRequest, current_user: User = Depends(get
                 payload.client_ref,
                 existing.id,
             )
-            return {"job_id": existing.id, "title": existing.title}
+            # `created: False` tells the caller this wasn't a new posting —
+            # without it, a batch publish (JobPackUploader) can't tell a
+            # genuine create apart from a replay and would report the same
+            # vacancy as newly published on every re-upload of the same pack.
+            return {"job_id": existing.id, "title": existing.title, "created": False}
 
     job = JobPosting(
         employer_id=employer.id,
@@ -186,11 +190,11 @@ async def create_job(payload: JobCreateRequest, current_user: User = Depends(get
         if payload.client_ref:
             existing = await find_job_by_employer_and_client_ref(employer.id, payload.client_ref)
             if existing:
-                return {"job_id": existing.id, "title": existing.title}
+                return {"job_id": existing.id, "title": existing.title, "created": False}
         raise
     invalidate_jobs_cache()
     logger.info("Job created: %s by user_id=%s", job.id, current_user.id)
-    return {"job_id": job.id, "title": job.title}
+    return {"job_id": job.id, "title": job.title, "created": True}
 
 
 @router.get("/jobs")

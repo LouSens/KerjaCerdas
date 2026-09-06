@@ -124,6 +124,26 @@ class TestIdentityEndpoint:
         if stored_nik:
             assert stored_nik == hashlib.sha256(VALID_NIK.encode()).hexdigest()
 
+    def test_verified_status_survives_a_profile_reload(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """A successful check must be readable back from GET /seeker/profile —
+        not just held in the response of the verify call itself — since the
+        frontend re-derives displayed status from a fresh profile fetch on
+        every reload."""
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        client.post(
+            "/api/v1/verify/identity",
+            json={"nik": VALID_NIK, "full_name": "Budi Santoso"},
+            headers=seeker_account["headers"],
+        )
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["nik_verified"] == "verified"
+
 
 # ── /verify/otp/* endpoints ──────────────────────────────────────────────────
 
@@ -304,10 +324,37 @@ class TestEducationAndNpwpMocks:
     def test_education_sentinel_rejected(self, client: TestClient, seeker_account: dict) -> None:
         resp = client.post(
             "/api/v1/verify/education",
-            json={"ijazah_number": "0000", "university_name": "UI", "major": "TI"},
+            json={"ijazah_number": "000000", "university_name": "UI", "major": "TI"},
             headers=seeker_account["headers"],
         )
         assert resp.json()["status"] == "NOT_FOUND"
+
+    def test_education_too_short_is_rejected(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        # Below the minimum plausible length for a real diploma number.
+        resp = client.post(
+            "/api/v1/verify/education",
+            json={"ijazah_number": "12345", "university_name": "UI", "major": "TI"},
+            headers=seeker_account["headers"],
+        )
+        assert resp.status_code == 422
+
+    def test_education_verified_survives_a_profile_reload(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        client.post(
+            "/api/v1/verify/education",
+            json={"ijazah_number": "IJZ-123", "university_name": "UI", "major": "TI"},
+            headers=seeker_account["headers"],
+        )
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["ijazah_verified"] == "verified"
 
     @pytest.mark.parametrize(
         ("npwp", "expected"),

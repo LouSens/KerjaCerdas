@@ -50,6 +50,23 @@ class FakeEmbedder:
 
 
 @pytest.fixture(autouse=True)
+def _disable_llm_candidate_summary(monkeypatch):
+    """rank_seekers_for_job optionally upgrades each candidate's one-liner via
+    a real Gemini call when GEMINI_API_KEY is configured (see matcher.py) —
+    these tests only check DB-path vs in-memory score/band parity, not that
+    enhancement, and a live network call per rank_seekers_for_job invocation
+    makes the test slow and prone to timing out under CI's rate-limited key.
+    The call site already wraps this in try/except and degrades gracefully,
+    so forcing it to raise here is a clean way to make it a no-op.
+    """
+
+    def _raise(*_a, **_k):
+        raise RuntimeError("disabled in tests")
+
+    monkeypatch.setattr("backend.app.services.llm_factory.build_chat_llm", _raise)
+
+
+@pytest.fixture(autouse=True)
 async def setup_database():
     """Bind the engine to the current loop (NullPool) and init schema."""
     db_url = settings.effective_database_url

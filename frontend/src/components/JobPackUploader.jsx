@@ -116,15 +116,33 @@ export default function JobPackUploader() {
                     client_ref: job.client_ref,
                 }))
             )
-            const succeededLocalIds = new Set(
-                jobs.filter((_, i) => results[i].status === 'fulfilled').map(j => j.local_id)
-            )
-            const createdCount = succeededLocalIds.size
-            const failedJobs = jobs.filter(j => !succeededLocalIds.has(j.local_id))
+            // A fulfilled response can still be a replay — the server
+            // recognized client_ref from an earlier attempt (this confirm
+            // click retried a partial failure, or the whole PDF was
+            // re-uploaded and re-confirmed) and returned the job that
+            // already existed instead of creating a new one. Both counts as
+            // "resolved" (nothing left to retry for that row), but only a
+            // genuine create is a NEW vacancy — conflating them would report
+            // a re-publish of an already-live posting as fresh progress.
+            const outcomes = jobs.map((job, i) => {
+                const r = results[i]
+                if (r.status !== 'fulfilled') return { job, resolved: false, created: false }
+                return { job, resolved: true, created: r.value?.created !== false }
+            })
+            const resolvedLocalIds = new Set(outcomes.filter(o => o.resolved).map(o => o.job.local_id))
+            const createdCount = outcomes.filter(o => o.created).length
+            const alreadyPublishedCount = outcomes.filter(o => o.resolved && !o.created).length
+            const failedJobs = outcomes.filter(o => !o.resolved).map(o => o.job)
             await useStore.getState().refreshEmployerJobs()
 
             if (failedJobs.length === 0) {
-                toast.success(`${createdCount} lowongan berhasil dipublikasikan dan siap dikelola!`)
+                if (createdCount === 0) {
+                    toast.success(`${alreadyPublishedCount} lowongan sudah dipublikasikan sebelumnya — tidak ada duplikat dibuat.`)
+                } else if (alreadyPublishedCount > 0) {
+                    toast.success(`${createdCount} lowongan baru dipublikasikan (${alreadyPublishedCount} sudah ada sebelumnya).`)
+                } else {
+                    toast.success(`${createdCount} lowongan berhasil dipublikasikan dan siap dikelola!`)
+                }
                 navigate('employer-jobs')
                 return
             }
@@ -132,14 +150,15 @@ export default function JobPackUploader() {
             // Failed postings were never persisted (createEmployerJob threw,
             // so there is no row for them in Kelola Lowongan to retry from)
             // — navigating away here would lose the only copy of them. Drop
-            // only the ones that actually got created; anything still
-            // unpublished (failed just now, or simply left unchecked) stays
-            // on screen so retrying is one more click on this same button.
-            setParsedResult(prev => prev ? { ...prev, jobs: prev.jobs.filter(j => !succeededLocalIds.has(j.local_id)) } : prev)
+            // only the ones that resolved (created or already existed);
+            // anything still unpublished (failed just now, or simply left
+            // unchecked) stays on screen so retrying is one more click on
+            // this same button.
+            setParsedResult(prev => prev ? { ...prev, jobs: prev.jobs.filter(j => !resolvedLocalIds.has(j.local_id)) } : prev)
             setCheckedIds(new Set(failedJobs.map(j => j.local_id)))
 
-            if (createdCount > 0) {
-                toast.error(`${createdCount} dari ${jobs.length} lowongan berhasil dipublikasikan. ${failedJobs.length} gagal — coba lagi di bawah.`)
+            if (resolvedLocalIds.size > 0) {
+                toast.error(`${resolvedLocalIds.size} dari ${jobs.length} lowongan diproses. ${failedJobs.length} gagal — coba lagi di bawah.`)
             } else {
                 toast.error('Gagal mempublikasikan lowongan. Coba lagi.')
             }

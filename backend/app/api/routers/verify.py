@@ -81,14 +81,31 @@ async def verify_identity(req: EkycReq, current_user: User = Depends(get_current
 
 
 class SivilReq(BaseModel):
-    ijazah_number: str
+    ijazah_number: str = Field(min_length=6, max_length=64)
     university_name: str
     major: str
 
 
+def _looks_like_placeholder(value: str) -> bool:
+    """Reject input that couldn't plausibly be a real diploma number: every
+    character the same ("0000000", "aaaaaa"), or a well-known junk token.
+
+    There is no single canonical format for an Indonesian diploma number
+    (unlike NIK's fixed 16 digits — see MockIdentityVerificationService), so
+    this can only screen out obviously-fake input, not confirm a real
+    registry match.
+    """
+    if len(set(value)) <= 1:
+        return True
+    return value.lower() in {"000000", "test", "testtest", "xxxxxx", "asdfasdf", "unknown", "123456"}
+
+
 @router.post("/education")
 async def verify_education(req: SivilReq, current_user: User = Depends(get_current_user)) -> dict:
-    ok = bool(req.ijazah_number) and req.ijazah_number != "0000"
+    """Mock SIVIL diploma-number format check (demo mode — no real SIVIL
+    integration; the mirror of verify_identity's NIK mock above)."""
+    ijazah_number = req.ijazah_number.strip()
+    ok = len(ijazah_number) >= 6 and not _looks_like_placeholder(ijazah_number)
 
     if ok:
         seeker = await find_seeker_by_user_id(current_user.id)
@@ -100,7 +117,7 @@ async def verify_education(req: SivilReq, current_user: User = Depends(get_curre
     return {
         "request_id": str(uuid.uuid4()),
         "status": "VERIFIED" if ok else "NOT_FOUND",
-        "message": "Ijazah terverifikasi di SIVIL." if ok else "Ijazah tidak ditemukan.",
+        "message": "Format nomor ijazah valid (mode demo)." if ok else "Nomor ijazah tidak valid.",
         "verified_data": {
             "university": req.university_name,
             "major": req.major,
