@@ -1,4 +1,4 @@
-"""Seeker-side profile, bookmarks, and gamification endpoints.
+"""Seeker-side profile and bookmark endpoints.
 
 Uses the JSON store (same layer as the agent/uploads/admin), so seeker
 profiles created here are immediately visible to the matching engine.
@@ -21,7 +21,6 @@ from backend.app.api.schemas.seeker import (
 from backend.app.db.models import User
 from backend.app.db.postgres_store import (
     find_applications_by_seeker_id,
-    find_gamification_by_seeker_id,
     find_seeker_by_user_id,
     find_skill_gaps_by_seeker_id,
     get_repositories,
@@ -30,7 +29,6 @@ from backend.app.db.postgres_store import (
 from backend.app.db.schemas import (
     Application,
     ApplicationStatus,
-    GamificationStats,
     SeekerProfile,
     Skill,
 )
@@ -140,16 +138,6 @@ async def create_or_update_profile(
 
     background_tasks.add_task(_embed_and_save, profile)
 
-    # Ensure gamification record exists
-    gam = await find_gamification_by_seeker_id(profile.id)
-    if not gam:
-        gam = GamificationStats(seeker_id=profile.id)
-        # Award first badge for completing profile
-        if skills:
-            gam.badges.append("profile_complete")
-            gam.xp += 100
-        await repos.gamification.upsert(gam)
-
     logger.info(
         "Profile upserted for user_id=%s → seeker %s (embedding queued)",
         current_user.id,
@@ -159,26 +147,6 @@ async def create_or_update_profile(
         "seeker_id": profile.id,
         "skills_count": len(profile.skills),
         "embedding_status": "queued",
-    }
-
-
-# ── Gamification ──────────────────────────────────────────────────────────────
-
-
-@router.get("/gamification")
-async def get_gamification(current_user: User = Depends(get_current_user)):
-    profile = await find_seeker_by_user_id(current_user.id)
-    if not profile:
-        return {"xp": 0, "level": 1, "streak_days": 0, "badges": []}
-    g = await find_gamification_by_seeker_id(profile.id)
-    if not g:
-        return {"xp": 0, "level": 1, "streak_days": 0, "badges": []}
-    return {
-        "xp": g.xp,
-        "level": max(1, g.xp // 250 + 1),
-        "streak_days": g.streak_days,
-        "badges": g.badges,
-        "quests_completed": g.quests_completed,
     }
 
 
@@ -333,6 +301,7 @@ async def apply_to_job(
             cover_letter=payload.cover_letter,
             note=_APPLIED_NOTE,
         )
+    already_applied = False
     try:
         await repos.applications.upsert(app)
     except IntegrityError:
@@ -345,44 +314,28 @@ async def apply_to_job(
         winner = await repos.applications.find(
             lambda a: a.job_id == job_id and a.seeker_id == seeker_id
         )
-        if winner:
-            existing_app = winner[0]
-            if ApplicationStatus(existing_app.status) == ApplicationStatus.SAVED:
-                existing_app.status = ApplicationStatus.APPLIED
-                existing_app.cover_letter = payload.cover_letter
-                existing_app.note = _APPLIED_NOTE
-                existing_app.updated_at = datetime.now(UTC)
-                await repos.applications.upsert(existing_app)
-                return {
-                    "application_id": existing_app.id,
-                    "job_id": job_id,
-                    "status": existing_app.status,
-                    "already_applied": False,
-                }
-            return {
-                "application_id": existing_app.id,
-                "job_id": job_id,
-                "status": existing_app.status,
-                "already_applied": True,
-            }
-        raise
+        if not winner:
+            raise
+        app = winner[0]
+        if ApplicationStatus(app.status) == ApplicationStatus.SAVED:
+            app.status = ApplicationStatus.APPLIED
+            app.cover_letter = payload.cover_letter
+            app.note = _APPLIED_NOTE
+            app.updated_at = datetime.now(UTC)
+            await repos.applications.upsert(app)
+        else:
+            already_applied = True
 
-    # Award XP for applying
-    gam = await find_gamification_by_seeker_id(seeker_id)
-    if gam:
-        gam.xp += 50
-        if "first_apply" not in gam.badges:
-            gam.badges.append("first_apply")
-        await repos.gamification.upsert(gam)
+    if not already_applied:
+        logger.info("Application created: seeker %s → job %s", seeker_id, job_id)
 
-    logger.info("Application created: seeker %s → job %s", seeker_id, job_id)
     return {
         "id": app.id,
         "application_id": app.id,
         "job_id": job_id,
         "status": app.status,
         "note": app.note,
-        "already_applied": False,
+        "already_applied": already_applied,
     }
 
 

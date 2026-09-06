@@ -13,7 +13,6 @@ from backend.app.db.models import (
     ChatSession,
     Course,
     Employer,
-    GamificationStats,
     JobPosting,
     MatchBundle,
     QueryEmbedding,
@@ -26,7 +25,6 @@ from backend.app.db.schemas import Application as ApplicationSchema
 from backend.app.db.schemas import ChatSession as ChatSchema
 from backend.app.db.schemas import Course as CourseSchema
 from backend.app.db.schemas import Employer as EmployerSchema
-from backend.app.db.schemas import GamificationStats as GameSchema
 from backend.app.db.schemas import JobPosting as JobSchema
 from backend.app.db.schemas import MatchBundle as MatchSchema
 from backend.app.db.schemas import SeekerProfile as SeekerSchema
@@ -394,22 +392,6 @@ async def find_jobs_by_employer_id(employer_id: str) -> list[JobSchema]:
         return []
 
 
-async def find_gamification_by_seeker_id(seeker_id: str) -> GameSchema | None:
-    """Return gamification stats for a seeker (indexed, O(1))."""
-    try:
-        async with async_session() as session:
-            stmt = select(GamificationStats).where(GamificationStats.seeker_id == seeker_id)
-            result = await session.execute(stmt)
-            obj = result.scalar_one_or_none()
-            if not obj:
-                return None
-            data = {c.name: getattr(obj, c.name) for c in GamificationStats.__table__.columns}
-            return GameSchema.model_validate(data)
-    except Exception as exc:
-        _store_logger.warning("find_gamification_by_seeker_id failed (%s)", exc)
-        return None
-
-
 async def find_skill_gaps_by_seeker_id(seeker_id: str) -> list[SkillGapSchema]:
     """Return all skill gap results for a seeker (indexed on seeker_id)."""
     try:
@@ -439,7 +421,6 @@ class Repositories:
         self.skill_gaps = PostgresRepository(SkillGapSchema, SkillGapResult)
         self.chats = PostgresRepository(ChatSchema, ChatSession)
         self.ai_logs = PostgresRepository(LogSchema, AIPerformanceLog)
-        self.gamification = PostgresRepository(GameSchema, GamificationStats)
         self.courses = PostgresRepository(CourseSchema, Course)
 
 

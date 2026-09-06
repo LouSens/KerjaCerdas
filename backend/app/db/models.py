@@ -262,18 +262,6 @@ class AIPerformanceLog(Base, TimestampedMixin):
     rating: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
-class GamificationStats(Base, TimestampedMixin):
-    __tablename__ = "gamification"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    seeker_id: Mapped[str] = mapped_column(String(36), index=True)
-    xp: Mapped[int] = mapped_column(Integer, default=0)
-    level: Mapped[int] = mapped_column(Integer, default=1)
-    streak_days: Mapped[int] = mapped_column(Integer, default=0)
-    badges: Mapped[list[Any]] = mapped_column(JSON, default=list)
-    quests_completed: Mapped[list[Any]] = mapped_column(JSON, default=list)
-
-
 class QueryEmbedding(Base):
     """Persistent tier of the matcher's query-embedding cache.
 
