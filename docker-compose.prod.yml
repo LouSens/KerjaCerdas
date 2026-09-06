@@ -22,23 +22,25 @@
 #      VITE_API_URL falls back to http://localhost:8000). The backend sees
 #      each browser's own real IP as request.client.host, so the rate
 #      limiter's default (nothing trusted, X-Real-IP never read) is already
-#      correct — leave TRUSTED_PROXY_CIDRS unset.
+#      correct — leave PROXY_SHARED_SECRET unset.
 #
 #   2. Browser calls through the Nginx frontend instead — set PROD_API_URL
 #      to the frontend's own public URL so the SPA hits its /api/ location
 #      (nginx.conf.template), which proxies to the api service and forwards
-#      X-Real-IP. This is NOT set up automatically here, and deliberately
-#      so: `api` also publishes port 8000 straight to the internet below, and
-#      depending on the host's Docker/iptables setup, traffic that arrives
-#      through a published port can appear to originate from inside the
-#      container network's own subnet (Docker hairpin/NAT). Defaulting
-#      TRUSTED_PROXY_CIDRS to that subnet would let *any* client hitting
-#      port 8000 directly get treated as our own proxy and rotate X-Real-IP
-#      per request — bypassing login/OTP/agent/upload rate limiting
-#      entirely. If you actually route through Nginx, verify (don't guess)
-#      the exact peer address `api` sees from `frontend` on your specific
-#      host before setting TRUSTED_PROXY_CIDRS — nothing is trusted here by
-#      default on purpose.
+#      X-Real-IP. Left at its default (empty) here, every proxied client
+#      shares one rate-limit bucket keyed by Nginx's own peer address —
+#      safe, but under-counts distinct clients. To fix that, set
+#      PROXY_SHARED_SECRET to the same random value in BOTH services below
+#      (`openssl rand -hex 32`): Nginx then sends it on every proxied
+#      request, and the API only trusts X-Real-IP when that secret is
+#      present. This is deliberately NOT an IP/CIDR allowlist — `api` also
+#      publishes port 8000 straight to the internet below, and depending on
+#      the host's Docker/iptables setup, traffic arriving through a
+#      published port can appear to originate from inside the container
+#      network's own subnet (Docker hairpin/NAT), so an address-based
+#      allowlist can't reliably tell "came through our Nginx" from "hit the
+#      API directly" — a secret only Nginx knows can, regardless of what
+#      address the connection appears to come from.
 
 networks:
   api_net: {}
@@ -62,9 +64,10 @@ services:
       SENTRY_DSN: ${SENTRY_DSN:-}
       BAND_STRONG_THRESHOLD: ${BAND_STRONG_THRESHOLD:-0.65}
       BAND_POSSIBLE_THRESHOLD: ${BAND_POSSIBLE_THRESHOLD:-0.45}
-      # No default here — see the header comment for why guessing this value
-      # is unsafe. Set it explicitly only after verifying your own topology.
-      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-[]}
+      # Empty by default — X-Real-IP is never trusted. See the header
+      # comment above: set this to the same value as `frontend`'s below
+      # only once you're actually routing browser traffic through Nginx.
+      PROXY_SHARED_SECRET: ${PROXY_SHARED_SECRET:-}
     env_file:
       - .env
     deploy:
@@ -87,6 +90,9 @@ services:
     environment:
       BACKEND_URL: ${BACKEND_URL:-http://api:8000}
       VITE_API_URL: ${PROD_API_URL:-http://localhost:8000}
+      # Substituted into nginx.conf.template's X-Internal-Proxy-Secret
+      # header. Must match `api`'s PROXY_SHARED_SECRET above exactly.
+      PROXY_SHARED_SECRET: ${PROXY_SHARED_SECRET:-}
     depends_on:
       api:
         condition: service_healthy

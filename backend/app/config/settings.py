@@ -71,30 +71,27 @@ class Settings(BaseSettings):
     kerja_data_root: str = "data"
 
     # ── Reverse proxy trust ──────────────────────────────────────────────
-    # X-Real-IP is only trusted as the client's address when the direct TCP
-    # peer is one of these networks — i.e. our own Nginx sidecar, never an
-    # arbitrary client (which could set the header itself to bypass rate
-    # limiting or spoof another user's bucket).
+    # X-Real-IP is only trusted as the client's address when the request also
+    # carries this exact shared secret in X-Internal-Proxy-Secret (set by our
+    # own Nginx — see frontend/nginx.conf.template) — never based on the
+    # direct TCP peer's IP/subnet. docker-compose.prod.yml exposes the
+    # backend's port 8000 directly to the internet alongside the Nginx proxy
+    # on 3000, and depending on the host's Docker/iptables setup, traffic
+    # arriving through a published port can appear to come from inside the
+    # container network's own subnet (hairpin NAT) — so an IP/CIDR allowlist
+    # cannot reliably tell "this came through our Nginx" from "this hit the
+    # API directly", and a wrong allowlist silently opens a rate-limit bypass
+    # instead of closing one. A secret only Nginx knows cannot be forged by a
+    # client hitting the API port directly, regardless of what address that
+    # connection appears to come from.
     #
-    # Defaults to empty — trust nothing — on purpose. docker-compose.prod.yml
-    # exposes the backend's port 8000 directly to the internet alongside the
-    # Nginx proxy on 3000, so a blanket "all of RFC1918" default would let
-    # any client that merely *reaches that port from a private address*
-    # (VPN, corporate LAN, cloud VPC peering) get treated as our proxy and
-    # rotate X-Real-IP per request for a fresh rate-limit counter every
-    # time — bypassing login/OTP/agent/upload throttling entirely.
-    #
-    # To fix the "every proxied request shares one bucket" problem instead,
-    # verify — don't guess — the exact address `api` actually sees as the
-    # peer when `frontend` proxies a request on your specific host (a
-    # container's published-port traffic can appear to come from inside its
-    # own network's subnet depending on the host's Docker/iptables setup, so
-    # a subnet that merely *looks* right can silently open a rate-limit
-    # bypass instead of closing one). Once confirmed, set this to that exact
-    # address/CIDR — narrow enough that nothing else on the host's network
-    # path can match it. See docker-compose.prod.yml's header comment for
-    # the full tradeoff.
-    trusted_proxy_cidrs: list[str] = []
+    # Defaults to empty — trust nothing, X-Real-IP is never read — so every
+    # proxied client shares one rate-limit bucket keyed by Nginx's own peer
+    # address. That's safe but under-counts distinct clients; set
+    # PROXY_SHARED_SECRET (docker-compose.prod.yml, same value in both the
+    # `api` and `frontend` services) once you're actually routing browser
+    # traffic through Nginx to fix that.
+    proxy_shared_secret: str = ""
 
     # ── CORS ─────────────────────────────────────────────────────────────
     cors_allow_origins: list[str] = [

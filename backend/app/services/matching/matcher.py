@@ -197,6 +197,21 @@ def _normalize_filters(filters: dict | None) -> dict:
     return out
 
 
+def _has_hard_filter(filters: dict) -> bool:
+    """True if any filter in `filters` eliminates rows outright (a `continue`
+    below) rather than merely nudging the score.
+
+    The ANN prefilter cap (`_prefilter_limit`) is sized only to give
+    structured *boosts* room to reshuffle semantic order — a job or seeker
+    that's a perfect match on an active hard filter but semantically distant
+    from the query text can rank outside that cap and never even reach the
+    filter, silently dropping an eligible row instead of merely reordering
+    it. Whenever a hard filter is active, ranking must fall back to scoring
+    every row instead of only the ANN-nearest slice.
+    """
+    return bool(filters.get("location") or filters.get("salary_min") or filters.get("experience_min"))
+
+
 # ── Scoring weights ───────────────────────────────────────────────────────────
 # Shared by both ranking directions (job→seekers and seeker→jobs) so a
 # recalibration only ever happens in one place.
@@ -488,7 +503,13 @@ class SemanticMatcher:
         years_exp = _experience_years(seeker)  # loop-invariant — compute once
 
         if jobs is None:
-            candidates = await self._job_candidates(query_vec, top_k)
+            if _has_hard_filter(filters):
+                from backend.app.db import postgres_store as store
+
+                all_jobs = await store.get_repositories().jobs.list()
+                candidates = [(j, None) for j in all_jobs]
+            else:
+                candidates = await self._job_candidates(query_vec, top_k)
         else:
             candidates = [(j, None) for j in jobs]
 
@@ -605,7 +626,13 @@ class SemanticMatcher:
             query_vec = []
 
         if seekers is None:
-            candidates = await self._seeker_candidates(query_vec, top_k)
+            if _has_hard_filter(filters):
+                from backend.app.db import postgres_store as store
+
+                all_seekers = await store.get_repositories().seekers.list()
+                candidates = [(s, None) for s in all_seekers]
+            else:
+                candidates = await self._seeker_candidates(query_vec, top_k)
         else:
             candidates = [(s, None) for s in seekers]
 

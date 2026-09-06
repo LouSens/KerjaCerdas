@@ -89,6 +89,14 @@ class SivilReq(BaseModel):
 @router.post("/education")
 async def verify_education(req: SivilReq, current_user: User = Depends(get_current_user)) -> dict:
     ok = bool(req.ijazah_number) and req.ijazah_number != "0000"
+
+    if ok:
+        seeker = await find_seeker_by_user_id(current_user.id)
+        if seeker:
+            seeker.ijazah_verified = VerificationStatus.VERIFIED
+            repos = get_repositories()
+            await repos.seekers.upsert(seeker)
+
     return {
         "request_id": str(uuid.uuid4()),
         "status": "VERIFIED" if ok else "NOT_FOUND",

@@ -21,6 +21,12 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # Proves to the API that X-Real-IP above came from us, not from a
+        # client hitting the API's own published port directly — see
+        # backend/app/config/settings.py's proxy_shared_secret. Empty by
+        # default (unset PROXY_SHARED_SECRET), which drops the header
+        # entirely rather than sending it blank.
+        proxy_set_header X-Internal-Proxy-Secret "${PROXY_SHARED_SECRET}";
     }
 
     # Health check endpoint reverse proxy
@@ -31,5 +37,11 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # Proves to the API that X-Real-IP above came from us, not from a
+        # client hitting the API's own published port directly — see
+        # backend/app/config/settings.py's proxy_shared_secret. Empty by
+        # default (unset PROXY_SHARED_SECRET), which drops the header
+        # entirely rather than sending it blank.
+        proxy_set_header X-Internal-Proxy-Secret "${PROXY_SHARED_SECRET}";
     }
 }

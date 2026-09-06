@@ -18,33 +18,23 @@ export default function JobPackUploader() {
     const [checkedIds, setCheckedIds] = useState(() => new Set())
     const inputRef = useRef(null)
 
-    // A random token only stays stable across retries of the SAME parse —
-    // it does nothing for the far more likely failure case: the create
-    // response is lost, the employer sees no confirmation, and re-uploads
-    // the same PDF from scratch. That re-parse would mint fresh random
-    // tokens and the server would publish the vacancy again. Deriving the
-    // token from the job's own content instead means re-parsing the same
-    // PDF reproduces the same client_ref, so the server's replay check
-    // still catches it.
-    const computeClientRef = async (job) => {
-        const canonical = JSON.stringify({
-            title: job.title,
-            description: job.description,
-            responsibilities: job.responsibilities,
-            required_skills: job.required_skills,
-            nice_to_have_skills: job.nice_to_have_skills,
-            education_min: job.education_min,
-            experience_years_min: job.experience_years_min,
-            region_code: job.region_code,
-            location: job.location,
-            remote_allowed: job.remote_allowed,
-            salary_min: job.salary_min,
-            salary_max: job.salary_max,
-            kbji_code: job.kbji_code,
-        })
-        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical))
+    const sha256Hex = async (bytes) => {
+        const digest = await crypto.subtle.digest('SHA-256', bytes)
         return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('')
     }
+
+    // Deriving the token from the PARSED job text (title/description/etc.)
+    // doesn't actually survive the real retry path: extraction goes through
+    // Gemini at parser_temperature 0.1, so re-uploading the exact same PDF
+    // after a lost response can come back with slightly different wording
+    // and mint a different token, defeating the whole point. The one thing
+    // that IS identical between the original attempt and the retry is the
+    // PDF file itself, so the token is derived from the file's own bytes —
+    // hashed once per upload — combined with each job's position in the
+    // pack (job order does vary slightly less than free text, and is a
+    // strictly better anchor than re-hashing whatever text came back).
+    const computeClientRef = async (fileHash, job) =>
+        sha256Hex(new TextEncoder().encode(`${fileHash}:${job.local_id}`))
 
     const toggleJobChecked = (localId) => {
         setCheckedIds(prev => {
@@ -78,8 +68,9 @@ export default function JobPackUploader() {
             }
 
             const elapsedSeconds = (performance.now() - startedAt) / 1000
+            const fileHash = await sha256Hex(await file.arrayBuffer())
             const jobsWithRef = await Promise.all(
-                res.jobs.map(async job => ({ ...job, client_ref: await computeClientRef(job) }))
+                res.jobs.map(async job => ({ ...job, client_ref: await computeClientRef(fileHash, job) }))
             )
             setParsedResult({
                 fileName: file.name,

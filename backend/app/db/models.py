@@ -107,6 +107,7 @@ class SeekerProfile(Base, TimestampedMixin):
         String(64), nullable=True
     )  # Stores SHA-256 hash of NIK for UU-PDP compliance
     nik_verified: Mapped[str] = mapped_column(String(20), default="unverified")
+    ijazah_verified: Mapped[str] = mapped_column(String(20), default="unverified")
     date_of_birth: Mapped[str | None] = mapped_column(String(20), nullable=True)
     region_code: Mapped[str] = mapped_column(String(50))
     preferred_regions: Mapped[list[Any]] = mapped_column(JSON, default=list)

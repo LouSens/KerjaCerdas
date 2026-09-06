@@ -234,9 +234,13 @@ const useStore = create(
                             education: data.education || [],
                             salary_expectation_min: data.salary_expectation_min || 0,
                             salary_expectation_max: data.salary_expectation_max || 0,
-                            // Verification status from backend
-                            ktp_verified: data.ktp_verified || false,
-                            ijazah_verified: data.ijazah_verified || false,
+                            // Verification status from backend — the API exposes these as
+                            // VerificationStatus strings (nik_verified / ijazah_verified),
+                            // not the ktp_verified/phone_verified names this store's own
+                            // consumers use, so they must be translated here rather than
+                            // passed through as-is (which always resolved to undefined).
+                            ktp_verified: data.nik_verified === 'verified',
+                            ijazah_verified: data.ijazah_verified === 'verified',
                             phone_verified: data.phone_verified || false,
                         },
                         seekerId: data.id,

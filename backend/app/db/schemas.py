@@ -201,6 +201,7 @@ class SeekerProfile(TimestampedModel):
     headline: str = ""
     nik: str | None = Field(default=None, max_length=64)
     nik_verified: VerificationStatus = VerificationStatus.UNVERIFIED
+    ijazah_verified: VerificationStatus = VerificationStatus.UNVERIFIED
     date_of_birth: str | None = None
     region_code: str  # BPS wilayah
     preferred_regions: list[str] = []

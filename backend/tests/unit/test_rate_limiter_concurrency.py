@@ -10,8 +10,6 @@ from fastapi.testclient import TestClient
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-import ipaddress
-
 from backend.app.api.middleware import rate_limiter as rate_limiter_module
 from backend.app.api.middleware.rate_limiter import (
     _DEFAULT_BUCKET,
@@ -43,13 +41,19 @@ def _make_request(
 
 
 class TestClientIpResolution:
-    """`_get_client_ip` trusts X-Real-IP only when the direct TCP peer is a
-    configured trusted-proxy network (our own Nginx sidecar) — never from an
-    arbitrary client, which could set the header itself to bypass throttling."""
+    """`_get_client_ip` trusts X-Real-IP only when the request also carries
+    our own shared secret header (our own Nginx sets it) — never based on
+    the direct TCP peer's address, which a client hitting the API's own
+    published port directly could otherwise spoof via Docker hairpin NAT."""
+
+    def _secret(self, monkeypatch: pytest.MonkeyPatch, value: str = "s3cr3t") -> str:
+        monkeypatch.setattr(rate_limiter_module.settings, "proxy_shared_secret", value)
+        return value
 
     def test_untrusted_peer_is_never_overridden(self) -> None:
-        # A public-internet peer forging X-Real-IP must not be able to make
-        # every request appear to come from a different address.
+        # A public-internet peer forging X-Real-IP (with no secret) must not
+        # be able to make every request appear to come from a different
+        # address.
         request = _make_request("/", ip="203.0.113.9", headers=[(b"x-real-ip", b"1.2.3.4")])
         assert _get_client_ip(request) == "203.0.113.9"
 
@@ -57,61 +61,63 @@ class TestClientIpResolution:
         request = _make_request("/", ip="203.0.113.9", headers=[(b"x-forwarded-for", b"1.2.3.4")])
         assert _get_client_ip(request) == "203.0.113.9"
 
-    def test_private_address_is_not_trusted_by_default(self) -> None:
+    def test_secret_unset_never_trusts_x_real_ip(self) -> None:
         # The backend port is also reachable directly (docker-compose.prod.yml
-        # exposes 8000 alongside Nginx's 3000), so a client that merely reaches
-        # it from *some* private address must not be auto-trusted — the default
-        # trust list is empty until an operator pins the exact proxy CIDR.
-        assert rate_limiter_module.settings.trusted_proxy_cidrs == []
+        # exposes 8000 alongside Nginx's 3000). With no secret configured — the
+        # default — X-Real-IP must never be trusted no matter what peer address
+        # or header a caller presents.
+        assert rate_limiter_module.settings.proxy_shared_secret == ""
         request = _make_request("/", ip="172.18.0.5", headers=[(b"x-real-ip", b"203.0.113.9")])
         assert _get_client_ip(request) == "172.18.0.5"
 
-    def test_trusted_proxy_peer_uses_x_real_ip(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        # Simulate an operator who has pinned their Nginx sidecar's real
-        # address: X-Real-IP must then be honored, or every proxied request
-        # collapses into one shared rate-limit bucket.
-        monkeypatch.setattr(
-            rate_limiter_module,
-            "_TRUSTED_PROXY_NETWORKS",
-            [ipaddress.ip_network("172.18.0.5/32")],
+    def test_correct_secret_uses_x_real_ip(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        secret = self._secret(monkeypatch)
+        request = _make_request(
+            "/",
+            ip="172.18.0.5",
+            headers=[(b"x-real-ip", b"203.0.113.9"), (b"x-internal-proxy-secret", secret.encode())],
         )
-        request = _make_request("/", ip="172.18.0.5", headers=[(b"x-real-ip", b"203.0.113.9")])
         assert _get_client_ip(request) == "203.0.113.9"
 
-    def test_trusted_proxy_peer_without_header_falls_back_to_peer(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(
-            rate_limiter_module,
-            "_TRUSTED_PROXY_NETWORKS",
-            [ipaddress.ip_network("172.18.0.5/32")],
+    def test_wrong_secret_is_not_trusted(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # A client hitting the API's published port directly, guessing at the
+        # header, must not be able to override its own peer address.
+        self._secret(monkeypatch)
+        request = _make_request(
+            "/",
+            ip="172.18.0.5",
+            headers=[(b"x-real-ip", b"203.0.113.9"), (b"x-internal-proxy-secret", b"wrong")],
         )
-        request = _make_request("/", ip="172.18.0.5")
         assert _get_client_ip(request) == "172.18.0.5"
 
-    def test_untrusted_neighbor_on_same_subnet_is_not_trusted(
+    def test_missing_secret_header_is_not_trusted(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._secret(monkeypatch)
+        request = _make_request("/", ip="172.18.0.5", headers=[(b"x-real-ip", b"203.0.113.9")])
+        assert _get_client_ip(request) == "172.18.0.5"
+
+    def test_correct_secret_without_x_real_ip_falls_back_to_peer(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # Pinning the exact /32 of the proxy (not a broad /16 or /8) means a
-        # different host on the same private network still isn't trusted.
-        monkeypatch.setattr(
-            rate_limiter_module,
-            "_TRUSTED_PROXY_NETWORKS",
-            [ipaddress.ip_network("172.18.0.5/32")],
+        secret = self._secret(monkeypatch)
+        request = _make_request(
+            "/", ip="172.18.0.5", headers=[(b"x-internal-proxy-secret", secret.encode())]
         )
-        request = _make_request("/", ip="172.18.0.6", headers=[(b"x-real-ip", b"203.0.113.9")])
-        assert _get_client_ip(request) == "172.18.0.6"
+        assert _get_client_ip(request) == "172.18.0.5"
 
     def test_distinct_clients_behind_trusted_proxy_get_distinct_ips(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            rate_limiter_module,
-            "_TRUSTED_PROXY_NETWORKS",
-            [ipaddress.ip_network("172.18.0.5/32")],
+        secret = self._secret(monkeypatch)
+        a = _make_request(
+            "/",
+            ip="172.18.0.5",
+            headers=[(b"x-real-ip", b"203.0.113.9"), (b"x-internal-proxy-secret", secret.encode())],
         )
-        a = _make_request("/", ip="172.18.0.5", headers=[(b"x-real-ip", b"203.0.113.9")])
-        b = _make_request("/", ip="172.18.0.5", headers=[(b"x-real-ip", b"198.51.100.1")])
+        b = _make_request(
+            "/",
+            ip="172.18.0.5",
+            headers=[(b"x-real-ip", b"198.51.100.1"), (b"x-internal-proxy-secret", secret.encode())],
+        )
         assert _get_client_ip(a) != _get_client_ip(b)
 
 
