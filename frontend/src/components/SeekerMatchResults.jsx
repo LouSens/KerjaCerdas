@@ -19,7 +19,6 @@ export default function SeekerMatchResults() {
     const [showFreshNotice, setShowFreshNotice] = useState(false)
     const [lastUpdatedText, setLastUpdatedText] = useState('Diperbarui secara real-time')
     const [bandsExpanded, setBandsExpanded] = useState(false)
-    const [savedMap, setSavedMap] = useState({})
 
     const baseList = matches || []
 
@@ -40,13 +39,6 @@ export default function SeekerMatchResults() {
             setLastUpdatedText('Diperbarui baru saja')
             runAgent({ explicitIntent: 'match_jobs' })
         }, 1100)
-    }
-
-    const toggleSaveJob = (job) => {
-        const id = job.id || job.job_id
-        const isSaved = savedMap[id] || (savedJobs || []).some(s => (s.id || s.job_id) === id)
-        storeSaveJob(job)
-        setSavedMap(prev => ({ ...prev, [id]: !isSaved }))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -196,7 +188,7 @@ export default function SeekerMatchResults() {
                                 const loc = Math.round(job.location_score != null ? (job.location_score > 1 ? job.location_score : job.location_score * 100) : jobScore)
                                 const sal = Math.round(job.salary_score != null ? (job.salary_score > 1 ? job.salary_score : job.salary_score * 100) : jobScore)
                                 const sen = Math.round(job.seniority_score != null ? (job.seniority_score > 1 ? job.seniority_score : job.seniority_score * 100) : jobScore)
-                                const isSaved = savedMap[job.id] || (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
+                                const isSaved = (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
 
                                 return (
                                     <div
@@ -315,7 +307,7 @@ export default function SeekerMatchResults() {
                                                         Lihat Detail &amp; Lamar
                                                     </button>
                                                     <button
-                                                        onClick={() => toggleSaveJob(job)}
+                                                        onClick={() => storeSaveJob(job)}
                                                         className="kc-btn"
                                                         style={{ ...topBtn(isSaved ? '#FFF1EB' : '#fff', isSaved ? '#9A3412' : KC.ink, isSaved ? KC.orange : KC.ink), padding: 11, fontSize: 12, width: '100%', textAlign: 'center' }}
                                                     >
@@ -348,7 +340,7 @@ export default function SeekerMatchResults() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                             {possibleMatches.map((job, idx) => {
                                 const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
-                                const isSaved = savedMap[job.id] || (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
+                                const isSaved = (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
 
                                 return (
                                     <div
@@ -439,7 +431,7 @@ export default function SeekerMatchResults() {
                                                         Lihat Detail
                                                     </button>
                                                     <button
-                                                        onClick={() => toggleSaveJob(job)}
+                                                        onClick={() => storeSaveJob(job)}
                                                         className="kc-btn"
                                                         style={{ ...topBtn(isSaved ? '#FFF1EB' : '#fff', isSaved ? '#9A3412' : KC.ink, isSaved ? KC.orange : KC.ink), padding: 11, fontSize: 12, width: '100%', textAlign: 'center' }}
                                                     >

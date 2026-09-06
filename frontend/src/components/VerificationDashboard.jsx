@@ -11,6 +11,11 @@ export default function VerificationDashboard() {
     const { profile, loadSeekerProfile } = useStore()
     const [ktpVerified, setKtpVerified] = useState(profile?.ktp_verified || false)
     const [ktpChecking, setKtpChecking] = useState(false)
+    const [nikInput, setNikInput] = useState('')
+    // The backend only ever stores a SHA-256 hash of the NIK (UU-PDP-2022
+    // compliance) — the plaintext never round-trips back from the server,
+    // so this is the only copy of it that can be shown for confirmation.
+    const [verifiedNikDisplay, setVerifiedNikDisplay] = useState('')
     const [ijazahVerified, setIjazahVerified] = useState(profile?.ijazah_verified || false)
     const [ijazahInput, setIjazahInput] = useState('')
     const [ijazahChecking, setIjazahChecking] = useState(false)
@@ -21,17 +26,23 @@ export default function VerificationDashboard() {
     const trustScore = Math.round((completedCount / 4) * 100)
 
     const handleSimulateKTP = async () => {
+        const nik = nikInput.trim()
+        if (nik.length !== 16 || !/^\d{16}$/.test(nik)) {
+            toast.error('NIK wajib 16 digit angka')
+            return
+        }
+        const fullName = (profile?.full_name || '').trim()
+        if (!fullName) {
+            toast.error('Nama lengkap belum terisi. Lengkapi profil Anda terlebih dahulu.')
+            return
+        }
         setKtpChecking(true)
         try {
-            const fullName = (profile?.full_name || '').trim()
-            if (!fullName) {
-                toast.error('Nama lengkap belum terisi. Lengkapi profil Anda terlebih dahulu.')
-                setKtpChecking(false)
-                return
-            }
-            const res = await verifyIdentity({ nik: profile?.nik, full_name: fullName })
+            const res = await verifyIdentity({ nik, full_name: fullName })
             if (res?.status === 'VERIFIED') {
                 setKtpVerified(true)
+                setVerifiedNikDisplay(nik)
+                setNikInput('')
                 toast.success('NIK berhasil divalidasi!')
                 await loadSeekerProfile()
             } else {
@@ -152,44 +163,41 @@ export default function VerificationDashboard() {
                     </div>
 
                     {!ktpVerified ? (
-                        <div
-                            onClick={handleSimulateKTP}
-                            style={{
-                                background: '#F8FAFC', border: `1.5px dashed ${KC.ink}`,
-                                borderRadius: 11, padding: '18px 14px', textAlign: 'center',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            {/* KTP Illustration Icon */}
-                            <div style={{
-                                width: 64, height: 42, margin: '0 auto 11px',
-                                border: '1.5px solid #64748B', borderRadius: 6,
-                                position: 'relative', background: '#FFFFFF',
-                            }}>
-                                <div style={{ position: 'absolute', left: 7, top: 8, width: 14, height: 14, borderRadius: '50%', background: '#E2E8F0' }} />
-                                <div style={{ position: 'absolute', left: 26, top: 10, right: 7, height: 3, background: '#E2E8F0', borderRadius: 2 }} />
-                                <div style={{ position: 'absolute', left: 26, top: 18, right: 14, height: 3, background: '#E2E8F0', borderRadius: 2 }} />
-                                <div style={{ position: 'absolute', left: 7, bottom: 7, right: 7, height: 3, background: '#E2E8F0', borderRadius: 2 }} />
-                            </div>
-
+                        <>
+                            <input
+                                value={nikInput}
+                                onChange={(e) => setNikInput(e.target.value.replace(/\D/g, '').slice(0, 16))}
+                                placeholder="16 digit NIK sesuai KTP"
+                                inputMode="numeric"
+                                maxLength={16}
+                                style={{
+                                    width: '100%', padding: '12px 13px', background: '#F8FAFC',
+                                    border: `1.5px solid #CBD5E1`, borderRadius: 10,
+                                    fontSize: 12, fontWeight: 600, color: KC.ink,
+                                    fontFamily: '"JetBrains Mono", monospace', letterSpacing: 0.5,
+                                    boxSizing: 'border-box', outline: 'none', marginBottom: 11,
+                                }}
+                            />
                             <button
                                 type="button"
+                                onClick={handleSimulateKTP}
+                                disabled={ktpChecking}
                                 style={{
-                                    padding: '12px 16px', background: ktpChecking ? '#64748B' : KC.orange,
+                                    width: '100%', padding: '12px 16px', background: ktpChecking ? '#64748B' : KC.orange,
                                     border: `1.5px solid ${KC.ink}`, borderRadius: 9,
                                     boxShadow: `2.5px 2.5px 0 ${KC.ink}`, fontSize: 12.5,
                                     fontWeight: 800, color: '#fff', minHeight: 44,
-                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                    cursor: 'pointer', fontFamily: 'inherit',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: ktpChecking ? 'wait' : 'pointer', fontFamily: 'inherit',
                                 }}
                             >
-                                {ktpChecking ? 'Mengecek Format KTP…' : 'Buka Kamera · Foto KTP'}
+                                {ktpChecking ? 'Mengecek Format NIK…' : 'Periksa NIK'}
                             </button>
 
                             <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 9 }}>
-                                Posisikan KTP di dalam bingkai · pastikan NIK terbaca
+                                Hanya hash NIK yang disimpan (SHA-256), sesuai UU-PDP-2022.
                             </div>
-                        </div>
+                        </>
                     ) : (
                         <div style={{
                             padding: '12px 13px', background: '#ECFDF5', border: '1.5px solid #10B981',
@@ -198,9 +206,9 @@ export default function VerificationDashboard() {
                             <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 13, fontWeight: 900, flexShrink: 0 }}>✓</span>
                             <div>
                                 <div style={{ fontSize: 12, fontWeight: 800, color: '#065F46' }}>NIK terbaca & format valid</div>
-                                {profile?.nik && (
+                                {verifiedNikDisplay && (
                                     <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: '#059669', marginTop: 3 }}>
-                                        {profile.nik.slice(0, 4)}{'•'.repeat(Math.max(0, profile.nik.length - 8))}{profile.nik.slice(-4)}
+                                        {verifiedNikDisplay.slice(0, 4)}{'•'.repeat(Math.max(0, verifiedNikDisplay.length - 8))}{verifiedNikDisplay.slice(-4)}
                                     </div>
                                 )}
                             </div>
