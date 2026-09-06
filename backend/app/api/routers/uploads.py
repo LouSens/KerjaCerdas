@@ -15,7 +15,6 @@ from backend.app.db.postgres_store import (
 from backend.app.db.schemas import (
     Education,
     EducationLevel,
-    JobPosting,
     SeekerProfile,
     Skill,
     WorkExperience,
@@ -135,58 +134,55 @@ async def upload_job_pack(
     postings = parsed.get("postings", [])
     if parsed.get("_offline") or any(p.get("_offline") for p in postings):
         raise HTTPException(503, "Parser AI sedang tidak tersedia. Coba lagi nanti.")
-    repos = get_repositories()
 
     # Resolve the employer profile for the authenticated user using fast SQL finder
     employer = await find_employer_by_user_id(current_user.id)
     if not employer:
         raise HTTPException(400, "No employer profile for this user")
 
-    matcher = SemanticMatcher()
-    created: list[str] = []
-    created_jobs: list[dict] = []
-    for p in postings:
+    # Nothing is written to the database here — a PDF can extract postings
+    # the employer never meant to publish, and every row this endpoint used
+    # to create had to be tracked and cleaned up client-side if the batch was
+    # abandoned before confirmation (replaced, tab closed mid-upload, etc.).
+    # Returning plain parsed data instead removes that whole failure class:
+    # POST /employer/jobs (called once per reviewed posting on confirm) is
+    # the only place a job-pack posting is actually persisted.
+    normalized_jobs: list[dict] = []
+    for idx, p in enumerate(postings):
         raw_edu = (p.get("education_min") or "S1").upper()
         try:
             edu = EducationLevel(raw_edu)
         except ValueError:
             edu = EducationLevel.S1
-        job = JobPosting(
-            employer_id=employer.id,
-            title=p.get("title", "Untitled"),
-            description=p.get("description", ""),
-            responsibilities=p.get("responsibilities", []),
-            required_skills=p.get("required_skills", []),
-            nice_to_have_skills=p.get("nice_to_have_skills", []),
-            education_min=edu,
-            experience_years_min=int(p.get("experience_years_min") or 0),
-            region_code=p.get("region_code") or employer.region_code,
-            remote_allowed=bool(p.get("remote_allowed", False)),
-            salary_min=int(p.get("salary_min") or 0),
-            salary_max=int(p.get("salary_max") or 0),
-            kbji_code=p.get("kbji_code", ""),
-            # Parsed postings land as drafts — the employer reviews and
-            # publishes each one explicitly (PATCH is_active=true) instead of
-            # every extracted entry going live the moment the PDF is parsed.
-            is_active=False,
-        )
-        await matcher.embed_job(job)
-        await repos.jobs.upsert(job)
-        created.append(job.id)
-        skills_summary = f"{len(job.required_skills)} skill wajib" if job.required_skills else "Persyaratan umum"
-        loc_summary = "Remote" if job.remote_allowed else (job.region_code or "Indonesia")
-        created_jobs.append({
-            "id": job.id,
-            "title": job.title,
-            "details": f"{loc_summary} · {skills_summary} · ID: {job.id[:8]}",
+        title = p.get("title") or "Untitled"
+        required_skills = p.get("required_skills") or []
+        region_code = p.get("region_code") or employer.region_code
+        remote_allowed = bool(p.get("remote_allowed", False))
+        skills_summary = f"{len(required_skills)} skill wajib" if required_skills else "Persyaratan umum"
+        loc_summary = "Remote" if remote_allowed else (region_code or "Indonesia")
+        normalized_jobs.append({
+            # Client-local id for list rendering only — not a database id,
+            # since nothing has been persisted yet.
+            "local_id": f"parsed-{idx}",
+            "title": title,
+            "details": f"{loc_summary} · {skills_summary}",
             "valid": True,
-            "required_skills": job.required_skills,
-            "location": job.region_code,
+            "description": p.get("description") or "",
+            "responsibilities": p.get("responsibilities") or [],
+            "required_skills": required_skills,
+            "nice_to_have_skills": p.get("nice_to_have_skills") or [],
+            "education_min": edu.value,
+            "experience_years_min": int(p.get("experience_years_min") or 0),
+            "region_code": region_code,
+            "location": region_code,
+            "remote_allowed": remote_allowed,
+            "salary_min": int(p.get("salary_min") or 0),
+            "salary_max": int(p.get("salary_max") or 0),
+            "kbji_code": p.get("kbji_code") or "",
         })
 
     return {
         "employer_id": employer.id,
-        "created_job_ids": created,
-        "jobs": created_jobs,
+        "jobs": normalized_jobs,
         "parsed_offline": any(p.get("_offline") for p in postings),
     }

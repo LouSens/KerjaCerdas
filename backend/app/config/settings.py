@@ -89,6 +89,9 @@ class Settings(BaseSettings):
     # its Docker network (e.g. `docker network inspect <net>` to find the
     # bridge subnet, or pin it with a static IP in docker-compose) — narrow
     # enough that nothing else on the host's network path can match it.
+    # docker-compose.prod.yml's own `api_net` is pinned to 172.28.0.0/24 and
+    # sets this for you automatically when deployed as-is — see that file's
+    # header comment for when it does (and doesn't) apply.
     trusted_proxy_cidrs: list[str] = []
 
     # ── CORS ─────────────────────────────────────────────────────────────

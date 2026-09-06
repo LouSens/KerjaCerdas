@@ -420,14 +420,18 @@ const useStore = create(
             jobPackUploading: false,
             jobPackResult: null,
             uploadJobPack: async (file) => {
+                // Parsing a job-pack PDF does not create anything — the
+                // employer still has to review and confirm the extracted
+                // postings (see JobPackUploader), so there is nothing to
+                // toast a success message about or refresh the job list for
+                // yet. Both happen once the confirmed postings are actually
+                // created via createEmployerJob.
                 if (!file) return
                 const { user } = get()
                 set({ jobPackUploading: true, jobPackResult: null })
                 try {
                     const res = await uploadJobPack({ userId: user.id || 'demo', file })
                     set({ jobPackUploading: false, jobPackResult: res })
-                    toast.success(`${res.created_job_ids?.length || 0} lowongan berhasil dibuat dari PDF`)
-                    get().refreshEmployerJobs()
                     return res
                 } catch (e) {
                     set({ jobPackUploading: false })

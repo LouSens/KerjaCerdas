@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
 import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
-import { updateEmployerJob, deleteEmployerJob } from '../services/api'
+import { createEmployerJob } from '../services/api'
 import { UploadCloud, CheckCircle2, ArrowRight } from 'lucide-react'
 
 export default function JobPackUploader() {
@@ -12,35 +12,6 @@ export default function JobPackUploader() {
     const [dragActive, setDragActive] = useState(false)
     const [publishing, setPublishing] = useState(false)
     const inputRef = useRef(null)
-    // Tracks the still-pending (unconfirmed) draft batch so it can be
-    // cleaned up if the employer abandons it — replaces it with a new
-    // upload, or navigates/closes the tab without confirming.
-    const pendingDraftIdsRef = useRef([])
-
-    const discardPendingDrafts = () => {
-        const ids = pendingDraftIdsRef.current
-        pendingDraftIdsRef.current = []
-        if (!ids.length) return
-        // Best-effort — the batch was never confirmed, so nothing depends on
-        // this succeeding synchronously; don't block the UI on it. keepalive
-        // lets the browser finish these after the page starts unloading
-        // instead of aborting them mid-flight (an ordinary fetch gets killed
-        // the moment the document goes away).
-        Promise.allSettled(ids.map(id => deleteEmployerJob(id, { keepalive: true }))).catch(() => {})
-    }
-
-    // React's unmount cleanup only fires on an in-app route change — it
-    // never runs on a hard tab close/reload, since the JS runtime is torn
-    // down before React gets a turn. `pagehide` is the one event guaranteed
-    // to fire in both cases (including mobile Safari, where `beforeunload`
-    // is unreliable), so it's what actually catches "closed the tab".
-    useEffect(() => {
-        window.addEventListener('pagehide', discardPendingDrafts)
-        return () => {
-            window.removeEventListener('pagehide', discardPendingDrafts)
-            discardPendingDrafts()
-        }
-    }, [])
 
     const handleFile = async (file) => {
         if (!file) return
@@ -50,29 +21,25 @@ export default function JobPackUploader() {
         }
         setSelectedFile(file)
 
+        const startedAt = performance.now()
         try {
+            // Parsing only extracts and returns the postings — nothing is
+            // written to the database yet (see POST /uploads/job-pack), so
+            // there is nothing to track or clean up if this batch is later
+            // replaced or abandoned before the employer confirms it.
             const res = await uploadJobPack(file)
-            if (!res || (!res.created_job_ids?.length && !res.jobs?.length)) {
+            if (!res?.jobs?.length) {
                 toast.error('Tidak ada lowongan yang berhasil diurai dari berkas PDF ini.')
                 setSelectedFile(null)
                 setParsedResult(null)
                 return
             }
 
-            const jobsList = (res.jobs && res.jobs.length > 0)
-                ? res.jobs
-                : res.created_job_ids.map((id, idx) => ({
-                    id,
-                    title: `Lowongan Terunggah #${idx + 1}`,
-                    details: `ID: ${id.slice(0, 8)} · Berhasil diekstrak dari dokumen`,
-                    valid: true,
-                }))
-
-            pendingDraftIdsRef.current = jobsList.map(j => j.id)
+            const elapsedSeconds = (performance.now() - startedAt) / 1000
             setParsedResult({
                 fileName: file.name,
-                time: '< 2 s',
-                jobs: jobsList,
+                time: `${elapsedSeconds.toFixed(1)} dtk`,
+                jobs: res.jobs,
             })
         } catch (e) {
             toast.error('Ekstraksi dokumen gagal: ' + (e.message || 'Periksa berkas Anda lalu coba unggah ulang.'))
@@ -81,32 +48,44 @@ export default function JobPackUploader() {
         }
     }
 
-    // Job-pack uploads land as unpublished drafts (`is_active: false`) so a
-    // batch of AI-parsed postings never goes live before the employer has
-    // actually reviewed them. This confirms the reviewed batch and publishes
-    // every job in it.
+    // Nothing exists in the database until this runs — this is the only
+    // point a parsed posting is actually created (via the same endpoint the
+    // manual "Pasang Lowongan" form uses), so an abandoned/replaced batch
+    // simply never gets this far and never touches the database at all.
     const handleConfirmPublish = async () => {
         const jobs = parsedResult?.jobs || []
         if (!jobs.length) return
-        // The batch is now "settled" — win or lose per-job below, none of
-        // these drafts are abandoned/orphaned anymore, so the unmount
-        // cleanup must leave them alone.
-        pendingDraftIdsRef.current = []
         setPublishing(true)
         try {
             const results = await Promise.allSettled(
-                jobs.map(job => updateEmployerJob(job.id, { is_active: true }))
+                jobs.map(job => createEmployerJob({
+                    title: job.title,
+                    description: job.description,
+                    responsibilities: job.responsibilities,
+                    required_skills: job.required_skills,
+                    nice_to_have_skills: job.nice_to_have_skills,
+                    education_min: job.education_min,
+                    experience_years_min: job.experience_years_min,
+                    region_code: job.region_code,
+                    location: job.location,
+                    remote_allowed: job.remote_allowed,
+                    salary_min: job.salary_min,
+                    salary_max: job.salary_max,
+                    kbji_code: job.kbji_code,
+                }))
             )
             const failedCount = results.filter(r => r.status === 'rejected').length
+            const createdCount = jobs.length - failedCount
             await useStore.getState().refreshEmployerJobs()
             if (failedCount === 0) {
-                toast.success(`${jobs.length} lowongan berhasil dipublikasikan dan siap dikelola!`)
+                toast.success(`${createdCount} lowongan berhasil dipublikasikan dan siap dikelola!`)
+                navigate('employer-jobs')
+            } else if (createdCount > 0) {
+                toast.error(`${createdCount} dari ${jobs.length} lowongan berhasil dipublikasikan. ${failedCount} gagal — periksa dan coba lagi dari Kelola Lowongan.`)
+                navigate('employer-jobs')
             } else {
-                toast.error(`${jobs.length - failedCount} dari ${jobs.length} lowongan berhasil dipublikasikan. ${failedCount} gagal — coba lagi dari Kelola Lowongan.`)
+                toast.error('Gagal mempublikasikan lowongan. Coba lagi.')
             }
-            navigate('employer-jobs')
-        } catch (e) {
-            toast.error('Gagal mempublikasikan lowongan: ' + (e.message || 'Terjadi kesalahan'))
         } finally {
             setPublishing(false)
         }
@@ -237,7 +216,7 @@ export default function JobPackUploader() {
 
                     <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 15, animation: 'kcSlideUp .35s .07s both' }}>
                         <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#059669', marginBottom: 12 }}>
-                            Daftar lowongan terurai · draf, menunggu konfirmasi publikasi
+                            Daftar lowongan terurai · belum tersimpan, menunggu konfirmasi
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {parsedResult.jobs.map((job, idx) => (
@@ -283,7 +262,7 @@ export default function JobPackUploader() {
 
                     <div style={{ display: 'flex', gap: 10 }}>
                         <button
-                            onClick={() => { discardPendingDrafts(); setParsedResult(null); setSelectedFile(null); }}
+                            onClick={() => { setParsedResult(null); setSelectedFile(null); }}
                             className="kc-btn"
                             style={{
                                 flex: 'none',
