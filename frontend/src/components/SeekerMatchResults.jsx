@@ -619,9 +619,9 @@ export default function SeekerMatchResults() {
                                             }}>
                                                 {isStrong ? 'Strong Fit' : 'Possible Fit'}
                                             </span>
-                                            {job.verified_djp && (
+                                            {job.verified && (
                                                 <span style={{ padding: '3px 7px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 999, fontSize: 9.5, fontWeight: 800, color: '#475569' }}>
-                                                    ✓ DJP
+                                                    ✓ Terverifikasi
                                                 </span>
                                             )}
                                         </div>

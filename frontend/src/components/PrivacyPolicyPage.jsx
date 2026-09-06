@@ -42,11 +42,11 @@ const SECTIONS = [
         content: [
             {
                 heading: 'Untuk Pencari Kerja (Talenta)',
-                text: '• Data Identitas & Kontak: Nama lengkap, alamat email aktif, nomor kontak, domisili/wilayah administratif.\n• Data Profesional & Karier: Dokumen CV/Resume (PDF/DOCX), keahlian teknis & non-teknis, riwayat pekerjaan, portfolio, preferensi kerja (gaji ekspektasi, mode kerja WFH/Hybrid/Onsite).\n• Data Kredibilitas & Verifikasi: Nilai hash e-KYC (NIK terenkripsi) dan status verifikasi ijazah perguruan tinggi terdaftar (SIVIL Kemendikbudristek).'
+                text: '• Data Identitas & Kontak: Nama lengkap, alamat email aktif, nomor kontak, domisili/wilayah administratif.\n• Data Profesional & Karier: Dokumen CV/Resume (PDF/DOCX), keahlian teknis & non-teknis, riwayat pekerjaan, portfolio, preferensi kerja (gaji ekspektasi, mode kerja WFH/Hybrid/Onsite).\n• Data Kredibilitas & Verifikasi: Nilai hash e-KYC (NIK terenkripsi) dan status validasi format nomor ijazah perguruan tinggi. Validasi ini adalah pemeriksaan format internal, bukan verifikasi resmi ke basis data pemerintah (Dukcapil/PDDikti/Kemendikbudristek).'
             },
             {
                 heading: 'Untuk Pemberi Kerja (Employer / HR)',
-                text: '• Legalitas Entitas: Nama institusi/perusahaan, nomor pokok wajib pajak (NPWP) tervalidasi Ditjen Pajak, alamat kantor, industri usaha.\n• Kontak Person in Charge (PIC): Nama rekruter resmi, email korporat (@nama-perusahaan), nomor telepon kantor.\n• Spesifikasi Pekerjaan: Deskripsi jabatan, batas gaji, persyaratan keahlian, dan kriteria kualifikasi.'
+                text: '• Legalitas Entitas: Nama institusi/perusahaan, nomor pokok wajib pajak (NPWP) yang divalidasi formatnya secara internal, alamat kantor, industri usaha.\n• Kontak Person in Charge (PIC): Nama rekruter resmi, email korporat (@nama-perusahaan), nomor telepon kantor.\n• Spesifikasi Pekerjaan: Deskripsi jabatan, batas gaji, persyaratan keahlian, dan kriteria kualifikasi.'
             }
         ]
     },

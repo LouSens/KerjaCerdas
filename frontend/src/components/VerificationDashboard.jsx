@@ -59,10 +59,10 @@ export default function VerificationDashboard() {
             const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), institution_name: institution })
             if (res?.status === 'VERIFIED') {
                 setIjazahVerified(true)
-                toast.success('Nomor ijazah terverifikasi via format SIVIL Dikti!')
+                toast.success('Format nomor ijazah tervalidasi!')
                 await loadSeekerProfile()
             } else {
-                toast.error(res?.message || 'Nomor ijazah tidak ditemukan pada PDDikti/SIVIL')
+                toast.error(res?.message || 'Format nomor ijazah tidak valid')
             }
         } catch (e) {
             toast.error('Verifikasi Ijazah gagal: ' + (e.message || 'Terjadi kesalahan'))
@@ -258,7 +258,7 @@ export default function VerificationDashboard() {
                     )}
                 </div>
 
-                {/* 3. Ijazah SIVIL Dikti Card */}
+                {/* 3. Ijazah Verification Card */}
                 <div style={{
                     background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
                     borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`,
@@ -269,7 +269,7 @@ export default function VerificationDashboard() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                 <span style={{ width: 9, height: 9, background: ijazahVerified ? '#10B981' : '#F59E0B', borderRadius: '50%' }} />
                                 <span style={{ fontSize: 14, fontWeight: 900, color: KC.ink }}>
-                                    Ijazah SIVIL Dikti
+                                    Ijazah
                                 </span>
                             </div>
                             <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>
@@ -318,7 +318,7 @@ export default function VerificationDashboard() {
                         </>
                     ) : (
                         <div style={{ padding: '10px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8, fontSize: 11, color: '#065F46', fontWeight: 700 }}>
-                            ✓ Ijazah terdaftar dan format valid PDDikti SIVIL
+                            ✓ Format nomor ijazah tervalidasi
                         </div>
                     )}
                 </div>

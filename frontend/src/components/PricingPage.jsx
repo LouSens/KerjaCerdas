@@ -38,7 +38,7 @@ export default function PricingPage() {
                         tier="Verified Unlock Pack"
                         price="Rp 50k"
                         period="/10 kandidat (Rp 5k/kontak)"
-                        features={['Buka 10 Kontak Lengkap & CV PDF', '✓ Background Checked & E-KYC', '✓ Ijazah / SIVIL Verified', '🛡️ Garansi Kontak Aktif (Refund Kredit)']}
+                        features={['Buka 10 Kontak Lengkap & CV PDF', '✓ Verifikasi Identitas (E-KYC)', '✓ Format Ijazah Tervalidasi', 'Analisis Skor Kecocokan AI']}
                         accent="bg-kc-yellow"
                         featured
                         cta="Beli Paket 10 Kandidat"
@@ -63,7 +63,7 @@ export default function PricingPage() {
                         <FaqItem q="Pencari kerja harus bayar?" a="Tidak sama sekali. Seluruh fitur pencari kerja 100% gratis selamanya, termasuk AI Career Advisor, pencocokan lowongan, dan analisis skill gap." />
                         <FaqItem q="Apakah ada kuota gratis (Freemium) untuk Employer?" a="Ya! Setiap employer baru langsung mendapatkan 5 kuota unlock kontak kandidat gratis di awal untuk membuktikan kecocokan dan validitas kandidat tanpa perlu bayar apa pun." />
                         <FaqItem q="Berapa biaya setelah kuota gratis habis?" a="Sangat terjangkau: Rp 50.000 untuk 10 kandidat (hanya Rp 5.000 per kandidat). Tanpa komitmen langganan bulanan jutaan rupiah." />
-                        <FaqItem q="Bagaimana jaminan bahwa kontak kandidat 100% terpercaya?" a="Setiap kandidat melewati verifikasi OTP nomor WhatsApp, validasi Ijazah (SIVIL/PDDIKTI), dan analisis riwayat kerja. Jika kontak yang Anda buka tidak valid/tidak merespons, kredit unlock Anda otomatis di-refund (Garansi 100% Kontak Aktif)." />
+                        <FaqItem q="Bagaimana jaminan bahwa kontak kandidat kredibel?" a="Setiap kandidat melewati verifikasi OTP nomor telepon, validasi format nomor ijazah, dan analisis riwayat kerja dari CV oleh AI. Verifikasi resmi ke basis data pemerintah (Dukcapil, PDDikti) merupakan item roadmap dan belum berjalan live." />
                         <FaqItem q="Apakah data pelamar aman dan privasinya terlindungi?" a="Sangat aman. Profil kandidat ditampilkan secara teaser/anonim sebelum di-unlock. Data kontak hanya dibuka kepada perusahaan terverifikasi dengan enkripsi standar industri." />
                     </div>
                 </div>

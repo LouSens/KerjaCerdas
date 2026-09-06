@@ -171,9 +171,11 @@ export default function JobDetailModal({ job, onClose }) {
                                 <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
                                     {company}
                                 </span>
-                                <span style={{ padding: '4px 10px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, font: '800 11px/1.3 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
-                                    ✓ Terverifikasi DJP
-                                </span>
+                                {job.verified && (
+                                    <span style={{ padding: '4px 10px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, font: '800 11px/1.3 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
+                                        ✓ Terverifikasi
+                                    </span>
+                                )}
                             </div>
                             <h2 style={{ font: '900 26px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-1px', color: KC.ink, margin: '0 0 9px' }}>
                                 {title}
@@ -195,7 +197,9 @@ export default function JobDetailModal({ job, onClose }) {
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
                                 <span style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B' }}>{company}</span>
-                                <span style={{ padding: '2px 7px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, fontSize: 9.5, fontWeight: 800, color: '#065F46' }}>✓ DJP</span>
+                                {job.verified && (
+                                    <span style={{ padding: '2px 7px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 999, fontSize: 9.5, fontWeight: 800, color: '#065F46' }}>✓ Terverifikasi</span>
+                                )}
                             </div>
                             <h2 style={{ fontSize: 18, fontWeight: 900, color: KC.ink, margin: 0, letterSpacing: -0.5 }}>{title}</h2>
                         </div>

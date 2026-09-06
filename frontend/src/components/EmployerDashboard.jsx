@@ -3,6 +3,10 @@ import useStore from '../store/useStore'
 import { KC, DesignStyles, topBtn, useIsMobile } from './_design'
 import { Briefcase } from 'lucide-react'
 
+// Growth plan tier limits — [PLANNED] until a real billing/quota API exists.
+const UNLOCK_QUOTA = 20
+const JOB_SLOT_QUOTA = 10
+
 export default function EmployerDashboard() {
     const isMobile = useIsMobile()
     const {
@@ -35,7 +39,7 @@ export default function EmployerDashboard() {
 
     const strongCount = totalApps > 0
         ? employerApplications.filter(a => ['shortlisted', 'interview', 'hired'].includes(a.status) || (a.score && a.score >= 0.75)).length
-        : Math.round(totalScanned * 0.2)
+        : 0
 
     const unlockedCount = totalApps > 0
         ? employerApplications.filter(a => ['unlocked', 'interview', 'hired'].includes(a.status)).length
@@ -45,11 +49,21 @@ export default function EmployerDashboard() {
         ? employerApplications.filter(a => ['interview', 'hired'].includes(a.status)).length
         : 0
 
-    const convRate = unlockedCount > 0 ? Math.round((interviewCount / unlockedCount) * 100) : (totalScanned > 0 ? 67 : 0)
+    const convRate = unlockedCount > 0 ? Math.round((interviewCount / unlockedCount) * 100) : 0
 
-    const strongPct = totalScanned > 0 ? Math.min(100, Math.max(8, Math.round((strongCount / totalScanned) * 100))) : 0
-    const unlockedPct = totalScanned > 0 ? Math.min(100, Math.max(5, Math.round((unlockedCount / totalScanned) * 100))) : 0
-    const interviewPct = totalScanned > 0 ? Math.min(100, Math.max(3, Math.round((interviewCount / totalScanned) * 100))) : 0
+    // Real proxy metric: days between application submission and the last
+    // status change, for applications that progressed past "applied".
+    // `applied_at`/`updated_at` are already returned by GET /employer/applications.
+    const shortlistedApps = employerApplications.filter(
+        a => ['shortlisted', 'interview', 'hired', 'unlocked', 'offered'].includes(a.status) && a.applied_at && a.updated_at
+    )
+    const avgShortlistDays = shortlistedApps.length > 0
+        ? shortlistedApps.reduce((sum, a) => sum + Math.max(0, (new Date(a.updated_at) - new Date(a.applied_at)) / 86400000), 0) / shortlistedApps.length
+        : null
+
+    const strongPct = totalScanned > 0 ? Math.min(100, Math.round((strongCount / totalScanned) * 100)) : 0
+    const unlockedPct = totalScanned > 0 ? Math.min(100, Math.round((unlockedCount / totalScanned) * 100)) : 0
+    const interviewPct = totalScanned > 0 ? Math.min(100, Math.round((interviewCount / totalScanned) * 100)) : 0
 
     const activeList = (employerJobs || []).map((j, i) => {
         const jobApps = (employerApplications || []).filter(a => a.job_id === j.id)
@@ -85,6 +99,9 @@ export default function EmployerDashboard() {
             interview_count: interview,
         }
     })
+
+    const draftJobs = activeList.filter(j => j.status === 'draft')
+    const isNpwpVerified = employerProfile?.verified === 'verified'
 
     const handleReviewCandidates = (jobId) => {
         useStore.setState({ selectedCandidateJobId: jobId })
@@ -144,9 +161,11 @@ export default function EmployerDashboard() {
                         <span style={{ font: '800 11px/1 "JetBrains Mono", monospace', letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,.45)' }}>
                             Funnel rekrutmen · reverse matching
                         </span>
-                        <span style={{ padding: '5px 12px', background: 'rgba(16,185,129,.2)', border: '1px solid #10B981', borderRadius: 999, font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: '#10B981' }}>
-                            time-to-shortlist 1,4 hari
-                        </span>
+                        {avgShortlistDays != null && (
+                            <span style={{ padding: '5px 12px', background: 'rgba(16,185,129,.2)', border: '1px solid #10B981', borderRadius: 999, font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: '#10B981' }}>
+                                time-to-shortlist {avgShortlistDays.toFixed(1).replace('.', ',')} hari
+                            </span>
+                        )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0 }}>
@@ -309,50 +328,66 @@ export default function EmployerDashboard() {
                     {/* Right Column (300px) */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 20 }}>
-                            <div style={{ font: '800 10.5px/1 "JetBrains Mono", monospace', letterSpacing: 0.7, textTransform: 'uppercase', color: '#64748B', marginBottom: 16 }}>
+                            <div style={{ font: '800 10.5px/1 "JetBrains Mono", monospace', letterSpacing: 0.7, textTransform: 'uppercase', color: '#64748B', marginBottom: 18 }}>
                                 Kuota plan Growth
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
                                         <span style={{ font: '700 12px/1 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>Unlock kontak</span>
-                                        <span style={{ font: '900 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>8<span style={{ color: '#94A3B8' }}>/20</span></span>
+                                        <span style={{ font: '900 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>{unlockedCount}<span style={{ color: '#94A3B8' }}>/{UNLOCK_QUOTA}</span></span>
                                     </div>
                                     <div style={{ height: 7, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
-                                        <div style={{ height: '100%', width: '40%', background: KC.orange, borderRadius: 999 }} />
+                                        <div style={{ height: '100%', width: `${Math.min(100, Math.round((unlockedCount / UNLOCK_QUOTA) * 100))}%`, background: KC.orange, borderRadius: 999 }} />
                                     </div>
                                 </div>
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
                                         <span style={{ font: '700 12px/1 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>Slot lowongan</span>
-                                        <span style={{ font: '900 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>4<span style={{ color: '#94A3B8' }}>/10</span></span>
+                                        <span style={{ font: '900 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>{totalJobsCount}<span style={{ color: '#94A3B8' }}>/{JOB_SLOT_QUOTA}</span></span>
                                     </div>
                                     <div style={{ height: 7, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
-                                        <div style={{ height: '100%', width: '40%', background: KC.ink, borderRadius: 999 }} />
+                                        <div style={{ height: '100%', width: `${Math.min(100, Math.round((totalJobsCount / JOB_SLOT_QUOTA) * 100))}%`, background: KC.ink, borderRadius: 999 }} />
                                     </div>
                                 </div>
                             </div>
-                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed #E2E8F0', font: '600 11.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
-                                Reset 1 Okt 2026
-                            </div>
                         </div>
 
-                        <div style={{ background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 12, padding: 20 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 11 }}>
-                                <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'grid', placeItems: 'center', color: '#fff', font: '900 13px/1 "Plus Jakarta Sans", sans-serif', flexShrink: 0 }}>✓</span>
-                                <span style={{ font: '900 14px/1.2 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>NPWP Terverifikasi</span>
+                        {isNpwpVerified ? (
+                            <div style={{ background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 12, padding: 20 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 11 }}>
+                                    <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'grid', placeItems: 'center', color: '#fff', font: '900 13px/1 "Plus Jakarta Sans", sans-serif', flexShrink: 0 }}>✓</span>
+                                    <span style={{ font: '900 14px/1.2 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>NPWP Terverifikasi</span>
+                                </div>
+                                <p style={{ font: '400 12px/1.6 "Plus Jakarta Sans", sans-serif', color: '#047857', margin: 0 }}>
+                                    Lowongan Anda tampil dengan lencana verifikasi pada kartu match kandidat — menaikkan tingkat respons.
+                                </p>
                             </div>
-                            <p style={{ font: '400 12px/1.6 "Plus Jakarta Sans", sans-serif', color: '#047857', margin: 0 }}>
-                                Lowongan Anda tampil dengan lencana verifikasi pada kartu match kandidat — menaikkan tingkat respons.
-                            </p>
-                        </div>
+                        ) : (
+                            <div style={{ background: '#FFF1EB', border: `1.5px solid ${KC.orange}`, borderRadius: 12, padding: 20 }}>
+                                <div style={{ font: '900 14px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink, marginBottom: 9 }}>
+                                    NPWP Belum Terverifikasi
+                                </div>
+                                <p style={{ font: '400 12px/1.6 "Plus Jakarta Sans", sans-serif', color: '#9A3412', margin: '0 0 14px' }}>
+                                    Verifikasi NPWP untuk menampilkan lencana terverifikasi pada kartu match kandidat.
+                                </p>
+                                <button
+                                    onClick={() => navigate('employer-verification')}
+                                    className="kc-btn"
+                                    style={{ ...topBtn('#fff', KC.ink), padding: '10px 15px', fontSize: 12 }}
+                                >
+                                    Verifikasi Sekarang →
+                                </button>
+                            </div>
+                        )}
 
+                        {draftJobs.length > 0 && (
                         <div style={{ background: '#FFF1EB', border: `1.5px solid ${KC.orange}`, borderRadius: 12, padding: 20 }}>
                             <div style={{ font: '900 14px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink, marginBottom: 9 }}>
-                                1 lowongan perlu ditinjau
+                                {draftJobs.length} lowongan perlu ditinjau
                             </div>
                             <p style={{ font: '400 12px/1.6 "Plus Jakarta Sans", sans-serif', color: '#9A3412', margin: '0 0 14px' }}>
-                                Draf "Frontend Engineer (React)" belum dipublikasikan · estimasi 31 kandidat cocok.
+                                Draf "{draftJobs[0].title}" belum dipublikasikan{draftJobs[0].candidates_count > 0 ? ` · estimasi ${draftJobs[0].candidates_count} kandidat cocok` : ''}.
                             </p>
                             <button
                                 onClick={() => navigate('employer-post-job')}
@@ -362,6 +397,7 @@ export default function EmployerDashboard() {
                                 Lanjutkan Draf →
                             </button>
                         </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -453,7 +489,7 @@ export default function EmployerDashboard() {
                         Time-to-shortlist
                     </div>
                     <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: -1.2, color: '#fff', margin: '9px 0 4px' }}>
-                        1,4<span style={{ fontSize: 14 }}> hari</span>
+                        {avgShortlistDays != null ? avgShortlistDays.toFixed(1).replace('.', ',') : '—'}<span style={{ fontSize: 14 }}> hari</span>
                     </div>
                     <div style={{ fontSize: 10.5, fontWeight: 600, color: '#10B981' }}>
                         ▼ AI reverse matching

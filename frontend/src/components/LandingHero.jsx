@@ -883,11 +883,10 @@ function CleanHeroPreview() {
 
                         {[
                             { name: 'Go Backend & Concurrency', val: '98%', color: KC.lime },
-                            { name: 'System Architecture & High Load', val: '92%', color: KC.lime },
                             { name: 'Distributed Caching (Redis)', val: '86%', color: KC.yellow },
                             { name: 'Observability & Monitoring', val: '76%', color: KC.orange },
                         ].map((s, i) => (
-                            <div key={i} style={{ marginBottom: 8 }}>
+                            <div key={i} style={{ marginBottom: 10 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, marginBottom: 2, color: KC.ink }}>
                                     <span>{s.name}</span>
                                     <span style={{ fontFamily: MONO, fontWeight: 800 }}>{s.val}</span>
@@ -1267,7 +1266,7 @@ export default function LandingHero() {
                         },
                         {
                             title: 'Verifikasi Dokumen e-KYC Terenkripsi',
-                            desc: 'Validasi resmi KTP, ijazah Kemendikbud SIVIL, dan NPWP untuk menciptakan ekosistem kerja yang terpercaya.',
+                            desc: 'Validasi format KTP, nomor ijazah, dan NPWP untuk menciptakan ekosistem kerja yang lebih terpercaya.',
                             accent: KC.yellow,
                             icon: <I.ShieldCheck s={20} c={KC.ink} />,
                         },
@@ -1329,7 +1328,7 @@ export default function LandingHero() {
                         {[
                             {
                                 role: 'Untuk Pencari Kerja',
-                                docs: 'KTP & Ijazah S1 (SIVIL)',
+                                docs: 'KTP & Ijazah S1',
                                 desc: 'Verifikasi identitas & integritas pendidikan.',
                                 accent: KC.orange,
                                 icon: <I.User s={18} c="#fff" />,
@@ -1418,11 +1417,11 @@ export default function LandingHero() {
                             btnVariant: 'lime',
                             cta: 'Mulai Rekrut',
                             perks: [
-                                'Buka kontak 10 kandidat resmi',
+                                'Buka kontak 10 kandidat',
                                 'Akses CV PDF & portofolio lengkap',
-                                'KTP & NPWP Terverifikasi',
-                                'Validasi Ijazah SIVIL resmi',
-                                'Garansi bebas ghosting',
+                                'Format KTP & NPWP tervalidasi',
+                                'Format nomor ijazah tervalidasi',
+                                'Analisis skor kecocokan AI',
                             ],
                             action: onEmployer,
                         },

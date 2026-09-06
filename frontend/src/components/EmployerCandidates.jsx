@@ -187,8 +187,8 @@ export default function EmployerCandidates() {
                                 ))}
                             </select>
                         ) : (
-                            <div style={{ padding: '12px 16px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 9, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, font: '700 12.5px/1 "Plus Jakarta Sans", sans-serif', color: KC.ink }}>
-                                Senior Backend Engineer (Go) ▾
+                            <div style={{ padding: '12px 16px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 9, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, font: '700 12.5px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                                Belum ada lowongan
                             </div>
                         )}
                     </div>
@@ -419,7 +419,7 @@ export default function EmployerCandidates() {
                                                     </span>
                                                     {cand.verified && (
                                                         <span style={{ padding: '3px 9px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#475569' }}>
-                                                            ✓ Terverifikasi Dukcapil
+                                                            ✓ Terverifikasi
                                                         </span>
                                                     )}
                                                 </div>
@@ -569,7 +569,7 @@ export default function EmployerCandidates() {
                                                     </span>
                                                     {cand.verified && (
                                                         <span style={{ padding: '3px 9px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#475569' }}>
-                                                            ✓ Terverifikasi Dukcapil
+                                                            ✓ Terverifikasi
                                                         </span>
                                                     )}
                                                 </div>
@@ -853,7 +853,7 @@ export default function EmployerCandidates() {
                             Kandidat Terkurasi
                         </h1>
                         <div style={{ font: '600 11.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginTop: 4 }}>
-                            {selectedJob.title || 'Senior Backend Engineer (Go)'} · 42 profil dipindai
+                            {selectedJob.title || 'Senior Backend Engineer (Go)'} · {candidates.length} profil dipindai
                         </div>
                     </div>
 
@@ -1115,7 +1115,7 @@ export default function EmployerCandidates() {
 
                                     {cand.verified && (
                                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 999, font: '800 10px/1 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 10 }}>
-                                            ✓ Terverifikasi Dukcapil
+                                            ✓ Terverifikasi
                                         </div>
                                     )}
 
