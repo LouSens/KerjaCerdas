@@ -84,14 +84,16 @@ class Settings(BaseSettings):
     # rotate X-Real-IP per request for a fresh rate-limit counter every
     # time — bypassing login/OTP/agent/upload throttling entirely.
     #
-    # To fix the "every proxied request shares one bucket" problem, set this
-    # explicitly to the *exact* address/CIDR your Nginx container gets on
-    # its Docker network (e.g. `docker network inspect <net>` to find the
-    # bridge subnet, or pin it with a static IP in docker-compose) — narrow
-    # enough that nothing else on the host's network path can match it.
-    # docker-compose.prod.yml's own `api_net` is pinned to 172.28.0.0/24 and
-    # sets this for you automatically when deployed as-is — see that file's
-    # header comment for when it does (and doesn't) apply.
+    # To fix the "every proxied request shares one bucket" problem instead,
+    # verify — don't guess — the exact address `api` actually sees as the
+    # peer when `frontend` proxies a request on your specific host (a
+    # container's published-port traffic can appear to come from inside its
+    # own network's subnet depending on the host's Docker/iptables setup, so
+    # a subnet that merely *looks* right can silently open a rate-limit
+    # bypass instead of closing one). Once confirmed, set this to that exact
+    # address/CIDR — narrow enough that nothing else on the host's network
+    # path can match it. See docker-compose.prod.yml's header comment for
+    # the full tradeoff.
     trusted_proxy_cidrs: list[str] = []
 
     # ── CORS ─────────────────────────────────────────────────────────────

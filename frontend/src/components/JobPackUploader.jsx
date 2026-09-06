@@ -93,15 +93,30 @@ export default function JobPackUploader() {
                     kbji_code: job.kbji_code,
                 }))
             )
-            const failedCount = results.filter(r => r.status === 'rejected').length
-            const createdCount = jobs.length - failedCount
+            const succeededLocalIds = new Set(
+                jobs.filter((_, i) => results[i].status === 'fulfilled').map(j => j.local_id)
+            )
+            const createdCount = succeededLocalIds.size
+            const failedJobs = jobs.filter(j => !succeededLocalIds.has(j.local_id))
             await useStore.getState().refreshEmployerJobs()
-            if (failedCount === 0) {
+
+            if (failedJobs.length === 0) {
                 toast.success(`${createdCount} lowongan berhasil dipublikasikan dan siap dikelola!`)
                 navigate('employer-jobs')
-            } else if (createdCount > 0) {
-                toast.error(`${createdCount} dari ${jobs.length} lowongan berhasil dipublikasikan. ${failedCount} gagal — periksa dan coba lagi dari Kelola Lowongan.`)
-                navigate('employer-jobs')
+                return
+            }
+
+            // Failed postings were never persisted (createEmployerJob threw,
+            // so there is no row for them in Kelola Lowongan to retry from)
+            // — navigating away here would lose the only copy of them. Drop
+            // only the ones that actually got created; anything still
+            // unpublished (failed just now, or simply left unchecked) stays
+            // on screen so retrying is one more click on this same button.
+            setParsedResult(prev => prev ? { ...prev, jobs: prev.jobs.filter(j => !succeededLocalIds.has(j.local_id)) } : prev)
+            setCheckedIds(new Set(failedJobs.map(j => j.local_id)))
+
+            if (createdCount > 0) {
+                toast.error(`${createdCount} dari ${jobs.length} lowongan berhasil dipublikasikan. ${failedJobs.length} gagal — coba lagi di bawah.`)
             } else {
                 toast.error('Gagal mempublikasikan lowongan. Coba lagi.')
             }
