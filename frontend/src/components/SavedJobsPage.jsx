@@ -45,8 +45,8 @@ export default function SavedJobsPage() {
                 <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {savedJobs.map((job, idx) => (
                         <BrutalCard key={job.job_id || job.id || idx} color="#FFFFFF" padding={18}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                                <div>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                                <div style={{ minWidth: 0, flex: '1 1 200px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                         <span style={{ fontSize: 12, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 4 }}>
                                             <Building2 size={13} /> {job.company || 'Perusahaan Mitra'}
@@ -58,16 +58,16 @@ export default function SavedJobsPage() {
                                     <h3 style={{ fontSize: 17, fontWeight: 900, margin: '0 0 6px', color: KC.ink, letterSpacing: -0.3 }}>
                                         {job.title || job.job_title}
                                     </h3>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute, flexWrap: 'wrap' }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <MapPin size={13} /> {job.location || 'Jakarta'}
+                                            <MapPin size={13} /> {job.location || job.region_code || '—'}
                                         </span>
                                         <span>·</span>
-                                        <span>{job.salary_range || 'Gaji Kompetitif'}</span>
+                                        <span>{job.salary_range || 'Gaji tidak dicantumkan'}</span>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                                     <button
                                         onClick={() => toggleSaveJob(job)}
                                         className="kc-btn"

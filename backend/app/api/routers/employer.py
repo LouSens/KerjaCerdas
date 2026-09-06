@@ -10,6 +10,7 @@ import logging
 from datetime import UTC, datetime
 
 from backend.app.api.dependencies import get_current_user, require_employer
+from backend.app.api.routers.jobs import invalidate_jobs_cache
 from backend.app.api.schemas.employer import (
     ApplicationStatusUpdate,
     CandidateSearchRequest,
@@ -20,7 +21,11 @@ from backend.app.api.schemas.employer import (
     UnlockCandidateRequest,
 )
 from backend.app.db.models import User
-from backend.app.db.postgres_store import find_employer_by_user_id, get_repositories
+from backend.app.db.postgres_store import (
+    find_employer_by_user_id,
+    find_jobs_by_employer_id,
+    get_repositories,
+)
 from backend.app.db.schemas import (
     EMPLOYER_SETTABLE_STATUSES,
     ApplicationStatus,
@@ -132,6 +137,7 @@ async def create_job(payload: JobCreateRequest, current_user: User = Depends(get
     matcher = SemanticMatcher()
     await matcher.embed_job(job)
     await repos.jobs.upsert(job)
+    invalidate_jobs_cache()
     logger.info("Job created: %s by user_id=%s", job.id, current_user.id)
     return {"job_id": job.id, "title": job.title}
 
@@ -143,7 +149,7 @@ async def list_my_jobs(current_user: User = Depends(get_current_user)):
     employer = await _get_employer(current_user.id)
     if not employer:
         return {"total": 0, "items": []}
-    jobs = await repos.jobs.find(lambda j: j.employer_id == employer.id)
+    jobs = await find_jobs_by_employer_id(employer.id)
 
     # Batch the application count instead of one query per job: fetch every
     # application once and tally by job_id in Python.
@@ -190,6 +196,7 @@ async def update_job(
         await matcher.embed_job(job)
 
     await repos.jobs.upsert(job)
+    invalidate_jobs_cache()
     return {"job_id": job.id, "updated": sorted(updates)}
 
 
@@ -203,6 +210,7 @@ async def delete_job(job_id: str, current_user: User = Depends(get_current_user)
     if not employer or job.employer_id != employer.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan milik Anda")
     await repos.jobs.delete(job_id)
+    invalidate_jobs_cache()
     return None
 
 
@@ -385,9 +393,11 @@ async def unlock_candidate(
         employer_unlocks.add(seeker_id)
         logger.info("Employer %s unlocked seeker %s for job %s", employer.id, seeker_id, job_id)
 
-    # Resolve the real user record for contact info
-    users = await repos.users.find(lambda u: u.id == seeker.user_id)
-    real_user = users[0] if users else None
+    # Resolve the real user record for contact info. `seeker.user_id` is the
+    # users table's primary key — use the indexed point lookup instead of the
+    # full-table-scan `find()`, which materialized every user row (including
+    # every password_hash) just to find one by id.
+    real_user = await repos.users.get(seeker.user_id)
 
     return {
         "unlocked": True,

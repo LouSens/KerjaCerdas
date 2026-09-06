@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, Tag, DesignStyles, BandLegend, ScoreDonut, topBtn, BAND_META, BAND_ORDER } from './_design'
-import { Filter, SlidersHorizontal, RefreshCw, Bookmark, BookmarkCheck, Building2, MapPin, DollarSign, CheckCircle2, ArrowRight } from 'lucide-react'
+import { Filter, SlidersHorizontal, RefreshCw, Bookmark, BookmarkCheck, Building2, MapPin, DollarSign, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react'
 import JobDetailModal from './JobDetailModal'
 
 const bandOf = (m) => {
@@ -61,7 +61,10 @@ export default function SeekerMatchResults() {
     const [showFilters, setShowFilters] = useState(true)
     const [selectedJob, setSelectedJob] = useState(null)
 
-    const baseList = matches.length ? matches : DEMO_MATCHES
+    // The demo fallback is only a stand-in for a *settled* empty result — while a
+    // match run is in flight the list stays empty so the loading state shows
+    // instead of fake rows.
+    const baseList = matches.length ? matches : (agentLoading ? [] : DEMO_MATCHES)
     const activeCount = Object.values(facets).reduce((n, s) => n + s.size, 0)
     const list = (activeCount === 0
         ? baseList
@@ -97,7 +100,7 @@ export default function SeekerMatchResults() {
                     <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
                         Pencocokan Lowongan AI
                     </h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
+                    <p aria-live="polite" style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
                         {agentLoading ? 'Menganalisis puluhan ribu data lowongan…' : `Menampilkan Top-${list.length} hasil kecocokan berbasis kapabilitas riil`}
                     </p>
                 </div>
@@ -172,6 +175,21 @@ export default function SeekerMatchResults() {
             <BandLegend side="seeker" />
 
             {/* Match Cards Grouped by Band */}
+            {list.length === 0 && (
+                <BrutalCard color="#FFFFFF" padding={24}>
+                    {agentLoading ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Loader2 size={16} className="animate-spin" color={KC.orange} />
+                            <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Menghitung kecocokan lowongan…</p>
+                        </div>
+                    ) : (
+                        <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>
+                            Tidak ada lowongan yang sesuai dengan kriteria filter saat ini.
+                        </p>
+                    )}
+                </BrutalCard>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {BAND_ORDER.map(bandKey => {
                     const bandInfo = BAND_META[bandKey]
@@ -190,10 +208,10 @@ export default function SeekerMatchResults() {
 
                             <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                 {items.map((m, idx) => {
-                                    const raw = m.overall_score ?? m.score ?? 0.85
+                                    const raw = m.overall_score ?? m.score ?? 0
                                     const pct = Math.round(raw > 1 ? raw : raw * 100)
                                     const saved = isJobSaved(m.job_id || m.id)
-                                    const matchingSkills = m.matching_skills || ['Go', 'PostgreSQL', 'Docker']
+                                    const matchingSkills = m.matching_skills || []
                                     const missingSkills = m.missing_skills || []
 
                                     return (
@@ -202,7 +220,7 @@ export default function SeekerMatchResults() {
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                                                         <span style={{ fontSize: 13, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 5 }}>
-                                                            <Building2 size={14} /> {m.company || 'GoTo Group'}
+                                                            <Building2 size={14} /> {m.company || 'Perusahaan'}
                                                         </span>
                                                         <Tag color={bandInfo.bg} ink={bandInfo.color} border={bandInfo.border} size="sm">
                                                             {bandInfo.badgeLabel}
@@ -215,20 +233,21 @@ export default function SeekerMatchResults() {
                                                     </div>
 
                                                     <h3 style={{ fontSize: 18, fontWeight: 900, margin: '0 0 8px', color: KC.ink, letterSpacing: -0.4, wordBreak: 'break-word' }}>
-                                                        {m.title || m.job_title || 'Senior Backend Engineer'}
+                                                        {m.title || m.job_title || 'Lowongan'}
                                                     </h3>
 
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: KC.mute, marginBottom: 12, flexWrap: 'wrap' }}>
                                                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                            <MapPin size={14} /> {m.location || 'Jakarta · Hybrid'}
+                                                            <MapPin size={14} /> {m.location || m.region_code || '—'}
                                                         </span>
                                                         <span>·</span>
                                                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                            <DollarSign size={14} /> {m.salary_range || 'Rp 28.000.000 - Rp 42.000.000'}
+                                                            <DollarSign size={14} /> {m.salary_range || 'Gaji tidak dicantumkan'}
                                                         </span>
                                                     </div>
 
                                                     {/* Skills Pills */}
+                                                    {(matchingSkills.length > 0 || missingSkills.length > 0) && (
                                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                                                         <span style={{ fontSize: 11, fontWeight: 800, color: KC.mute, textTransform: 'uppercase', marginRight: 4 }}>
                                                             Keahlian Sesuai:
@@ -244,6 +263,7 @@ export default function SeekerMatchResults() {
                                                             </span>
                                                         ))}
                                                     </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Score Donut & Action */}

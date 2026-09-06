@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # decision someone made on purpose rather than a default nobody noticed.
     otp_demo_mode: bool | None = None
 
+    # ── Admin surfaces ───────────────────────────────────────────────────
+    # There is no admin role/authentication layer yet. Routes that expose
+    # cross-user data (e.g. partnership inquiries) stay disabled until one
+    # exists, rather than being reachable by any authenticated seeker/employer.
+    admin_routes_enabled: bool = False
+
     # ── Gemini / Vertex AI — models ──────────────────────────────────────
     # Auth: either set GEMINI_API_KEY (AI Studio) OR set
     # VERTEX_AI_PROJECT + VERTEX_AI_LOCATION (Vertex AI; uses ADC creds).

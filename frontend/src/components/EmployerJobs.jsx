@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, topBtn, Tag, DesignStyles } from './_design'
-import { Plus, Users, ChevronDown, ChevronUp, Edit3, ArrowLeft, ArrowRight, Building2, MapPin } from 'lucide-react'
+import { Plus, Users, ChevronDown, ChevronUp, Edit3, ArrowLeft, ArrowRight, Building2, MapPin, Loader2 } from 'lucide-react'
 
 function formatSalaryRange(min, max) {
     if (!min && !max) return null
@@ -11,7 +11,7 @@ function formatSalaryRange(min, max) {
 }
 
 export default function EmployerJobs() {
-    const { employerJobs, refreshEmployerJobs, navigate } = useStore()
+    const { employerJobs, employerJobsLoading, refreshEmployerJobs, navigate } = useStore()
     const [openJobId, setOpenJobId] = useState(null)
 
     useEffect(() => {
@@ -45,7 +45,14 @@ export default function EmployerJobs() {
             </header>
 
             {/* Job List */}
-            {display.length === 0 ? (
+            {employerJobsLoading && display.length === 0 ? (
+                <BrutalCard color="#FFFFFF" padding={24}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Loader2 size={16} className="animate-spin" color={KC.orange} />
+                        <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Memuat daftar lowongan…</p>
+                    </div>
+                </BrutalCard>
+            ) : display.length === 0 ? (
                 <BrutalCard color="#FFFFFF" padding={24} style={{ textAlign: 'center', color: KC.mute }}>
                     Belum ada lowongan. Pasang lowongan pertama Anda untuk mulai menerima pelamar.
                 </BrutalCard>
@@ -58,7 +65,7 @@ export default function EmployerJobs() {
                     return (
                         <BrutalCard key={job.id || idx} color="#FFFFFF" padding={20}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-                                <div>
+                                <div style={{ minWidth: 0, flex: '1 1 200px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                         <span style={{ padding: '2px 8px', background: isLive ? KC.limeSoft : KC.surfaceAlt, border: `1px solid ${isLive ? KC.lime : KC.borderMuted}`, borderRadius: 6, fontSize: 10, fontWeight: 800, color: isLive ? '#047857' : KC.mute }}>
                                             {isLive ? '● LIVE' : 'DRAFT'}
@@ -74,7 +81,7 @@ export default function EmployerJobs() {
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
                                     <div style={{ textAlign: 'center', minWidth: 60 }}>
                                         <div style={{ fontSize: 18, fontWeight: 900, color: KC.ink }}>{job.application_count ?? 0}</div>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: KC.mute, textTransform: 'uppercase' }}>Pelamar</div>

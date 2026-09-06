@@ -413,18 +413,3 @@ class AIPerformanceLog(TimestampedModel):
     error: str | None = None
     flagged: bool = False  # set true when output triggered a guardrail
     rating: Literal["up", "down", None] = None  # user thumbs
-
-
-# ── Gamification ──────────────────────────────────────────────────────────────
-
-
-class GamificationStats(TimestampedModel):
-    """Per-seeker quest progress. Stored alongside the seeker profile."""
-
-    id: str = Field(default_factory=_uid)
-    seeker_id: str
-    xp: int = 0
-    level: int = 1
-    streak_days: int = 0
-    badges: list[str] = []  # e.g. ["profile_complete", "first_match", "cv_uploaded"]
-    quests_completed: list[str] = []

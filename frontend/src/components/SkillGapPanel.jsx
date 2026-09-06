@@ -110,7 +110,7 @@ export default function SkillGapPanel() {
                 </section>
             </>}
 
-            {!result && currentSkills.length && !skillGapLoading && !skillGapError && <BrutalCard color="#FFFFFF" padding={24}><div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}><BookOpen size={21} color={KC.indigo} style={{ flexShrink: 0, marginTop: 2 }} /><p style={{ fontSize: 13, color: KC.inkLight, lineHeight: 1.5, margin: 0 }}>Pilih target lowongan lalu jalankan analisis. Hasil akan tersimpan untuk akun Anda sehingga dapat dibandingkan setelah profil diperbarui.</p></div></BrutalCard>}
+            {!result && currentSkills.length > 0 && !skillGapLoading && !skillGapError && <BrutalCard color="#FFFFFF" padding={24}><div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}><BookOpen size={21} color={KC.indigo} style={{ flexShrink: 0, marginTop: 2 }} /><p style={{ fontSize: 13, color: KC.inkLight, lineHeight: 1.5, margin: 0 }}>Pilih target lowongan lalu jalankan analisis. Hasil akan tersimpan untuk akun Anda sehingga dapat dibandingkan setelah profil diperbarui.</p></div></BrutalCard>}
         </div>
     )
 }

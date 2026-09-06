@@ -1,4 +1,4 @@
-"""Seeker-side profile, bookmarks, and gamification endpoints.
+"""Seeker-side profile and bookmark endpoints.
 
 Uses the JSON store (same layer as the agent/uploads/admin), so seeker
 profiles created here are immediately visible to the matching engine.
@@ -21,20 +21,20 @@ from backend.app.api.schemas.seeker import (
 from backend.app.db.models import User
 from backend.app.db.postgres_store import (
     find_applications_by_seeker_id,
-    find_gamification_by_seeker_id,
     find_seeker_by_user_id,
     find_skill_gaps_by_seeker_id,
     get_repositories,
+    update_seeker_embedding,
 )
 from backend.app.db.schemas import (
     Application,
     ApplicationStatus,
-    GamificationStats,
     SeekerProfile,
     Skill,
 )
 from backend.app.services.matching.matcher import SemanticMatcher
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -121,27 +121,22 @@ async def create_or_update_profile(
     # Persist profile immediately so profile is available to other endpoints
     await repos.seekers.upsert(profile)
 
-    # Schedule embedding in the background — response is returned before this runs
+    # Schedule embedding in the background — response is returned before this
+    # runs. `p` is a snapshot taken at request time, so on completion this
+    # must write ONLY the embedding columns (not the whole row) — otherwise a
+    # profile edit or CV upload that lands while the embed call is still in
+    # flight would be silently overwritten by this stale snapshot.
     async def _embed_and_save(p: SeekerProfile) -> None:
         try:
             matcher = SemanticMatcher()
             await matcher.embed_seeker(p)
-            await repos.seekers.upsert(p)
-            logger.info("Background embed complete for seeker %s", p.id)
+            if p.embedding:
+                await update_seeker_embedding(p.id, p.embedding, p.embedding_model)
+                logger.info("Background embed complete for seeker %s", p.id)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Background embed failed for seeker %s: %s", p.id, exc)
 
     background_tasks.add_task(_embed_and_save, profile)
-
-    # Ensure gamification record exists
-    gam = await find_gamification_by_seeker_id(profile.id)
-    if not gam:
-        gam = GamificationStats(seeker_id=profile.id)
-        # Award first badge for completing profile
-        if skills:
-            gam.badges.append("profile_complete")
-            gam.xp += 100
-        await repos.gamification.upsert(gam)
 
     logger.info(
         "Profile upserted for user_id=%s → seeker %s (embedding queued)",
@@ -152,26 +147,6 @@ async def create_or_update_profile(
         "seeker_id": profile.id,
         "skills_count": len(profile.skills),
         "embedding_status": "queued",
-    }
-
-
-# ── Gamification ──────────────────────────────────────────────────────────────
-
-
-@router.get("/gamification")
-async def get_gamification(current_user: User = Depends(get_current_user)):
-    profile = await find_seeker_by_user_id(current_user.id)
-    if not profile:
-        return {"xp": 0, "level": 1, "streak_days": 0, "badges": []}
-    g = await find_gamification_by_seeker_id(profile.id)
-    if not g:
-        return {"xp": 0, "level": 1, "streak_days": 0, "badges": []}
-    return {
-        "xp": g.xp,
-        "level": max(1, g.xp // 250 + 1),
-        "streak_days": g.streak_days,
-        "badges": g.badges,
-        "quests_completed": g.quests_completed,
     }
 
 
@@ -199,7 +174,19 @@ async def save_job(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sudah tersimpan")
 
     app = Application(job_id=job_id, seeker_id=seeker_id, status=ApplicationStatus.SAVED)
-    await repos.applications.upsert(app)
+    try:
+        await repos.applications.upsert(app)
+    except IntegrityError:
+        # A concurrent request (e.g. a double-click) won the race and already
+        # created the (job_id, seeker_id) row the `uq_application_job_seeker`
+        # constraint enforces — surface that row instead of erroring the user
+        # out or leaving a duplicate.
+        winner = await repos.applications.find(
+            lambda a: a.job_id == job_id and a.seeker_id == seeker_id
+        )
+        if winner:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sudah tersimpan") from None
+        raise
     return {"id": app.id, "job_id": job_id, "status": app.status}
 
 
@@ -229,12 +216,16 @@ async def list_bookmarks(current_user: User = Depends(get_current_user)):
     seeker_id = profile.id
     apps = await find_applications_by_seeker_id(seeker_id)
     apps = [a for a in apps if a.status == ApplicationStatus.SAVED]
-    # Enrich with job titles
+    # Enrich with job/employer metadata via two batched lookups instead of
+    # one query per bookmark (N+1) — a seeker with many saved jobs would
+    # otherwise issue 2x round trips per page load.
+    jobs_by_id = {j.id: j for j in await repos.jobs.get_many(list({a.job_id for a in apps}))}
+    employer_ids = {j.employer_id for j in jobs_by_id.values()}
+    emps_by_id = {e.id: e for e in await repos.employers.get_many(list(employer_ids))}
     result = []
     for app in apps:
-        job = await repos.jobs.get(app.job_id)
-        # Resolve employer name
-        emp = await repos.employers.get(job.employer_id) if job else None
+        job = jobs_by_id.get(app.job_id)
+        emp = emps_by_id.get(job.employer_id) if job else None
         result.append(
             {
                 "application_id": app.id,
@@ -310,24 +301,41 @@ async def apply_to_job(
             cover_letter=payload.cover_letter,
             note=_APPLIED_NOTE,
         )
-    await repos.applications.upsert(app)
+    already_applied = False
+    try:
+        await repos.applications.upsert(app)
+    except IntegrityError:
+        # Same race as save_job: a concurrent request already created this
+        # (job_id, seeker_id) row. Report that row rather than duplicating it —
+        # but if the row that won the race is only a bookmark (a concurrent
+        # save_job, not an apply_to_job), it must still be promoted to
+        # `applied` here, or the caller is falsely told they already applied
+        # when no application was ever actually submitted.
+        winner = await repos.applications.find(
+            lambda a: a.job_id == job_id and a.seeker_id == seeker_id
+        )
+        if not winner:
+            raise
+        app = winner[0]
+        if ApplicationStatus(app.status) == ApplicationStatus.SAVED:
+            app.status = ApplicationStatus.APPLIED
+            app.cover_letter = payload.cover_letter
+            app.note = _APPLIED_NOTE
+            app.updated_at = datetime.now(UTC)
+            await repos.applications.upsert(app)
+        else:
+            already_applied = True
 
-    # Award XP for applying
-    gam = await find_gamification_by_seeker_id(seeker_id)
-    if gam:
-        gam.xp += 50
-        if "first_apply" not in gam.badges:
-            gam.badges.append("first_apply")
-        await repos.gamification.upsert(gam)
+    if not already_applied:
+        logger.info("Application created: seeker %s → job %s", seeker_id, job_id)
 
-    logger.info("Application created: seeker %s → job %s", seeker_id, job_id)
     return {
         "id": app.id,
         "application_id": app.id,
         "job_id": job_id,
         "status": app.status,
         "note": app.note,
-        "already_applied": False,
+        "already_applied": already_applied,
     }
 
 
@@ -560,10 +568,15 @@ async def list_applications(current_user: User = Depends(get_current_user)):
         return []
     seeker_id = profile.id
     apps = await find_applications_by_seeker_id(seeker_id)
+    # Batched lookups instead of one query per application (N+1) — see the
+    # identical fix in list_bookmarks above.
+    jobs_by_id = {j.id: j for j in await repos.jobs.get_many(list({a.job_id for a in apps}))}
+    employer_ids = {j.employer_id for j in jobs_by_id.values()}
+    emps_by_id = {e.id: e for e in await repos.employers.get_many(list(employer_ids))}
     result = []
     for app in apps:
-        job = await repos.jobs.get(app.job_id)
-        emp = await repos.employers.get(job.employer_id) if job else None
+        job = jobs_by_id.get(app.job_id)
+        emp = emps_by_id.get(job.employer_id) if job else None
 
         # Determine note from DB or provide informative default by status
         note_val = getattr(app, "note", "") or ""

@@ -99,10 +99,14 @@ class SeekerProfileUpsert(BaseModel):
     preferred_regions: StrList | None = None
     salary_expectation_min: LenientInt | None = Field(default=None, ge=0)
     salary_expectation_max: LenientInt | None = Field(default=None, ge=0)
-    resume_text: str | None = None
+    # Bounded so a single request can't smuggle megabytes of text into the
+    # Gemini embedding/prompt calls these fields eventually feed (matcher.py
+    # also truncates defensively, since agent.py accepts a client-supplied
+    # profile that bypasses this schema entirely).
+    resume_text: str | None = Field(default=None, max_length=20_000)
     open_to_remote: bool | None = None
-    skills: list[SkillInput] | None = None
-    experience: list[ExperienceInput] | None = None
+    skills: list[SkillInput] | None = Field(default=None, max_length=100)
+    experience: list[ExperienceInput] | None = Field(default=None, max_length=50)
     education: list[EducationInput] | None = None
 
     @field_validator("skills", mode="before")

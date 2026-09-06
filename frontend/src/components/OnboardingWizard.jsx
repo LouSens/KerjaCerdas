@@ -8,7 +8,7 @@
  * Shown automatically when a seeker logs in for the first time and
  * has no seekerId (no CV uploaded). Dismiss on complete or skip.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, Tag, DesignStyles } from './_design'
 
@@ -22,9 +22,24 @@ export default function OnboardingWizard({ onClose }) {
     const goNext = () => setStep(s => Math.min(STEPS.length - 1, s + 1))
     const goPrev = () => setStep(s => Math.max(0, s - 1))
 
+    const overlayRef = useRef(null)
+
     const handleSkip = () => {
         track?.('onboarding_skipped', { step: STEPS[step] })
         onClose?.()
+    }
+
+    // Focus the overlay on mount so the Escape handler below can fire without
+    // the user having to click into the wizard first.
+    useEffect(() => {
+        overlayRef.current?.focus()
+    }, [])
+
+    const handleOverlayKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            e.stopPropagation()
+            handleSkip()
+        }
     }
 
     const handleFileChange = async (e) => {
@@ -44,19 +59,44 @@ export default function OnboardingWizard({ onClose }) {
     }
 
     return (
-        <div style={{
-            position: 'fixed', inset: 0, zIndex: 9000,
-            background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 20,
-        }}>
+        <div
+            ref={overlayRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Panduan awal KerjaCerdas"
+            tabIndex={-1}
+            onKeyDown={handleOverlayKeyDown}
+            style={{
+                position: 'fixed', inset: 0, zIndex: 9000,
+                background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 20, outline: 'none',
+            }}
+        >
             <DesignStyles />
             <div style={{
                 width: '100%', maxWidth: 520,
                 background: KC.bone, border: `3px solid ${KC.ink}`,
                 borderRadius: 16, boxShadow: `8px 8px 0 ${KC.ink}`,
-                overflow: 'hidden',
+                overflow: 'hidden', position: 'relative',
             }}>
+                {/* Always-available dismiss — reachable from every step */}
+                <button
+                    onClick={handleSkip}
+                    aria-label="Tutup panduan"
+                    title="Tutup panduan"
+                    style={{
+                        position: 'absolute', top: 14, right: 14, zIndex: 2,
+                        width: 30, height: 30, borderRadius: 8,
+                        background: '#fff', color: KC.ink,
+                        border: `2px solid ${KC.ink}`, boxShadow: `2px 2px 0 ${KC.ink}`,
+                        fontWeight: 900, fontSize: 14, lineHeight: 1,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                        display: 'grid', placeItems: 'center',
+                    }}
+                >
+                    ✕
+                </button>
                 {/* Progress bar */}
                 <div style={{ height: 6, background: KC.ash }}>
                     <div style={{
@@ -69,7 +109,7 @@ export default function OnboardingWizard({ onClose }) {
 
                 <div style={{ padding: '28px 32px' }}>
                     {/* Step pills */}
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24, paddingRight: 34 }}>
                         {STEPS.map((label, i) => (
                             <div key={i} style={{
                                 display: 'flex', alignItems: 'center', gap: 6,

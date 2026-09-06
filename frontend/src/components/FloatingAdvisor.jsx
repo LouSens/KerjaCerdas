@@ -226,6 +226,7 @@ export default function FloatingAdvisor() {
             {/* Chat panel */}
             <div
                 className="kc-advisor-panel"
+                aria-hidden={!floatingAdvisorOpen}
                 style={{
                     background: '#FFFFFF',
                     border: `2px solid ${KC.ink}`,
@@ -238,6 +239,9 @@ export default function FloatingAdvisor() {
                     opacity: floatingAdvisorOpen ? 1 : 0,
                     transform: floatingAdvisorOpen ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(20px)',
                     pointerEvents: floatingAdvisorOpen ? 'auto' : 'none',
+                    // `visibility: hidden` also pulls the closed panel's inputs and
+                    // buttons out of the keyboard tab order (opacity alone does not).
+                    visibility: floatingAdvisorOpen ? 'visible' : 'hidden',
                 }}
             >
                 {/* Header */}
@@ -277,7 +281,14 @@ export default function FloatingAdvisor() {
                 </header>
 
                 {/* Messages Body */}
-                <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, background: '#FFFFFF' }}>
+                <div
+                    ref={scrollRef}
+                    role="log"
+                    aria-live="polite"
+                    aria-atomic="false"
+                    aria-busy={agentLoading}
+                    style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, background: '#FFFFFF' }}
+                >
                     {advisorLog.length === 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 'auto', marginBottom: 'auto' }}>
                             <div style={{ padding: '16px', background: KC.surface, border: `1.5px solid ${KC.ink}`, borderRadius: 10, boxShadow: `2px 2px 0 ${KC.ink}` }}>

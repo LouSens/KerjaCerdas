@@ -1,14 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import useStore from './store/useStore'
 import { VIEW_TO_PATH, PATH_TO_VIEW } from './routes'
 
-import PublicHeader from './components/PublicHeader'
 import Sidebar, { MobileBottomNav } from './components/Sidebar'
 import FloatingAdvisor from './components/FloatingAdvisor'
 import EmployerHelpPanel from './components/EmployerHelpPanel'
 import AuthModal from './components/AuthModal'
-import Footer from './components/Footer'
 import OnboardingWizard from './components/OnboardingWizard'
 
 // Public views
@@ -75,15 +73,14 @@ function ProtectedRoute({ children, role }) {
  */
 function AppShell({ children }) {
     const { seekerId, profile, isAuthenticated, userRole } = useStore()
+    const [onboardingDismissed, setOnboardingDismissed] = useState(false)
     const showOnboarding = isAuthenticated && userRole === 'seeker' &&
-        !seekerId && !(profile?.skills?.length > 0)
+        !seekerId && !(profile?.skills?.length > 0) && !onboardingDismissed
 
     return (
         <div className="flex min-h-screen bg-kc-cream w-full overflow-x-hidden">
             {showOnboarding && (
-                <OnboardingWizard onClose={() => {
-                    // Wizard closed — stay on current page
-                }} />
+                <OnboardingWizard onClose={() => setOnboardingDismissed(true)} />
             )}
             <Sidebar />
             <main className="mobile-main flex-1 min-h-screen transition-[margin] duration-200 md:ml-64 ml-0 w-full max-w-full overflow-x-hidden">

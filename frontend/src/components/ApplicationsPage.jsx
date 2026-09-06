@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'
-import { Send, FileSearch, PhoneCall, CheckCircle2, XCircle, Building2, Calendar, Clock, RefreshCw, Briefcase, ChevronRight } from 'lucide-react'
+import { Send, FileSearch, PhoneCall, CheckCircle2, XCircle, Building2, Calendar, Clock, RefreshCw, Briefcase, ChevronRight, Loader2 } from 'lucide-react'
 
 const STAGES = [
     { key: 'applied', label: 'Terkirim', icon: Send, color: KC.cyan, bg: KC.cyanSoft },
@@ -55,13 +55,23 @@ export default function ApplicationsPage() {
                         style={{ ...topBtn('#fff', KC.ink), opacity: refreshing ? 0.7 : 1 }}
                         title="Segarkan data dari server"
                     >
-                        <RefreshCw size={14} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} /> Segarkan
+                        <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> Segarkan
                     </button>
                     <button className="kc-btn" onClick={() => navigate('seeker-match')} style={topBtn(KC.orange, '#fff')}>
                         Lamar Posisi Baru →
                     </button>
                 </div>
             </header>
+
+            {/* Loading State */}
+            {applicationsLoading && list.length === 0 && (
+                <BrutalCard color="#FFFFFF" padding={24}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Loader2 size={16} className="animate-spin" color={KC.orange} />
+                        <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Memuat riwayat lamaran…</p>
+                    </div>
+                </BrutalCard>
+            )}
 
             {/* Empty State */}
             {!applicationsLoading && list.length === 0 && (
@@ -134,7 +144,7 @@ export default function ApplicationsPage() {
 
                             {/* Stepper Timeline */}
                             {!isRejected ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, margin: '14px 0 16px', position: 'relative' }}>
+                                <div className="kc-stepper-4" style={{ margin: '14px 0 16px', position: 'relative' }}>
                                     {STAGES.map((stage, sIdx) => {
                                         const isDone = sIdx <= activeIdx
                                         const isCurrent = sIdx === activeIdx

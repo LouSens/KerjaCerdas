@@ -1,21 +1,65 @@
+import json
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.types import TypeDecorator
 
-# pgvector is only available when using PostgreSQL. For SQLite dev mode we fall
-# back to a plain Text column (stores the vector as a serialised string that is
-# never used at query time — embeddings are computed in-process by the matcher).
-try:
-    from pgvector.sqlalchemy import Vector as _Vector  # type: ignore[import-untyped]
+from backend.app.config.settings import settings
 
-    _VectorCol = lambda: _Vector(768)  # noqa: E731
-except Exception:  # pragma: no cover
-    from sqlalchemy import Text as _Text  # type: ignore[assignment]
 
-    _VectorCol = lambda: _Text()  # noqa: E731
+class _JSONVectorText(TypeDecorator):
+    """Store an embedding list as a JSON string in a plain Text column.
+
+    Used for SQLite dev/test mode, where the value is never used at query
+    time (embeddings are computed and compared in-process by the matcher) —
+    this only needs to round-trip whatever list was written, which a bare
+    Text column can't do on its own since the SQLite driver refuses to bind
+    a raw Python list as a parameter.
+    """
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return json.dumps(list(value))
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return json.loads(value)
+
+
+# pgvector is only available when using PostgreSQL. For SQLite dev/test mode we
+# fall back to the JSON-serialising Text column above. This is keyed off the
+# *actually configured* database URL, not whether the pgvector package happens
+# to be importable: an environment that has pgvector installed but is still
+# pointed at SQLite (e.g. this repo's own test suite) must still get the Text
+# fallback, or the strict Vector(768) type rejects the shorter test-fixture
+# embeddings with a dimension mismatch.
+if settings.effective_database_url.startswith("sqlite"):
+    _VectorCol = lambda: _JSONVectorText()  # noqa: E731
+else:
+    try:
+        from pgvector.sqlalchemy import Vector as _Vector  # type: ignore[import-untyped]
+
+        _VectorCol = lambda: _Vector(768)  # noqa: E731
+    except Exception:  # pragma: no cover
+        _VectorCol = lambda: _JSONVectorText()  # noqa: E731
 
 
 def _now() -> datetime:
@@ -117,6 +161,13 @@ class JobPosting(Base, TimestampedMixin):
 
 class Application(Base, TimestampedMixin):
     __tablename__ = "applications"
+    # A seeker has at most one application row per job — status transitions
+    # (saved -> applied -> ...) happen in-place on that row (see apply_to_job
+    # in seeker.py). Without this constraint, two concurrent requests that
+    # both read "no existing application" before either commits can each
+    # insert their own row, producing duplicate applications for the same
+    # (job, seeker) pair.
+    __table_args__ = (UniqueConstraint("job_id", "seeker_id", name="uq_application_job_seeker"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     job_id: Mapped[str] = mapped_column(String(36), ForeignKey("jobs.id"), index=True)
@@ -209,18 +260,6 @@ class AIPerformanceLog(Base, TimestampedMixin):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     flagged: Mapped[bool] = mapped_column(Boolean, default=False)
     rating: Mapped[str | None] = mapped_column(String(20), nullable=True)
-
-
-class GamificationStats(Base, TimestampedMixin):
-    __tablename__ = "gamification"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    seeker_id: Mapped[str] = mapped_column(String(36), index=True)
-    xp: Mapped[int] = mapped_column(Integer, default=0)
-    level: Mapped[int] = mapped_column(Integer, default=1)
-    streak_days: Mapped[int] = mapped_column(Integer, default=0)
-    badges: Mapped[list[Any]] = mapped_column(JSON, default=list)
-    quests_completed: Mapped[list[Any]] = mapped_column(JSON, default=list)
 
 
 class QueryEmbedding(Base):

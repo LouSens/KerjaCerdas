@@ -71,13 +71,20 @@ def _normalize_skill(name: str) -> str:
 
 
 def _skill_overlap(seeker_names: list[str], required: list[str]) -> float:
-    """Fraction of required skills the seeker has (case-insensitive & canonicalized)."""
+    """Fraction of required skills the seeker has (case-insensitive & canonicalized).
+
+    A posting with no stated requirements carries no skill signal at all — it
+    must not score as a "perfect" skill match (1.0), which previously let a
+    bare posting (no skills, no experience minimum) outscore postings where
+    the seeker actually satisfies only part of a real requirement list. 0.5
+    is the neutral midpoint: neither a bonus nor a penalty for stating nothing.
+    """
     if not required:
-        return 1.0
+        return 0.5
     s = {_normalize_skill(x) for x in seeker_names if x}
     r = {_normalize_skill(x) for x in required if x}
     if not r:
-        return 1.0
+        return 0.5
     return len(s & r) / len(r)
 
 
@@ -123,15 +130,20 @@ def _build_seeker_text(p: SeekerProfile) -> str:
     skills = ", ".join(s.name for s in p.skills)
     exp = " | ".join(f"{e.title} di {e.company}" for e in p.experience)
     edu = " | ".join(f"{e.degree.value} {e.major} {e.institution}" for e in p.education)
+    # `agent.py` accepts a client-supplied SeekerProfile that bypasses the API
+    # schema length limits entirely — truncate here too so an unbounded
+    # resume_text can't blow up the embedding call's token cost.
+    resume_text = (p.resume_text or "")[:8000]
     return (
         f"{p.headline}\nKeahlian: {skills}\nPengalaman: {exp}\n"
-        f"Pendidikan: {edu}\nCatatan: {p.resume_text}"
+        f"Pendidikan: {edu}\nCatatan: {resume_text}"
     )
 
 
 def _build_job_text(j: JobPosting) -> str:
+    description = (j.description or "")[:8000]
     return (
-        f"{j.title}\n{j.description}\n"
+        f"{j.title}\n{description}\n"
         f"Skill wajib: {', '.join(j.required_skills)}\n"
         f"Nice to have: {', '.join(j.nice_to_have_skills)}\n"
         f"Tanggung jawab: {' | '.join(j.responsibilities)}"
@@ -378,7 +390,7 @@ class SemanticMatcher:
             job.embedding = await self.embedder.embed(
                 _build_job_text(job), task_type="RETRIEVAL_DOCUMENT"
             )
-            job.embedding_model = settings.gemini_embed_model
+            job.embedding_model = getattr(self.embedder, "model", settings.gemini_embed_model)
         except EmbeddingUnavailableError as exc:
             # Leave the row unembedded — never store a junk vector.
             _logger.error("embed_job failed for job=%s (%s) — leaving unembedded", job.id, exc)
@@ -391,7 +403,7 @@ class SemanticMatcher:
             seeker.embedding = await self.embedder.embed(
                 _build_seeker_text(seeker), task_type="RETRIEVAL_DOCUMENT"
             )
-            seeker.embedding_model = settings.gemini_embed_model
+            seeker.embedding_model = getattr(self.embedder, "model", settings.gemini_embed_model)
         except EmbeddingUnavailableError as exc:
             _logger.error(
                 "embed_seeker failed for seeker=%s (%s) — leaving unembedded", seeker.id, exc
@@ -471,6 +483,7 @@ class SemanticMatcher:
             _logger.error("query embed unavailable (%s) — ranking without semantic score", exc)
             query_vec = []
         seeker_skill_names = [s.name for s in seeker.skills]
+        years_exp = _experience_years(seeker)  # loop-invariant — compute once
 
         if jobs is None:
             candidates = await self._job_candidates(query_vec, top_k)
@@ -491,11 +504,13 @@ class SemanticMatcher:
                 cos = cosine(query_vec, job_vec or [])
             skill = _skill_overlap(seeker_skill_names, j.required_skills)
 
-            s_lower = {x.lower() for x in seeker_skill_names}
-            matched = [s for s in j.required_skills if s.lower() in s_lower]
-            missing = [s for s in j.required_skills if s.lower() not in s_lower]
+            # Canonicalize the same way `_skill_overlap` does (e.g. "ReactJS" ==
+            # "React") so the displayed Matched/Missing lists agree with the
+            # score that was actually computed from them.
+            seeker_skill_norm = {_normalize_skill(x) for x in seeker_skill_names}
+            matched = [s for s in j.required_skills if _normalize_skill(s) in seeker_skill_norm]
+            missing = [s for s in j.required_skills if _normalize_skill(s) not in seeker_skill_norm]
 
-            years_exp = _experience_years(seeker)
             score = _hybrid_score(
                 cos, skill, years_exp, j.experience_years_min, bool(seeker.education)
             )
@@ -602,10 +617,20 @@ class SemanticMatcher:
                 cos = cosine(query_vec, seeker_vec or [])
             skill = _skill_overlap([sk.name for sk in s.skills], job.required_skills)
 
-            # Hard AI Filters based on UI
+            # Hard AI Filters based on UI. `target_loc` is free-text (e.g. a city
+            # name typed into the employer's filter UI) while `region_code` is a
+            # BPS numeric code — resolve to a display name the same way the
+            # seeker-side ranking does, or a bare code/code-prefix match never hits.
             target_loc = filters.get("location")
-            if target_loc and target_loc != (s.region_code or "").lower():
-                continue  # Hard filter: Eliminate seeker outside preferred location
+            if target_loc:
+                reg_code = (s.region_code or "").lower()
+                reg_name = _BPS_REGION_NAMES.get(s.region_code, "")
+                if not (
+                    reg_code == target_loc
+                    or target_loc in reg_name
+                    or (reg_code.startswith("317") and target_loc == "jakarta")
+                ):
+                    continue  # Hard filter: Eliminate seeker outside preferred location
 
             target_exp = filters.get("experience_min")
             years_exp = _experience_years(s)
@@ -615,9 +640,13 @@ class SemanticMatcher:
             score = round(
                 _hybrid_score(cos, skill, years_exp, job.experience_years_min, bool(s.education)), 4
             )
-            seeker_skill_lower = {sk.name.lower() for sk in s.skills}
-            matched_skills = [r for r in job.required_skills if r.lower() in seeker_skill_lower]
-            missing_skills = [r for r in job.required_skills if r.lower() not in seeker_skill_lower]
+            seeker_skill_norm = {_normalize_skill(sk.name) for sk in s.skills}
+            matched_skills = [
+                r for r in job.required_skills if _normalize_skill(r) in seeker_skill_norm
+            ]
+            missing_skills = [
+                r for r in job.required_skills if _normalize_skill(r) not in seeker_skill_norm
+            ]
             scored.append(
                 {
                     "seeker_id": s.id,
@@ -673,8 +702,11 @@ class SemanticMatcher:
 
                 prompt = f"Anda adalah HR Assistant AI untuk platform KerjaCerdas.\nBerikan evaluasi SUPER SINGKAT (maks 1 kalimat, 10-15 kata) untuk masing-masing kandidat berikut ini berdasarkan kriteria loker: {job.title}\n"
                 prompt += f"Skill Wajib Loker: {', '.join(job.required_skills)}\n\n"
-                for c in top_candidates:
-                    prompt += f"ID: {c['seeker_id']}\nSkill Kandidat: {', '.join(c['skills'])}\n"
+                # Cap prompt width regardless of caller-supplied top_k — this fires
+                # on every candidate-search request, so an uncapped top_k directly
+                # controls Gemini token spend per call.
+                for c in top_candidates[:20]:
+                    prompt += f"ID: {c['seeker_id']}\nSkill Kandidat: {', '.join(c['skills'][:15])}\n"
 
                 prompt += "\nFormat balasan HARUS (tanpa markdown blok, 1 baris per ID):\n[ID]: [evaluasi 1 kalimat]"
 

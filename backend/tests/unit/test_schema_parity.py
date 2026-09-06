@@ -32,7 +32,6 @@ _REPO_ATTRS = [
     "skill_gaps",
     "chats",
     "ai_logs",
-    "gamification",
     "courses",
 ]
 

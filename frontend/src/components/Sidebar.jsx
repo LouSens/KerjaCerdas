@@ -23,8 +23,8 @@ const SEEKER_GROUPS = [
     {
         title: 'Aktivitas & Karir',
         items: [
-            { id: 'seeker-applications', label: 'Lamaran Saya', icon: ClipboardList, countKey: 'applications', defaultCount: 3 },
-            { id: 'seeker-saved', label: 'Tersimpan', icon: Bookmark, countKey: 'savedJobs', defaultCount: 2 },
+            { id: 'seeker-applications', label: 'Lamaran Saya', icon: ClipboardList, countKey: 'applications' },
+            { id: 'seeker-saved', label: 'Tersimpan', icon: Bookmark, countKey: 'savedJobs' },
             { id: 'seeker-skill-gap', label: 'Skill Gap & Kursus', icon: BarChart3 },
         ],
     },
@@ -42,7 +42,7 @@ const EMPLOYER_GROUPS = [
         title: 'Utama',
         items: [
             { id: 'employer-dashboard', label: 'Dashboard', icon: LayoutDashboard },
-            { id: 'employer-jobs', label: 'Lowongan Saya', icon: Briefcase, countKey: 'employerJobs', defaultCount: 4 },
+            { id: 'employer-jobs', label: 'Lowongan Saya', icon: Briefcase, countKey: 'employerJobs' },
         ],
     },
     {
@@ -99,16 +99,18 @@ export default function Sidebar() {
         if (item.badge) {
             return { text: item.badge, bg: item.badgeBg || '#334155', color: '#FFFFFF' }
         }
+        // Nullish coalescing (not `||`) so a genuinely empty list stays at 0 and
+        // renders no badge, instead of falling through to a fabricated count.
         if (item.countKey === 'applications') {
-            const count = (applications && applications.length) || item.defaultCount
+            const count = applications?.length ?? 0
             return count ? { text: String(count), bg: 'rgba(255,255,255,0.15)', color: '#FFFFFF' } : null
         }
         if (item.countKey === 'savedJobs') {
-            const count = (savedJobs && savedJobs.length) || item.defaultCount
+            const count = savedJobs?.length ?? 0
             return count ? { text: String(count), bg: 'rgba(255,255,255,0.15)', color: '#FFFFFF' } : null
         }
         if (item.countKey === 'employerJobs') {
-            const count = (employerJobs && employerJobs.length) || item.defaultCount
+            const count = employerJobs?.length ?? 0
             return count ? { text: String(count), bg: 'rgba(255,255,255,0.15)', color: '#FFFFFF' } : null
         }
         if (item.statusKey && profile?.[item.statusKey]) {
@@ -127,7 +129,16 @@ export default function Sidebar() {
                 <div>
                     <div
                         className="flex items-center gap-2 cursor-pointer transition-transform hover:scale-[1.02]"
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Kembali ke beranda"
                         onClick={() => navigate('home')}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                navigate('home')
+                            }
+                        }}
                     >
                         <div style={{
                             width: 26, height: 26, borderRadius: 6, background: '#FEFEFE',
@@ -179,6 +190,7 @@ export default function Sidebar() {
                                         key={item.id}
                                         id={`sidebar-nav-${item.id}`}
                                         onClick={() => navigate(item.id)}
+                                        aria-current={active ? 'page' : undefined}
                                         style={{
                                             width: '100%',
                                             display: 'flex',
@@ -366,6 +378,7 @@ export function MobileBottomNav() {
                         key={item.id}
                         id={`mobile-nav-${item.id}`}
                         onClick={() => navigate(item.id)}
+                        aria-current={active ? 'page' : undefined}
                         style={{
                             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                             padding: '6px 4px', background: 'transparent', border: 'none', cursor: 'pointer',
