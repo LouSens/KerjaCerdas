@@ -10,6 +10,7 @@ import logging
 from datetime import UTC, datetime
 
 from backend.app.api.dependencies import get_current_user, require_employer
+from backend.app.api.routers.jobs import invalidate_jobs_cache
 from backend.app.api.schemas.employer import (
     ApplicationStatusUpdate,
     CandidateSearchRequest,
@@ -19,7 +20,6 @@ from backend.app.api.schemas.employer import (
     JobUpdateRequest,
     UnlockCandidateRequest,
 )
-from backend.app.api.routers.jobs import invalidate_jobs_cache
 from backend.app.db.models import User
 from backend.app.db.postgres_store import (
     find_employer_by_user_id,
