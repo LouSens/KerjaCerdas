@@ -392,6 +392,28 @@ async def find_jobs_by_employer_id(employer_id: str) -> list[JobSchema]:
         return []
 
 
+async def find_job_by_employer_and_client_ref(employer_id: str, client_ref: str) -> JobSchema | None:
+    """Look up a job by its client-supplied idempotency token (see create_job).
+
+    Backed by the partial unique index on (employer_id, client_ref).
+    """
+    try:
+        async with async_session() as session:
+            stmt = select(JobPosting).where(
+                JobPosting.employer_id == employer_id,
+                JobPosting.client_ref == client_ref,
+            )
+            result = await session.execute(stmt)
+            obj = result.scalar_one_or_none()
+            if not obj:
+                return None
+            data = {c.name: getattr(obj, c.name) for c in JobPosting.__table__.columns}
+            return JobSchema.model_validate(data)
+    except Exception as exc:
+        _store_logger.warning("find_job_by_employer_and_client_ref failed (%s)", exc)
+        return None
+
+
 async def find_skill_gaps_by_seeker_id(seeker_id: str) -> list[SkillGapSchema]:
     """Return all skill gap results for a seeker (indexed on seeker_id)."""
     try:

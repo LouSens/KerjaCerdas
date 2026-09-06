@@ -23,6 +23,7 @@ from backend.app.api.schemas.employer import (
 from backend.app.db.models import User
 from backend.app.db.postgres_store import (
     find_employer_by_user_id,
+    find_job_by_employer_and_client_ref,
     find_jobs_by_employer_id,
     get_repositories,
 )
@@ -37,6 +38,7 @@ from backend.app.db.schemas import (
 )
 from backend.app.services.matching.matcher import SemanticMatcher
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +143,20 @@ async def create_job(payload: JobCreateRequest, current_user: User = Depends(get
     if not title:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Judul lowongan wajib diisi.")
 
+    # Idempotent replay: if the caller already created this exact posting
+    # (client_ref set) — e.g. retrying after the first response was lost to
+    # a timeout — return the row that already exists instead of inserting a
+    # second one under a new id.
+    if payload.client_ref:
+        existing = await find_job_by_employer_and_client_ref(employer.id, payload.client_ref)
+        if existing:
+            logger.info(
+                "Job create replay: client_ref=%s already maps to job_id=%s, returning it",
+                payload.client_ref,
+                existing.id,
+            )
+            return {"job_id": existing.id, "title": existing.title}
+
     job = JobPosting(
         employer_id=employer.id,
         title=title,
@@ -155,11 +171,23 @@ async def create_job(payload: JobCreateRequest, current_user: User = Depends(get
         salary_min=payload.salary_min,
         salary_max=payload.salary_max,
         kbji_code=payload.kbji_code,
+        client_ref=payload.client_ref,
     )
 
     matcher = SemanticMatcher()
     await matcher.embed_job(job)
-    await repos.jobs.upsert(job)
+    try:
+        await repos.jobs.upsert(job)
+    except IntegrityError:
+        # Lost the race: a concurrent retry with the same client_ref
+        # committed first. Same outcome as the pre-check above — return the
+        # row that won instead of surfacing a 500 for what is, from the
+        # caller's perspective, a successful (if duplicate) request.
+        if payload.client_ref:
+            existing = await find_job_by_employer_and_client_ref(employer.id, payload.client_ref)
+            if existing:
+                return {"job_id": existing.id, "title": existing.title}
+        raise
     invalidate_jobs_cache()
     logger.info("Job created: %s by user_id=%s", job.id, current_user.id)
     return {"job_id": job.id, "title": job.title}

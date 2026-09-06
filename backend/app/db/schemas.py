@@ -291,6 +291,7 @@ class JobPosting(TimestampedModel):
     salary_min: int = 0
     salary_max: int = 0
     is_active: bool = True
+    client_ref: str | None = None
     embedding: list[float] | None = None
     embedding_model: str | None = None
 

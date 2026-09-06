@@ -50,10 +50,14 @@ export default function JobPackUploader() {
             }
 
             const elapsedSeconds = (performance.now() - startedAt) / 1000
+            // Each job gets a stable idempotency token here, once, so it
+            // stays the same across retries of handleConfirmPublish for
+            // this same job — the server uses it to detect a duplicate
+            // create request whose original response was lost.
             setParsedResult({
                 fileName: file.name,
                 time: `${elapsedSeconds.toFixed(1)} dtk`,
-                jobs: res.jobs,
+                jobs: res.jobs.map(job => ({ ...job, client_ref: crypto.randomUUID() })),
             })
             // Everything starts checked — reviewing is opt-out (uncheck what
             // you don't want), which matches what most packs need (mostly
@@ -91,6 +95,7 @@ export default function JobPackUploader() {
                     salary_min: job.salary_min,
                     salary_max: job.salary_max,
                     kbji_code: job.kbji_code,
+                    client_ref: job.client_ref,
                 }))
             )
             const succeededLocalIds = new Set(

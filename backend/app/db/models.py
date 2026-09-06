@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -139,6 +140,22 @@ class Employer(Base, TimestampedMixin):
 
 class JobPosting(Base, TimestampedMixin):
     __tablename__ = "jobs"
+    # Optional client-supplied idempotency token (see create_job): if a
+    # create request is retried after its response was lost — a timeout, a
+    # dropped connection, anything short of the client seeing a definitive
+    # failure — replaying it with the same client_ref must return the
+    # already-created job instead of inserting a second one. Partial (only
+    # rows that actually set it) so employer.post-job's normal create path,
+    # which never sends one, is unaffected.
+    __table_args__ = (
+        Index(
+            "uq_job_employer_client_ref",
+            "employer_id",
+            "client_ref",
+            unique=True,
+            postgresql_where="client_ref IS NOT NULL",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     employer_id: Mapped[str] = mapped_column(String(36), ForeignKey("employers.id"), index=True)
@@ -155,6 +172,7 @@ class JobPosting(Base, TimestampedMixin):
     salary_min: Mapped[int] = mapped_column(Integer, default=0)
     salary_max: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    client_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
     embedding = mapped_column(_VectorCol(), nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
