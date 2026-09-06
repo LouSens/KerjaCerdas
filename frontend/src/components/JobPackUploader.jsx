@@ -22,14 +22,24 @@ export default function JobPackUploader() {
         pendingDraftIdsRef.current = []
         if (!ids.length) return
         // Best-effort — the batch was never confirmed, so nothing depends on
-        // this succeeding synchronously; don't block the UI on it.
-        Promise.allSettled(ids.map(id => deleteEmployerJob(id))).catch(() => {})
+        // this succeeding synchronously; don't block the UI on it. keepalive
+        // lets the browser finish these after the page starts unloading
+        // instead of aborting them mid-flight (an ordinary fetch gets killed
+        // the moment the document goes away).
+        Promise.allSettled(ids.map(id => deleteEmployerJob(id, { keepalive: true }))).catch(() => {})
     }
 
-    // Catches the "closed the tab" / "navigated away without clicking
-    // anything" case that the button handlers below can't.
+    // React's unmount cleanup only fires on an in-app route change — it
+    // never runs on a hard tab close/reload, since the JS runtime is torn
+    // down before React gets a turn. `pagehide` is the one event guaranteed
+    // to fire in both cases (including mobile Safari, where `beforeunload`
+    // is unreliable), so it's what actually catches "closed the tab".
     useEffect(() => {
-        return () => discardPendingDrafts()
+        window.addEventListener('pagehide', discardPendingDrafts)
+        return () => {
+            window.removeEventListener('pagehide', discardPendingDrafts)
+            discardPendingDrafts()
+        }
     }, [])
 
     const handleFile = async (file) => {

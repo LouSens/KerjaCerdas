@@ -204,8 +204,8 @@ export const updateEmployerJob = (jobId, data) =>
         method: 'PATCH',
         body: JSON.stringify(data),
     })
-export const deleteEmployerJob = (jobId) =>
-    request(`${API_BASE}/employer/jobs/${jobId}`, { method: 'DELETE' })
+export const deleteEmployerJob = (jobId, { keepalive = false } = {}) =>
+    request(`${API_BASE}/employer/jobs/${jobId}`, { method: 'DELETE', keepalive })
 
 // ── Employer candidates (reverse-matching) ──────────────────────────────────
 export const fetchCandidatesForJob = (jobId, topK = 5, filters = {}) =>
