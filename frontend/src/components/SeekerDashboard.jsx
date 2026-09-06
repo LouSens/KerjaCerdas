@@ -24,7 +24,6 @@ export default function SeekerDashboard() {
         recommendedCourses,
         missingSkills,
         computeProfileCompleteness,
-        refreshMatches,
     } = useStore()
 
     const [selectedJob, setSelectedJob] = useState(null)

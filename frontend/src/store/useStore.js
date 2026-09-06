@@ -16,7 +16,6 @@ import {
     healthCheck,
     uploadCV,
     uploadJobPack,
-    fetchJobs,
     fetchEmployerJobs,
     fetchSeekerProfile,
     fetchBookmarks,
@@ -150,8 +149,6 @@ const useStore = create(
 
             // ─── Navigation (role-aware + URL sync) ─────────────────────
             activeView: 'home',
-            sidebarCollapsed: false,
-            toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
 
             // selectedCandidateJobId: so employer dashboard passes job context to candidates page
             selectedCandidateJobId: null,
@@ -203,12 +200,6 @@ const useStore = create(
                 }
             },
 
-            // Navigate to candidates page with a specific job pre-selected
-            navigateToCandidates: (jobId) => {
-                set({ selectedCandidateJobId: jobId })
-                get().navigate('employer-candidates')
-            },
-
             // ─── Floating advisor ────────────────────────────────────────
             floatingAdvisorOpen: false,
             toggleFloatingAdvisor: () => set((s) => ({ floatingAdvisorOpen: !s.floatingAdvisorOpen })),
@@ -255,63 +246,47 @@ const useStore = create(
             },
 
             seekerId: null,
-            profileDirty: false,
             matches: [],
             missingSkills: [],
-            matchingSkills: [],
             recommendedCourses: [],
             agentLoading: false,
-            agentError: null,
             advisorLog: [
                 { role: 'assistant', content: 'Halo! Saya advisor karier KerjaCerdas. Tanya apa saja seputar pekerjaan, skill, atau CV kamu.' },
             ],
             advisorInput: '',
             setAdvisorInput: (v) => set({ advisorInput: v }),
             advisorSessionId: null,
-            targetJobTitle: null,
 
             // ─── Skill gap ───────────────────────────────────────────────
             skillGapResult: null,
-            skillGapLoading: false,
-            skillGapError: null,
 
             runSkillGap: async (targetJobId = null) => {
-                set({ skillGapLoading: true, skillGapError: null })
                 try {
                     const res = await triggerSkillGap(targetJobId)
                     set({
                         skillGapResult: res,
-                        skillGapLoading: false,
                         missingSkills: res.missing_skills || [],
-                        matchingSkills: res.matching_skills || [],
                         recommendedCourses: res.recommended_courses || [],
-                        targetJobTitle: res.target_job_title || null,
                     })
                     return res
                 } catch (e) {
-                    set({ skillGapLoading: false, skillGapError: e.message })
                     console.warn('Skill gap analysis notification:', e?.message || e)
                 }
             },
 
             loadSkillGap: async () => {
-                set({ skillGapLoading: true, skillGapError: null })
                 try {
                     const res = await fetchLatestSkillGap()
                     set({
                         skillGapResult: res || null,
-                        skillGapLoading: false,
                         missingSkills: res?.missing_skills || [],
-                        matchingSkills: res?.matching_skills || [],
                         recommendedCourses: res?.recommended_courses || [],
-                        targetJobTitle: res?.target_job_title || null,
                     })
                     return res
                 } catch (e) {
                     if (e.status !== 404) {
-                        set({ skillGapError: e.message })
+                        console.warn('Failed to load latest skill gap:', e?.message || e)
                     }
-                    set({ skillGapLoading: false })
                 }
             },
 
@@ -319,7 +294,7 @@ const useStore = create(
                 const { seekerId, profile, advisorLog, advisorSessionId } = get()
                 const userMsg = message ? { role: 'user', content: message } : null
                 if (userMsg) set({ advisorLog: [...advisorLog, userMsg], advisorInput: '' })
-                set({ agentLoading: true, agentError: null })
+                set({ agentLoading: true })
                 try {
                     const activeSessionId = advisorSessionId || seekerId || 'demo'
                     const payload = seekerId
@@ -330,18 +305,15 @@ const useStore = create(
                         agentLoading: false,
                         matches: res.matches || [],
                         missingSkills: res.missing_skills || [],
-                        matchingSkills: res.matching_skills || [],
                         recommendedCourses: res.recommended_courses || [],
-                        targetJobTitle: res.target_job_title || null,
                         ...(res.seeker_id ? { seekerId: res.seeker_id } : {}),
-                        profileDirty: false,
                     })
                     if (res.final_response && message) {
                         set((s) => ({ advisorLog: [...s.advisorLog, { role: 'assistant', content: res.final_response }] }))
                     }
                     return res
                 } catch (e) {
-                    set({ agentLoading: false, agentError: e.message })
+                    set({ agentLoading: false })
                     console.warn('AI Agent inference notification:', e?.message || e)
                     // If user was actively chatting, respond inside the chat UI instead of an alarming global red toast
                     if (message) {
@@ -408,7 +380,6 @@ const useStore = create(
                     const name = updated?.full_name || 'Rekan'
 
                     set({
-                        profileDirty: true,
                         advisorSessionId: `${res.seeker_id}_${Date.now()}`,
                         advisorLog: [
                             { role: 'assistant', content: `Halo ${name}! Saya AI Advisor KerjaCerdas. CV kamu sudah dianalisis. Ada yang bisa saya bantu terkait peluang karier atau skill gap kamu?` }
@@ -423,7 +394,6 @@ const useStore = create(
 
             // ─── Employer job-pack upload ────────────────────────────────
             jobPackUploading: false,
-            jobPackResult: null,
             uploadJobPack: async (file) => {
                 // Parsing a job-pack PDF does not create anything — the
                 // employer still has to review and confirm the extracted
@@ -433,10 +403,10 @@ const useStore = create(
                 // created via createEmployerJob.
                 if (!file) return
                 const { user } = get()
-                set({ jobPackUploading: true, jobPackResult: null })
+                set({ jobPackUploading: true })
                 try {
                     const res = await uploadJobPack({ userId: user.id || 'demo', file })
-                    set({ jobPackUploading: false, jobPackResult: res })
+                    set({ jobPackUploading: false })
                     return res
                 } catch (e) {
                     set({ jobPackUploading: false })
@@ -470,42 +440,6 @@ const useStore = create(
                 } catch (err) {
                     if (err?.status && err.status !== 404) {
                         console.error('Failed to sync saved jobs:', err)
-                    }
-                }
-            },
-
-            bookmarkJob: async (job) => {
-                const { savedJobs, isAuthenticated, userRole } = get()
-                const id = job.job_id || job.id
-                if (!id) return
-                const exists = savedJobs.some(j => (j.job_id || j.id) === id)
-                if (exists) return
-
-                set({ savedJobs: [...savedJobs, { ...job, job_id: id, savedAt: new Date().toISOString() }] })
-
-                if (isAuthenticated && userRole === 'seeker') {
-                    try {
-                        await addBookmark(id)
-                    } catch (e) {
-                        set({ savedJobs })
-                        toast.error('Gagal simpan: ' + e.message)
-                    }
-                }
-            },
-
-            unbookmarkJob: async (jobOrId) => {
-                const { savedJobs, isAuthenticated, userRole } = get()
-                const id = typeof jobOrId === 'object' ? (jobOrId.job_id || jobOrId.id) : jobOrId
-                if (!id) return
-                const prev = savedJobs
-                set({ savedJobs: savedJobs.filter(j => (j.job_id || j.id) !== id) })
-
-                if (isAuthenticated && userRole === 'seeker') {
-                    try {
-                        await removeBookmark(id)
-                    } catch (e) {
-                        set({ savedJobs: prev })
-                        toast.error('Gagal menghapus simpanan: ' + e.message)
                     }
                 }
             },
@@ -546,20 +480,6 @@ const useStore = create(
                 if ((profile.education || []).length > 0) score += 20
                 if (profile.salary_expectation_min > 0) score += 10
                 return score
-            },
-
-            // ─── Public jobs feed ────────────────────────────────────────
-            jobs: [],
-            jobsLoading: false,
-            refreshJobs: async () => {
-                set({ jobsLoading: true })
-                try {
-                    const data = await fetchJobs()
-                    set({ jobs: data.items || [], jobsLoading: false })
-                } catch (err) {
-                    console.error('Failed to fetch public jobs:', err)
-                    set({ jobsLoading: false })
-                }
             },
 
             // ─── Employer-scoped jobs feed ───────────────────────────────
@@ -647,10 +567,6 @@ const useStore = create(
                 try { await healthCheck(); set({ apiStatus: 'connected' }) }
                 catch { set({ apiStatus: 'offline' }) }
             },
-
-            // ─── UI ──────────────────────────────────────────────────────
-            isMobileMenuOpen: false,
-            setMobileMenuOpen: (v) => set({ isMobileMenuOpen: v }),
         }),
         {
             name: 'kerjacerdas-v4',
@@ -661,7 +577,6 @@ const useStore = create(
                 profile: s.profile,
                 seekerId: s.seekerId,
                 savedJobs: s.savedJobs,
-                sidebarCollapsed: s.sidebarCollapsed,
                 authToken: s.authToken,
                 selectedCandidateJobId: s.selectedCandidateJobId,
             }),
