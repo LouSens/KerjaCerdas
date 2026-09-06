@@ -1,18 +1,23 @@
 /**
  * JobDetailModal — Clean enterprise modal with Explainable AI 5-Score breakdown.
  */
+import { useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, Tag, BrutalCard, topBtn } from './_design'
 import { X, Building2, MapPin, DollarSign, ShieldCheck, CheckCircle2, AlertCircle, ArrowRight, Bookmark, BookmarkCheck } from 'lucide-react'
 
 export default function JobDetailModal({ job, onClose }) {
     const { applyJob, toggleSaveJob, isJobSaved } = useStore()
+    const [applying, setApplying] = useState(false)
     if (!job) return null
 
     const saved = isJobSaved(job.job_id || job.id)
-    const rawScore = job.score || job.overall_score || 0.85
-    const score = Math.round(rawScore > 1 ? rawScore : rawScore * 100)
-    const matchingSkills = job.matching_skills || ['Go', 'PostgreSQL', 'Docker']
+    // Jobs opened from search / saved-jobs carry no score, so nothing is
+    // invented here — the breakdown is simply hidden when there is no real score.
+    const rawScore = job.score ?? job.overall_score ?? null
+    const hasScore = typeof rawScore === 'number'
+    const score = hasScore ? Math.round(rawScore > 1 ? rawScore : rawScore * 100) : 0
+    const matchingSkills = job.matching_skills || []
     const missingSkills = job.missing_skills || []
     const requiredSkills = job.required_skills || [...matchingSkills, ...missingSkills]
 
@@ -57,11 +62,17 @@ export default function JobDetailModal({ job, onClose }) {
     ]
 
     const handleApply = async () => {
-        await applyJob(job.job_id || job.id)
-        onClose()
+        if (applying) return
+        setApplying(true)
+        try {
+            await applyJob(job.job_id || job.id)
+            onClose()
+        } finally {
+            setApplying(false)
+        }
     }
 
-    const company = job.company || 'GoTo Group'
+    const company = job.company || 'Perusahaan'
     return (
         <div
             onClick={onClose}
@@ -158,22 +169,22 @@ export default function JobDetailModal({ job, onClose }) {
                             <span style={{ fontSize: 13, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <Building2 size={14} /> {company}
                             </span>
-                            {job.verified !== false && (
+                            {job.verified === true && (
                                 <Tag color={KC.limeSoft} ink={KC.lime} border={KC.lime} size="sm">
                                     <ShieldCheck size={12} /> Terverifikasi DJP
                                 </Tag>
                             )}
                         </div>
                         <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.5, margin: '0 0 8px', color: KC.ink, wordBreak: 'break-word' }}>
-                            {job.title || job.job_title || 'Senior Backend Engineer'}
+                            {job.title || job.job_title || 'Lowongan'}
                         </h2>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: KC.mute, flexWrap: 'wrap' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <MapPin size={14} /> {job.location || 'Jakarta · Hybrid'}
+                                <MapPin size={14} /> {job.location || job.region_code || '—'}
                             </span>
                             <span>·</span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <DollarSign size={14} /> {job.salary_range || 'Rp 28.000.000 - Rp 42.000.000'}
+                                <DollarSign size={14} /> {job.salary_range || 'Gaji tidak dicantumkan'}
                             </span>
                         </div>
                     </div>
@@ -199,50 +210,69 @@ export default function JobDetailModal({ job, onClose }) {
 
                 {/* Body Content */}
                 <div className="kc-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-                    {/* Explainable AI Banner */}
+                    {/* Explainable AI Banner — only when a real score exists */}
                     <div style={{ padding: '16px 18px', background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 10, boxShadow: `2.5px 2.5px 0 ${KC.ink}` }}>
-                        <div className="kc-modal-banner">
-                            <div>
-                                <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.mute }}>
-                                    Total Skor Kesesuaian AI
-                                </span>
-                                <div style={{ fontSize: 24, fontWeight: 900, color: KC.ink, letterSpacing: -0.5, marginTop: 2 }}>
-                                    {score}% Match
+                        {hasScore ? (
+                            <div className="kc-modal-banner">
+                                <div>
+                                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.mute }}>
+                                        Total Skor Kesesuaian AI
+                                    </span>
+                                    <div style={{ fontSize: 24, fontWeight: 900, color: KC.ink, letterSpacing: -0.5, marginTop: 2 }}>
+                                        {score}% Match
+                                    </div>
+                                </div>
+                                <div style={{ fontSize: 12, color: KC.mute, maxWidth: 360, textAlign: 'right' }}>
+                                    Dihitung secara transparan menggunakan 5 komponen bobot semantik terkalibrasi.
                                 </div>
                             </div>
-                            <div style={{ fontSize: 12, color: KC.mute, maxWidth: 360, textAlign: 'right' }}>
-                                Dihitung secara transparan menggunakan 5 komponen bobot semantik terkalibrasi.
+                        ) : (
+                            <div className="kc-modal-banner">
+                                <div>
+                                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.mute }}>
+                                        Skor Kesesuaian AI
+                                    </span>
+                                    <div style={{ fontSize: 14, fontWeight: 800, color: KC.ink, marginTop: 4, lineHeight: 1.4 }}>
+                                        Skor kecocokan belum dihitung untuk lowongan ini.
+                                    </div>
+                                </div>
+                                <div style={{ fontSize: 12, color: KC.mute, maxWidth: 360, textAlign: 'right' }}>
+                                    Jalankan Pencocokan AI dari dashboard untuk melihat rincian skor.
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* 5-Score Breakdown */}
-                    <div>
-                        <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.ink, margin: '0 0 12px' }}>
-                            Transparansi Perhitungan Skor (Explainable AI)
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {breakdown.map((item, idx) => (
-                                <div key={idx} style={{ padding: '12px 14px', background: KC.surface, border: `1px solid ${KC.ash}`, borderRadius: 8 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 4 }}>
-                                        <span style={{ fontSize: 13, fontWeight: 700, color: KC.ink }}>{item.label}</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ fontSize: 11, fontWeight: 600, color: KC.mute }}>Bobot {item.weight}</span>
-                                            <span style={{ fontSize: 13, fontWeight: 900, color: item.color }}>{item.score}%</span>
+                    {hasScore && (
+                        <div>
+                            <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.ink, margin: '0 0 12px' }}>
+                                Transparansi Perhitungan Skor (Explainable AI)
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {breakdown.map((item, idx) => (
+                                    <div key={idx} style={{ padding: '12px 14px', background: KC.surface, border: `1px solid ${KC.ash}`, borderRadius: 8 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 4 }}>
+                                            <span style={{ fontSize: 13, fontWeight: 700, color: KC.ink }}>{item.label}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span style={{ fontSize: 11, fontWeight: 600, color: KC.mute }}>Bobot {item.weight}</span>
+                                                <span style={{ fontSize: 13, fontWeight: 900, color: item.color }}>{item.score}%</span>
+                                            </div>
                                         </div>
+                                        <div style={{ height: 6, background: KC.ash, borderRadius: 999, overflow: 'hidden', marginBottom: 6 }}>
+                                            <div style={{ height: '100%', width: `${item.score}%`, background: item.color, borderRadius: 999, transition: 'width 0.6s ease' }} />
+                                        </div>
+                                        <p style={{ fontSize: 11, color: KC.mute, margin: 0, lineHeight: 1.4 }}>
+                                            {item.desc}
+                                        </p>
                                     </div>
-                                    <div style={{ height: 6, background: KC.ash, borderRadius: 999, overflow: 'hidden', marginBottom: 6 }}>
-                                        <div style={{ height: '100%', width: `${item.score}%`, background: item.color, borderRadius: 999, transition: 'width 0.6s ease' }} />
-                                    </div>
-                                    <p style={{ fontSize: 11, color: KC.mute, margin: 0, lineHeight: 1.4 }}>
-                                        {item.desc}
-                                    </p>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Skills Coverage */}
+                    {(matchingSkills.length > 0 || missingSkills.length > 0) && (
                     <div>
                         <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.ink, margin: '0 0 10px' }}>
                             Pemenuhan Kualifikasi Keahlian
@@ -260,6 +290,7 @@ export default function JobDetailModal({ job, onClose }) {
                             ))}
                         </div>
                     </div>
+                    )}
 
                     {/* Job Description Summary */}
                     <div>
@@ -267,7 +298,7 @@ export default function JobDetailModal({ job, onClose }) {
                             Deskripsi Tanggung Jawab
                         </h3>
                         <p style={{ fontSize: 13, color: KC.inkLight, lineHeight: 1.6, margin: 0 }}>
-                            {job.description || 'Bertanggung jawab dalam merancang arsitektur backend berskala tinggi, membangun RESTful / gRPC microservices, dan mengoptimalkan performa database serta sistem antrean pesan pada ekosistem produksi.'}
+                            {job.description || 'Deskripsi pekerjaan belum dicantumkan oleh perusahaan untuk lowongan ini.'}
                         </p>
                     </div>
                 </div>
@@ -284,10 +315,17 @@ export default function JobDetailModal({ job, onClose }) {
                     </button>
                     <button
                         onClick={handleApply}
+                        disabled={applying}
                         className="kc-btn"
-                        style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 24px', fontSize: 14 }}
+                        style={{
+                            ...topBtn(KC.orange, '#fff'),
+                            padding: '10px 24px',
+                            fontSize: 14,
+                            opacity: applying ? 0.6 : 1,
+                            cursor: applying ? 'not-allowed' : 'pointer',
+                        }}
                     >
-                        Lamar Sekarang <ArrowRight size={15} />
+                        {applying ? 'Mengirim…' : <>Lamar Sekarang <ArrowRight size={15} /></>}
                     </button>
                 </div>
             </div>

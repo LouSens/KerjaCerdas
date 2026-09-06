@@ -22,6 +22,7 @@ import {
     PhoneCall,
     Check,
     RefreshCw,
+    Loader2,
 } from 'lucide-react'
 
 const bandOf = (c) => c.band || (c.score >= 65 ? 'strong' : c.score >= 45 ? 'possible' : 'stretch')
@@ -223,7 +224,14 @@ export default function EmployerCandidates() {
             {/* TAB 1: Real Applicant Pipeline */}
             {activeTab === 'applications' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {filteredApplications.length === 0 ? (
+                    {employerApplicationsLoading ? (
+                        <BrutalCard color="#FFFFFF" padding={24}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <Loader2 size={16} className="animate-spin" color={KC.orange} />
+                                <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Memuat daftar pelamar…</p>
+                            </div>
+                        </BrutalCard>
+                    ) : filteredApplications.length === 0 ? (
                         <BrutalCard color="#FFFFFF" padding={32}>
                             <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: KC.cyanSoft, display: 'grid', placeItems: 'center', border: `1.5px solid ${KC.ink}` }}>

@@ -3,24 +3,31 @@ import useStore from '../store/useStore'
 import { KC, BrutalCard, Tag, FilledStat, topBtn, DesignStyles } from './_design'
 import { updateSeekerProfile } from '../services/api'
 import toast from 'react-hot-toast'
-import { UploadCloud, FileText, CheckCircle2, ShieldCheck, ArrowRight, RefreshCw, Plus, Trash2, Edit3 } from 'lucide-react'
+import { UploadCloud, FileText, CheckCircle2, ShieldCheck, ArrowRight, RefreshCw, Plus, Trash2, Edit3, Loader2 } from 'lucide-react'
 
 export default function CVUploader() {
     const { uploadResume, cvUploading, seekerId, profile, navigate, loadSeekerProfile } = useStore()
     const inputRef = useRef(null)
     const [dragOver, setDragOver] = useState(false)
     const [activeTab, setActiveTab] = useState('upload') // 'upload' | 'manual'
+    const [uploadedFileName, setUploadedFileName] = useState(() => {
+        try {
+            return localStorage.getItem('kc_cv_filename') || ''
+        } catch {
+            return ''
+        }
+    })
 
     const [manualForm, setManualForm] = useState({
-        full_name: profile?.full_name || 'Budi Santoso',
-        nik: profile?.nik || '',
-        date_of_birth: profile?.date_of_birth || '',
-        region_code: profile?.region_code || '3171',
+        full_name: profile?.full_name ?? '',
+        nik: profile?.nik ?? '',
+        date_of_birth: profile?.date_of_birth ?? '',
+        region_code: profile?.region_code ?? '',
         skillInput: '',
-        skills: (profile?.skills || ['Go', 'PostgreSQL', 'Docker', 'REST API']).map(s => typeof s === 'string' ? s : s.name),
-        headline: profile?.headline || 'Senior Backend Engineer',
-        salary_expectation_min: profile?.salary_expectation_min || '25000000',
-        salary_expectation_max: profile?.salary_expectation_max || '40000000',
+        skills: (profile?.skills ?? []).map(s => typeof s === 'string' ? s : s.name),
+        headline: profile?.headline ?? '',
+        salary_expectation_min: profile?.salary_expectation_min ?? '',
+        salary_expectation_max: profile?.salary_expectation_max ?? '',
     })
 
     const [manualSaving, setManualSaving] = useState(false)
@@ -29,9 +36,9 @@ export default function CVUploader() {
         if (profile) {
             setManualForm(prev => ({
                 ...prev,
-                full_name: profile.full_name || prev.full_name,
-                skills: (profile.skills || prev.skills).map(s => typeof s === 'string' ? s : s.name),
-                headline: profile.headline || prev.headline,
+                full_name: profile.full_name ?? prev.full_name,
+                skills: (profile.skills ?? prev.skills).map(s => typeof s === 'string' ? s : s.name),
+                headline: profile.headline ?? prev.headline,
             }))
         }
     }, [profile])
@@ -44,6 +51,12 @@ export default function CVUploader() {
         }
         const res = await uploadResume(file)
         if (res?.seeker_id) {
+            setUploadedFileName(file.name)
+            try {
+                localStorage.setItem('kc_cv_filename', file.name)
+            } catch {
+                // localStorage unavailable (private mode, blocked storage) — non-fatal
+            }
             toast.success('CV berhasil diekstrak oleh AI!')
             setTimeout(() => navigate('seeker-match'), 800)
         }
@@ -62,7 +75,9 @@ export default function CVUploader() {
         try {
             await updateSeekerProfile({
                 full_name: manualForm.full_name,
-                region_code: manualForm.region_code,
+                // Only sent when actually filled in — an empty value would
+                // otherwise overwrite the region already stored on the profile.
+                ...(manualForm.region_code ? { region_code: manualForm.region_code } : {}),
                 headline: manualForm.headline,
                 skills: manualForm.skills.map(name => ({ name, level: 'intermediate', years: 3 })),
                 salary_expectation_min: Number(manualForm.salary_expectation_min) || 0,
@@ -126,25 +141,36 @@ export default function CVUploader() {
             </div>
 
             {activeTab === 'upload' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: 20 }}>
+                <div className="kc-grid-main">
                     {/* Upload Dropzone */}
                     <BrutalCard color="#FFFFFF" padding={28} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
                         <div
-                            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                            aria-busy={cvUploading}
+                            onDragOver={(e) => {
+                                if (cvUploading) return
+                                e.preventDefault()
+                                setDragOver(true)
+                            }}
                             onDragLeave={() => setDragOver(false)}
                             onDrop={(e) => {
+                                if (cvUploading) return
                                 e.preventDefault()
                                 setDragOver(false)
                                 if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0])
                             }}
-                            onClick={() => inputRef.current?.click()}
+                            onClick={() => {
+                                if (cvUploading) return
+                                inputRef.current?.click()
+                            }}
                             style={{
                                 width: '100%',
                                 padding: '36px 20px',
                                 border: `2px dashed ${dragOver ? KC.orange : KC.ink}`,
                                 borderRadius: 10,
                                 background: dragOver ? KC.orangeSoft : KC.surface,
-                                cursor: 'pointer',
+                                cursor: cvUploading ? 'progress' : 'pointer',
+                                pointerEvents: cvUploading ? 'none' : 'auto',
+                                opacity: cvUploading ? 0.7 : 1,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'center',
@@ -157,11 +183,12 @@ export default function CVUploader() {
                                 ref={inputRef}
                                 type="file"
                                 accept=".pdf"
+                                disabled={cvUploading}
                                 onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                                 style={{ display: 'none' }}
                             />
-                            <div style={{ width: 48, height: 48, borderRadius: 10, background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', color: KC.ink }}>
-                                <UploadCloud size={24} />
+                            <div style={{ width: 48, height: 48, borderRadius: 10, background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', color: cvUploading ? KC.orange : KC.ink }}>
+                                {cvUploading ? <Loader2 size={24} className="animate-spin" /> : <UploadCloud size={24} />}
                             </div>
                             <div>
                                 <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: KC.ink }}>
@@ -181,7 +208,7 @@ export default function CVUploader() {
                                     </div>
                                     <div style={{ textAlign: 'left' }}>
                                         <div style={{ fontSize: 13, fontWeight: 800, color: KC.ink }}>CV Aktif Terindeks</div>
-                                        <div style={{ fontSize: 11, color: KC.mute }}>Dokumen_Resume_Budi.pdf</div>
+                                        <div style={{ fontSize: 11, color: KC.mute }}>{uploadedFileName || 'CV Tersimpan'}</div>
                                     </div>
                                 </div>
                                 <button onClick={() => navigate('seeker-match')} className="kc-btn" style={{ ...topBtn(KC.orange, '#fff'), padding: '6px 14px', fontSize: 12 }}>
@@ -228,22 +255,26 @@ export default function CVUploader() {
             ) : (
                 <BrutalCard color="#FFFFFF" padding={26}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                        <div className="kc-grid-2-col">
                             <div>
-                                <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nama Lengkap</label>
+                                <label htmlFor="cv-manual-name" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nama Lengkap</label>
                                 <input
+                                    id="cv-manual-name"
                                     type="text"
                                     value={manualForm.full_name}
                                     onChange={e => setManualForm({ ...manualForm, full_name: e.target.value })}
+                                    placeholder="Nama lengkap sesuai identitas"
                                     style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
                                 />
                             </div>
                             <div>
-                                <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Posisi / Headline Profesional</label>
+                                <label htmlFor="cv-manual-headline" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Posisi / Headline Profesional</label>
                                 <input
+                                    id="cv-manual-headline"
                                     type="text"
                                     value={manualForm.headline}
                                     onChange={e => setManualForm({ ...manualForm, headline: e.target.value })}
+                                    placeholder="Contoh: Backend Engineer"
                                     style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
                                 />
                             </div>

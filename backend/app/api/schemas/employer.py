@@ -53,10 +53,13 @@ class JobCreateRequest(BaseModel):
     """Payload for creating a job posting."""
 
     title: str = Field(max_length=255)
-    description: str = ""
-    responsibilities: StrList = []
-    required_skills: StrList = []
-    nice_to_have_skills: StrList = []
+    # Bounded so a posting can't smuggle megabytes of text into the Gemini
+    # embedding call `embed_job` makes on create (matcher.py also truncates
+    # defensively, but the schema is the right place to reject it up front).
+    description: str = Field(default="", max_length=10_000)
+    responsibilities: StrList = Field(default=[], max_length=100)
+    required_skills: StrList = Field(default=[], max_length=50)
+    nice_to_have_skills: StrList = Field(default=[], max_length=50)
     education_min: str = "S1"
     experience_years_min: LenientInt = 0
     # The client sends either `region_code` or the older `location` key.
@@ -77,10 +80,10 @@ class JobUpdateRequest(BaseModel):
     """
 
     title: str | None = Field(default=None, max_length=255)
-    description: str | None = None
-    required_skills: StrList | None = None
-    nice_to_have_skills: StrList | None = None
-    responsibilities: StrList | None = None
+    description: str | None = Field(default=None, max_length=10_000)
+    required_skills: StrList | None = Field(default=None, max_length=50)
+    nice_to_have_skills: StrList | None = Field(default=None, max_length=50)
+    responsibilities: StrList | None = Field(default=None, max_length=100)
     salary_min: LenientInt | None = Field(default=None, ge=0)
     salary_max: LenientInt | None = Field(default=None, ge=0)
     experience_years_min: LenientInt | None = Field(default=None, ge=0)

@@ -41,7 +41,9 @@ export function VerificationScreen({ role, docsSpec }) {
     useEffect(() => {
         if (isEmployer && employerProfile) {
             setDocs(prev => prev.map(d => {
-                if (d.id === 'npwp' && employerProfile.npwp) return { ...d, status: 'verified', when: 'Terverifikasi DJP Online' }
+                // A filled-in NPWP text field is not a verification — only the
+                // server-side `verified` flag counts (same rule as the dashboard).
+                if (d.id === 'npwp' && employerProfile.verified === 'verified') return { ...d, status: 'verified', when: 'Terverifikasi DJP Online' }
                 return d
             }))
         } else if (!isEmployer && profile) {
@@ -112,11 +114,37 @@ export function VerificationScreen({ role, docsSpec }) {
                     setBusy(null)
                     return
                 }
-                await verifyIdentity({ nik: formData.nik, full_name: formData.full_name || profile?.full_name || 'Budi Santoso' })
+                const fullName = (formData.full_name || profile?.full_name || '').trim()
+                if (!fullName) {
+                    toast.error('Nama lengkap belum terisi. Lengkapi profil Anda terlebih dahulu.')
+                    setBusy(null)
+                    return
+                }
+                await verifyIdentity({ nik: formData.nik, full_name: fullName })
             } else if (docId === 'ijazah') {
-                await verifyEducation({ ijazah_number: formData.ijazah_number || '12345/ITB/2022', university_name: formData.university_name || 'Institut Teknologi Bandung', major: 'Teknik Informatika' })
+                // No silent fallback to demo values — the submitted data must be
+                // what the user actually typed.
+                const ijazahNumber = (formData.ijazah_number || '').trim()
+                const universityName = (formData.university_name || '').trim()
+                if (!ijazahNumber || !universityName) {
+                    toast.error('Nomor ijazah dan nama perguruan tinggi wajib diisi')
+                    setBusy(null)
+                    return
+                }
+                await verifyEducation({
+                    ijazah_number: ijazahNumber,
+                    university_name: universityName,
+                    major: (formData.major || '').trim(),
+                })
             } else if (docId === 'npwp') {
-                await verifyNPWP({ npwp: formData.npwp || '01.234.567.8-012.000', company_name: formData.company_name || 'GoTo Group' })
+                const npwp = (formData.npwp || '').trim()
+                const companyName = (formData.company_name || employerProfile?.company_name || '').trim()
+                if (!npwp || !companyName) {
+                    toast.error('Nomor NPWP dan nama perusahaan wajib diisi')
+                    setBusy(null)
+                    return
+                }
+                await verifyNPWP({ npwp, company_name: companyName })
             }
             toast.success('Dokumen berhasil diverifikasi!')
             setDocs(prev => prev.map(d => d.id === docId ? { ...d, status: 'verified', when: 'Terverifikasi Resmi' } : d))
@@ -247,29 +275,68 @@ export function VerificationScreen({ role, docsSpec }) {
                             )}
 
                             {formOpen === 'ijazah' && (
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nomor Ijazah Nasional / SIVIL</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Contoh: 12345/ITB/2022"
-                                        value={formData.ijazah_number || ''}
-                                        onChange={e => setFormData({ ...formData, ijazah_number: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                                    />
-                                </div>
+                                <>
+                                    <div>
+                                        <label htmlFor="verify-ijazah-number" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nomor Ijazah Nasional / SIVIL</label>
+                                        <input
+                                            id="verify-ijazah-number"
+                                            type="text"
+                                            placeholder="Contoh: 12345/ITB/2022"
+                                            value={formData.ijazah_number || ''}
+                                            onChange={e => setFormData({ ...formData, ijazah_number: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="verify-university" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nama Perguruan Tinggi</label>
+                                        <input
+                                            id="verify-university"
+                                            type="text"
+                                            placeholder="Contoh: Institut Teknologi Bandung"
+                                            value={formData.university_name || ''}
+                                            onChange={e => setFormData({ ...formData, university_name: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="verify-major" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Program Studi</label>
+                                        <input
+                                            id="verify-major"
+                                            type="text"
+                                            placeholder="Contoh: Teknik Informatika"
+                                            value={formData.major || ''}
+                                            onChange={e => setFormData({ ...formData, major: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                </>
                             )}
 
                             {formOpen === 'npwp' && (
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nomor Pokok Wajib Pajak (NPWP 15-16 Digit)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Contoh: 01.234.567.8-012.000"
-                                        value={formData.npwp || ''}
-                                        onChange={e => setFormData({ ...formData, npwp: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                                    />
-                                </div>
+                                <>
+                                    <div>
+                                        <label htmlFor="verify-npwp" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nomor Pokok Wajib Pajak (NPWP 15-16 Digit)</label>
+                                        <input
+                                            id="verify-npwp"
+                                            type="text"
+                                            placeholder="Contoh: 01.234.567.8-012.000"
+                                            value={formData.npwp || ''}
+                                            onChange={e => setFormData({ ...formData, npwp: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="verify-company-name" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: KC.mute, display: 'block', marginBottom: 4 }}>Nama Resmi Perusahaan</label>
+                                        <input
+                                            id="verify-company-name"
+                                            type="text"
+                                            placeholder="PT Contoh Nusantara"
+                                            value={formData.company_name ?? employerProfile?.company_name ?? ''}
+                                            onChange={e => setFormData({ ...formData, company_name: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                </>
                             )}
 
                             {formOpen === 'phone' && (

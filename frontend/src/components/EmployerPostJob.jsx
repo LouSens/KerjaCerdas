@@ -7,16 +7,18 @@ import { Sparkles, Building2, CheckCircle2, Users, Plus, X, ArrowRight, ShieldCh
 
 export default function EmployerPostJob() {
     const { navigate } = useStore()
+    // Empty defaults — a pre-filled demo posting must not be publishable live
+    // with a single click. Example values live in the input placeholders instead.
     const [form, setForm] = useState({
-        title: 'Senior Backend Engineer',
-        department: 'Engineering',
+        title: '',
+        department: '',
         level: 'senior',
-        location: 'Jakarta',
+        location: '',
         work_type: 'hybrid',
-        salary_min: '28000000',
-        salary_max: '42000000',
-        description: 'Merancang arsitektur backend berskala tinggi, microservices gRPC, dan mengoptimalkan performa database PostgreSQL.',
-        required_skills: ['Go', 'PostgreSQL', 'Docker', 'Kubernetes'],
+        salary_min: '',
+        salary_max: '',
+        description: '',
+        required_skills: [],
     })
     const [skillInput, setSkillInput] = useState('')
     const [publishing, setPublishing] = useState(false)
@@ -134,13 +136,21 @@ export default function EmployerPostJob() {
             {/* 3-Step Guided Timeline */}
             <div className="kc-timeline-3">
                 {[
-                    { step: '1', title: 'Profil Perusahaan', sub: 'Terverifikasi GoTo', active: true, route: 'employer-profile' },
-                    { step: '2', title: 'Verifikasi Pajak (DJP)', sub: 'NPWP Valid Aktif', active: true, route: 'employer-verification' },
+                    { step: '1', title: 'Profil Perusahaan', sub: 'Kelola data entitas', active: true, route: 'employer-profile' },
+                    { step: '2', title: 'Verifikasi Pajak (DJP)', sub: 'Cek status NPWP', active: true, route: 'employer-verification' },
                     { step: '3', title: 'Kualifikasi Posisi', sub: 'Tahap Publikasi', active: true, route: null },
                 ].map((s, idx) => (
                     <div
                         key={idx}
                         onClick={() => s.route && navigate(s.route)}
+                        role={s.route ? 'button' : undefined}
+                        tabIndex={s.route ? 0 : undefined}
+                        onKeyDown={s.route ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                navigate(s.route)
+                            }
+                        } : undefined}
                         style={{
                             padding: '12px 16px',
                             background: '#FFFFFF',
@@ -274,11 +284,13 @@ export default function EmployerPostJob() {
                     </div>
 
                     <div>
-                        <label style={labelStyle}>Deskripsi Tanggung Jawab & Kualifikasi</label>
+                        <label htmlFor="post-job-description" style={labelStyle}>Deskripsi Tanggung Jawab & Kualifikasi</label>
                         <textarea
+                            id="post-job-description"
                             rows={4}
                             value={form.description}
                             onChange={e => update('description', e.target.value)}
+                            placeholder="Jelaskan tanggung jawab utama, kualifikasi wajib, dan ekspektasi posisi…"
                             style={{ ...inputStyle, resize: 'vertical' }}
                         />
                     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, FilledStat, Tag, topBtn, DesignStyles } from './_design'
-import { Briefcase, Users, Plus, ArrowRight, ShieldCheck, TrendingUp, Building2, MapPin } from 'lucide-react'
+import { Briefcase, Users, Plus, ArrowRight, ShieldCheck, TrendingUp, Building2, MapPin, Loader2 } from 'lucide-react'
 
 function formatRelativeAge(iso) {
     if (!iso) return null
@@ -20,7 +20,7 @@ function formatSalaryRange(min, max) {
 }
 
 export default function EmployerDashboard() {
-    const { user, employerJobs, refreshEmployerJobs, navigate, navigateToCandidates, employerProfile, loadEmployerProfile } = useStore()
+    const { user, employerJobs, employerJobsLoading, refreshEmployerJobs, navigate, navigateToCandidates, employerProfile, loadEmployerProfile } = useStore()
     const [openJobId, setOpenJobId] = useState(null)
 
     useEffect(() => {
@@ -99,7 +99,14 @@ export default function EmployerDashboard() {
                         </button>
                     </div>
 
-                    {display.length === 0 ? (
+                    {employerJobsLoading && display.length === 0 ? (
+                        <BrutalCard color="#FFFFFF" padding={24}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <Loader2 size={16} className="animate-spin" color={KC.orange} />
+                                <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Memuat lowongan aktif…</p>
+                            </div>
+                        </BrutalCard>
+                    ) : display.length === 0 ? (
                         <BrutalCard color="#FFFFFF" padding={24} style={{ textAlign: 'center', color: KC.mute }}>
                             Belum ada lowongan aktif. Pasang lowongan pertama untuk mulai menerima pelamar.
                         </BrutalCard>

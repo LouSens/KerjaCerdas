@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, FilledStat, Tag, ScoreDonut, topBtn, DesignStyles, BAND_META } from './_design'
-import { Sparkles, Briefcase, TrendingUp, BookOpen, Upload, Search, RefreshCw, CheckCircle2, ChevronRight, MapPin, Building2, ShieldCheck } from 'lucide-react'
+import { Sparkles, Briefcase, TrendingUp, BookOpen, Upload, Search, RefreshCw, CheckCircle2, ChevronRight, MapPin, Building2, ShieldCheck, Loader2 } from 'lucide-react'
 import JobDetailModal from './JobDetailModal'
 
 const bandOf = (m) => {
@@ -130,14 +130,21 @@ export default function SeekerDashboard() {
                                 </p>
                             </div>
                             <button onClick={() => navigate('seeker-match')} style={{ background: 'none', border: 'none', color: KC.orange, fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                Lihat Semua 5 <ChevronRight size={14} />
+                                Lihat Semua {matches?.length || 0} <ChevronRight size={14} />
                             </button>
                         </div>
 
                         <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                             {topMatches.length > 0 ? topMatches.map((m, i) => (
                                 <DashMatchCard key={m.job_id || i} match={m} onSelect={() => setSelectedJob(m)} />
-                            )) : (
+                            )) : agentLoading ? (
+                                <BrutalCard color="#FFFFFF" padding={24}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <Loader2 size={16} className="animate-spin" color={KC.orange} />
+                                        <p style={{ margin: 0, fontSize: 13, color: KC.mute }}>Menganalisis profil & mencocokkan lowongan…</p>
+                                    </div>
+                                </BrutalCard>
+                            ) : (
                                 <BrutalCard color="#FFFFFF" padding={28}>
                                     <div style={{ textAlign: 'center' }}>
                                         <Sparkles size={28} color={KC.orange} style={{ marginBottom: 10 }} />

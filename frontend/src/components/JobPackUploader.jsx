@@ -2,7 +2,7 @@
  * JobPackUploader — Clean enterprise bulk PDF job pack uploader.
  */
 import { useState, useRef } from 'react'
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react'
+import { UploadCloud, FileText, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
 import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'
@@ -12,12 +12,18 @@ export default function JobPackUploader() {
     const [dragActive, setDragActive] = useState(false)
     const [selectedFile, setSelectedFile] = useState(null)
     const [successResult, setSuccessResult] = useState(null)
+    const [uploadError, setUploadError] = useState(null)
     const inputRef = useRef(null)
 
     const handleFile = async (file) => {
         if (!file) return
+        // Reset the previous outcome so a stale success banner never survives
+        // into the next attempt.
+        setSuccessResult(null)
+        setUploadError(null)
         if (!file.name.toLowerCase().endsWith('.pdf')) {
             toast.error('Format berkas wajib PDF')
+            setUploadError('Format berkas wajib PDF. Silakan pilih dokumen berekstensi .pdf.')
             return
         }
         setSelectedFile(file)
@@ -25,7 +31,10 @@ export default function JobPackUploader() {
         // toasts and never rethrows, so no try/catch or duplicate toast here.
         const res = await uploadJobPack(file)
         if (res) setSuccessResult(res)
+        else setUploadError('Ekstraksi dokumen gagal. Periksa berkas Anda lalu coba unggah ulang.')
     }
+
+    const createdCount = successResult?.created_job_ids?.length ?? 0
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -50,21 +59,32 @@ export default function JobPackUploader() {
             <div className="kc-grid-main">
                 <BrutalCard color="#FFFFFF" padding={32} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
                     <div
-                        onDragOver={(e) => { e.preventDefault(); setDragActive(true) }}
+                        aria-busy={jobPackUploading}
+                        onDragOver={(e) => {
+                            if (jobPackUploading) return
+                            e.preventDefault()
+                            setDragActive(true)
+                        }}
                         onDragLeave={() => setDragActive(false)}
                         onDrop={(e) => {
+                            if (jobPackUploading) return
                             e.preventDefault()
                             setDragActive(false)
                             if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0])
                         }}
-                        onClick={() => inputRef.current?.click()}
+                        onClick={() => {
+                            if (jobPackUploading) return
+                            inputRef.current?.click()
+                        }}
                         style={{
                             width: '100%',
                             padding: '40px 20px',
                             border: `2px dashed ${dragActive ? KC.orange : KC.ink}`,
                             borderRadius: 10,
                             background: dragActive ? KC.orangeSoft : KC.surface,
-                            cursor: 'pointer',
+                            cursor: jobPackUploading ? 'progress' : 'pointer',
+                            pointerEvents: jobPackUploading ? 'none' : 'auto',
+                            opacity: jobPackUploading ? 0.7 : 1,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
@@ -77,11 +97,12 @@ export default function JobPackUploader() {
                             ref={inputRef}
                             type="file"
                             accept=".pdf"
+                            disabled={jobPackUploading}
                             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                             style={{ display: 'none' }}
                         />
-                        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', color: KC.ink }}>
-                            <UploadCloud size={26} />
+                        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', color: jobPackUploading ? KC.orange : KC.ink }}>
+                            {jobPackUploading ? <Loader2 size={26} className="animate-spin" /> : <UploadCloud size={26} />}
                         </div>
                         <div>
                             <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: KC.ink }}>
@@ -95,11 +116,24 @@ export default function JobPackUploader() {
 
                     {successResult && (
                         <div style={{ width: '100%', padding: '16px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 8, textAlign: 'left' }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: '#047857', marginBottom: 4 }}>
-                                Ekstraksi Berhasil
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#047857', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <CheckCircle2 size={15} /> Ekstraksi Berhasil
                             </div>
                             <div style={{ fontSize: 12, color: '#065F46' }}>
-                                Ditemukan 4 lowongan baru siap dipublikasikan ke dasbor rekrutmen.
+                                {createdCount > 0
+                                    ? `Ditemukan ${createdCount} lowongan baru siap dipublikasikan ke dasbor rekrutmen.`
+                                    : 'Dokumen berhasil diproses, namun tidak ada lowongan yang dapat diekstrak.'}
+                            </div>
+                        </div>
+                    )}
+
+                    {uploadError && (
+                        <div style={{ width: '100%', padding: '16px', background: KC.roseSoft, border: `1px solid ${KC.rose}`, borderRadius: 8, textAlign: 'left' }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#B91C1C', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <AlertCircle size={15} /> Ekstraksi Gagal
+                            </div>
+                            <div style={{ fontSize: 12, color: '#991B1B' }}>
+                                {uploadError}
                             </div>
                         </div>
                     )}

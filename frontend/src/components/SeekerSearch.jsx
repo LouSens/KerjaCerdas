@@ -16,6 +16,7 @@ export default function SeekerSearch() {
     })
     const [results, setResults] = useState([])
     const [loading, setLoading] = useState(false)
+    const [searchError, setSearchError] = useState(null)
     const [selectedJob, setSelectedJob] = useState(null)
     const { matches, navigate } = useStore()
 
@@ -26,6 +27,7 @@ export default function SeekerSearch() {
     const handleSearch = async (e) => {
         if (e) e.preventDefault()
         setLoading(true)
+        setSearchError(null)
         try {
             const cleanFilters = {}
             if (filters.region) cleanFilters.region = filters.region
@@ -38,6 +40,8 @@ export default function SeekerSearch() {
             setResults(res.items || [])
         } catch (err) {
             console.error('Search failed', err)
+            setResults([])
+            setSearchError('Pencarian gagal dimuat. Periksa koneksi Anda lalu coba lagi.')
         } finally {
             setLoading(false)
         }
@@ -73,8 +77,8 @@ export default function SeekerSearch() {
 
             {/* Search Form */}
             <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', gap: 10 }}>
-                    <div style={{ position: 'relative', flex: 1 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 0 }}>
                         <Search size={18} color={KC.mute} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
                         <input
                             type="text"
@@ -138,15 +142,22 @@ export default function SeekerSearch() {
 
             {/* Results Grid */}
             <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: KC.mute, marginBottom: 14 }}>
-                    Ditemukan {results.length} lowongan aktif
+                <div
+                    aria-live="polite"
+                    style={{ fontSize: 13, fontWeight: 700, color: searchError ? '#B91C1C' : KC.mute, marginBottom: 14 }}
+                >
+                    {loading
+                        ? 'Memuat hasil pencarian…'
+                        : searchError
+                            ? searchError
+                            : `Ditemukan ${results.length} lowongan aktif`}
                 </div>
 
                 <div className="kc-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {results.map((job, idx) => (
                         <BrutalCard key={job.id || idx} color="#FFFFFF" padding={18}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
-                                <div>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                                <div style={{ minWidth: 0, flex: '1 1 200px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                         <span style={{ fontSize: 12, fontWeight: 700, color: KC.mute, display: 'flex', alignItems: 'center', gap: 4 }}>
                                             <Building2 size={13} /> {job.company || 'Perusahaan Mitra'}
@@ -160,12 +171,12 @@ export default function SeekerSearch() {
                                     <h3 style={{ fontSize: 17, fontWeight: 900, margin: '0 0 6px', color: KC.ink, letterSpacing: -0.3 }}>
                                         {job.title}
                                     </h3>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: KC.mute, flexWrap: 'wrap' }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <MapPin size={13} /> {job.location || 'Jakarta'}
+                                            <MapPin size={13} /> {job.location || job.region_code || '—'}
                                         </span>
                                         <span>·</span>
-                                        <span>{job.salary_range || 'Gaji Kompetitif'}</span>
+                                        <span>{job.salary_range || 'Gaji tidak dicantumkan'}</span>
                                     </div>
                                 </div>
                                 <button

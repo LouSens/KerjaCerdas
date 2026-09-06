@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from backend.app.db.postgres_store import get_repositories
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query, status
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -44,8 +44,8 @@ def _is_employer_verified(employer) -> bool:
 
 @router.get("")
 async def list_jobs(
-    limit: int = 20,
-    offset: int = 0,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     region: str | None = None,
     q: str | None = None,
     job_type: str | None = None,
@@ -57,10 +57,16 @@ async def list_jobs(
     repos = get_repositories()
     jobs = await _get_jobs(repos)
 
+    jobs = [j for j in jobs if j.is_active]
     if region:
         jobs = [j for j in jobs if j.region_code == region]
     if job_type:
-        jobs = [j for j in jobs if getattr(j, "work_type", "").lower() == job_type.lower()]
+        # JobPosting has no `work_type` field — only `remote_allowed`.
+        jt = job_type.lower()
+        if jt in ("remote", "hybrid"):
+            jobs = [j for j in jobs if j.remote_allowed]
+        elif jt == "onsite":
+            jobs = [j for j in jobs if not j.remote_allowed]
     if remote_allowed is not None:
         jobs = [j for j in jobs if j.remote_allowed == remote_allowed]
     if experience_min is not None:
@@ -95,6 +101,8 @@ async def list_jobs(
             emp = await repos.employers.get(emp_id)
             employer_cache[emp_id] = _is_employer_verified(emp)
         item = j.model_dump() if hasattr(j, "model_dump") else dict(j)
+        item.pop("embedding", None)
+        item.pop("embedding_model", None)
         item["verified"] = employer_cache[emp_id]
 
         location_str = _BPS_REGIONS.get(j.region_code, j.region_code)
@@ -112,7 +120,7 @@ async def get_job(job_id: str):
     repos = get_repositories()
     j = await repos.jobs.get(job_id)
     if not j:
-        return {"error": "not_found"}
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
     employer = await repos.employers.get(j.employer_id)
 
     _BPS_REGIONS = {
@@ -133,4 +141,7 @@ async def get_job(job_id: str):
     if j.remote_allowed:
         location_str += " · Remote OK"
 
-    return j.model_dump() | {"verified": _is_employer_verified(employer), "location": location_str}
+    item = j.model_dump()
+    item.pop("embedding", None)
+    item.pop("embedding_model", None)
+    return item | {"verified": _is_employer_verified(employer), "location": location_str}

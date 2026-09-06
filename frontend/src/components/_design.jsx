@@ -234,6 +234,12 @@ export function FilledStat({ label, value, sub, icon, accent = KC.orange, onClic
         <div
             className="kc-stat"
             onClick={onClick}
+            onKeyDown={onClick ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onClick(e)
+                }
+            } : undefined}
             role={onClick ? 'button' : undefined}
             tabIndex={onClick ? 0 : undefined}
             style={{
@@ -315,6 +321,7 @@ const CSS = `
 .kc-grid-main { display: grid; grid-template-columns: minmax(0, 1.4fr) 340px; gap: 20px; }
 .kc-grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .kc-timeline-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.kc-stepper-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .kc-card-split { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .kc-card-actions { display: flex; align-items: flex-end; flex-direction: column; gap: 12px; }
 
@@ -332,6 +339,7 @@ const CSS = `
   .kc-grid-4 { grid-template-columns: 1fr !important; gap: 12px !important; }
   .kc-grid-3 { grid-template-columns: 1fr !important; gap: 12px !important; }
   .kc-grid-2-col { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .kc-stepper-4 { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
   .kc-grid-main { grid-template-columns: 1fr !important; gap: 16px !important; }
   .kc-h1 { font-size: 22px !important; line-height: 1.25 !important; }
   .kc-topbar { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }

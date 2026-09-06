@@ -6,7 +6,7 @@ import useStore from '../store/useStore'
 import { KC, BrutalCard, topBtn, Tag, DesignStyles } from './_design'
 import { updateEmployerProfile } from '../services/api'
 import toast from 'react-hot-toast'
-import { Building2, ShieldCheck, Globe, Users, FileText, CheckCircle2 } from 'lucide-react'
+import { Building2, ShieldCheck, Globe, Users, FileText, CheckCircle2, Circle } from 'lucide-react'
 
 const INDUSTRIES = [
     'Teknologi & Perangkat Lunak',
@@ -30,14 +30,16 @@ const COMPANY_SIZES = [
 
 export default function EmployerProfile() {
     const { employerProfile, loadEmployerProfile, navigate } = useStore()
+    // Empty defaults — a real employer must not be able to save a pre-filled
+    // demo company as their own profile.
     const [form, setForm] = useState({
-        company_name: 'GoTo Group (PT GoTo Gojek Tokopedia Tbk)',
-        npwp: '01.234.567.8-012.000',
-        industry: 'Teknologi & Perangkat Lunak',
-        size: 'enterprise',
-        region_code: '3171',
-        website: 'https://gotocompany.com',
-        description: 'Ekosistem digital terdepan di Indonesia yang mengintegrasikan layanan on-demand, e-commerce, dan teknologi finansial.',
+        company_name: '',
+        npwp: '',
+        industry: INDUSTRIES[0],
+        size: 'sme',
+        region_code: '',
+        website: '',
+        description: '',
     })
     const [saving, setSaving] = useState(false)
 
@@ -47,14 +49,16 @@ export default function EmployerProfile() {
 
     useEffect(() => {
         if (employerProfile) {
+            // `??` (not `||`) so a genuinely empty server field clears the local
+            // value instead of keeping a stale default.
             setForm(prev => ({
                 ...prev,
-                company_name: employerProfile.company_name || prev.company_name,
-                npwp: employerProfile.npwp || prev.npwp,
+                company_name: employerProfile.company_name ?? '',
+                npwp: employerProfile.npwp ?? '',
                 industry: employerProfile.industry || prev.industry,
                 size: employerProfile.size || prev.size,
-                website: employerProfile.website || prev.website,
-                description: employerProfile.description || prev.description,
+                website: employerProfile.website ?? '',
+                description: employerProfile.description ?? '',
             }))
         }
     }, [employerProfile])
@@ -66,7 +70,10 @@ export default function EmployerProfile() {
         }
         setSaving(true)
         try {
-            await updateEmployerProfile(form)
+            // `region_code` has no input on this form — only send it when it
+            // actually holds a value so a blank never overwrites the stored one.
+            const { region_code, ...rest } = form
+            await updateEmployerProfile(region_code ? form : rest)
             await loadEmployerProfile()
             toast.success('Profil perusahaan berhasil diperbarui!')
         } catch (e) {
@@ -123,20 +130,24 @@ export default function EmployerProfile() {
                 <BrutalCard color="#FFFFFF" padding={26} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div className="kc-grid-2-col">
                         <div>
-                            <label style={labelStyle}>Nama Resmi Entitas Bisnis</label>
+                            <label htmlFor="employer-company-name" style={labelStyle}>Nama Resmi Entitas Bisnis</label>
                             <input
+                                id="employer-company-name"
                                 type="text"
                                 value={form.company_name}
                                 onChange={e => setForm({ ...form, company_name: e.target.value })}
+                                placeholder="PT Contoh Nusantara"
                                 style={inputStyle}
                             />
                         </div>
                         <div>
-                            <label style={labelStyle}>Nomor Pokok Wajib Pajak (NPWP)</label>
+                            <label htmlFor="employer-npwp" style={labelStyle}>Nomor Pokok Wajib Pajak (NPWP)</label>
                             <input
+                                id="employer-npwp"
                                 type="text"
                                 value={form.npwp}
                                 onChange={e => setForm({ ...form, npwp: e.target.value })}
+                                placeholder="01.234.567.8-012.000"
                                 style={inputStyle}
                             />
                         </div>
@@ -181,11 +192,13 @@ export default function EmployerProfile() {
                     </div>
 
                     <div>
-                        <label style={labelStyle}>Deskripsi Profil & Budaya Kerja</label>
+                        <label htmlFor="employer-description" style={labelStyle}>Deskripsi Profil & Budaya Kerja</label>
                         <textarea
+                            id="employer-description"
                             rows={4}
                             value={form.description}
                             onChange={e => setForm({ ...form, description: e.target.value })}
+                            placeholder="Ceritakan bidang usaha, nilai, dan budaya kerja perusahaan Anda…"
                             style={{ ...inputStyle, resize: 'vertical' }}
                         />
                     </div>
@@ -212,18 +225,18 @@ export default function EmployerProfile() {
                             </h3>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: KC.inkLight }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} />
-                                <span>NPWP Aktif DJP Online</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} />
-                                <span>Domain Korporat Terverifikasi</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} />
-                                <span>Badge Prioritas Pelamar Kerja</span>
-                            </div>
+                            {[
+                                { label: 'NPWP Aktif DJP Online', done: Boolean(employerProfile?.npwp) },
+                                { label: 'Domain Korporat Terverifikasi', done: Boolean(employerProfile?.website) },
+                                { label: 'Badge Prioritas Pelamar Kerja', done: employerProfile?.verified === 'verified' },
+                            ].map(({ label, done }) => (
+                                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {done
+                                        ? <CheckCircle2 size={15} color={KC.lime} />
+                                        : <Circle size={15} color={KC.mute} />}
+                                    <span style={done ? undefined : { color: KC.mute }}>{label}</span>
+                                </div>
+                            ))}
                         </div>
                     </BrutalCard>
                 </div>

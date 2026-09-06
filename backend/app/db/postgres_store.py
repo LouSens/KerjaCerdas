@@ -4,7 +4,7 @@ import logging as _logging
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from backend.app.db.models import (
@@ -325,6 +325,27 @@ async def find_seeker_by_user_id(user_id: str) -> SeekerSchema | None:
         return None
 
 
+async def update_seeker_embedding(
+    seeker_id: str, embedding: list[float], embedding_model: str
+) -> None:
+    """Write only the embedding columns for a seeker.
+
+    Used by the background re-embed task in `seeker.py`'s profile-upsert
+    endpoint: that task holds a snapshot of the profile taken before the
+    embed call started, so a full `upsert()` of that snapshot would silently
+    overwrite any field the user changed (or a CV upload added) while the
+    background embed was still running. A narrow UPDATE avoids that race.
+    """
+    async with async_session() as session:
+        stmt = (
+            update(SeekerProfile)
+            .where(SeekerProfile.id == seeker_id)
+            .values(embedding=embedding, embedding_model=embedding_model)
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+
 async def find_employer_by_user_id(user_id: str) -> EmployerSchema | None:
     """Return an employer by their auth user_id (indexed, O(1))."""
     try:
@@ -354,6 +375,22 @@ async def find_applications_by_seeker_id(seeker_id: str) -> list[ApplicationSche
             return out
     except Exception as exc:
         _store_logger.warning("find_applications_by_seeker_id failed (%s)", exc)
+        return []
+
+
+async def find_jobs_by_employer_id(employer_id: str) -> list[JobSchema]:
+    """Return all postings for an employer (indexed on employer_id, no full scan)."""
+    try:
+        async with async_session() as session:
+            stmt = select(JobPosting).where(JobPosting.employer_id == employer_id)
+            result = await session.execute(stmt)
+            out = []
+            for obj in result.scalars().all():
+                data = {c.name: getattr(obj, c.name) for c in JobPosting.__table__.columns}
+                out.append(JobSchema.model_validate(data))
+            return out
+    except Exception as exc:
+        _store_logger.warning("find_jobs_by_employer_id failed (%s)", exc)
         return []
 
 

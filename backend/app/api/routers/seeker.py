@@ -25,6 +25,7 @@ from backend.app.db.postgres_store import (
     find_seeker_by_user_id,
     find_skill_gaps_by_seeker_id,
     get_repositories,
+    update_seeker_embedding,
 )
 from backend.app.db.schemas import (
     Application,
@@ -35,6 +36,7 @@ from backend.app.db.schemas import (
 )
 from backend.app.services.matching.matcher import SemanticMatcher
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -121,13 +123,18 @@ async def create_or_update_profile(
     # Persist profile immediately so profile is available to other endpoints
     await repos.seekers.upsert(profile)
 
-    # Schedule embedding in the background — response is returned before this runs
+    # Schedule embedding in the background — response is returned before this
+    # runs. `p` is a snapshot taken at request time, so on completion this
+    # must write ONLY the embedding columns (not the whole row) — otherwise a
+    # profile edit or CV upload that lands while the embed call is still in
+    # flight would be silently overwritten by this stale snapshot.
     async def _embed_and_save(p: SeekerProfile) -> None:
         try:
             matcher = SemanticMatcher()
             await matcher.embed_seeker(p)
-            await repos.seekers.upsert(p)
-            logger.info("Background embed complete for seeker %s", p.id)
+            if p.embedding:
+                await update_seeker_embedding(p.id, p.embedding, p.embedding_model)
+                logger.info("Background embed complete for seeker %s", p.id)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Background embed failed for seeker %s: %s", p.id, exc)
 
@@ -199,7 +206,19 @@ async def save_job(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sudah tersimpan")
 
     app = Application(job_id=job_id, seeker_id=seeker_id, status=ApplicationStatus.SAVED)
-    await repos.applications.upsert(app)
+    try:
+        await repos.applications.upsert(app)
+    except IntegrityError:
+        # A concurrent request (e.g. a double-click) won the race and already
+        # created the (job_id, seeker_id) row the `uq_application_job_seeker`
+        # constraint enforces — surface that row instead of erroring the user
+        # out or leaving a duplicate.
+        winner = await repos.applications.find(
+            lambda a: a.job_id == job_id and a.seeker_id == seeker_id
+        )
+        if winner:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sudah tersimpan") from None
+        raise
     return {"id": app.id, "job_id": job_id, "status": app.status}
 
 
@@ -229,12 +248,16 @@ async def list_bookmarks(current_user: User = Depends(get_current_user)):
     seeker_id = profile.id
     apps = await find_applications_by_seeker_id(seeker_id)
     apps = [a for a in apps if a.status == ApplicationStatus.SAVED]
-    # Enrich with job titles
+    # Enrich with job/employer metadata via two batched lookups instead of
+    # one query per bookmark (N+1) — a seeker with many saved jobs would
+    # otherwise issue 2x round trips per page load.
+    jobs_by_id = {j.id: j for j in await repos.jobs.get_many(list({a.job_id for a in apps}))}
+    employer_ids = {j.employer_id for j in jobs_by_id.values()}
+    emps_by_id = {e.id: e for e in await repos.employers.get_many(list(employer_ids))}
     result = []
     for app in apps:
-        job = await repos.jobs.get(app.job_id)
-        # Resolve employer name
-        emp = await repos.employers.get(job.employer_id) if job else None
+        job = jobs_by_id.get(app.job_id)
+        emp = emps_by_id.get(job.employer_id) if job else None
         result.append(
             {
                 "application_id": app.id,
@@ -310,7 +333,23 @@ async def apply_to_job(
             cover_letter=payload.cover_letter,
             note=_APPLIED_NOTE,
         )
-    await repos.applications.upsert(app)
+    try:
+        await repos.applications.upsert(app)
+    except IntegrityError:
+        # Same race as save_job: a concurrent request already created this
+        # (job_id, seeker_id) row. Report that row rather than duplicating it.
+        winner = await repos.applications.find(
+            lambda a: a.job_id == job_id and a.seeker_id == seeker_id
+        )
+        if winner:
+            existing_app = winner[0]
+            return {
+                "application_id": existing_app.id,
+                "job_id": job_id,
+                "status": existing_app.status,
+                "already_applied": True,
+            }
+        raise
 
     # Award XP for applying
     gam = await find_gamification_by_seeker_id(seeker_id)
@@ -560,10 +599,15 @@ async def list_applications(current_user: User = Depends(get_current_user)):
         return []
     seeker_id = profile.id
     apps = await find_applications_by_seeker_id(seeker_id)
+    # Batched lookups instead of one query per application (N+1) — see the
+    # identical fix in list_bookmarks above.
+    jobs_by_id = {j.id: j for j in await repos.jobs.get_many(list({a.job_id for a in apps}))}
+    employer_ids = {j.employer_id for j in jobs_by_id.values()}
+    emps_by_id = {e.id: e for e in await repos.employers.get_many(list(employer_ids))}
     result = []
     for app in apps:
-        job = await repos.jobs.get(app.job_id)
-        emp = await repos.employers.get(job.employer_id) if job else None
+        job = jobs_by_id.get(app.job_id)
+        emp = emps_by_id.get(job.employer_id) if job else None
 
         # Determine note from DB or provide informative default by status
         note_val = getattr(app, "note", "") or ""

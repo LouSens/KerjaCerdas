@@ -25,6 +25,30 @@ class _NoKey(RuntimeError):
     pass
 
 
+_MAX_GEMINI_PAGES = 3
+
+
+def _cap_pdf_pages(pdf_bytes: bytes, max_pages: int = _MAX_GEMINI_PAGES) -> bytes:
+    """Truncate a PDF to its first `max_pages` pages before it is billed per-page by Gemini.
+
+    Gemini's multimodal endpoint bills PDFs per page, so a legitimate-looking
+    but very long upload costs proportionally more per parse with no cap in
+    place. Falls back to the original bytes if the PDF can't be parsed here —
+    the multimodal call will surface any real problem with the file itself.
+    """
+    try:
+        import fitz  # PyMuPDF
+
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            if doc.page_count <= max_pages:
+                return pdf_bytes
+            doc.select(range(max_pages))
+            return doc.tobytes()
+    except Exception as e:
+        logger.warning("PDF page-cap truncation failed (%s) — sending original bytes", e)
+        return pdf_bytes
+
+
 def _client():
     """Return a google-genai client — Vertex AI if a project is set, else AI Studio."""
     import os
@@ -233,6 +257,7 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
             return await asyncio.to_thread(_fallback_extract, pdf_bytes)
         return _offline_stub(task)
 
+    pdf_bytes = await asyncio.to_thread(_cap_pdf_pages, pdf_bytes)
     system = build_system_prompt(role=role, task=task)
 
     def _sync():
@@ -291,6 +316,14 @@ async def _call_gemini(pdf_bytes: bytes, role: str, task: str) -> dict[str, Any]
         return _offline_stub(task)
 
 
+_SKILL_LEVELS = {"beginner", "intermediate", "advanced", "expert"}
+
+
+def _normalize_skill_level(raw: Any) -> str:
+    level = str(raw or "").strip().lower()
+    return level if level in _SKILL_LEVELS else "intermediate"
+
+
 def _validate_cv_schema(d: dict[str, Any]) -> dict[str, Any]:
     """Coerce Gemini output to the strict, sanitized schema uploads.py expects."""
     return {
@@ -300,7 +333,7 @@ def _validate_cv_schema(d: dict[str, Any]) -> dict[str, Any]:
         "skills": [
             {
                 "name": clean_extracted_text(str(s.get("name", "")), max_length=60),
-                "level": s.get("level", "intermediate"),
+                "level": _normalize_skill_level(s.get("level")),
                 "years": float(s.get("years") or 0),
             }
             for s in (d.get("skills") or [])
@@ -310,8 +343,8 @@ def _validate_cv_schema(d: dict[str, Any]) -> dict[str, Any]:
             {
                 "company": clean_extracted_text(str(x.get("company", "")), max_length=150),
                 "title": clean_extracted_text(str(x.get("title", "")), max_length=150),
-                "start_date": x.get("start_date") or "2024-01",
-                "end_date": x.get("end_date"),
+                "start_date": str(x.get("start_date") or "2024-01"),
+                "end_date": (str(x["end_date"]) if x.get("end_date") is not None else None),
                 "description": clean_extracted_text(str(x.get("description", "")), max_length=1000),
             }
             for x in (d.get("experience") or [])
