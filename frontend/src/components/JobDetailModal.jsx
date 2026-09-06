@@ -71,16 +71,17 @@ export default function JobDetailModal({ job, onClose }) {
     ]
 
     const handleApply = async () => {
-        setAppliedLocally(true)
-        setToastMessage(`Lamaran terkirim ke ${company}`)
-        try {
-            await applyJob(jobId)
-        } catch (e) {
-            // Handled in store
+        // applyJob already reports success/failure via its own toast and
+        // never throws — it resolves to undefined on failure — so success
+        // here must be read from the return value, not assumed up front.
+        const res = await applyJob(jobId)
+        if (res) {
+            setAppliedLocally(true)
+            setToastMessage(`Lamaran terkirim ke ${company}`)
+            setTimeout(() => {
+                setToastMessage(null)
+            }, 2600)
         }
-        setTimeout(() => {
-            setToastMessage(null)
-        }, 2600)
     }
 
     const toggleSave = () => {

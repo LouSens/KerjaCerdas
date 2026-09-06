@@ -74,17 +74,22 @@ class Settings(BaseSettings):
     # X-Real-IP is only trusted as the client's address when the direct TCP
     # peer is one of these networks — i.e. our own Nginx sidecar, never an
     # arbitrary client (which could set the header itself to bypass rate
-    # limiting or spoof another user's bucket). Defaults cover the private
-    # ranges Docker Compose/most container platforms assign to internal
-    # service traffic; the backend is also reachable directly (see
-    # docker-compose.prod.yml exposing 8000), so untrusted peers still fall
-    # back to their own TCP-verified address.
-    trusted_proxy_cidrs: list[str] = [
-        "127.0.0.0/8",
-        "10.0.0.0/8",
-        "172.16.0.0/12",
-        "192.168.0.0/16",
-    ]
+    # limiting or spoof another user's bucket).
+    #
+    # Defaults to empty — trust nothing — on purpose. docker-compose.prod.yml
+    # exposes the backend's port 8000 directly to the internet alongside the
+    # Nginx proxy on 3000, so a blanket "all of RFC1918" default would let
+    # any client that merely *reaches that port from a private address*
+    # (VPN, corporate LAN, cloud VPC peering) get treated as our proxy and
+    # rotate X-Real-IP per request for a fresh rate-limit counter every
+    # time — bypassing login/OTP/agent/upload throttling entirely.
+    #
+    # To fix the "every proxied request shares one bucket" problem, set this
+    # explicitly to the *exact* address/CIDR your Nginx container gets on
+    # its Docker network (e.g. `docker network inspect <net>` to find the
+    # bridge subnet, or pin it with a static IP in docker-compose) — narrow
+    # enough that nothing else on the host's network path can match it.
+    trusted_proxy_cidrs: list[str] = []
 
     # ── CORS ─────────────────────────────────────────────────────────────
     cors_allow_origins: list[str] = [

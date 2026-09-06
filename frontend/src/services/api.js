@@ -92,6 +92,7 @@ async function request(path, opts = {}) {
         err.status = res.status
         throw err
     }
+    if (res.status === 204) return null
     return res.json()
 }
 
@@ -203,6 +204,8 @@ export const updateEmployerJob = (jobId, data) =>
         method: 'PATCH',
         body: JSON.stringify(data),
     })
+export const deleteEmployerJob = (jobId) =>
+    request(`${API_BASE}/employer/jobs/${jobId}`, { method: 'DELETE' })
 
 // ── Employer candidates (reverse-matching) ──────────────────────────────────
 export const fetchCandidatesForJob = (jobId, topK = 5, filters = {}) =>

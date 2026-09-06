@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
 import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
-import { updateEmployerJob } from '../services/api'
+import { updateEmployerJob, deleteEmployerJob } from '../services/api'
 import { UploadCloud, CheckCircle2, ArrowRight } from 'lucide-react'
 
 export default function JobPackUploader() {
@@ -12,6 +12,25 @@ export default function JobPackUploader() {
     const [dragActive, setDragActive] = useState(false)
     const [publishing, setPublishing] = useState(false)
     const inputRef = useRef(null)
+    // Tracks the still-pending (unconfirmed) draft batch so it can be
+    // cleaned up if the employer abandons it — replaces it with a new
+    // upload, or navigates/closes the tab without confirming.
+    const pendingDraftIdsRef = useRef([])
+
+    const discardPendingDrafts = () => {
+        const ids = pendingDraftIdsRef.current
+        pendingDraftIdsRef.current = []
+        if (!ids.length) return
+        // Best-effort — the batch was never confirmed, so nothing depends on
+        // this succeeding synchronously; don't block the UI on it.
+        Promise.allSettled(ids.map(id => deleteEmployerJob(id))).catch(() => {})
+    }
+
+    // Catches the "closed the tab" / "navigated away without clicking
+    // anything" case that the button handlers below can't.
+    useEffect(() => {
+        return () => discardPendingDrafts()
+    }, [])
 
     const handleFile = async (file) => {
         if (!file) return
@@ -39,6 +58,7 @@ export default function JobPackUploader() {
                     valid: true,
                 }))
 
+            pendingDraftIdsRef.current = jobsList.map(j => j.id)
             setParsedResult({
                 fileName: file.name,
                 time: '< 2 s',
@@ -58,6 +78,10 @@ export default function JobPackUploader() {
     const handleConfirmPublish = async () => {
         const jobs = parsedResult?.jobs || []
         if (!jobs.length) return
+        // The batch is now "settled" — win or lose per-job below, none of
+        // these drafts are abandoned/orphaned anymore, so the unmount
+        // cleanup must leave them alone.
+        pendingDraftIdsRef.current = []
         setPublishing(true)
         try {
             const results = await Promise.allSettled(
@@ -249,7 +273,7 @@ export default function JobPackUploader() {
 
                     <div style={{ display: 'flex', gap: 10 }}>
                         <button
-                            onClick={() => { setParsedResult(null); setSelectedFile(null); }}
+                            onClick={() => { discardPendingDrafts(); setParsedResult(null); setSelectedFile(null); }}
                             className="kc-btn"
                             style={{
                                 flex: 'none',
