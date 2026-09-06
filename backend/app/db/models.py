@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -14,30 +15,51 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.types import TypeDecorator
 
 from backend.app.config.settings import settings
 
-# pgvector is only available when using PostgreSQL. For SQLite dev/test mode we
-# fall back to a plain Text column (stores the vector as a serialised string
-# that is never used at query time — embeddings are computed in-process by the
-# matcher). This is keyed off the *actually configured* database URL, not
-# whether the pgvector package happens to be importable: an environment that
-# has pgvector installed but is still pointed at SQLite (e.g. this repo's own
-# test suite) must still get the Text fallback, or the strict Vector(768) type
-# rejects the shorter test-fixture embeddings with a dimension mismatch.
-if settings.effective_database_url.startswith("sqlite"):
-    from sqlalchemy import Text as _Text  # type: ignore[assignment]
 
-    _VectorCol = lambda: _Text()  # noqa: E731
+class _JSONVectorText(TypeDecorator):
+    """Store an embedding list as a JSON string in a plain Text column.
+
+    Used for SQLite dev/test mode, where the value is never used at query
+    time (embeddings are computed and compared in-process by the matcher) —
+    this only needs to round-trip whatever list was written, which a bare
+    Text column can't do on its own since the SQLite driver refuses to bind
+    a raw Python list as a parameter.
+    """
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return json.dumps(list(value))
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return json.loads(value)
+
+
+# pgvector is only available when using PostgreSQL. For SQLite dev/test mode we
+# fall back to the JSON-serialising Text column above. This is keyed off the
+# *actually configured* database URL, not whether the pgvector package happens
+# to be importable: an environment that has pgvector installed but is still
+# pointed at SQLite (e.g. this repo's own test suite) must still get the Text
+# fallback, or the strict Vector(768) type rejects the shorter test-fixture
+# embeddings with a dimension mismatch.
+if settings.effective_database_url.startswith("sqlite"):
+    _VectorCol = lambda: _JSONVectorText()  # noqa: E731
 else:
     try:
         from pgvector.sqlalchemy import Vector as _Vector  # type: ignore[import-untyped]
 
         _VectorCol = lambda: _Vector(768)  # noqa: E731
     except Exception:  # pragma: no cover
-        from sqlalchemy import Text as _Text  # type: ignore[assignment]
-
-        _VectorCol = lambda: _Text()  # noqa: E731
+        _VectorCol = lambda: _JSONVectorText()  # noqa: E731
 
 
 def _now() -> datetime:
