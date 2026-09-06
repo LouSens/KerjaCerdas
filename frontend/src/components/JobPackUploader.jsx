@@ -18,6 +18,34 @@ export default function JobPackUploader() {
     const [checkedIds, setCheckedIds] = useState(() => new Set())
     const inputRef = useRef(null)
 
+    // A random token only stays stable across retries of the SAME parse —
+    // it does nothing for the far more likely failure case: the create
+    // response is lost, the employer sees no confirmation, and re-uploads
+    // the same PDF from scratch. That re-parse would mint fresh random
+    // tokens and the server would publish the vacancy again. Deriving the
+    // token from the job's own content instead means re-parsing the same
+    // PDF reproduces the same client_ref, so the server's replay check
+    // still catches it.
+    const computeClientRef = async (job) => {
+        const canonical = JSON.stringify({
+            title: job.title,
+            description: job.description,
+            responsibilities: job.responsibilities,
+            required_skills: job.required_skills,
+            nice_to_have_skills: job.nice_to_have_skills,
+            education_min: job.education_min,
+            experience_years_min: job.experience_years_min,
+            region_code: job.region_code,
+            location: job.location,
+            remote_allowed: job.remote_allowed,
+            salary_min: job.salary_min,
+            salary_max: job.salary_max,
+            kbji_code: job.kbji_code,
+        })
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical))
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('')
+    }
+
     const toggleJobChecked = (localId) => {
         setCheckedIds(prev => {
             const next = new Set(prev)
@@ -50,14 +78,13 @@ export default function JobPackUploader() {
             }
 
             const elapsedSeconds = (performance.now() - startedAt) / 1000
-            // Each job gets a stable idempotency token here, once, so it
-            // stays the same across retries of handleConfirmPublish for
-            // this same job — the server uses it to detect a duplicate
-            // create request whose original response was lost.
+            const jobsWithRef = await Promise.all(
+                res.jobs.map(async job => ({ ...job, client_ref: await computeClientRef(job) }))
+            )
             setParsedResult({
                 fileName: file.name,
                 time: `${elapsedSeconds.toFixed(1)} dtk`,
-                jobs: res.jobs.map(job => ({ ...job, client_ref: crypto.randomUUID() })),
+                jobs: jobsWithRef,
             })
             // Everything starts checked — reviewing is opt-out (uncheck what
             // you don't want), which matches what most packs need (mostly
