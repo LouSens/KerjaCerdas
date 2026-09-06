@@ -165,6 +165,10 @@ async def upload_job_pack(
             salary_min=int(p.get("salary_min") or 0),
             salary_max=int(p.get("salary_max") or 0),
             kbji_code=p.get("kbji_code", ""),
+            # Parsed postings land as drafts — the employer reviews and
+            # publishes each one explicitly (PATCH is_active=true) instead of
+            # every extracted entry going live the moment the PDF is parsed.
+            is_active=False,
         )
         await matcher.embed_job(job)
         await repos.jobs.upsert(job)

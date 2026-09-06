@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
 import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
+import { updateEmployerJob } from '../services/api'
 import { UploadCloud, CheckCircle2, ArrowRight } from 'lucide-react'
 
 export default function JobPackUploader() {
@@ -9,6 +10,7 @@ export default function JobPackUploader() {
     const [selectedFile, setSelectedFile] = useState(null)
     const [parsedResult, setParsedResult] = useState(null)
     const [dragActive, setDragActive] = useState(false)
+    const [publishing, setPublishing] = useState(false)
     const inputRef = useRef(null)
 
     const handleFile = async (file) => {
@@ -49,10 +51,31 @@ export default function JobPackUploader() {
         }
     }
 
-    const handleViewJobs = async () => {
-        await useStore.getState().refreshEmployerJobs()
-        toast.success(`${parsedResult?.jobs?.length || 0} lowongan berhasil dipublikasikan dan siap dikelola!`)
-        navigate('employer-jobs')
+    // Job-pack uploads land as unpublished drafts (`is_active: false`) so a
+    // batch of AI-parsed postings never goes live before the employer has
+    // actually reviewed them. This confirms the reviewed batch and publishes
+    // every job in it.
+    const handleConfirmPublish = async () => {
+        const jobs = parsedResult?.jobs || []
+        if (!jobs.length) return
+        setPublishing(true)
+        try {
+            const results = await Promise.allSettled(
+                jobs.map(job => updateEmployerJob(job.id, { is_active: true }))
+            )
+            const failedCount = results.filter(r => r.status === 'rejected').length
+            await useStore.getState().refreshEmployerJobs()
+            if (failedCount === 0) {
+                toast.success(`${jobs.length} lowongan berhasil dipublikasikan dan siap dikelola!`)
+            } else {
+                toast.error(`${jobs.length - failedCount} dari ${jobs.length} lowongan berhasil dipublikasikan. ${failedCount} gagal — coba lagi dari Kelola Lowongan.`)
+            }
+            navigate('employer-jobs')
+        } catch (e) {
+            toast.error('Gagal mempublikasikan lowongan: ' + (e.message || 'Terjadi kesalahan'))
+        } finally {
+            setPublishing(false)
+        }
     }
 
     return (
@@ -180,7 +203,7 @@ export default function JobPackUploader() {
 
                     <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 15, animation: 'kcSlideUp .35s .07s both' }}>
                         <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#059669', marginBottom: 12 }}>
-                            Daftar lowongan terunggah · tersimpan di database
+                            Daftar lowongan terurai · draf, menunggu konfirmasi publikasi
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {parsedResult.jobs.map((job, idx) => (
@@ -246,12 +269,13 @@ export default function JobPackUploader() {
                             ← Unggah Ulang
                         </button>
                         <button
-                            onClick={handleViewJobs}
+                            onClick={handleConfirmPublish}
+                            disabled={publishing}
                             className="kc-btn"
                             style={{
                                 flex: 1,
                                 padding: 14,
-                                background: KC.ink,
+                                background: publishing ? '#64748B' : KC.ink,
                                 border: `1.5px solid ${KC.ink}`,
                                 borderRadius: 11,
                                 boxShadow: `3px 3px 0 ${KC.orange}`,
@@ -261,11 +285,11 @@ export default function JobPackUploader() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                cursor: 'pointer',
+                                cursor: publishing ? 'wait' : 'pointer',
                                 animation: 'kcSlideUp .35s .14s both',
                             }}
                         >
-                            Buka Kelola Lowongan ({parsedResult.jobs.length}) →
+                            {publishing ? 'Mempublikasikan…' : `Konfirmasi & Publikasikan (${parsedResult.jobs.length}) →`}
                         </button>
                     </div>
                 </div>

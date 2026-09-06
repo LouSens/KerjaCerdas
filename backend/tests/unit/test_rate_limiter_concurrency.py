@@ -40,12 +40,35 @@ def _make_request(
 
 
 class TestClientIpResolution:
-    """`_get_client_ip` must keep ignoring X-Forwarded-For always (it's
-    client-forgeable)."""
+    """`_get_client_ip` trusts X-Real-IP only when the direct TCP peer is a
+    configured trusted-proxy network (our own Nginx sidecar) — never from an
+    arbitrary client, which could set the header itself to bypass throttling."""
 
-    def test_uses_the_tcp_peer(self) -> None:
-        request = _make_request("/", ip="10.0.0.1", headers=[(b"x-forwarded-for", b"203.0.113.9")])
-        assert _get_client_ip(request) == "10.0.0.1"
+    def test_untrusted_peer_is_never_overridden(self) -> None:
+        # A public-internet peer forging X-Real-IP must not be able to make
+        # every request appear to come from a different address.
+        request = _make_request("/", ip="203.0.113.9", headers=[(b"x-real-ip", b"1.2.3.4")])
+        assert _get_client_ip(request) == "203.0.113.9"
+
+    def test_untrusted_peer_ignores_x_forwarded_for_too(self) -> None:
+        request = _make_request("/", ip="203.0.113.9", headers=[(b"x-forwarded-for", b"1.2.3.4")])
+        assert _get_client_ip(request) == "203.0.113.9"
+
+    def test_trusted_proxy_peer_uses_x_real_ip(self) -> None:
+        # Our own Nginx (a private-network peer) sets X-Real-IP to the real
+        # client — this must be honored, or every proxied request collapses
+        # into one shared rate-limit bucket.
+        request = _make_request("/", ip="172.18.0.5", headers=[(b"x-real-ip", b"203.0.113.9")])
+        assert _get_client_ip(request) == "203.0.113.9"
+
+    def test_trusted_proxy_peer_without_header_falls_back_to_peer(self) -> None:
+        request = _make_request("/", ip="172.18.0.5")
+        assert _get_client_ip(request) == "172.18.0.5"
+
+    def test_distinct_clients_behind_trusted_proxy_get_distinct_ips(self) -> None:
+        a = _make_request("/", ip="172.18.0.5", headers=[(b"x-real-ip", b"203.0.113.9")])
+        b = _make_request("/", ip="172.18.0.5", headers=[(b"x-real-ip", b"198.51.100.1")])
+        assert _get_client_ip(a) != _get_client_ip(b)
 
 
 async def _ok(_request):

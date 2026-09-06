@@ -70,6 +70,22 @@ class Settings(BaseSettings):
     # ── JSON store root ──────────────────────────────────────────────────
     kerja_data_root: str = "data"
 
+    # ── Reverse proxy trust ──────────────────────────────────────────────
+    # X-Real-IP is only trusted as the client's address when the direct TCP
+    # peer is one of these networks — i.e. our own Nginx sidecar, never an
+    # arbitrary client (which could set the header itself to bypass rate
+    # limiting or spoof another user's bucket). Defaults cover the private
+    # ranges Docker Compose/most container platforms assign to internal
+    # service traffic; the backend is also reachable directly (see
+    # docker-compose.prod.yml exposing 8000), so untrusted peers still fall
+    # back to their own TCP-verified address.
+    trusted_proxy_cidrs: list[str] = [
+        "127.0.0.0/8",
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+    ]
+
     # ── CORS ─────────────────────────────────────────────────────────────
     cors_allow_origins: list[str] = [
         "http://localhost:3000",

@@ -37,6 +37,7 @@ SCALE-OUT:
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
 import time
 from collections import OrderedDict, deque
@@ -45,7 +46,22 @@ from fastapi import Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from backend.app.config.settings import settings
+
 logger = logging.getLogger(__name__)
+
+_TRUSTED_PROXY_NETWORKS = [
+    ipaddress.ip_network(cidr) for cidr in settings.trusted_proxy_cidrs
+]
+
+
+def _is_trusted_proxy(peer_ip: str) -> bool:
+    """True if the direct TCP peer is our own reverse proxy, not an arbitrary client."""
+    try:
+        addr = ipaddress.ip_address(peer_ip)
+    except ValueError:
+        return False
+    return any(addr in network for network in _TRUSTED_PROXY_NETWORKS)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -94,13 +110,26 @@ _STALE_AFTER_SECONDS = 3600
 def _get_client_ip(request: Request) -> str:
     """Extract the client IP.
 
-    X-Forwarded-For is intentionally never trusted here: it is a request
-    header that any client can set to an arbitrary value, which would allow
-    trivial rate-limit bypass (rotating the header on each request makes
-    every request appear to come from a distinct IP). The real peer address
-    reported by the TCP stack is the only trustworthy source.
+    X-Forwarded-For/X-Real-IP are request headers any client can set to an
+    arbitrary value, so trusting them unconditionally would allow trivial
+    rate-limit bypass (rotating the header on each request makes every
+    request appear to come from a distinct IP). But when every request is
+    proxied through our own Nginx (see frontend/nginx.conf.template), the
+    direct TCP peer is *always* the proxy's address — so keying purely off
+    ``request.client.host`` collapses every real client into one shared
+    bucket instead, throttling legitimate users together.
+
+    The forwarded address is trusted only when the immediate peer is inside
+    a configured trusted-proxy network (our own Nginx sidecar) — an external
+    client cannot make itself appear as that peer, so it cannot forge the
+    header past this check.
     """
-    return request.client.host if request.client else "unknown"
+    peer = request.client.host if request.client else "unknown"
+    if peer != "unknown" and _is_trusted_proxy(peer):
+        forwarded = request.headers.get("x-real-ip")
+        if forwarded:
+            return forwarded.strip()
+    return peer
 
 
 def _get_bucket(path: str) -> tuple[str, int, int]:

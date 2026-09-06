@@ -50,13 +50,14 @@ export default function VerificationDashboard() {
             return
         }
         const institution = profile?.education?.[0]?.institution
-        if (!institution) {
+        const major = profile?.education?.[0]?.major
+        if (!institution || !major) {
             toast.error('Riwayat pendidikan belum terisi di profil Anda. Lengkapi profil terlebih dahulu.')
             return
         }
         setIjazahChecking(true)
         try {
-            const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), institution_name: institution })
+            const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), university_name: institution, major })
             if (res?.status === 'VERIFIED') {
                 setIjazahVerified(true)
                 toast.success('Format nomor ijazah tervalidasi!')
