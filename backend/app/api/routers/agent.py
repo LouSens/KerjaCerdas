@@ -358,6 +358,19 @@ async def invoke_agent(
             "Berikut lowongan yang paling cocok dengan profilmu. "
             "Asisten AI sedang sibuk, jadi penjelasan detail belum tersedia — coba lagi sebentar lagi."
         )
+    except RuntimeError:
+        # No Gemini auth configured (see llm_factory.build_chat_llm) — a
+        # deployment/config problem, not throttling, but the user-facing
+        # outcome is the same: degrade to matches without an LLM narrative
+        # instead of a raw 500.
+        logger.error(
+            "llm_unconfigured seeker=%s — returning matches without LLM narrative", seeker.id
+        )
+        out = {}
+        final_response = (
+            "Berikut lowongan yang paling cocok dengan profilmu. "
+            "Asisten AI belum dikonfigurasi — penjelasan detail belum tersedia."
+        )
 
     # --- Enrich matches with job metadata --------------------------------
     seeker_skill_names = [s.name for s in (seeker.skills or [])]

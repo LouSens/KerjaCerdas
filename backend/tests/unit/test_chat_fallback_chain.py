@@ -56,8 +56,14 @@ class _FakeGeminiLLM(Runnable):
 
 
 @pytest.fixture
-def fake_gemini():
+def fake_gemini(monkeypatch: pytest.MonkeyPatch):
+    """These tests exercise the fallback/circuit-breaker logic in isolation
+    from real auth (ChatGoogleGenerativeAI itself is replaced by the fake
+    below), so build_chat_llm's "no key configured" guard must not fire here —
+    give it a dummy key that satisfies the guard without touching any real
+    credential resolution."""
     llm_factory.reset_breaker()
+    monkeypatch.setattr(llm_factory.settings, "gemini_api_key", "test-key")
     with patch.object(llm_factory, "ChatGoogleGenerativeAI", _FakeGeminiLLM):
         yield _FakeGeminiLLM
     llm_factory.reset_breaker()

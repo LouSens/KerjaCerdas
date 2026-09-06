@@ -68,7 +68,7 @@ class TestSecretHygiene:
         assert not hits, f"credentials committed: {hits}"
 
     def test_env_file_is_gitignored(self) -> None:
-        ignored = (REPO_ROOT / ".gitignore").read_text()
+        ignored = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
         assert re.search(r"^\.env$", ignored, re.M), ".env is not gitignored"
 
     def test_no_dotenv_is_tracked(self) -> None:
@@ -80,7 +80,7 @@ class TestSecretHygiene:
         assert not [f for f in tracked if f.endswith(".env")]
 
     def test_env_example_carries_no_real_values(self) -> None:
-        text = (REPO_ROOT / ".env.example").read_text()
+        text = (REPO_ROOT / ".env.example").read_text(encoding="utf-8")
         for line in text.splitlines():
             if "=" not in line or line.strip().startswith("#"):
                 continue
@@ -100,7 +100,7 @@ class TestSecretHygiene:
         hits = [
             f"{p.relative_to(REPO_ROOT)}:{i}"
             for p in app_dir.rglob("*.py")
-            for i, line in enumerate(p.read_text().splitlines(), 1)
+            for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
             if bad.search(line)
         ]
         assert not hits, f"hardcoded secrets: {hits}"
@@ -109,7 +109,7 @@ class TestSecretHygiene:
 class TestSecretConfiguration:
     def test_production_refuses_to_start_without_a_jwt_secret(self) -> None:
         """The lifespan raises rather than minting an ephemeral prod secret."""
-        source = (REPO_ROOT / "backend/app/api/main.py").read_text()
+        source = (REPO_ROOT / "backend/app/api/main.py").read_text(encoding="utf-8")
         assert 'raise RuntimeError("JWT_SECRET_KEY must be set in production")' in source
 
     def test_settings_ship_no_default_secret(self) -> None:
@@ -274,7 +274,7 @@ class TestSqlInjection:
         hits = [
             f"{p.relative_to(REPO_ROOT)}:{i}"
             for p in app_dir.rglob("*.py")
-            for i, line in enumerate(p.read_text().splitlines(), 1)
+            for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
             if dangerous.search(line)
         ]
         assert not hits, f"dynamically built SQL: {hits}"
@@ -285,7 +285,7 @@ class TestSqlInjection:
         hits = [
             f"{p.relative_to(REPO_ROOT)}:{i}"
             for p in app_dir.rglob("*.py")
-            for i, line in enumerate(p.read_text().splitlines(), 1)
+            for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
             if dangerous.search(line)
         ]
         assert not hits, f"f-string passed to execute(): {hits}"
@@ -487,13 +487,13 @@ class TestPiiHandling:
         """/verify/identity is an interface-only mock with no verification
         service behind it (see its docstring) — it must not write the raw
         NIK, or any form of it, to storage at all."""
-        source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text()
+        source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text(encoding="utf-8")
         assert "seeker.nik = req.nik" not in source
         assert "seeker.nik = nik_hash" not in source
         assert "seekers.upsert" not in source
 
     def test_otp_codes_are_stored_only_as_hashes(self) -> None:
-        source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text()
+        source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text(encoding="utf-8")
         assert "code_hash=code_hash" in source
         assert "code_hash=code," not in source
 
@@ -655,13 +655,13 @@ class TestAiLayerSecurity:
         assert llm_factory._breaker_remaining() <= 0
         llm_factory.reset_breaker()
 
-    def test_building_a_chat_llm_without_a_key_raises_a_validation_error(
+    def test_building_a_chat_llm_without_a_key_raises_cleanly(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """GAP: a missing key surfaces as a pydantic ValidationError at build
-        time, before any LLMBusyError degrade path can run."""
-        import pydantic
-
+        """A missing key must fail immediately with a clear RuntimeError — not
+        fall through to ChatGoogleGenerativeAI's Application Default
+        Credentials discovery, which this deployment never configures and
+        which crashes with a confusing DefaultCredentialsError instead."""
         from backend.app.config.settings import settings
         from backend.app.services import llm_factory
 
@@ -669,10 +669,10 @@ class TestAiLayerSecurity:
         monkeypatch.setattr(settings, "gemini_api_key", "")
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-        with pytest.raises(pydantic.ValidationError):
+        with pytest.raises(RuntimeError, match="No Gemini auth configured"):
             llm_factory.build_chat_llm()
 
-    def test_agent_endpoint_500s_when_no_api_key_is_configured(
+    def test_agent_endpoint_degrades_when_no_api_key_is_configured(
         self,
         client: TestClient,
         seeker_account: dict,
@@ -681,8 +681,11 @@ class TestAiLayerSecurity:
         stub_embedder,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """GAP: with no Gemini key the chat bubble raises instead of degrading
-        to the deterministic match list it already computed."""
+        """With no Gemini key, the chat bubble must degrade to the
+        deterministic match list it already computed instead of 500ing —
+        build_chat_llm now fails fast with a RuntimeError (rather than
+        falling through to a confusing ADC lookup), and the endpoint catches
+        that alongside LLMBusyError/GraphRecursionError."""
         from backend.app.agents.graph import builder
         from backend.app.config.settings import settings
         from backend.app.services import llm_factory
@@ -693,15 +696,15 @@ class TestAiLayerSecurity:
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         monkeypatch.setattr(builder, "_graph_v2", None)
 
-        with pytest.raises(Exception) as exc:
-            client.post(
-                "/api/v1/agent/invoke",
-                json={"user_message": "cari kerja"},
-                headers=seeker_account["headers"],
-            )
-        assert "LLMBusyError" not in type(exc.value).__name__, (
-            "the missing-key case now degrades cleanly — update this test"
+        resp = client.post(
+            "/api/v1/agent/invoke",
+            json={"user_message": "cari kerja"},
+            headers=seeker_account["headers"],
         )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["matches"], "deterministic matches must survive an unconfigured LLM"
+        assert data["final_response"]
 
     @pytest.mark.parametrize(
         ("message", "is_availability"),
