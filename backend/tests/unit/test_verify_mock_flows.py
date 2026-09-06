@@ -104,10 +104,18 @@ class TestIdentityEndpoint:
         )
         assert resp.status_code == 422
 
-    def test_only_the_hash_is_persisted_on_the_profile(
+    def test_raw_nik_never_reaches_storage(
         self, client: TestClient, seeker_account: dict
     ) -> None:
-        """UU-PDP-2022: the raw NIK must never reach storage."""
+        """UU-PDP-2022: the raw NIK must never reach storage.
+
+        /verify/identity is an interface-only mock for a verification
+        microservice that doesn't exist yet (see verify.py's docstring) —
+        it persists nothing server-side at all, which trivially satisfies
+        this, but is pinned explicitly so a future re-introduction of
+        persistence is forced to go through this test rather than silently
+        storing the plaintext NIK again.
+        """
         client.post(
             "/api/v1/seeker/profile",
             json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
@@ -124,25 +132,27 @@ class TestIdentityEndpoint:
         if stored_nik:
             assert stored_nik == hashlib.sha256(VALID_NIK.encode()).hexdigest()
 
-    def test_verified_status_survives_a_profile_reload(
+    def test_verified_status_is_not_persisted_server_side(
         self, client: TestClient, seeker_account: dict
     ) -> None:
-        """A successful check must be readable back from GET /seeker/profile —
-        not just held in the response of the verify call itself — since the
-        frontend re-derives displayed status from a fresh profile fetch on
-        every reload."""
+        """/verify/identity is a demo-mode interface mock, not a real
+        verification service — its VERIFIED response must not be written to
+        the seeker's stored profile. The frontend is responsible for
+        remembering a completed check (see useStore.js / VerificationDashboard),
+        not this endpoint."""
         client.post(
             "/api/v1/seeker/profile",
             json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
             headers=seeker_account["headers"],
         )
-        client.post(
+        verify_resp = client.post(
             "/api/v1/verify/identity",
             json={"nik": VALID_NIK, "full_name": "Budi Santoso"},
             headers=seeker_account["headers"],
         )
+        assert verify_resp.json()["status"] == "VERIFIED"
         profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
-        assert profile["nik_verified"] == "verified"
+        assert profile["nik_verified"] == "unverified"
 
 
 # ── /verify/otp/* endpoints ──────────────────────────────────────────────────
@@ -340,21 +350,26 @@ class TestEducationAndNpwpMocks:
         )
         assert resp.status_code == 422
 
-    def test_education_verified_survives_a_profile_reload(
+    def test_education_verified_is_not_persisted_server_side(
         self, client: TestClient, seeker_account: dict
     ) -> None:
+        """/verify/education is a demo-mode interface mock, not a real SIVIL
+        integration — its VERIFIED response must not be written to the
+        seeker's stored profile (see verify.py's docstring). The frontend
+        remembers a completed check itself (useStore.js / VerificationDashboard)."""
         client.post(
             "/api/v1/seeker/profile",
             json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
             headers=seeker_account["headers"],
         )
-        client.post(
+        verify_resp = client.post(
             "/api/v1/verify/education",
             json={"ijazah_number": "IJZ-123", "university_name": "UI", "major": "TI"},
             headers=seeker_account["headers"],
         )
+        assert verify_resp.json()["status"] == "VERIFIED"
         profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
-        assert profile["ijazah_verified"] == "verified"
+        assert profile["ijazah_verified"] == "unverified"
 
     @pytest.mark.parametrize(
         ("npwp", "expected"),

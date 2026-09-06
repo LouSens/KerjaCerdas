@@ -51,7 +51,7 @@ export default function SeekerDashboard() {
     const cvDone = Boolean(profile?.has_cv || profile?.resume_url || profile?.skills?.length > 0)
     const skillsDone = Boolean((profile?.skills?.length || 0) > 0)
     const ktpDone = Boolean(profile?.ktp_verified)
-    const diktiDone = Boolean(profile?.degree_verified)
+    const diktiDone = Boolean(profile?.ijazah_verified)
 
     const matchCount = matches.length
     const gapCount = missingSkills.length

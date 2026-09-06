@@ -8,15 +8,22 @@ import { verifyIdentity, verifyEducation } from '../services/api'
 import toast from 'react-hot-toast'
 
 export default function VerificationDashboard() {
-    const { profile, loadSeekerProfile } = useStore()
-    const [ktpVerified, setKtpVerified] = useState(profile?.ktp_verified || false)
+    // ktp_verified/ijazah_verified live entirely in this persisted store —
+    // there is no real verification backend behind /verify/* yet (see
+    // backend/app/api/routers/verify.py), so reading them directly here
+    // (instead of snapshotting into local state) is what keeps this
+    // dashboard and SeekerDashboard's checklist showing the same value,
+    // and what makes a completed check survive a reload (the store persists
+    // to localStorage; the "backend" mock does not persist anything).
+    const { profile, updateProfile } = useStore()
+    const ktpVerified = Boolean(profile?.ktp_verified)
+    const ijazahVerified = Boolean(profile?.ijazah_verified)
     const [ktpChecking, setKtpChecking] = useState(false)
     const [nikInput, setNikInput] = useState('')
-    // The backend only ever stores a SHA-256 hash of the NIK (UU-PDP-2022
-    // compliance) — the plaintext never round-trips back from the server,
-    // so this is the only copy of it that can be shown for confirmation.
+    // Never stored anywhere, not even locally — this is only held in memory
+    // long enough to show a masked confirmation right after a successful
+    // check, matching the backend's own refusal to retain the raw NIK.
     const [verifiedNikDisplay, setVerifiedNikDisplay] = useState('')
-    const [ijazahVerified, setIjazahVerified] = useState(profile?.ijazah_verified || false)
     const [ijazahInput, setIjazahInput] = useState('')
     const [ijazahChecking, setIjazahChecking] = useState(false)
     const phoneVerified = Boolean(profile?.phone_verified)
@@ -40,11 +47,10 @@ export default function VerificationDashboard() {
         try {
             const res = await verifyIdentity({ nik, full_name: fullName })
             if (res?.status === 'VERIFIED') {
-                setKtpVerified(true)
+                updateProfile({ ktp_verified: true })
                 setVerifiedNikDisplay(nik)
                 setNikInput('')
                 toast.success('NIK berhasil divalidasi!')
-                await loadSeekerProfile()
             } else {
                 toast.error(res?.message || 'Verifikasi NIK gagal')
             }
@@ -70,9 +76,8 @@ export default function VerificationDashboard() {
         try {
             const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), university_name: institution, major })
             if (res?.status === 'VERIFIED') {
-                setIjazahVerified(true)
+                updateProfile({ ijazah_verified: true })
                 toast.success('Format nomor ijazah tervalidasi!')
-                await loadSeekerProfile()
             } else {
                 toast.error(res?.message || 'Format nomor ijazah tidak valid')
             }

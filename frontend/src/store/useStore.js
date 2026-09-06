@@ -224,8 +224,17 @@ const useStore = create(
             loadSeekerProfile: async () => {
                 try {
                     const data = await fetchSeekerProfile()
-                    set({
+                    // Verification (KTP/ijazah/phone) has no real backend behind it yet
+                    // — /verify/* are interface-only mocks with nothing persisted
+                    // server-side (see backend/app/api/routers/verify.py). ktp_verified
+                    // and ijazah_verified are therefore set locally by
+                    // VerificationDashboard via updateProfile and kept here by merging
+                    // into the existing profile instead of replacing it wholesale —
+                    // overwriting with backend fields would silently reset them to
+                    // false on every reload.
+                    set((s) => ({
                         profile: {
+                            ...s.profile,
                             full_name: data.full_name || '',
                             headline: data.headline || '',
                             region_code: data.region_code || '3171',
@@ -234,17 +243,9 @@ const useStore = create(
                             education: data.education || [],
                             salary_expectation_min: data.salary_expectation_min || 0,
                             salary_expectation_max: data.salary_expectation_max || 0,
-                            // Verification status from backend — the API exposes these as
-                            // VerificationStatus strings (nik_verified / ijazah_verified),
-                            // not the ktp_verified/phone_verified names this store's own
-                            // consumers use, so they must be translated here rather than
-                            // passed through as-is (which always resolved to undefined).
-                            ktp_verified: data.nik_verified === 'verified',
-                            ijazah_verified: data.ijazah_verified === 'verified',
-                            phone_verified: data.phone_verified || false,
                         },
                         seekerId: data.id,
-                    })
+                    }))
                 } catch (err) {
                     // Profile doesn't exist yet (404) is expected for new users
                     if (err?.status && err.status !== 404) {

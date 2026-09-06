@@ -23,18 +23,32 @@ export default function JobPackUploader() {
         return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('')
     }
 
-    // Deriving the token from the PARSED job text (title/description/etc.)
-    // doesn't actually survive the real retry path: extraction goes through
-    // Gemini at parser_temperature 0.1, so re-uploading the exact same PDF
-    // after a lost response can come back with slightly different wording
-    // and mint a different token, defeating the whole point. The one thing
-    // that IS identical between the original attempt and the retry is the
-    // PDF file itself, so the token is derived from the file's own bytes —
-    // hashed once per upload — combined with each job's position in the
-    // pack (job order does vary slightly less than free text, and is a
-    // strictly better anchor than re-hashing whatever text came back).
-    const computeClientRef = async (fileHash, job) =>
-        sha256Hex(new TextEncoder().encode(`${fileHash}:${job.local_id}`))
+    // Anchoring the token to the job's ARRAY POSITION (local_id) breaks the
+    // moment a retry's re-parse reorders, inserts, or omits a posting —
+    // Gemini extraction (parser_temperature 0.1) isn't guaranteed to return
+    // postings in the same order or count on a second pass, so "position 0"
+    // can silently become a different posting between attempts: the retry
+    // then either creates a duplicate under a new id, or collides with an
+    // unrelated posting that happens to now occupy the old position.
+    // Anchoring to the parsed TEXT (title/description/etc. verbatim) has the
+    // opposite problem — free-text fields are exactly what an LLM is most
+    // likely to reword between parses. Title, region and salary sit in
+    // between: short, and normally copied near-verbatim from a heading/line
+    // in the source document rather than summarized, so they're far more
+    // likely to come back identical across re-parses than full prose while
+    // still identifying the specific posting (unlike a raw index). Combined
+    // with the file's own hash, this reproduces the same token for the same
+    // logical posting across retries without depending on parse order.
+    const computeClientRef = async (fileHash, job) => {
+        const identity = [
+            fileHash,
+            (job.title || '').trim().toLowerCase(),
+            job.region_code || '',
+            job.salary_min ?? '',
+            job.salary_max ?? '',
+        ].join(':')
+        return sha256Hex(new TextEncoder().encode(identity))
+    }
 
     const toggleJobChecked = (localId) => {
         setCheckedIds(prev => {

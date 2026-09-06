@@ -483,10 +483,14 @@ class TestTenantIsolation:
 
 
 class TestPiiHandling:
-    def test_nik_is_stored_only_as_a_hash(self) -> None:
+    def test_nik_is_never_persisted_raw_or_hashed(self) -> None:
+        """/verify/identity is an interface-only mock with no verification
+        service behind it (see its docstring) — it must not write the raw
+        NIK, or any form of it, to storage at all."""
         source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text()
-        assert "seeker.nik = nik_hash" in source
         assert "seeker.nik = req.nik" not in source
+        assert "seeker.nik = nik_hash" not in source
+        assert "seekers.upsert" not in source
 
     def test_otp_codes_are_stored_only_as_hashes(self) -> None:
         source = (REPO_ROOT / "backend/app/api/routers/verify.py").read_text()

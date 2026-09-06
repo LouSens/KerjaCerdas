@@ -10,8 +10,6 @@ from backend.app.api.dependencies import get_current_user
 from backend.app.api.services.identity_verifier import MockIdentityVerificationService
 from backend.app.config.settings import settings
 from backend.app.db.models import OTPRecord, User
-from backend.app.db.postgres_store import find_seeker_by_user_id, get_repositories
-from backend.app.db.schemas import VerificationStatus
 from backend.app.db.session import async_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -52,21 +50,19 @@ class EkycReq(BaseModel):
 
 @router.post("/identity")
 async def verify_identity(req: EkycReq, current_user: User = Depends(get_current_user)) -> dict:
-    """Verify Indonesian NIK identity.
+    """Mock e-KYC identity check (demo mode — no real Dukcapil integration).
 
-    Stores ONLY the SHA-256 hash of the NIK in compliance with UU-PDP-2022.
+    This endpoint, like /education and /npwp below, is a placeholder for a
+    verification microservice that doesn't exist yet — it is not wired to
+    any government registry and its result is not persisted server-side.
+    The frontend interface is what's demoed here, not a real, durable
+    "verified" credential; nothing here should be read as a security
+    control. The raw NIK is never stored (UU-PDP-2022) — not even hashed,
+    since there is no legitimate reason to retain it once this response is
+    returned.
     """
     nik_hash = _hash_token(req.nik)
     r = MockIdentityVerificationService.verify_identity(nik=req.nik, full_name=req.full_name)
-
-    if r["is_valid"]:
-        # Update seeker profile if exists
-        seeker = await find_seeker_by_user_id(current_user.id)
-        if seeker:
-            seeker.nik = nik_hash
-            seeker.nik_verified = VerificationStatus.VERIFIED
-            repos = get_repositories()
-            await repos.seekers.upsert(seeker)
 
     return {
         "request_id": str(uuid.uuid4()),
@@ -103,16 +99,10 @@ def _looks_like_placeholder(value: str) -> bool:
 @router.post("/education")
 async def verify_education(req: SivilReq, current_user: User = Depends(get_current_user)) -> dict:
     """Mock SIVIL diploma-number format check (demo mode — no real SIVIL
-    integration; the mirror of verify_identity's NIK mock above)."""
+    integration; the mirror of verify_identity's NIK mock above). Not
+    persisted server-side — see verify_identity's docstring."""
     ijazah_number = req.ijazah_number.strip()
     ok = len(ijazah_number) >= 6 and not _looks_like_placeholder(ijazah_number)
-
-    if ok:
-        seeker = await find_seeker_by_user_id(current_user.id)
-        if seeker:
-            seeker.ijazah_verified = VerificationStatus.VERIFIED
-            repos = get_repositories()
-            await repos.seekers.upsert(seeker)
 
     return {
         "request_id": str(uuid.uuid4()),
