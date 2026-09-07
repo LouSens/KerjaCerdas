@@ -34,28 +34,41 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.create_table(
-        "job_pack_parse_cache",
-        sa.Column("cache_key", sa.String(length=64), primary_key=True),
-        sa.Column("employer_id", sa.String(length=36), nullable=False),
-        sa.Column("postings", sa.JSON(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-    )
-    op.create_index(
-        "ix_job_pack_parse_cache_employer_id",
-        "job_pack_parse_cache",
-        ["employer_id"],
-    )
-    op.create_index(
-        "ix_job_pack_parse_cache_created_at",
-        "job_pack_parse_cache",
-        ["created_at"],
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    # Publishing can create ORM tables before Alembic runs. Keep this
+    # migration replay-safe so startup does not fail with DuplicateTableError
+    # when the publish schema already contains this table.
+    if not inspector.has_table("job_pack_parse_cache"):
+        op.create_table(
+            "job_pack_parse_cache",
+            sa.Column("cache_key", sa.String(length=64), primary_key=True),
+            sa.Column("employer_id", sa.String(length=36), nullable=False),
+            sa.Column("postings", sa.JSON(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.text("now()"),
+            ),
+        )
+
+    existing_indexes = {
+        index["name"] for index in inspector.get_indexes("job_pack_parse_cache")
+    }
+    if "ix_job_pack_parse_cache_employer_id" not in existing_indexes:
+        op.create_index(
+            "ix_job_pack_parse_cache_employer_id",
+            "job_pack_parse_cache",
+            ["employer_id"],
+        )
+    if "ix_job_pack_parse_cache_created_at" not in existing_indexes:
+        op.create_index(
+            "ix_job_pack_parse_cache_created_at",
+            "job_pack_parse_cache",
+            ["created_at"],
+        )
 
 
 def downgrade() -> None:
