@@ -64,9 +64,9 @@ async def _require_owned_job(repos, current_user: User, job_id: str) -> tuple[Jo
     find_candidates, unlock_candidate). Repeating "load resource, then check
     job.employer_id == employer.id" by hand at each new endpoint means a
     future endpoint can forget it — that was a real P0 cross-tenant finding
-    in this codebase's history (see docs/KNOWN_ISSUES.md). Routing every
-    caller through one function turns "correct everywhere it happens to be
-    checked" into "correct by construction".
+    in this codebase's history, now fixed. Routing every caller through one
+    function turns "correct everywhere it happens to be checked" into
+    "correct by construction".
     """
     job = await repos.jobs.get(job_id)
     if not job:

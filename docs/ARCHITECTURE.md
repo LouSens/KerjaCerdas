@@ -47,13 +47,13 @@ Matching, skill-gap computation, and intent routing run as procedural Python in 
 
 | Layer | Component | Notes |
 |---|---|---|
-| Frontend | React 18 + Vite + React Router + Zustand, persisted to `localStorage` (key `kerjacerdas-v4`) | SPA with JWT-aware route guards, 27 components |
+| Frontend | React 18 + Vite + React Router + Zustand, persisted to `localStorage` (key `kerjacerdas-v4`) | SPA with JWT-aware route guards, 25 components |
 | Backend | FastAPI (async), JWT auth, role-based dependencies, custom sliding-window `RateLimiterMiddleware` (in-memory by default) | 10 routers under one `/api/v1` prefix |
 | Database | PostgreSQL 16 + `pgvector` (HNSW), Alembic migrations | Alembic-managed schema; an RLS migration exists but defines no policies yet |
 | Model/API | Google Gemini (3.1 Flash) for embeddings + generation | Live calls, with an offline fallback stub on failure |
 | External integration | Curated static course catalogue (35+ items); demo-mode OTP/NIK/NPWP checks | Government/e-KYC and payment integrations (Dukcapil, SIVIL, DJP, WhatsApp/SMS OTP, Midtrans/Xendit) require external contracts and are not wired in this build |
 | Infrastructure | Docker Compose (dev + `docker-compose.prod.yml`), GitHub Actions CI (`ci.yml`) + release image publishing (`release.yml`) | CI runs backend lint, audit, and a build gate; container images publish to GHCR on tagged release |
-| Testing | 24 backend test files (pytest); 2 frontend test files (`api.test.js` unit, `auth.spec.js` e2e) | Covers auth and the API client; component/integration coverage for matching UI, uploads, and verification flows is thin relative to the 27-component frontend |
+| Testing | 20 backend test files (pytest); 2 frontend test files (`api.test.js` unit, `auth.spec.js` e2e) | Covers auth and the API client; component/integration coverage for matching UI, uploads, and verification flows is thin relative to the 25-component frontend |
 
 ## Verification & Payments — Demo Mode
 
@@ -91,4 +91,4 @@ These are demo-mode by design so the surrounding product flow (verification badg
 - An A/B experiment analysis dashboard and model fine-tuning feedback loop
 - Automated VPS deployment from CI (the release workflow publishes images; deployment to the VPS is manual)
 
-See [Known Issues](KNOWN_ISSUES.md) for architectural debt and open bugs.
+Architectural debt and open bugs are tracked inline as code comments at the relevant call sites (e.g. `backend/app/api/routers/employer.py`) rather than in a separate standing document.

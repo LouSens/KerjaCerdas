@@ -268,7 +268,7 @@ class TestRouting:
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Once a public tunnel/domain is in front of the API, the full route
-        and schema surface must not be browsable by default (see docs/KNOWN_ISSUES.md)."""
+        and schema surface must not be browsable by default."""
         from backend.app.api.main import settings as main_settings
 
         monkeypatch.setattr(main_settings, "app_env", "production")

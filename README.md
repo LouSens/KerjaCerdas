@@ -215,7 +215,12 @@ Platform ini diorkestrasi sepenuhnya menggunakan Docker. Jalankan perintah berik
 docker compose up --build
 ```
 > [!NOTE]
-> Proses ini akan mengunduh *image* yang diperlukan, meng-kompilasi *frontend* React, membangun *backend* FastAPI, serta menjalankan PostgreSQL 16 lengkap dengan ekstensi `pgvector`. Basis data akan secara **otomatis terisi** dengan 21 lowongan pekerjaan asli Indonesia dan 20 kandidat (via skrip `init.sql`). Tunggu hingga terminal menampilkan log bahwa *backend* dan *frontend* telah siap (biasanya memakan waktu 1-3 menit).
+> Proses ini akan mengunduh *image* yang diperlukan, meng-kompilasi *frontend* React, membangun *backend* FastAPI, serta menjalankan PostgreSQL 16 lengkap dengan ekstensi `pgvector` (skema dikelola oleh Alembic). Tunggu hingga terminal menampilkan log bahwa *backend* dan *frontend* telah siap (biasanya memakan waktu 1-3 menit).
+
+Basis data dimulai **kosong** — jalankan skrip seed Python sekali untuk mengisi data demo (lowongan, kandidat, dan kursus berbasis pasar kerja Indonesia nyata):
+```powershell
+docker compose exec api env SEED_DEFAULT_PASSWORD=demo python -m scripts.seed_all
+```
 
 ### Langkah 3 — Akses Lingkungan Demo
 Setelah semua kontainer berjalan (*healthy*), buka tautan berikut di *browser*:
@@ -507,16 +512,12 @@ KerjaCerdas/
 │   ├── seed_seekers.py       # Data Kandidat
 │   └── seed_courses.py       # Data Kursus
 │
-├── database/                 # Basis Data
-│   └── init.sql              # Dump awal PostgreSQL (pgvector)
-│
 ├── docs/                     # Dokumentasi Resmi
 │   ├── ARCHITECTURE.md       # Arsitektur Sistem & Pemetaan 3-Layer (UX/Logic/Infra)
 │   ├── PRODUCT_OVERVIEW.md   # Masalah, Pengguna, Use Case, Model Bisnis Ringkas, Tim
 │   ├── PRODUCT_FEATURES.md   # Deskripsi Detail Fitur Utama Produk
 │   ├── BUSINESS_MODEL.md     # Dokumen Detail Keuangan, Arus Kas & Anggaran Pre-Seed
 │   ├── ROADMAP.md            # Roadmap Teknis, A/B Testing & Skalabilitas Cloud
-│   ├── KNOWN_ISSUES.md       # Utang Teknis & Prioritas Perbaikan
 │   ├── DEMO_GUIDE.md         # Panduan Live Demo
 │   ├── DEMO_ACCOUNTS.md      # Daftar Akun Pengujian (Pre-Seeded)
 │   ├── API_SPEC.md           # Spesifikasi API Lengkap (semua endpoint + schema)
@@ -538,7 +539,6 @@ Seluruh dokumentasi produk, teknis, dan bisnis ada di folder `docs/`. Mulai dari
 | **Fitur Produk** | Uraian mendalam kapabilitas AI, Explainable AI, Phone OTP, Job Pack Uploader, dan pelacakan lamaran. | [PRODUCT_FEATURES.md](docs/PRODUCT_FEATURES.md) |
 | **Model Bisnis** | Model monetisasi, budget operasional, peta pemicu upgrade infrastruktur, dan proyeksi finansial. | [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) |
 | **Roadmap** | Roadmap infrastruktur cloud, A/B testing, integrasi mitra, dan roadmap algoritma matching/AI agent. | [ROADMAP.md](docs/ROADMAP.md) |
-| **Known Issues** | Utang teknis dan bug terbuka, disitasi ke file kode, dengan prioritas perbaikan. | [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) |
 | **Panduan Live Demo** | Skrip presentasi langkah demi langkah untuk alur seeker dan employer. | [DEMO_GUIDE.md](docs/DEMO_GUIDE.md) |
 | **Akun Demo** | Daftar seluruh akun uji coba (*pre-seeded credentials*). | [DEMO_ACCOUNTS.md](docs/DEMO_ACCOUNTS.md) |
 | **Spesifikasi API** | Kontrak lengkap semua endpoint FastAPI: skema request/response, rate limit, middleware, dan error codes. | [API_SPEC.md](docs/API_SPEC.md) |

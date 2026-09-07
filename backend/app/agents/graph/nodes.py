@@ -89,18 +89,26 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
 
 
 async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
-    """Match missing skills against the courses seeded into data/courses/*.json."""
+    """Match missing skills against the courses seeded into data/courses/*.json.
+
+    Matching goes through `_normalize_skill` so alias spellings ("Node.js" on
+    a job posting vs "Node" in a course's `skills_taught`) still hit — a raw
+    lowercase compare would silently drop those recommendations.
+    """
     try:
         from backend.app.db.postgres_store import get_repositories
+        from backend.app.services.matching.matcher import _normalize_skill
 
         repos = get_repositories()
         all_courses = await repos.courses.list()
-        missing_lower = {s.lower() for s in missing}
+        missing_canonical = {_normalize_skill(s) for s in missing}
         results: list[CourseRecommendation] = []
         seen: set[str] = set()
         for course in all_courses:
-            taught = {t.lower() for t in (getattr(course, "skills_taught", None) or [])}
-            if taught & missing_lower and course.name not in seen:
+            taught = {
+                _normalize_skill(t) for t in (getattr(course, "skills_taught", None) or [])
+            }
+            if taught & missing_canonical and course.name not in seen:
                 seen.add(course.name)
                 raw_price = getattr(course, "price", 0)
                 price_str = "Gratis" if not raw_price else f"Rp {raw_price:,}"
@@ -164,12 +172,16 @@ _COURSE_CATALOG: dict[str, tuple[str, str, str]] = {
 
 
 def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
-    """Fallback catalog lookup using case-insensitive partial match, prioritizing Dicoding."""
+    """Fallback catalog lookup, normalized through the matcher's canonical skill map
+    so alias spellings ("React.js" vs "react") still hit the curated entry instead
+    of falling through to the generic placeholder."""
+    from backend.app.services.matching.matcher import _normalize_skill
+
     results: list[CourseRecommendation] = []
     seen: set[str] = set()
 
     for skill in missing:
-        entry = _COURSE_CATALOG.get(skill.lower())
+        entry = _COURSE_CATALOG.get(_normalize_skill(skill))
         if entry and entry[0] not in seen:
             seen.add(entry[0])
             # Keep the catalogued provider — overwriting it misattributed

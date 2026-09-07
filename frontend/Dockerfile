@@ -3,7 +3,7 @@
 # static file server. Nothing here defaults to `dev` implicitly — every
 # caller (docker-compose.yml, the release workflow) must pass `target`
 # explicitly, so a build can never silently ship the dev server as "prod"
-# again (see docs/KNOWN_ISSUES.md).
+# again.
 
 FROM node:20-alpine AS base
 WORKDIR /app
