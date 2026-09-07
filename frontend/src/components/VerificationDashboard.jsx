@@ -38,8 +38,15 @@ export default function VerificationDashboard() {
 
     // Trust Score counts only genuine verification — a pending mock check
     // does not raise it. See the comment above for why.
+    //
+    // Denominator is 3, not 4: NPWP (the 4th card below) is employer-only
+    // and always renders as a static "N/A" badge on this seeker dashboard —
+    // it was never a step a seeker could complete, so including it in the
+    // denominator capped every fully-verified seeker at 75% and left the
+    // header permanently reporting an incomplete checklist.
+    const TOTAL_APPLICABLE_STEPS = 3
     const completedCount = (phoneVerified ? 1 : 0) + (ktpVerified ? 1 : 0) + (ijazahVerified ? 1 : 0)
-    const trustScore = Math.round((completedCount / 4) * 100)
+    const trustScore = Math.round((completedCount / TOTAL_APPLICABLE_STEPS) * 100)
 
     const handleSimulateKTP = async () => {
         const nik = nikInput.trim()
@@ -117,7 +124,7 @@ export default function VerificationDashboard() {
                     Verifikasi Identitas
                 </h1>
                 <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600 }}>
-                    {completedCount} dari 4 selesai · prioritas kurasi hingga 3× lipat
+                    {completedCount} dari {TOTAL_APPLICABLE_STEPS} selesai · prioritas kurasi hingga 3× lipat
                 </div>
             </div>
 

@@ -3,9 +3,14 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '')
-    // In Docker, VITE_API_URL is set to http://api:8000 via docker-compose.
-    // In local dev, it falls back to http://localhost:8000.
-    const apiTarget = env.VITE_API_URL || 'http://localhost:8000'
+    // API_PROXY_TARGET (not VITE_-prefixed) is this dev server's own proxy
+    // target — see its docker-compose.yml comment for why it must stay
+    // separate from VITE_API_URL, which api.js reads client-side to build
+    // an absolute fetch URL. Falling back to VITE_API_URL keeps this
+    // working for anyone with an older .env that only set that one: dev
+    // outside Docker with no proxy target configured at all falls back to
+    // localhost:8000, which the local Vite process can resolve directly.
+    const apiTarget = env.API_PROXY_TARGET || env.VITE_API_URL || 'http://localhost:8000'
 
     return {
         plugins: [react()],

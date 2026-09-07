@@ -58,8 +58,18 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Must be the Docker service name — Vite proxy runs inside the container
-      VITE_API_URL: http://api:8000
+      # NOT VITE_-prefixed on purpose: Vite exposes any VITE_*-prefixed env
+      # var to the CLIENT bundle via import.meta.env, and api.js reads
+      # VITE_API_URL to build an absolute fetch URL when it's set. The
+      # Docker service name "api" only resolves inside the Docker network —
+      # a browser on the host can never reach http://api:8000, so if this
+      # were VITE_API_URL the client would call it directly and every
+      # request would fail with "Failed to fetch" (this broke login
+      # entirely until fixed). This var is read server-side only, by
+      # vite.config.js's dev-server proxy (which DOES run inside the
+      # container and can resolve "api") — the browser is meant to call
+      # relative /api/* paths and let that proxy relay them.
+      API_PROXY_TARGET: http://api:8000
     volumes:
       - ./frontend/src:/app/src
     depends_on:
