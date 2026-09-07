@@ -344,6 +344,34 @@ async def update_seeker_embedding(
         await session.commit()
 
 
+async def update_seeker_verification_status(
+    seeker_id: str,
+    *,
+    nik_verified: str | None = None,
+    ijazah_verified: str | None = None,
+) -> None:
+    """Write only the given verification-status column(s) for a seeker.
+
+    Called from the (mock) `/verify/identity` and `/verify/education`
+    endpoints once they decide VERIFIED/FAILED, so that result survives a
+    reload or a login from another browser instead of living only in the
+    frontend's persisted store. Narrow UPDATE for the same race-avoidance
+    reason as `update_seeker_embedding` above — this must never overwrite
+    unrelated profile fields a concurrent request is editing.
+    """
+    values = {
+        k: v
+        for k, v in {"nik_verified": nik_verified, "ijazah_verified": ijazah_verified}.items()
+        if v is not None
+    }
+    if not values:
+        return
+    async with async_session() as session:
+        stmt = update(SeekerProfile).where(SeekerProfile.id == seeker_id).values(**values)
+        await session.execute(stmt)
+        await session.commit()
+
+
 async def find_employer_by_user_id(user_id: str) -> EmployerSchema | None:
     """Return an employer by their auth user_id (indexed, O(1))."""
     try:

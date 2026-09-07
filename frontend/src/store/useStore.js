@@ -215,14 +215,13 @@ const useStore = create(
             loadSeekerProfile: async () => {
                 try {
                     const data = await fetchSeekerProfile()
-                    // Verification (KTP/ijazah/phone) has no real backend behind it yet
-                    // — /verify/* are interface-only mocks with nothing persisted
-                    // server-side (see backend/app/api/routers/verify.py). ktp_verified
-                    // and ijazah_verified are therefore set locally by
-                    // VerificationDashboard via updateProfile and kept here by merging
-                    // into the existing profile instead of replacing it wholesale —
-                    // overwriting with backend fields would silently reset them to
-                    // false on every reload.
+                    // nik_verified/ijazah_verified now come from the backend
+                    // (backend/app/api/routers/verify.py persists the VERIFIED/FAILED
+                    // outcome to the seeker's own profile row), so the backend value is
+                    // the source of truth here — it survives a reload or a login from
+                    // another browser, unlike the old local-only flags. Phone
+                    // verification has no equivalent profile column yet, so
+                    // phone_verified still only ever comes from local state.
                     set((s) => ({
                         profile: {
                             ...s.profile,
@@ -234,6 +233,8 @@ const useStore = create(
                             education: data.education || [],
                             salary_expectation_min: data.salary_expectation_min || 0,
                             salary_expectation_max: data.salary_expectation_max || 0,
+                            ktp_verified: data.nik_verified === 'verified',
+                            ijazah_verified: data.ijazah_verified === 'verified',
                         },
                         seekerId: data.id,
                     }))

@@ -8,14 +8,13 @@ import { verifyIdentity, verifyEducation } from '../services/api'
 import toast from 'react-hot-toast'
 
 export default function VerificationDashboard() {
-    // ktp_verified/ijazah_verified live entirely in this persisted store —
-    // there is no real verification backend behind /verify/* yet (see
-    // backend/app/api/routers/verify.py), so reading them directly here
-    // (instead of snapshotting into local state) is what keeps this
-    // dashboard and SeekerDashboard's checklist showing the same value,
-    // and what makes a completed check survive a reload (the store persists
-    // to localStorage; the "backend" mock does not persist anything).
-    const { profile, updateProfile } = useStore()
+    // ktp_verified/ijazah_verified are derived from the backend's
+    // nik_verified/ijazah_verified columns (backend/app/api/routers/verify.py
+    // persists the VERIFIED/FAILED outcome to the seeker's own profile row),
+    // refreshed into the store by loadSeekerProfile. Reading them directly
+    // here (instead of snapshotting into local state) is what keeps this
+    // dashboard and SeekerDashboard's checklist showing the same value.
+    const { profile, updateProfile, loadSeekerProfile } = useStore()
     const ktpVerified = Boolean(profile?.ktp_verified)
     const ijazahVerified = Boolean(profile?.ijazah_verified)
     const [ktpChecking, setKtpChecking] = useState(false)
@@ -47,7 +46,12 @@ export default function VerificationDashboard() {
         try {
             const res = await verifyIdentity({ nik, full_name: fullName })
             if (res?.status === 'VERIFIED') {
+                // Optimistic local flip for instant feedback, then reconcile
+                // with the backend's now-durable nik_verified column so a
+                // reload or another device shows the same "Selesai" state
+                // instead of losing it.
                 updateProfile({ ktp_verified: true })
+                await loadSeekerProfile()
                 setVerifiedNikDisplay(nik)
                 setNikInput('')
                 toast.success('NIK berhasil divalidasi!')
@@ -77,6 +81,7 @@ export default function VerificationDashboard() {
             const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), university_name: institution, major })
             if (res?.status === 'VERIFIED') {
                 updateProfile({ ijazah_verified: true })
+                await loadSeekerProfile()
                 toast.success('Format nomor ijazah tervalidasi!')
             } else {
                 toast.error(res?.message || 'Format nomor ijazah tidak valid')

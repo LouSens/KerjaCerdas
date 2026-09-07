@@ -109,12 +109,11 @@ class TestIdentityEndpoint:
     ) -> None:
         """UU-PDP-2022: the raw NIK must never reach storage.
 
-        /verify/identity is an interface-only mock for a verification
-        microservice that doesn't exist yet (see verify.py's docstring) —
-        it persists nothing server-side at all, which trivially satisfies
-        this, but is pinned explicitly so a future re-introduction of
-        persistence is forced to go through this test rather than silently
-        storing the plaintext NIK again.
+        /verify/identity persists the VERIFIED/FAILED *outcome* to the
+        seeker's profile (nik_verified — see the persistence tests above),
+        but the raw NIK itself must never be part of that write. Pinned
+        explicitly so a future change can't silently start storing the
+        plaintext NIK alongside the status.
         """
         client.post(
             "/api/v1/seeker/profile",
@@ -132,14 +131,14 @@ class TestIdentityEndpoint:
         if stored_nik:
             assert stored_nik == hashlib.sha256(VALID_NIK.encode()).hexdigest()
 
-    def test_verified_status_is_not_persisted_server_side(
+    def test_verified_status_is_persisted_to_the_seeker_profile(
         self, client: TestClient, seeker_account: dict
     ) -> None:
-        """/verify/identity is a demo-mode interface mock, not a real
-        verification service — its VERIFIED response must not be written to
-        the seeker's stored profile. The frontend is responsible for
-        remembering a completed check (see useStore.js / VerificationDashboard),
-        not this endpoint."""
+        """/verify/identity is a demo-mode interface mock — the check itself
+        is not a real Dukcapil call — but its VERIFIED/FAILED *outcome* is
+        written to the seeker's own profile (nik_verified) so the badge
+        survives a reload or a login from another browser instead of living
+        only in the frontend's local store."""
         client.post(
             "/api/v1/seeker/profile",
             json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
@@ -152,7 +151,40 @@ class TestIdentityEndpoint:
         )
         assert verify_resp.json()["status"] == "VERIFIED"
         profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
-        assert profile["nik_verified"] == "unverified"
+        assert profile["nik_verified"] == "verified"
+
+    def test_failed_status_is_also_persisted(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """A failed check must durably record FAILED, not silently leave the
+        profile at unverified — otherwise the UI can't distinguish "never
+        tried" from "tried and failed"."""
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        verify_resp = client.post(
+            "/api/v1/verify/identity",
+            json={"nik": FAILING_NIK, "full_name": "Budi Santoso"},
+            headers=seeker_account["headers"],
+        )
+        assert verify_resp.json()["status"] == "FAILED"
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["nik_verified"] == "failed"
+
+    def test_persists_even_without_a_profile_yet(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """Calling /verify/identity before a profile exists must not 500 —
+        there's simply nothing to persist the outcome onto yet."""
+        resp = client.post(
+            "/api/v1/verify/identity",
+            json={"nik": VALID_NIK, "full_name": "Budi Santoso"},
+            headers=seeker_account["headers"],
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "VERIFIED"
 
 
 # ── /verify/otp/* endpoints ──────────────────────────────────────────────────
@@ -350,13 +382,13 @@ class TestEducationAndNpwpMocks:
         )
         assert resp.status_code == 422
 
-    def test_education_verified_is_not_persisted_server_side(
+    def test_education_verified_is_persisted_to_the_seeker_profile(
         self, client: TestClient, seeker_account: dict
     ) -> None:
-        """/verify/education is a demo-mode interface mock, not a real SIVIL
-        integration — its VERIFIED response must not be written to the
-        seeker's stored profile (see verify.py's docstring). The frontend
-        remembers a completed check itself (useStore.js / VerificationDashboard)."""
+        """/verify/education is a demo-mode interface mock — no real SIVIL
+        integration — but its VERIFIED/NOT_FOUND outcome is written to the
+        seeker's own profile (ijazah_verified) for the same durability reason
+        as /verify/identity above."""
         client.post(
             "/api/v1/seeker/profile",
             json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
@@ -369,7 +401,24 @@ class TestEducationAndNpwpMocks:
         )
         assert verify_resp.json()["status"] == "VERIFIED"
         profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
-        assert profile["ijazah_verified"] == "unverified"
+        assert profile["ijazah_verified"] == "verified"
+
+    def test_education_not_found_persists_as_failed(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        verify_resp = client.post(
+            "/api/v1/verify/education",
+            json={"ijazah_number": "000000", "university_name": "UI", "major": "TI"},
+            headers=seeker_account["headers"],
+        )
+        assert verify_resp.json()["status"] == "NOT_FOUND"
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["ijazah_verified"] == "failed"
 
     @pytest.mark.parametrize(
         ("npwp", "expected"),

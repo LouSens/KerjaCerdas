@@ -10,6 +10,7 @@ from backend.app.api.dependencies import get_current_user
 from backend.app.api.services.identity_verifier import MockIdentityVerificationService
 from backend.app.config.settings import settings
 from backend.app.db.models import OTPRecord, User
+from backend.app.db.postgres_store import find_seeker_by_user_id, update_seeker_verification_status
 from backend.app.db.session import async_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -54,24 +55,33 @@ async def verify_identity(req: EkycReq, current_user: User = Depends(get_current
 
     This endpoint, like /education and /npwp below, is a placeholder for a
     verification microservice that doesn't exist yet — it is not wired to
-    any government registry and its result is not persisted server-side.
-    The frontend interface is what's demoed here, not a real, durable
-    "verified" credential; nothing here should be read as a security
-    control. The raw NIK is never stored (UU-PDP-2022) — not even hashed,
-    since there is no legitimate reason to retain it once this response is
-    returned.
+    any government registry, and the format check itself is a mock, not a
+    real identity confirmation. What IS real: the VERIFIED/FAILED *outcome*
+    of that mock check is persisted to the seeker's own profile
+    (`nik_verified`), so the badge survives a reload or a login from another
+    browser instead of living only in the frontend's local store. The raw
+    NIK is never stored (UU-PDP-2022) — not even hashed, since there is no
+    legitimate reason to retain it once this response is returned; only the
+    pass/fail status is written.
     """
     nik_hash = _hash_token(req.nik)
     r = MockIdentityVerificationService.verify_identity(nik=req.nik, full_name=req.full_name)
+    is_valid = r["is_valid"]
+
+    seeker = await find_seeker_by_user_id(current_user.id)
+    if seeker:
+        await update_seeker_verification_status(
+            seeker.id, nik_verified="verified" if is_valid else "failed"
+        )
 
     return {
         "request_id": str(uuid.uuid4()),
-        "status": "VERIFIED" if r["is_valid"] else "FAILED",
+        "status": "VERIFIED" if is_valid else "FAILED",
         "match_percentage": r["match_score"],
         "verification_hash": r.get("verification_hash") or nik_hash,
         "pii_redacted": True,
         "message": "Identitas terverifikasi (mode demo)."
-        if r["is_valid"]
+        if is_valid
         else "Verifikasi identitas gagal.",
     }
 
@@ -99,10 +109,18 @@ def _looks_like_placeholder(value: str) -> bool:
 @router.post("/education")
 async def verify_education(req: SivilReq, current_user: User = Depends(get_current_user)) -> dict:
     """Mock SIVIL diploma-number format check (demo mode — no real SIVIL
-    integration; the mirror of verify_identity's NIK mock above). Not
-    persisted server-side — see verify_identity's docstring."""
+    integration; the mirror of verify_identity's NIK mock above). The
+    VERIFIED/NOT_FOUND outcome is persisted to the seeker's profile
+    (`ijazah_verified`) — see verify_identity's docstring for why that
+    matters and what "persisted" does and doesn't mean here."""
     ijazah_number = req.ijazah_number.strip()
     ok = len(ijazah_number) >= 6 and not _looks_like_placeholder(ijazah_number)
+
+    seeker = await find_seeker_by_user_id(current_user.id)
+    if seeker:
+        await update_seeker_verification_status(
+            seeker.id, ijazah_verified="verified" if ok else "failed"
+        )
 
     return {
         "request_id": str(uuid.uuid4()),
