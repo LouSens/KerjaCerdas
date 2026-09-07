@@ -4,8 +4,11 @@
 #
 # NOTE: DATABASE_URL in the api service is set explicitly here to point at the
 # local `db` container — this overrides any Supabase URL that may be in .env.
-# VITE_API_URL is set to http://localhost:8000 so the browser (outside Docker)
-# can reach the API; the frontend dev server proxies /api/* to the api container.
+# The browser (running on the host, outside Docker) calls relative /api/*
+# paths; the frontend's Vite dev server (running inside the container) proxies
+# those to the api container via API_PROXY_TARGET — see that variable's own
+# comment below for why it must never be VITE_API_URL (that leaks the
+# Docker-internal hostname to the browser bundle and breaks every request).
 
 services:
 
