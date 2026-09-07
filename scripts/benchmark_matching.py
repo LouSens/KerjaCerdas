@@ -172,6 +172,41 @@ def _recall_in_strong(score_by_id: dict[str, float], good_ids: set[str]) -> floa
     return hits / len(good_ids)
 
 
+def _separation_auc(good_scores: list[float], bad_scores: list[float]) -> float:
+    """Mann-Whitney-style separation: fraction of (good, distractor) pairs
+    where the good candidate outscores the distractor (ties count half).
+
+    This is the real headline, not `_recall_in_strong` above. Band recall
+    is checked against a FIXED absolute threshold (0.65) calibrated for the
+    full hybrid formula — but this benchmark deliberately zeroes out the
+    skill_overlap term (0.25 of the formula) by construction, since the
+    whole point is testing candidates with zero literal token overlap. That
+    caps everyone's achievable score well under 0.65 regardless of how good
+    the embeddings are, so `_recall_in_strong` can read 0% for BOTH the
+    semantic and keyword scores even when the underlying ranking separates
+    the two groups perfectly. AUC is threshold-free — it only asks "does
+    the ranking put good candidates above bad ones", which is the actual
+    question this benchmark exists to answer.
+    """
+    if not good_scores or not bad_scores:
+        return 0.0
+    wins = 0.0
+    for g in good_scores:
+        for b in bad_scores:
+            if g > b:
+                wins += 1.0
+            elif g == b:
+                wins += 0.5
+    return wins / (len(good_scores) * len(bad_scores))
+
+
+def _stats(xs: list[float]) -> str:
+    xs = sorted(xs)
+    n = len(xs)
+    mean = sum(xs) / n
+    return f"min={xs[0]:.3f} p50={xs[n // 2]:.3f} max={xs[-1]:.3f} mean={mean:.3f}"
+
+
 async def run(manual_seconds_per_cv: float) -> None:
     job = build_job()
     labeled = build_seekers()
@@ -195,9 +230,19 @@ async def run(manual_seconds_per_cv: float) -> None:
         s.id: _skill_overlap([sk.name for sk in s.skills], job.required_skills) for s in seekers
     }
 
+    good_sem = [sem_score[gid] for gid in good_ids]
+    bad_sem = [v for sid, v in sem_score.items() if sid not in good_ids]
+    good_kw = [kw_score[gid] for gid in good_ids]
+    bad_kw = [v for sid, v in kw_score.items() if sid not in good_ids]
+
+    sem_auc = _separation_auc(good_sem, bad_sem)
+    kw_auc = _separation_auc(good_kw, bad_kw)
+    auc_lift = sem_auc - kw_auc
+
+    # Kept as a secondary diagnostic, not the headline — see _separation_auc's
+    # docstring for why this can misleadingly read 0% for both sides at once.
     sem_recall = _recall_in_strong(sem_score, good_ids)
     kw_recall = _recall_in_strong(kw_score, good_ids)
-    lift = sem_recall - kw_recall
 
     n = len(seekers)
     manual_seconds = n * manual_seconds_per_cv
@@ -210,8 +255,8 @@ async def run(manual_seconds_per_cv: float) -> None:
     print("=" * 72)
     if using_hash:
         print()
-        print("!!! RESULTS NOT VALID FOR LIFT: ran on HashEmbedder (cosine ~ 0).   !!!")
-        print("!!! Set GEMINI_API_KEY to measure real embedding lift.             !!!")
+        print("!!! RESULTS NOT VALID: ran on HashEmbedder (cosine ~ 0).           !!!")
+        print("!!! Set GEMINI_API_KEY to measure real embedding separation.       !!!")
         print()
     print(
         f"embedder           : {type(embedder).__name__} (model={getattr(embedder, 'model', '?')})"
@@ -219,19 +264,37 @@ async def run(manual_seconds_per_cv: float) -> None:
     print(f"candidates         : {n}  (good={len(good_ids)}, distractors={n - len(good_ids)})")
     print(f"JD required_skills : {job.required_skills}")
     print("-" * 72)
-    print("HEADLINE - top-band (Strong) recall of the lexically-varied good CVs:")
+    print("HEADLINE - separation AUC (probability a random good candidate")
+    print("outscores a random distractor; 0.50 = no better than chance, 1.00 = perfect):")
+    print(f"  keyword-only baseline : {kw_auc:.3f}")
+    print(f"  semantic (hybrid)     : {sem_auc:.3f}")
+    print(f"  >>> LIFT (sem - kw)   : {auc_lift:+.3f}")
+    print("-" * 72)
+    print("Raw score distributions (diagnostic — explains the AUC above):")
+    print(f"  semantic good        : {_stats(good_sem)}")
+    print(f"  semantic distractors : {_stats(bad_sem)}")
+    print(f"  keyword  good        : {_stats(good_kw)}")
+    print(f"  keyword  distractors : {_stats(bad_kw)}")
+    print("-" * 72)
+    print("Secondary diagnostic - Strong-band (>= 0.65) recall of good candidates:")
     print(f"  keyword-only baseline : {kw_recall:6.1%}")
     print(f"  semantic (hybrid)     : {sem_recall:6.1%}")
-    print(f"  >>> LIFT (sem - kw)   : {lift:+6.1%}")
+    print("  NOTE: this benchmark's skill_overlap term is 0 for every candidate")
+    print("  by construction (zero literal token overlap is the whole point of")
+    print("  the test), which caps the hybrid score well under 0.65 regardless")
+    print("  of embedding quality. Both sides reading ~0% here does NOT mean")
+    print("  semantic matching failed — check the AUC and raw scores above.")
     print("-" * 72)
     print(f"time-to-shortlist (AI rank of {n} CVs): {ai_seconds * 1000:.0f} ms")
     print(f"illustrative manual baseline @ {manual_seconds_per_cv:.0f}s/CV: {manual_seconds:.0f}s")
     print(f"  (ASSUMPTION, not a measured human time) -> reduction ~ {reduction:.0%}")
     print("=" * 72)
-    print("Interpretation: positive lift on this messy text = the semantic step")
-    print("adds real value where keyword matching fails. ~0 lift = the risk has")
-    print("bitten (or you're on HashEmbedder). Use this score distribution to")
-    print("calibrate band thresholds in settings.py before trusting the bands.")
+    print("Interpretation: AUC lift > 0 on this messy text = the semantic step")
+    print("adds real ranking value where keyword matching is blind (keyword AUC")
+    print("collapses to ~0.5 whenever skill_overlap is 0 for everyone). ~0 lift")
+    print("= the risk has bitten (or you're on HashEmbedder). Use the raw score")
+    print("distributions above to calibrate band thresholds in settings.py —")
+    print("do not use Strong-band recall alone to judge this benchmark.")
     print("=" * 72)
 
 
