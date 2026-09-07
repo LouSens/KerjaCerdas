@@ -30,16 +30,21 @@ export const buildJobSearchFilters = ({ selectedModes, selectedRegion, selectedI
     }
 }
 
-// Remote AND Onsite both selected, with a region picked, can't be expressed
-// as one GET /jobs query: the backend's `region` filter is a plain equality
-// check with no "OR remote from anywhere" — sending region with no
-// remote_allowed constraint (the only single-query option) would require
-// EVERY result, remote postings included, to carry that exact region code,
-// silently excluding remote jobs headquartered elsewhere. Two scoped
-// queries + a client-side union (below) is how the frontend expresses that
-// union without backend changes.
+// (Remote or Hybrid) AND Onsite selected, with a region picked, can't be
+// expressed as one GET /jobs query: the backend's `region` filter is a
+// plain equality check with no "OR remote from anywhere" — sending region
+// with no remote_allowed constraint (the only single-query option) would
+// require EVERY result, remote/hybrid postings included, to carry that
+// exact region code, silently excluding those headquartered elsewhere.
+// Two scoped queries + a client-side union (below) is how the frontend
+// expresses that union without backend changes. Hybrid has to be checked
+// alongside Remote here because buildJobSearchFilters' hasRemoteSignal
+// already treats them the same (the backend has no separate hybrid flag —
+// see remote_allowed above) — omitting Hybrid would leave this same bug
+// for a Hybrid+Onsite+region search.
 export const isMixedRemoteAndOnsite = (selectedModes) =>
-    selectedModes.includes('Remote') && selectedModes.includes('Onsite')
+    (selectedModes.includes('Remote') || selectedModes.includes('Hybrid')) &&
+    selectedModes.includes('Onsite')
 
 export const mergeUniqueJobs = (...lists) => {
     const byId = new Map()

@@ -61,12 +61,17 @@ describe('buildJobSearchFilters', () => {
 })
 
 describe('isMixedRemoteAndOnsite', () => {
-    it('is true only when both Remote and Onsite are selected', () => {
+    it('is true when both Remote and Onsite are selected', () => {
         expect(isMixedRemoteAndOnsite(['Remote', 'Onsite'])).toBe(true)
     })
 
-    it('is false for Remote alone, Onsite alone, or neither', () => {
+    it('is true when both Hybrid and Onsite are selected', () => {
+        expect(isMixedRemoteAndOnsite(['Hybrid', 'Onsite'])).toBe(true)
+    })
+
+    it('is false for Remote alone, Hybrid alone, Onsite alone, or neither', () => {
         expect(isMixedRemoteAndOnsite(['Remote'])).toBe(false)
+        expect(isMixedRemoteAndOnsite(['Hybrid'])).toBe(false)
         expect(isMixedRemoteAndOnsite(['Onsite'])).toBe(false)
         expect(isMixedRemoteAndOnsite([])).toBe(false)
     })
