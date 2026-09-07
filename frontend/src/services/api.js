@@ -223,7 +223,8 @@ export const estimateJobPool = (payload) => request(`${API_BASE}/employer/jobs/e
     method: 'POST', body: JSON.stringify(payload),
 })
 
-// ── Verification documents (encrypted file_ids visible only to owner) ───────
+// ── Verification documents (mock — "encrypted file_ids" is a descriptive ───
+// label on the response, not real encryption; see DEMO_GUIDE.md) ───────────
 export const listVerificationDocs = () => request(`${API_BASE}/verify/documents`)
 
 // ── Seeker applications ──────────────────────────────────────────────────────

@@ -1026,7 +1026,7 @@ export default function LandingHero() {
         },
         {
             q: 'Apakah perusahaan dapat membatalkan langganan kapan saja?',
-            a: 'Tentu. Paket Growth dan Pay-per-Unlock bersifat fleksibel tanpa kontrak mengikat. Anda dapat menyesuaikan penggunaan kuota unlock sesuai kebutuhan rekrutmen tim.',
+            a: 'Tentu. Model Pay-per-Unlock bersifat fleksibel tanpa kontrak mengikat — Anda membayar Rp 50.000 hanya saat membuka kontak kandidat, sesuai kebutuhan rekrutmen tim. Paket langganan berjenjang (mis. Growth) masih tahap perencanaan dan belum tersedia.',
         },
     ]
 

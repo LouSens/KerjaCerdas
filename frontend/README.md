@@ -6,7 +6,6 @@
 - **Framework**: React 18 + Vite (for ultra-fast development)
 - **Styling**: Tailwind CSS (Utility-first styling)
 - **State Management**: Zustand (Lightweight, performant)
-- **Animations**: Framer Motion (Smooth micro-interactions)
 - **Icons**: Lucide React
 
 ## ✨ Key Components
@@ -30,7 +29,7 @@ npm install
 ```bash
 npm run dev
 ```
-The app will be available at `http://localhost:3000`.
+The Vite dev server listens on `http://localhost:5000` (see `vite.config.js`). `/api/*` and `/health` are proxied to the backend (`API_PROXY_TARGET`, default `http://localhost:8000`) — the backend must be running separately. Note: `docker-compose.yml` overrides this to port 3000 for the containerized dev setup (see the root [README.md](../README.md) Quick Start).
 
 ### 3. Build for Production
 ```bash

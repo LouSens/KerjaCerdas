@@ -82,7 +82,7 @@ export default function EmployerVerification() {
                     </div>
                 </div>
                 <div style={{ font: '600 11.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
-                    Terverifikasi otomatis · format valid &amp; entitas aktif dalam sistem nasional.
+                    Terverifikasi otomatis (mode demo) · pemeriksaan format NPWP, bukan konfirmasi resmi DJP.
                 </div>
             </div>
 

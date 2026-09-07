@@ -26,11 +26,11 @@ flowchart TD
 
 ## 2. Aliran Pendapatan (*Revenue Streams*) & Mekanisme Monetisasi
 
-1. **B2B Pay-to-Unlock & Micro-Bundle (Fokus Utama Traksi Awal):**
+1. **B2B Pay-to-Unlock (Fokus Utama Traksi Awal):**
    - Perusahaan meninjau kandidat teratas (*shortlist*) secara gratis dengan format sensor (*The Teaser Method*).
-   - **Freemium Hook:** 5 kredit unlock gratis untuk setiap perusahaan baru yang mendaftar.
-   - **Paket Mikro Pay-to-Unlock:** Membayar **Rp 50.000 per 10 kandidat (Rp 5.000/unlock)** saat kuota gratis habis dan ingin membuka kontak langsung (email, WhatsApp, CV lengkap) sesuai kebutuhan tanpa harus berlangganan paket tahunan mahal.
-   - HPP per 10 Transaksi: E-KYC pass-through + Payment Gateway MDR $\approx$ Rp 8.000 $\rightarrow$ **Marjin Kotor: Rp 42.000 (84%)**.
+   - **Harga saat ini (sesuai implementasi `POST /api/v1/employer/jobs/{id}/unlock/{seeker_id}` di `backend/app/api/routers/employer.py`): tarif flat Rp 50.000 per kandidat yang di-unlock** — bukan paket bundel 10-kandidat. Satu-satunya pengecualian yang benar-benar berjalan: kandidat yang **sudah melamar langsung** ke lowongan tersebut selalu gratis di-unlock (`unlock_cost_idr: 0`), karena kontaknya sudah diserahkan secara sukarela lewat lamaran — mencegah menagih dua kali untuk akses yang sama.
+   - **Belum diimplementasikan:** kredit unlock gratis di awal pendaftaran ("freemium hook") dan paket bundel/diskon per-10-unlock. Keduanya adalah item roadmap monetisasi, bukan perilaku aktif sistem saat ini — lihat catatan konsistensi harga di §4 di bawah, yang memakai tarif flat Rp 50.000/transaksi sesuai kode.
+   - Endpoint unlock sendiri masih **mode demo**: menerima `payment_token` apa pun tanpa validasi gateway pembayaran nyata (lihat komentar `# Stub implementation` di `employer.py`).
 
 2. **B2B KerjaCerdas Pro (Langganan Retensi):**
    - Skema langganan **Rp 299.000 / bulan** bagi perusahaan dengan intensitas rekrutmen berkelanjutan (akses kuota shortlisting lebih besar & branding terverifikasi).
@@ -70,8 +70,8 @@ Biaya Operasional Tetap Bulanan (Fixed OPEX Level 1 Full Cloud) = Rp 1.200.000 /
   - Database Cloud Tools                 : Rp  100.000
   - Domain, SSL & Maintenance            : Rp   50.000
 
-Harga Jual per Pay-to-Unlock (P)            = Rp 50.000
-Biaya Variabel per Transaksi (VC)           = Rp  5.000 (E-KYC Rp 4.000 + Gateway MDR Rp 1.000)
+Harga Jual per Pay-to-Unlock (P)            = Rp 50.000  (tarif flat per kandidat, sesuai kode saat ini — lihat §2)
+Biaya Variabel per Transaksi (VC)           = Rp  5.000 (E-KYC Rp 4.000 + Gateway MDR Rp 1.000, proyeksi produksi — gateway pembayaran belum live)
 Marjin Kontribusi per Transaksi (CM = P - VC)= Rp 45.000 (90%)
 ```
 

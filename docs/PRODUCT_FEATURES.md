@@ -57,7 +57,7 @@ Modul ini dirancang untuk menyelesaikan beban administratif (*screening fatigue*
 
 ### 📋 Alur Onboarding Berjenjang (Horizontal Step Timeline)
 1. **Langkah 1 (Profil Perusahaan):** Input nama badan usaha, NPWP, industri, ukuran tim, dan deskripsi institusi.
-2. **Langkah 2 (Verifikasi NPWP):** Pencocokan otomatis ke sistem DJP Online untuk memastikan keabsahan legalitas perusahaan.
+2. **Langkah 2 (Verifikasi NPWP):** Pencocokan format ke sistem DJP Online untuk memastikan keabsahan legalitas perusahaan (mode demo — lihat Bagian 4 untuk detail status mock/live).
 3. **Langkah 3 (Pasang Lowongan / Upload Job Pack):** Akses pembuatan lowongan individual atau unggah massal.
 
 ### 📄 Job Pack Bulk Uploader (PDF)
@@ -65,7 +65,7 @@ Perusahaan dapat mengunggah 1 dokumen PDF berisi kumpulan banyak posisi sekaligu
 
 ### 🔓 Pay-to-Unlock Model
 - Profil kandidat dalam daftar pendek (*Shortlist*) ditampilkan dengan **The Teaser Method** (misal: "Someone at Tokopedia", "Someone from ITB") lengkap dengan skor kecocokan teknis.
-- Perusahaan dapat membuka akses kontak langsung (Nama lengkap, email, nomor HP) dengan tarif mikro **Rp 50.000 / 10x unlock**. Integrasi payment gateway produksi belum tersedia — endpoint saat ini menerima token pembayaran apa pun, sehingga fitur berjalan sebagai demo alur interaksi lengkap tanpa transaksi nyata.
+- Perusahaan dapat membuka akses kontak langsung (Nama lengkap, email, nomor HP) dengan tarif flat **Rp 50.000 per kandidat** (`unlock_cost_idr` di `POST /api/v1/employer/jobs/{id}/unlock/{seeker_id}`) — bukan paket bundel 10-kandidat. Kandidat yang sudah melamar langsung ke lowongan tersebut selalu gratis di-unlock, karena kontaknya sudah diserahkan lewat lamaran. Integrasi payment gateway produksi belum tersedia — endpoint saat ini menerima token pembayaran apa pun, sehingga fitur berjalan sebagai demo alur interaksi lengkap tanpa transaksi nyata.
 
 **Komponen terkait:** `EmployerDashboard`, `EmployerJobs`, `EmployerPostJob`, `JobPackUploader`, `EmployerProfile`, `EmployerCandidates`, `PricingPage`  
 **API:** `POST /api/v1/employer/jobs`, `POST /api/v1/uploads/job-pack`, `POST /api/v1/employer/jobs/{id}/candidates`, `POST /api/v1/employer/jobs/{id}/unlock/{seeker_id}`, `GET/POST /api/v1/employer/profile`

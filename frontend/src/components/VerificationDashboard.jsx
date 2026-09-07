@@ -251,7 +251,7 @@ export default function VerificationDashboard() {
                         }}>
                             <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 13, fontWeight: 900, flexShrink: 0 }}>✓</span>
                             <div>
-                                <div style={{ fontSize: 12, fontWeight: 800, color: '#065F46' }}>Identitas terverifikasi resmi</div>
+                                <div style={{ fontSize: 12, fontWeight: 800, color: '#065F46' }}>Identitas terverifikasi</div>
                                 {verifiedNikDisplay && (
                                     <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: '#059669', marginTop: 3 }}>
                                         {verifiedNikDisplay.slice(0, 4)}{'•'.repeat(Math.max(0, verifiedNikDisplay.length - 8))}{verifiedNikDisplay.slice(-4)}
@@ -377,7 +377,7 @@ export default function VerificationDashboard() {
                         </div>
                     ) : (
                         <div style={{ padding: '10px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8, fontSize: 11, color: '#065F46', fontWeight: 700 }}>
-                            ✓ Ijazah terverifikasi resmi
+                            ✓ Ijazah terverifikasi
                         </div>
                     )}
                 </div>
