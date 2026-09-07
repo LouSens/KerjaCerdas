@@ -319,6 +319,8 @@ class MatchResult(BaseModel):
     score: float  # final reranked score [0..1]
     cosine: float  # raw bi-encoder cosine
     skill_overlap: float
+    experience_fit: float = 0.0  # [0..1] — how much of the experience weight was earned
+    education_met: bool = False
     region_match: bool
     salary_in_range: bool
     rank: int

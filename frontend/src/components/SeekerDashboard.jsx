@@ -258,9 +258,12 @@ export default function SeekerDashboard() {
                                 </div>
                             ) : (
                                 topMatches.map((job, idx) => {
+                                    // Real cosine/skill components from the matcher's hybrid formula
+                                    // (45%/25% of the total weight; the remaining 30% is experience,
+                                    // education and recency — not shown in this compact 2-bar view).
                                     const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
-                                    const sem = Math.round(job.semantic_score ?? (jobScore > 0 ? Math.min(100, Math.round(jobScore * 1.02)) : 0))
-                                    const sk = Math.round(job.skill_score ?? (jobScore > 0 ? Math.min(100, Math.round(jobScore * 0.95)) : 0))
+                                    const sem = Math.round(job.cosine != null ? job.cosine * 100 : jobScore)
+                                    const sk = Math.round(job.skill_overlap != null ? job.skill_overlap * 100 : jobScore)
                                     const matchingList = job.matching_skills || []
                                     const missingList = job.missing_skills || []
                                     const bandLabel = bandOf(job) === 'strong' ? 'Strong Fit' : bandOf(job) === 'possible' ? 'Possible Fit' : 'Stretch Fit'
@@ -306,7 +309,7 @@ export default function SeekerDashboard() {
                                                     <div style={{ display: 'flex', gap: 20 }}>
                                                         <div style={{ width: 150 }}>
                                                             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 5 }}>
-                                                                <span style={{ font: '700 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>Semantik ×0.50</span>
+                                                                <span style={{ font: '700 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>Semantik ×0.45</span>
                                                                 <span style={{ font: '900 11.5px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange }}>{sem}%</span>
                                                             </div>
                                                             <div style={{ height: 6, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
@@ -315,7 +318,7 @@ export default function SeekerDashboard() {
                                                         </div>
                                                         <div style={{ width: 150 }}>
                                                             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 5 }}>
-                                                                <span style={{ font: '700 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>Skill ×0.30</span>
+                                                                <span style={{ font: '700 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>Skill ×0.25</span>
                                                                 <span style={{ font: '900 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#0284C7' }}>{sk}%</span>
                                                             </div>
                                                             <div style={{ height: 6, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>

@@ -27,46 +27,50 @@ export default function JobDetailModal({ job, onClose }) {
 
     const matchingSkills = job.matching_skills || job.required_skills?.slice(0, 4) || []
 
+    // Real per-factor breakdown from the matcher's hybrid formula (matcher.py:
+    // cosine 45% + skill 25% + experience 15% + education 10% + recency 5%).
+    // Location and salary are hard filters applied upstream, not weighted
+    // factors — so they're intentionally not part of this breakdown.
     const breakdown = [
         {
             label: 'Semantic Match (Pengalaman & Profil CV)',
-            weight: 'Bobot 50%',
-            multiplier: '×0.50',
-            pct: Math.round(job.semantic_score != null ? (job.semantic_score > 1 ? job.semantic_score : job.semantic_score * 100) : score),
+            weight: 'Bobot 45%',
+            multiplier: '×0.45',
+            pct: Math.round(job.cosine != null ? job.cosine * 100 : score),
             color: KC.orange,
-            desc: 'Konteks pengalaman kerja dan portofolio CV terhadap kualifikasi posisi',
+            desc: 'Kemiripan makna antara profil/CV kandidat dan deskripsi posisi',
         },
         {
             label: 'Technical Skills Match',
-            weight: 'Bobot 30%',
-            multiplier: '×0.30',
-            pct: Math.round(job.skill_score != null ? (job.skill_score > 1 ? job.skill_score : job.skill_score * 100) : score),
+            weight: 'Bobot 25%',
+            multiplier: '×0.25',
+            pct: Math.round(job.skill_overlap != null ? job.skill_overlap * 100 : score),
             color: '#0284C7',
             desc: `${matchingSkills.length} kompetensi esensial telah terpenuhi`,
         },
         {
-            label: 'Lokasi & Work Mode Match',
+            label: 'Kesesuaian Pengalaman',
+            weight: 'Bobot 15%',
+            multiplier: '×0.15',
+            pct: Math.round(job.experience_fit != null ? job.experience_fit * 100 : score),
+            color: '#10B981',
+            desc: 'Lama pengalaman kerja dibanding minimum yang diminta posisi',
+        },
+        {
+            label: 'Pendidikan',
             weight: 'Bobot 10%',
             multiplier: '×0.10',
-            pct: Math.round(job.location_score != null ? (job.location_score > 1 ? job.location_score : job.location_score * 100) : score),
-            color: '#10B981',
-            desc: 'Lokasi kerja sesuai preferensi dan wilayah domisili kandidat',
-        },
-        {
-            label: 'Ekspektasi Gaji',
-            weight: 'Bobot 5%',
-            multiplier: '×0.05',
-            pct: Math.round(job.salary_score != null ? (job.salary_score > 1 ? job.salary_score : job.salary_score * 100) : score),
+            pct: job.education_met ? 100 : 0,
             color: '#F59E0B',
-            desc: 'Rentang penawaran sejalan dengan target kandidat',
+            desc: 'Riwayat pendidikan tercantum di profil kandidat',
         },
         {
-            label: 'Senioritas & Jenjang',
+            label: 'Rekensi Profil',
             weight: 'Bobot 5%',
             multiplier: '×0.05',
-            pct: Math.round(job.seniority_score != null ? (job.seniority_score > 1 ? job.seniority_score : job.seniority_score * 100) : score),
+            pct: 100,
             color: '#6366F1',
-            desc: 'Total masa kerja memenuhi kriteria minimum posisi',
+            desc: 'Keaktifan profil kandidat di platform',
         },
     ]
 
