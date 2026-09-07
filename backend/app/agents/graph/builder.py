@@ -5,13 +5,11 @@ Compatible with LangGraph >= 1.1.x (no `langgraph.prebuilt` / `create_react_agen
 Architecture
 ------------
 The graph is a single agent node that calls the Gemini LLM and returns the
-AI text response.  Job *matching*, skill-gap analysis, and intent routing are
-handled procedurally in the API router (see agent.py) before the graph runs;
+AI text response.  Job *matching* is handled procedurally in the API router
+(see agent.py, which calls SemanticMatcher directly) before the graph runs;
 the graph's sole job is to generate the natural-language `final_response`.
-
-The node functions in nodes.py (route_intent, run_matcher, run_skill_gap,
-run_advisor, compose_response) are called procedurally by the API router —
-they are NOT wired as LangGraph graph nodes.
+Skill-gap analysis lives in backend/app/api/routers/seeker.py, which calls
+nodes.py's `_recommend_courses` helper directly (not through this graph).
 
 Tool calling via bind_tools() is disabled in this build because the installed
 version of google-generativeai raises:

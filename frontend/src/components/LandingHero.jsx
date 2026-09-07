@@ -226,7 +226,16 @@ const KC_CSS = `
 
 @media (max-width: 768px) {
   .kc-metrics-desktop {
-    display: none !important;
+    display: flex !important;
+    gap: 10px !important;
+    padding-top: 16px !important;
+    border-top: 1.5px dashed #CBD5E1 !important;
+  }
+  .kc-metrics-desktop > div {
+    flex: 1 !important;
+  }
+  .kc-mobile-sticky-cta {
+    display: flex !important;
   }
 }
 
@@ -874,11 +883,10 @@ function CleanHeroPreview() {
 
                         {[
                             { name: 'Go Backend & Concurrency', val: '98%', color: KC.lime },
-                            { name: 'System Architecture & High Load', val: '92%', color: KC.lime },
                             { name: 'Distributed Caching (Redis)', val: '86%', color: KC.yellow },
                             { name: 'Observability & Monitoring', val: '76%', color: KC.orange },
                         ].map((s, i) => (
-                            <div key={i} style={{ marginBottom: 8 }}>
+                            <div key={i} style={{ marginBottom: 10 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, marginBottom: 2, color: KC.ink }}>
                                     <span>{s.name}</span>
                                     <span style={{ fontFamily: MONO, fontWeight: 800 }}>{s.val}</span>
@@ -1258,7 +1266,7 @@ export default function LandingHero() {
                         },
                         {
                             title: 'Verifikasi Dokumen e-KYC Terenkripsi',
-                            desc: 'Validasi resmi KTP, ijazah Kemendikbud SIVIL, dan NPWP untuk menciptakan ekosistem kerja yang terpercaya.',
+                            desc: 'Validasi format KTP, nomor ijazah, dan NPWP untuk menciptakan ekosistem kerja yang lebih terpercaya.',
                             accent: KC.yellow,
                             icon: <I.ShieldCheck s={20} c={KC.ink} />,
                         },
@@ -1320,7 +1328,7 @@ export default function LandingHero() {
                         {[
                             {
                                 role: 'Untuk Pencari Kerja',
-                                docs: 'KTP & Ijazah S1 (SIVIL)',
+                                docs: 'KTP & Ijazah S1',
                                 desc: 'Verifikasi identitas & integritas pendidikan.',
                                 accent: KC.orange,
                                 icon: <I.User s={18} c="#fff" />,
@@ -1409,11 +1417,11 @@ export default function LandingHero() {
                             btnVariant: 'lime',
                             cta: 'Mulai Rekrut',
                             perks: [
-                                'Buka kontak 10 kandidat resmi',
+                                'Buka kontak 10 kandidat',
                                 'Akses CV PDF & portofolio lengkap',
-                                'KTP & NPWP Terverifikasi',
-                                'Validasi Ijazah SIVIL resmi',
-                                'Garansi bebas ghosting',
+                                'Format KTP & NPWP tervalidasi',
+                                'Format nomor ijazah tervalidasi',
+                                'Analisis skor kecocokan AI',
                             ],
                             action: onEmployer,
                         },
@@ -1648,6 +1656,39 @@ export default function LandingHero() {
                     </div>
                 </div>
             </footer>
+
+            {/* Mobile Sticky Action Bar (Frame 00) */}
+            <div className="kc-mobile-sticky-cta" style={{
+                display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0,
+                background: '#FFFFFF', borderTop: `1.5px solid ${KC.ink}`, padding: '12px 18px calc(16px + env(safe-area-inset-bottom, 0px))',
+                zIndex: 65, flexDirection: 'column', gap: 9,
+                boxShadow: '0 -4px 16px rgba(0,0,0,0.12)',
+            }}>
+                <button
+                    onClick={onDaftar}
+                    style={{
+                        padding: '13px 14px', background: KC.ink, border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 11, boxShadow: `3px 3px 0 ${KC.orange}`,
+                        fontFamily: FONT, fontWeight: 800, fontSize: 13.5, color: '#fff',
+                        minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                        cursor: 'pointer', width: '100%',
+                    }}
+                >
+                    Cari Lowongan Kerja →
+                </button>
+                <button
+                    onClick={onEmployer}
+                    style={{
+                        padding: '12px 14px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                        fontFamily: FONT, fontWeight: 800, fontSize: 13, color: KC.ink,
+                        minHeight: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                        cursor: 'pointer', width: '100%',
+                    }}
+                >
+                    Pasang Lowongan HR
+                </button>
+            </div>
         </div>
     )
 }

@@ -70,8 +70,28 @@ class Settings(BaseSettings):
     # ── JSON store root ──────────────────────────────────────────────────
     kerja_data_root: str = "data"
 
-    # ── Redis ────────────────────────────────────────────────────────────
-    redis_url: str = "redis://localhost:6379/0"
+    # ── Reverse proxy trust ──────────────────────────────────────────────
+    # X-Real-IP is only trusted as the client's address when the request also
+    # carries this exact shared secret in X-Internal-Proxy-Secret (set by our
+    # own Nginx — see frontend/nginx.conf.template) — never based on the
+    # direct TCP peer's IP/subnet. docker-compose.prod.yml exposes the
+    # backend's port 8000 directly to the internet alongside the Nginx proxy
+    # on 3000, and depending on the host's Docker/iptables setup, traffic
+    # arriving through a published port can appear to come from inside the
+    # container network's own subnet (hairpin NAT) — so an IP/CIDR allowlist
+    # cannot reliably tell "this came through our Nginx" from "this hit the
+    # API directly", and a wrong allowlist silently opens a rate-limit bypass
+    # instead of closing one. A secret only Nginx knows cannot be forged by a
+    # client hitting the API port directly, regardless of what address that
+    # connection appears to come from.
+    #
+    # Defaults to empty — trust nothing, X-Real-IP is never read — so every
+    # proxied client shares one rate-limit bucket keyed by Nginx's own peer
+    # address. That's safe but under-counts distinct clients; set
+    # PROXY_SHARED_SECRET (docker-compose.prod.yml, same value in both the
+    # `api` and `frontend` services) once you're actually routing browser
+    # traffic through Nginx to fix that.
+    proxy_shared_secret: str = ""
 
     # ── CORS ─────────────────────────────────────────────────────────────
     cors_allow_origins: list[str] = [
@@ -93,6 +113,13 @@ class Settings(BaseSettings):
     # (see scripts/benchmark_matching.py). Scores are in [0..1].
     band_strong_threshold: float = 0.65
     band_possible_threshold: float = 0.45
+    # Below this many active rows, matcher.py scores every row directly
+    # instead of prefiltering via pgvector ANN (cosine-only ordering can
+    # exclude a candidate the full hybrid formula would otherwise rank well —
+    # see SemanticMatcher._job_candidates's docstring). 0 forces the ANN path
+    # unconditionally, which is how test_matching_parity.py deliberately
+    # exercises it against a tiny seeded dataset.
+    matching_full_scan_safe_limit: int = 500
 
     # ── Agent temperatures ───────────────────────────────────────────────
     advisor_temperature: float = 0.7

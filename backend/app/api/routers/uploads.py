@@ -5,17 +5,20 @@ Files are parsed by Gemini and merged into the user's profile / posting list.
 
 from __future__ import annotations
 
+import hashlib
+
 from backend.app.api.dependencies import require_employer, require_seeker
 from backend.app.db.models import User
 from backend.app.db.postgres_store import (
     find_employer_by_user_id,
     find_seeker_by_user_id,
+    get_cached_job_pack_parse,
     get_repositories,
+    save_job_pack_parse,
 )
 from backend.app.db.schemas import (
     Education,
     EducationLevel,
-    JobPosting,
     SeekerProfile,
     Skill,
     WorkExperience,
@@ -131,46 +134,81 @@ async def upload_job_pack(
     if not blob.startswith(b"%PDF-"):
         raise HTTPException(400, "Invalid PDF file: Missing %PDF- header signature")
 
-    parsed = await parse_job_pack(blob)
-    postings = parsed.get("postings", [])
-    if parsed.get("_offline") or any(p.get("_offline") for p in postings):
-        raise HTTPException(503, "Parser AI sedang tidak tersedia. Coba lagi nanti.")
-    repos = get_repositories()
-
     # Resolve the employer profile for the authenticated user using fast SQL finder
     employer = await find_employer_by_user_id(current_user.id)
     if not employer:
         raise HTTPException(400, "No employer profile for this user")
 
-    matcher = SemanticMatcher()
-    created: list[str] = []
-    for p in postings:
+    # Retrying an upload of the identical PDF — a lost response, a reloaded
+    # tab, a different browser or device — must return the exact same
+    # parsed postings as the first attempt. Gemini extraction isn't
+    # perfectly deterministic even at low temperature, so a second parse of
+    # the same bytes can reword a title or reformat a salary just enough to
+    # change JobPackUploader's client_ref, which the backend then treats as
+    # a brand-new posting instead of a replay. Caching the parse itself by
+    # file content (not just deduping the eventual publish) is what makes
+    # this safe regardless of client-side state — see JobPackParseCache's
+    # docstring in models.py.
+    file_hash = hashlib.sha256(blob).hexdigest()
+    cache_key = hashlib.sha256(f"{employer.id}:{file_hash}".encode()).hexdigest()
+    cached = await get_cached_job_pack_parse(cache_key)
+    if cached is not None:
+        return {"employer_id": employer.id, "jobs": cached, "parsed_offline": False}
+
+    parsed = await parse_job_pack(blob)
+    postings = parsed.get("postings", [])
+    if parsed.get("_offline") or any(p.get("_offline") for p in postings):
+        raise HTTPException(503, "Parser AI sedang tidak tersedia. Coba lagi nanti.")
+
+    # Nothing is written to the JOBS table here — a PDF can extract postings
+    # the employer never meant to publish, and every row this endpoint used
+    # to create had to be tracked and cleaned up client-side if the batch was
+    # abandoned before confirmation (replaced, tab closed mid-upload, etc.).
+    # Returning plain parsed data instead removes that whole failure class:
+    # POST /employer/jobs (called once per reviewed posting on confirm) is
+    # the only place a job-pack posting is actually persisted as a vacancy.
+    # (The parse result itself IS persisted, to job_pack_parse_cache above —
+    # that's a content-addressed cache keyed by file hash, not a draft job.)
+    normalized_jobs: list[dict] = []
+    for idx, p in enumerate(postings):
         raw_edu = (p.get("education_min") or "S1").upper()
         try:
             edu = EducationLevel(raw_edu)
         except ValueError:
             edu = EducationLevel.S1
-        job = JobPosting(
-            employer_id=employer.id,
-            title=p.get("title", "Untitled"),
-            description=p.get("description", ""),
-            responsibilities=p.get("responsibilities", []),
-            required_skills=p.get("required_skills", []),
-            nice_to_have_skills=p.get("nice_to_have_skills", []),
-            education_min=edu,
-            experience_years_min=int(p.get("experience_years_min") or 0),
-            region_code=p.get("region_code") or employer.region_code,
-            remote_allowed=bool(p.get("remote_allowed", False)),
-            salary_min=int(p.get("salary_min") or 0),
-            salary_max=int(p.get("salary_max") or 0),
-            kbji_code=p.get("kbji_code", ""),
-        )
-        await matcher.embed_job(job)
-        await repos.jobs.upsert(job)
-        created.append(job.id)
+        title = p.get("title") or "Untitled"
+        required_skills = p.get("required_skills") or []
+        region_code = p.get("region_code") or employer.region_code
+        remote_allowed = bool(p.get("remote_allowed", False))
+        skills_summary = f"{len(required_skills)} skill wajib" if required_skills else "Persyaratan umum"
+        loc_summary = "Remote" if remote_allowed else (region_code or "Indonesia")
+        normalized_jobs.append({
+            # Tied to the file's own hash (not just a bare array index) so
+            # the id is traceable to its source parse even outside the
+            # cache row; stability across retries comes from the cache
+            # above, not from this format.
+            "local_id": f"{file_hash[:16]}-{idx}",
+            "title": title,
+            "details": f"{loc_summary} · {skills_summary}",
+            "valid": True,
+            "description": p.get("description") or "",
+            "responsibilities": p.get("responsibilities") or [],
+            "required_skills": required_skills,
+            "nice_to_have_skills": p.get("nice_to_have_skills") or [],
+            "education_min": edu.value,
+            "experience_years_min": int(p.get("experience_years_min") or 0),
+            "region_code": region_code,
+            "location": region_code,
+            "remote_allowed": remote_allowed,
+            "salary_min": int(p.get("salary_min") or 0),
+            "salary_max": int(p.get("salary_max") or 0),
+            "kbji_code": p.get("kbji_code") or "",
+        })
+
+    await save_job_pack_parse(cache_key, employer.id, normalized_jobs)
 
     return {
         "employer_id": employer.id,
-        "created_job_ids": created,
+        "jobs": normalized_jobs,
         "parsed_offline": any(p.get("_offline") for p in postings),
     }

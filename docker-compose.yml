@@ -4,8 +4,11 @@
 #
 # NOTE: DATABASE_URL in the api service is set explicitly here to point at the
 # local `db` container — this overrides any Supabase URL that may be in .env.
-# VITE_API_URL is set to http://localhost:8000 so the browser (outside Docker)
-# can reach the API; the frontend dev server proxies /api/* to the api container.
+# The browser (running on the host, outside Docker) calls relative /api/*
+# paths; the frontend's Vite dev server (running inside the container) proxies
+# those to the api container via API_PROXY_TARGET — see that variable's own
+# comment below for why it must never be VITE_API_URL (that leaks the
+# Docker-internal hostname to the browser bundle and breaks every request).
 
 services:
 
@@ -21,7 +24,6 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d kerjacerdas" ]
       interval: 5s
@@ -45,6 +47,7 @@ services:
       APP_ENV: development
     volumes:
       - ./backend:/app/backend
+      - ./scripts:/app/scripts
     depends_on:
       db:
         condition: service_healthy
@@ -54,11 +57,22 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: dev
     ports:
       - "3000:3000"
     environment:
-      # Must be the Docker service name — Vite proxy runs inside the container
-      VITE_API_URL: http://api:8000
+      # NOT VITE_-prefixed on purpose: Vite exposes any VITE_*-prefixed env
+      # var to the CLIENT bundle via import.meta.env, and api.js reads
+      # VITE_API_URL to build an absolute fetch URL when it's set. The
+      # Docker service name "api" only resolves inside the Docker network —
+      # a browser on the host can never reach http://api:8000, so if this
+      # were VITE_API_URL the client would call it directly and every
+      # request would fail with "Failed to fetch" (this broke login
+      # entirely until fixed). This var is read server-side only, by
+      # vite.config.js's dev-server proxy (which DOES run inside the
+      # container and can resolve "api") — the browser is meant to call
+      # relative /api/* paths and let that proxy relay them.
+      API_PROXY_TARGET: http://api:8000
     volumes:
       - ./frontend/src:/app/src
     depends_on:

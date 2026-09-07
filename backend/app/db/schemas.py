@@ -201,6 +201,7 @@ class SeekerProfile(TimestampedModel):
     headline: str = ""
     nik: str | None = Field(default=None, max_length=64)
     nik_verified: VerificationStatus = VerificationStatus.UNVERIFIED
+    ijazah_verified: VerificationStatus = VerificationStatus.UNVERIFIED
     date_of_birth: str | None = None
     region_code: str  # BPS wilayah
     preferred_regions: list[str] = []
@@ -291,6 +292,7 @@ class JobPosting(TimestampedModel):
     salary_min: int = 0
     salary_max: int = 0
     is_active: bool = True
+    client_ref: str | None = None
     embedding: list[float] | None = None
     embedding_model: str | None = None
 

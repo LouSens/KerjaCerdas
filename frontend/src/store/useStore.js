@@ -16,7 +16,6 @@ import {
     healthCheck,
     uploadCV,
     uploadJobPack,
-    fetchJobs,
     fetchEmployerJobs,
     fetchSeekerProfile,
     fetchBookmarks,
@@ -150,8 +149,6 @@ const useStore = create(
 
             // ─── Navigation (role-aware + URL sync) ─────────────────────
             activeView: 'home',
-            sidebarCollapsed: false,
-            toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
 
             // selectedCandidateJobId: so employer dashboard passes job context to candidates page
             selectedCandidateJobId: null,
@@ -203,12 +200,6 @@ const useStore = create(
                 }
             },
 
-            // Navigate to candidates page with a specific job pre-selected
-            navigateToCandidates: (jobId) => {
-                set({ selectedCandidateJobId: jobId })
-                get().navigate('employer-candidates')
-            },
-
             // ─── Floating advisor ────────────────────────────────────────
             floatingAdvisorOpen: false,
             toggleFloatingAdvisor: () => set((s) => ({ floatingAdvisorOpen: !s.floatingAdvisorOpen })),
@@ -224,8 +215,27 @@ const useStore = create(
             loadSeekerProfile: async () => {
                 try {
                     const data = await fetchSeekerProfile()
-                    set({
+                    // nik_verified/ijazah_verified now come from the backend
+                    // (backend/app/api/routers/verify.py persists the outcome to the
+                    // seeker's own profile row), so the backend value is the source of
+                    // truth here — it survives a reload or a login from another
+                    // browser, unlike the old local-only flags.
+                    //
+                    // ktp_verified/ijazah_verified are true ONLY for a genuine
+                    // "verified" status — never for "pending". A passing mock format
+                    // check has no authority to confirm a real identity, so it must
+                    // not light up the same completion/trust signals (checklist ✓,
+                    // Trust Score, sidebar badge) a real verification would. Those
+                    // consumers all read this same boolean, so keeping it strictly
+                    // "verified" is what keeps them all honest at once. ktp_pending/
+                    // ijazah_pending carry the "submitted, awaiting real verification"
+                    // state separately, for VerificationDashboard's own detailed card
+                    // to show — a distinct, less confident state than done.
+                    // Phone verification has no equivalent profile column yet, so
+                    // phone_verified still only ever comes from local state.
+                    set((s) => ({
                         profile: {
+                            ...s.profile,
                             full_name: data.full_name || '',
                             headline: data.headline || '',
                             region_code: data.region_code || '3171',
@@ -234,13 +244,13 @@ const useStore = create(
                             education: data.education || [],
                             salary_expectation_min: data.salary_expectation_min || 0,
                             salary_expectation_max: data.salary_expectation_max || 0,
-                            // Verification status from backend
-                            ktp_verified: data.ktp_verified || false,
-                            ijazah_verified: data.ijazah_verified || false,
-                            phone_verified: data.phone_verified || false,
+                            ktp_verified: data.nik_verified === 'verified',
+                            ktp_pending: data.nik_verified === 'pending',
+                            ijazah_verified: data.ijazah_verified === 'verified',
+                            ijazah_pending: data.ijazah_verified === 'pending',
                         },
                         seekerId: data.id,
-                    })
+                    }))
                 } catch (err) {
                     // Profile doesn't exist yet (404) is expected for new users
                     if (err?.status && err.status !== 404) {
@@ -250,63 +260,47 @@ const useStore = create(
             },
 
             seekerId: null,
-            profileDirty: false,
             matches: [],
             missingSkills: [],
-            matchingSkills: [],
             recommendedCourses: [],
             agentLoading: false,
-            agentError: null,
             advisorLog: [
                 { role: 'assistant', content: 'Halo! Saya advisor karier KerjaCerdas. Tanya apa saja seputar pekerjaan, skill, atau CV kamu.' },
             ],
             advisorInput: '',
             setAdvisorInput: (v) => set({ advisorInput: v }),
             advisorSessionId: null,
-            targetJobTitle: null,
 
             // ─── Skill gap ───────────────────────────────────────────────
             skillGapResult: null,
-            skillGapLoading: false,
-            skillGapError: null,
 
             runSkillGap: async (targetJobId = null) => {
-                set({ skillGapLoading: true, skillGapError: null })
                 try {
                     const res = await triggerSkillGap(targetJobId)
                     set({
                         skillGapResult: res,
-                        skillGapLoading: false,
                         missingSkills: res.missing_skills || [],
-                        matchingSkills: res.matching_skills || [],
                         recommendedCourses: res.recommended_courses || [],
-                        targetJobTitle: res.target_job_title || null,
                     })
                     return res
                 } catch (e) {
-                    set({ skillGapLoading: false, skillGapError: e.message })
                     console.warn('Skill gap analysis notification:', e?.message || e)
                 }
             },
 
             loadSkillGap: async () => {
-                set({ skillGapLoading: true, skillGapError: null })
                 try {
                     const res = await fetchLatestSkillGap()
                     set({
                         skillGapResult: res || null,
-                        skillGapLoading: false,
                         missingSkills: res?.missing_skills || [],
-                        matchingSkills: res?.matching_skills || [],
                         recommendedCourses: res?.recommended_courses || [],
-                        targetJobTitle: res?.target_job_title || null,
                     })
                     return res
                 } catch (e) {
                     if (e.status !== 404) {
-                        set({ skillGapError: e.message })
+                        console.warn('Failed to load latest skill gap:', e?.message || e)
                     }
-                    set({ skillGapLoading: false })
                 }
             },
 
@@ -314,7 +308,7 @@ const useStore = create(
                 const { seekerId, profile, advisorLog, advisorSessionId } = get()
                 const userMsg = message ? { role: 'user', content: message } : null
                 if (userMsg) set({ advisorLog: [...advisorLog, userMsg], advisorInput: '' })
-                set({ agentLoading: true, agentError: null })
+                set({ agentLoading: true })
                 try {
                     const activeSessionId = advisorSessionId || seekerId || 'demo'
                     const payload = seekerId
@@ -325,18 +319,15 @@ const useStore = create(
                         agentLoading: false,
                         matches: res.matches || [],
                         missingSkills: res.missing_skills || [],
-                        matchingSkills: res.matching_skills || [],
                         recommendedCourses: res.recommended_courses || [],
-                        targetJobTitle: res.target_job_title || null,
                         ...(res.seeker_id ? { seekerId: res.seeker_id } : {}),
-                        profileDirty: false,
                     })
                     if (res.final_response && message) {
                         set((s) => ({ advisorLog: [...s.advisorLog, { role: 'assistant', content: res.final_response }] }))
                     }
                     return res
                 } catch (e) {
-                    set({ agentLoading: false, agentError: e.message })
+                    set({ agentLoading: false })
                     console.warn('AI Agent inference notification:', e?.message || e)
                     // If user was actively chatting, respond inside the chat UI instead of an alarming global red toast
                     if (message) {
@@ -403,7 +394,6 @@ const useStore = create(
                     const name = updated?.full_name || 'Rekan'
 
                     set({
-                        profileDirty: true,
                         advisorSessionId: `${res.seeker_id}_${Date.now()}`,
                         advisorLog: [
                             { role: 'assistant', content: `Halo ${name}! Saya AI Advisor KerjaCerdas. CV kamu sudah dianalisis. Ada yang bisa saya bantu terkait peluang karier atau skill gap kamu?` }
@@ -418,20 +408,24 @@ const useStore = create(
 
             // ─── Employer job-pack upload ────────────────────────────────
             jobPackUploading: false,
-            jobPackResult: null,
             uploadJobPack: async (file) => {
+                // Parsing a job-pack PDF does not create anything — the
+                // employer still has to review and confirm the extracted
+                // postings (see JobPackUploader), so there is nothing to
+                // toast a success message about or refresh the job list for
+                // yet. Both happen once the confirmed postings are actually
+                // created via createEmployerJob.
                 if (!file) return
                 const { user } = get()
-                set({ jobPackUploading: true, jobPackResult: null })
+                set({ jobPackUploading: true })
                 try {
                     const res = await uploadJobPack({ userId: user.id || 'demo', file })
-                    set({ jobPackUploading: false, jobPackResult: res })
-                    toast.success(`${res.created_job_ids?.length || 0} lowongan berhasil dibuat dari PDF`)
-                    get().refreshEmployerJobs()
+                    set({ jobPackUploading: false })
                     return res
                 } catch (e) {
                     set({ jobPackUploading: false })
                     toast.error('Upload job-pack gagal: ' + e.message)
+                    throw e
                 }
             },
 
@@ -500,20 +494,6 @@ const useStore = create(
                 if ((profile.education || []).length > 0) score += 20
                 if (profile.salary_expectation_min > 0) score += 10
                 return score
-            },
-
-            // ─── Public jobs feed ────────────────────────────────────────
-            jobs: [],
-            jobsLoading: false,
-            refreshJobs: async () => {
-                set({ jobsLoading: true })
-                try {
-                    const data = await fetchJobs()
-                    set({ jobs: data.items || [], jobsLoading: false })
-                } catch (err) {
-                    console.error('Failed to fetch public jobs:', err)
-                    set({ jobsLoading: false })
-                }
             },
 
             // ─── Employer-scoped jobs feed ───────────────────────────────
@@ -601,10 +581,6 @@ const useStore = create(
                 try { await healthCheck(); set({ apiStatus: 'connected' }) }
                 catch { set({ apiStatus: 'offline' }) }
             },
-
-            // ─── UI ──────────────────────────────────────────────────────
-            isMobileMenuOpen: false,
-            setMobileMenuOpen: (v) => set({ isMobileMenuOpen: v }),
         }),
         {
             name: 'kerjacerdas-v4',
@@ -615,7 +591,6 @@ const useStore = create(
                 profile: s.profile,
                 seekerId: s.seekerId,
                 savedJobs: s.savedJobs,
-                sidebarCollapsed: s.sidebarCollapsed,
                 authToken: s.authToken,
                 selectedCandidateJobId: s.selectedCandidateJobId,
             }),

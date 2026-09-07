@@ -63,7 +63,12 @@ class TestIdentityEndpoint:
         resp = client.post("/api/v1/verify/identity", json={"nik": VALID_NIK, "full_name": "Budi"})
         assert resp.status_code == 401
 
-    def test_valid_nik_returns_verified(self, client: TestClient, seeker_account: dict) -> None:
+    def test_valid_nik_returns_pending_not_verified(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """A format-valid NIK is PENDING, never VERIFIED — the mock check
+        never confirms the NIK belongs to the submitting seeker, so it has
+        no authority to claim a real identity is confirmed."""
         resp = client.post(
             "/api/v1/verify/identity",
             json={"nik": VALID_NIK, "full_name": "Budi Santoso"},
@@ -71,7 +76,7 @@ class TestIdentityEndpoint:
         )
         assert resp.status_code == 200, resp.text
         body = resp.json()
-        assert body["status"] == "VERIFIED"
+        assert body["status"] == "PENDING"
         assert body["pii_redacted"] is True
 
     def test_response_never_echoes_the_raw_nik(
@@ -104,10 +109,17 @@ class TestIdentityEndpoint:
         )
         assert resp.status_code == 422
 
-    def test_only_the_hash_is_persisted_on_the_profile(
+    def test_raw_nik_never_reaches_storage(
         self, client: TestClient, seeker_account: dict
     ) -> None:
-        """UU-PDP-2022: the raw NIK must never reach storage."""
+        """UU-PDP-2022: the raw NIK must never reach storage.
+
+        /verify/identity persists the PENDING/FAILED *outcome* to the
+        seeker's profile (nik_verified — see the persistence tests above),
+        but the raw NIK itself must never be part of that write. Pinned
+        explicitly so a future change can't silently start storing the
+        plaintext NIK alongside the status.
+        """
         client.post(
             "/api/v1/seeker/profile",
             json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
@@ -123,6 +135,84 @@ class TestIdentityEndpoint:
         assert stored_nik != VALID_NIK
         if stored_nik:
             assert stored_nik == hashlib.sha256(VALID_NIK.encode()).hexdigest()
+
+    def test_pending_status_is_persisted_to_the_seeker_profile(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """/verify/identity is a demo-mode interface mock — the check itself
+        is not a real Dukcapil call and never confirms the NIK belongs to
+        the submitting seeker — so a pass is persisted as PENDING, never
+        VERIFIED, to the seeker's own profile (nik_verified). PENDING still
+        survives a reload or a login from another browser instead of living
+        only in the frontend's local store — durability and authority are
+        separate properties, and this mock only earns the former."""
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        verify_resp = client.post(
+            "/api/v1/verify/identity",
+            json={"nik": VALID_NIK, "full_name": "Budi Santoso"},
+            headers=seeker_account["headers"],
+        )
+        assert verify_resp.json()["status"] == "PENDING"
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["nik_verified"] == "pending"
+
+    def test_mock_check_never_produces_verified(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """No input to this mock endpoint can ever result in a durable
+        'verified' status — that value must be reserved for a real Dukcapil
+        integration this build doesn't have. Regression test for the exact
+        finding this fixes: a format-only check granting an authoritative
+        identity claim."""
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        client.post(
+            "/api/v1/verify/identity",
+            json={"nik": VALID_NIK, "full_name": "Budi Santoso"},
+            headers=seeker_account["headers"],
+        )
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["nik_verified"] != "verified"
+
+    def test_failed_status_is_also_persisted(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """A failed check must durably record FAILED, not silently leave the
+        profile at unverified — otherwise the UI can't distinguish "never
+        tried" from "tried and failed"."""
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        verify_resp = client.post(
+            "/api/v1/verify/identity",
+            json={"nik": FAILING_NIK, "full_name": "Budi Santoso"},
+            headers=seeker_account["headers"],
+        )
+        assert verify_resp.json()["status"] == "FAILED"
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["nik_verified"] == "failed"
+
+    def test_persists_even_without_a_profile_yet(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """Calling /verify/identity before a profile exists must not 500 —
+        there's simply nothing to persist the outcome onto yet."""
+        resp = client.post(
+            "/api/v1/verify/identity",
+            json={"nik": VALID_NIK, "full_name": "Budi Santoso"},
+            headers=seeker_account["headers"],
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "PENDING"
 
 
 # ── /verify/otp/* endpoints ──────────────────────────────────────────────────
@@ -293,21 +383,92 @@ class TestOtpDemoCodeExposure:
 
 
 class TestEducationAndNpwpMocks:
-    def test_education_verified(self, client: TestClient, seeker_account: dict) -> None:
+    def test_education_pending_not_verified(self, client: TestClient, seeker_account: dict) -> None:
+        """A format-valid diploma number is PENDING, never VERIFIED — the
+        mock check never confirms the diploma against a real SIVIL record."""
         resp = client.post(
             "/api/v1/verify/education",
             json={"ijazah_number": "IJZ-123", "university_name": "UI", "major": "TI"},
             headers=seeker_account["headers"],
         )
-        assert resp.json()["status"] == "VERIFIED"
+        assert resp.json()["status"] == "PENDING"
 
     def test_education_sentinel_rejected(self, client: TestClient, seeker_account: dict) -> None:
         resp = client.post(
             "/api/v1/verify/education",
-            json={"ijazah_number": "0000", "university_name": "UI", "major": "TI"},
+            json={"ijazah_number": "000000", "university_name": "UI", "major": "TI"},
             headers=seeker_account["headers"],
         )
         assert resp.json()["status"] == "NOT_FOUND"
+
+    def test_education_too_short_is_rejected(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        # Below the minimum plausible length for a real diploma number.
+        resp = client.post(
+            "/api/v1/verify/education",
+            json={"ijazah_number": "12345", "university_name": "UI", "major": "TI"},
+            headers=seeker_account["headers"],
+        )
+        assert resp.status_code == 422
+
+    def test_education_pending_is_persisted_to_the_seeker_profile(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """/verify/education is a demo-mode interface mock — no real SIVIL
+        integration, and it never confirms the diploma against a real
+        record — so a pass persists as PENDING, never VERIFIED, to the
+        seeker's own profile (ijazah_verified), for the same reason as
+        /verify/identity above. PENDING is still durable — it survives a
+        reload or a login from another browser."""
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        verify_resp = client.post(
+            "/api/v1/verify/education",
+            json={"ijazah_number": "IJZ-123", "university_name": "UI", "major": "TI"},
+            headers=seeker_account["headers"],
+        )
+        assert verify_resp.json()["status"] == "PENDING"
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["ijazah_verified"] == "pending"
+
+    def test_education_mock_check_never_produces_verified(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        """Regression test for the fixed finding: no input to this mock
+        endpoint can ever result in a durable 'verified' status."""
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        client.post(
+            "/api/v1/verify/education",
+            json={"ijazah_number": "IJZ-123", "university_name": "UI", "major": "TI"},
+            headers=seeker_account["headers"],
+        )
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["ijazah_verified"] != "verified"
+
+    def test_education_not_found_persists_as_failed(
+        self, client: TestClient, seeker_account: dict
+    ) -> None:
+        client.post(
+            "/api/v1/seeker/profile",
+            json={"full_name": "Budi Santoso", "region_code": "3171", "skills": []},
+            headers=seeker_account["headers"],
+        )
+        verify_resp = client.post(
+            "/api/v1/verify/education",
+            json={"ijazah_number": "000000", "university_name": "UI", "major": "TI"},
+            headers=seeker_account["headers"],
+        )
+        assert verify_resp.json()["status"] == "NOT_FOUND"
+        profile = client.get("/api/v1/seeker/profile", headers=seeker_account["headers"]).json()
+        assert profile["ijazah_verified"] == "failed"
 
     @pytest.mark.parametrize(
         ("npwp", "expected"),

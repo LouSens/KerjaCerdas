@@ -28,27 +28,16 @@ EVICTION
   currently at its limit, so an attacker cannot clear their own throttle by
   pushing other entries into the map.
 
-SCALE-OUT NOTE:
-  This implementation is process-local. In a multi-instance deployment
-  (Replit autoscale, Docker swarm, k8s) each instance maintains its own
-  counters, so the effective per-IP limit is (N_instances × per-instance limit).
-  Migrate to a Redis-backed sliding-window limiter before scaling beyond
-  a single instance. The settings.redis_url config key is already prepared.
-
-  Redis implementation sketch:
-    key = f"rl:{ip}:{bucket}"
-    now_ms = int(time.time() * 1000)
-    pipe = redis.pipeline()
-    pipe.zremrangebyscore(key, 0, now_ms - window_ms)
-    pipe.zadd(key, {str(now_ms): now_ms})
-    pipe.zcard(key)
-    pipe.expire(key, window_seconds + 1)
-    _, _, count, _ = await pipe.execute()
+SCALE-OUT:
+  In a multi-instance deployment (Replit autoscale, Docker swarm, k8s) the
+  in-process counters below are per-instance, so the effective per-IP limit
+  silently becomes (N_instances × per-instance limit).
 """
 
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import time
 from collections import OrderedDict, deque
@@ -57,7 +46,25 @@ from fastapi import Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from backend.app.config.settings import settings
+
 logger = logging.getLogger(__name__)
+
+
+def _is_trusted_proxy(request: Request) -> bool:
+    """True if this request carries our own Nginx's shared secret header.
+
+    Not IP/CIDR-based on purpose: a container's published-port traffic can
+    appear to originate from inside its own subnet depending on the host's
+    Docker/iptables setup (hairpin NAT), so a peer-address allowlist can't
+    reliably tell "came through our Nginx" from "hit the API directly" — a
+    secret only Nginx knows can, regardless of what address the connection
+    appears to come from.
+    """
+    if not settings.proxy_shared_secret:
+        return False
+    provided = request.headers.get("x-internal-proxy-secret", "")
+    return hmac.compare_digest(provided, settings.proxy_shared_secret)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -104,20 +111,28 @@ _STALE_AFTER_SECONDS = 3600
 
 
 def _get_client_ip(request: Request) -> str:
-    """Extract the client IP from the transport layer.
+    """Extract the client IP.
 
-    X-Forwarded-For is intentionally ignored: it is a request header that any
-    client can set to an arbitrary value, which would allow trivial rate-limit
-    bypass (rotating the header on each request makes every request appear to
-    come from a distinct IP).  In a direct-to-internet deployment the real
-    peer address reported by the TCP stack is the only trustworthy source.
+    X-Forwarded-For/X-Real-IP are request headers any client can set to an
+    arbitrary value, so trusting them unconditionally would allow trivial
+    rate-limit bypass (rotating the header on each request makes every
+    request appear to come from a distinct IP). But when every request is
+    proxied through our own Nginx (see frontend/nginx.conf.template), the
+    direct TCP peer is *always* the proxy's address — so keying purely off
+    ``request.client.host`` collapses every real client into one shared
+    bucket instead, throttling legitimate users together.
 
-    If this service is ever placed behind a trusted reverse proxy (nginx,
-    Caddy, AWS ALB, …), configure the proxy to *overwrite* (not append)
-    a custom trusted header and read only that header here — do not blindly
-    trust the client-supplied X-Forwarded-For.
+    The forwarded address is trusted only when the request also carries our
+    own shared secret header (see ``_is_trusted_proxy``) — an external client
+    hitting the API directly cannot produce that header, so it cannot forge
+    the header past this check.
     """
-    return request.client.host if request.client else "unknown"
+    peer = request.client.host if request.client else "unknown"
+    if _is_trusted_proxy(request):
+        forwarded = request.headers.get("x-real-ip")
+        if forwarded:
+            return forwarded.strip()
+    return peer
 
 
 def _get_bucket(path: str) -> tuple[str, int, int]:
@@ -134,7 +149,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
 
     Thread-safety: uses an asyncio.Lock per key — safe for async workers.
     Memory: bounded by _MAX_TRACKED_KEYS; LRU eviction prevents leak.
-    Scale: process-local — see module docstring for Redis migration guide.
+    Scale: process-local.
     """
 
     def __init__(self, app: ASGIApp) -> None:
@@ -234,8 +249,8 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         ip = _get_client_ip(request)
         path = request.url.path
         bucket, max_req, window = _get_bucket(path)
-
         key = (ip, bucket)
+
         key_lock = await self._get_or_create_key(key)
 
         async with key_lock:

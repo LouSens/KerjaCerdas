@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging as _logging
+from datetime import UTC, datetime
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from backend.app.db.models import (
@@ -13,6 +14,7 @@ from backend.app.db.models import (
     ChatSession,
     Course,
     Employer,
+    JobPackParseCache,
     JobPosting,
     MatchBundle,
     QueryEmbedding,
@@ -152,6 +154,31 @@ class PostgresRepository(Generic[TSchema, TModel]):
 
 
 _ann_logger = _logging.getLogger(__name__)
+
+
+async def count_active_jobs() -> int | None:
+    """Cheap COUNT of active jobs, or None on error (caller should then assume
+    "large" and take the safe/ANN path rather than risk an unbounded scan)."""
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(func.count()).select_from(JobPosting).where(JobPosting.is_active.is_(True))
+            )
+            return int(result.scalar_one())
+    except Exception as exc:
+        _ann_logger.warning("count_active_jobs failed (%s)", exc)
+        return None
+
+
+async def count_seekers() -> int | None:
+    """Cheap COUNT of seeker profiles, or None on error (see count_active_jobs)."""
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(func.count()).select_from(SeekerProfile))
+            return int(result.scalar_one())
+    except Exception as exc:
+        _ann_logger.warning("count_seekers failed (%s)", exc)
+        return None
 
 
 async def semantic_search_jobs(
@@ -298,6 +325,58 @@ async def save_query_embedding(cache_key: str, model: str, embedding: list[float
         _ann_logger.warning("save_query_embedding failed (%s) — skipping persist", exc)
 
 
+# ── Job-pack parse cache ──────────────────────────────────────────────────────
+# Server-side dedup so a retried job-pack upload (lost response, reload, a
+# different browser/device) replays the exact same parsed postings instead of
+# re-invoking Gemini — see JobPackParseCache's docstring in models.py for why
+# a client-side cache alone can't guarantee this. Failure-safe like the query-
+# embedding cache above: a DB hiccup degrades to a fresh parse, never a 500.
+
+_JOB_PACK_CACHE_MAX_AGE_SECONDS = 24 * 60 * 60  # mirrors the (now-redundant) old client-side TTL
+
+
+async def get_cached_job_pack_parse(cache_key: str) -> list[dict] | None:
+    """Fetch a cached job-pack parse by its cache key, or None on miss/stale/error."""
+    try:
+        async with async_session() as session:
+            row = await session.get(JobPackParseCache, cache_key)
+            if row is None or not isinstance(row.postings, list):
+                return None
+            age = (datetime.now(UTC) - row.created_at.replace(tzinfo=UTC)).total_seconds()
+            if age > _JOB_PACK_CACHE_MAX_AGE_SECONDS:
+                return None
+            return row.postings
+    except Exception as exc:
+        _store_logger.warning("get_cached_job_pack_parse failed (%s) — treating as cache miss", exc)
+        return None
+
+
+async def save_job_pack_parse(cache_key: str, employer_id: str, postings: list[dict]) -> None:
+    """Persist a job-pack parse result (idempotent — a repeat save just overwrites).
+
+    An overwrite (the `else` branch) only happens after get_cached_job_pack_parse
+    already decided the previous row was stale and let a fresh parse run — so
+    this write must bump created_at to now. Leaving it at the original INSERT
+    time (the ORM default only applies once, never on UPDATE) would make the
+    row look expired again on the very next read, forcing every subsequent
+    upload to re-parse forever after the first TTL window, which is exactly
+    the drift this cache exists to prevent.
+    """
+    try:
+        async with async_session() as session:
+            existing = await session.get(JobPackParseCache, cache_key)
+            if existing is None:
+                session.add(
+                    JobPackParseCache(cache_key=cache_key, employer_id=employer_id, postings=postings)
+                )
+            else:
+                existing.postings = postings
+                existing.created_at = datetime.now(UTC)
+            await session.commit()
+    except Exception as exc:
+        _store_logger.warning("save_job_pack_parse failed (%s) — skipping persist", exc)
+
+
 # ── Typed SQL finders for hot paths ──────────────────────────────────────────
 # These replace find(lambda ...) full-table-scans on the most-called queries.
 # Each runs a single indexed SQL query instead of loading the whole table.
@@ -340,6 +419,34 @@ async def update_seeker_embedding(
             .where(SeekerProfile.id == seeker_id)
             .values(embedding=embedding, embedding_model=embedding_model)
         )
+        await session.execute(stmt)
+        await session.commit()
+
+
+async def update_seeker_verification_status(
+    seeker_id: str,
+    *,
+    nik_verified: str | None = None,
+    ijazah_verified: str | None = None,
+) -> None:
+    """Write only the given verification-status column(s) for a seeker.
+
+    Called from the (mock) `/verify/identity` and `/verify/education`
+    endpoints once they decide VERIFIED/FAILED, so that result survives a
+    reload or a login from another browser instead of living only in the
+    frontend's persisted store. Narrow UPDATE for the same race-avoidance
+    reason as `update_seeker_embedding` above — this must never overwrite
+    unrelated profile fields a concurrent request is editing.
+    """
+    values = {
+        k: v
+        for k, v in {"nik_verified": nik_verified, "ijazah_verified": ijazah_verified}.items()
+        if v is not None
+    }
+    if not values:
+        return
+    async with async_session() as session:
+        stmt = update(SeekerProfile).where(SeekerProfile.id == seeker_id).values(**values)
         await session.execute(stmt)
         await session.commit()
 
@@ -390,6 +497,28 @@ async def find_jobs_by_employer_id(employer_id: str) -> list[JobSchema]:
     except Exception as exc:
         _store_logger.warning("find_jobs_by_employer_id failed (%s)", exc)
         return []
+
+
+async def find_job_by_employer_and_client_ref(employer_id: str, client_ref: str) -> JobSchema | None:
+    """Look up a job by its client-supplied idempotency token (see create_job).
+
+    Backed by the partial unique index on (employer_id, client_ref).
+    """
+    try:
+        async with async_session() as session:
+            stmt = select(JobPosting).where(
+                JobPosting.employer_id == employer_id,
+                JobPosting.client_ref == client_ref,
+            )
+            result = await session.execute(stmt)
+            obj = result.scalar_one_or_none()
+            if not obj:
+                return None
+            data = {c.name: getattr(obj, c.name) for c in JobPosting.__table__.columns}
+            return JobSchema.model_validate(data)
+    except Exception as exc:
+        _store_logger.warning("find_job_by_employer_and_client_ref failed (%s)", exc)
+        return None
 
 
 async def find_skill_gaps_by_seeker_id(seeker_id: str) -> list[SkillGapSchema]:

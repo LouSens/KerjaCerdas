@@ -24,7 +24,7 @@ Matching, skill-gap computation, and intent routing run as procedural Python in 
 | Apply & track | Seeker applies to a job | `ApplicationsPage.jsx` → `POST /api/v1/seeker/apply` | Milestone timeline (Saved → Applied → Reviewed → Interview → Hired/Rejected) |
 | Employer sourcing | Employer opens Candidates tab for a job | `EmployerCandidates.jsx` → `POST /api/v1/employer/jobs/{id}/candidates` | Ranked shortlist with confidence bands (Strong/Possible/Stretch) |
 | Job posting | Employer completes the 3-step wizard | `EmployerPostJob.jsx` | Job posted, visible in seeker matching |
-| Bulk job import | Employer uploads a multi-job PDF | `JobPackUploader.jsx` → `POST /api/v1/uploads/job-pack` | All positions extracted and published |
+| Bulk job import | Employer uploads a multi-job PDF | `JobPackUploader.jsx` → `POST /api/v1/uploads/job-pack` | All positions extracted and shown for review — nothing is published until the employer confirms each one (`POST /employer/jobs` per posting, idempotent via `client_ref`) |
 | Identity/OTP verification | Seeker/employer submits KTP, ijazah, NPWP, or phone number | `VerificationDashboard.jsx`, `EmployerVerification.jsx` | Verification result (demo mode — see Verification below) |
 | Pay-to-Unlock | Employer unlocks a candidate's contact | `EmployerCandidates.jsx` unlock action | Contact info revealed (demo mode — no payment gateway wired yet) |
 | A/B experiment assignment | Any user | `OnboardingWizard.jsx` via `GET /api/v1/experiments/assignments` | Deterministic variant (hash of `user_id`) |
@@ -35,7 +35,7 @@ Matching, skill-gap computation, and intent routing run as procedural Python in 
 |---|---|---|---|---|
 | CV parsing | PDF bytes, magic-byte validated (`%PDF-`), 10 MB cap | Gemini multimodal extraction | Gemini 3.1 Flash | Structured skills/experience/education JSON |
 | Embedding | Seeker/job text | Task-typed embedding calls (`RETRIEVAL_QUERY` / `RETRIEVAL_DOCUMENT`) | Gemini embedding model, 768-dim (MRL-truncated from 3072) | Vector stored in a `pgvector` column |
-| Vector search | Seeker embedding | HNSW ANN search (`ef_construction=64, m=16`), in-process scan fallback if the index is unavailable | pgvector HNSW | Top-K nearest job candidates |
+| Vector search | Seeker embedding | Below 500 active rows: every row scored directly (no ANN — more correct at this scale, see internals/01). Above it: HNSW ANN search (`ef_construction=64, m=16`), in-process scan fallback if the index is unavailable | pgvector HNSW | Top-K nearest job candidates |
 | Hybrid ranking | Vector similarity + structured profile/job fields | `SemanticMatcher` reranking (`backend/app/services/matching/matcher.py`) | `0.45` cosine + `0.25` skill overlap + `0.15` experience + `0.10` education + `0.05` recency | Ranked `MatchResult` list with band label and per-factor breakdown |
 | Skill gap | Seeker skill set, target job's required skills | Deterministic set-difference, then Gemini-generated course narration | Set difference + Gemini text generation | Missing-skill list, action plan, course recommendations |
 | Intent routing | Advisor chat message | Gemini LLM classification with a regex fallback | Gemini 3.1 Flash / regex | Routes procedurally to matcher, skill-gap, or advisor logic |
@@ -47,19 +47,19 @@ Matching, skill-gap computation, and intent routing run as procedural Python in 
 
 | Layer | Component | Notes |
 |---|---|---|
-| Frontend | React 18 + Vite + React Router + Zustand, persisted to `localStorage` (key `kerjacerdas-v4`) | SPA with JWT-aware route guards, 27 components |
-| Backend | FastAPI (async), JWT auth, role-based dependencies, custom sliding-window `RateLimiterMiddleware` (process-local, in-memory) | 10 routers under one `/api/v1` prefix |
+| Frontend | React 18 + Vite + React Router + Zustand, persisted to `localStorage` (key `kerjacerdas-v4`) | SPA with JWT-aware route guards, 25 components |
+| Backend | FastAPI (async), JWT auth, role-based dependencies, custom sliding-window `RateLimiterMiddleware` (in-memory by default) | 10 routers under one `/api/v1` prefix |
 | Database | PostgreSQL 16 + `pgvector` (HNSW), Alembic migrations | Alembic-managed schema; an RLS migration exists but defines no policies yet |
 | Model/API | Google Gemini (3.1 Flash) for embeddings + generation | Live calls, with an offline fallback stub on failure |
 | External integration | Curated static course catalogue (35+ items); demo-mode OTP/NIK/NPWP checks | Government/e-KYC and payment integrations (Dukcapil, SIVIL, DJP, WhatsApp/SMS OTP, Midtrans/Xendit) require external contracts and are not wired in this build |
 | Infrastructure | Docker Compose (dev + `docker-compose.prod.yml`), GitHub Actions CI (`ci.yml`) + release image publishing (`release.yml`) | CI runs backend lint, audit, and a build gate; container images publish to GHCR on tagged release |
-| Testing | 24 backend test files (pytest); 2 frontend test files (`api.test.js` unit, `auth.spec.js` e2e) | Covers auth and the API client; component/integration coverage for matching UI, uploads, and verification flows is thin relative to the 27-component frontend |
+| Testing | 22 backend test files (pytest); 2 frontend test files (`api.test.js` unit, `auth.spec.js` e2e) | Covers auth and the API client; component/integration coverage for matching UI, uploads, and verification flows is thin relative to the 25-component frontend |
 
 ## Verification & Payments — Demo Mode
 
 Identity, credential, and payment flows are implemented as clearly labeled demo endpoints rather than live integrations:
 
-- **KTP/NIK, ijazah, NPWP:** format-only checks (16-digit NIK, pattern-matched NPWP) — no live Dukcapil/SIVIL/DJP calls.
+- **KTP/NIK, ijazah, NPWP:** format-only checks (16-digit NIK, pattern-matched NPWP) — no live Dukcapil/SIVIL/DJP calls. A passing NIK/ijazah check persists as `pending` (durable, survives reload/another device), never `verified` — that status is reserved for a real government integration this build doesn't have.
 - **Phone OTP:** the verification code is returned directly in the API response (`otp_demo_enabled`) rather than sent through a real SMS/WhatsApp gateway.
 - **Pay-to-Unlock:** the unlock endpoint accepts any payment token; no payment gateway is wired.
 
@@ -82,7 +82,6 @@ These are demo-mode by design so the surrounding product flow (verification badg
 - Pay-to-Unlock (accepts any token; no payment gateway)
 
 **On the roadmap, not yet built:**
-- Redis-backed distributed rate limiting and semantic cache
 - Vertex AI VPC / Zero Data Retention inference
 - Production e-KYC and payment gateway integrations
 - Matching-algorithm improvements (skill taxonomy, multi-vector embeddings, dynamic reranking) — see [Roadmap](ROADMAP.md)
@@ -92,4 +91,4 @@ These are demo-mode by design so the surrounding product flow (verification badg
 - An A/B experiment analysis dashboard and model fine-tuning feedback loop
 - Automated VPS deployment from CI (the release workflow publishes images; deployment to the VPS is manual)
 
-See [Known Issues](KNOWN_ISSUES.md) for architectural debt and open bugs.
+Architectural debt and open bugs are tracked inline as code comments at the relevant call sites (e.g. `backend/app/api/routers/employer.py`) rather than in a separate standing document.

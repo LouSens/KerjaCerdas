@@ -32,7 +32,7 @@ from backend.app.db.schemas import (
     SeekerProfile,
     Skill,
 )
-from backend.app.services.matching.matcher import SemanticMatcher
+from backend.app.services.matching.matcher import SemanticMatcher, _normalize_skill
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
@@ -418,13 +418,17 @@ async def analyze_skill_gap(
         }
 
     # --- Compute skill gap ---------------------------------------------------
-    seeker_lower = {s.name.lower(): s.name for s in (seeker.skills or [])}
+    # Normalize both sides through the matcher's canonical skill map so alias
+    # spellings ("Node.js" on the job vs "NodeJS" on the CV) count as a match
+    # instead of inflating the gap with skills the seeker already has.
+    seeker_by_canonical = {_normalize_skill(s.name): s.name for s in (seeker.skills or [])}
     matching_skills: list[str] = []
     missing_skills: list[str] = []
 
     for req in target.required_skills or []:
-        if req.lower() in seeker_lower:
-            matching_skills.append(seeker_lower[req.lower()])
+        canonical_req = _normalize_skill(req)
+        if canonical_req in seeker_by_canonical:
+            matching_skills.append(seeker_by_canonical[canonical_req])
         else:
             missing_skills.append(req)
 

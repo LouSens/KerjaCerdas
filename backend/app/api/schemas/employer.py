@@ -70,6 +70,11 @@ class JobCreateRequest(BaseModel):
     salary_min: LenientInt = Field(default=0, ge=0)
     salary_max: LenientInt = Field(default=0, ge=0)
     kbji_code: str = Field(default="", max_length=32)
+    # Optional client-generated idempotency token. If a create request is
+    # retried after its response was lost (timeout, dropped connection) with
+    # the same client_ref, the endpoint returns the already-created job
+    # instead of inserting a duplicate — see create_job.
+    client_ref: str | None = Field(default=None, max_length=64)
 
 
 class JobUpdateRequest(BaseModel):

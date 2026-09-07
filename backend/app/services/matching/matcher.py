@@ -197,6 +197,21 @@ def _normalize_filters(filters: dict | None) -> dict:
     return out
 
 
+def _has_hard_filter(filters: dict) -> bool:
+    """True if any filter in `filters` eliminates rows outright (a `continue`
+    below) rather than merely nudging the score.
+
+    The ANN prefilter cap (`_prefilter_limit`) is sized only to give
+    structured *boosts* room to reshuffle semantic order — a job or seeker
+    that's a perfect match on an active hard filter but semantically distant
+    from the query text can rank outside that cap and never even reach the
+    filter, silently dropping an eligible row instead of merely reordering
+    it. Whenever a hard filter is active, ranking must fall back to scoring
+    every row instead of only the ANN-nearest slice.
+    """
+    return bool(filters.get("location") or filters.get("salary_min") or filters.get("experience_min"))
+
+
 # ── Scoring weights ───────────────────────────────────────────────────────────
 # Shared by both ranking directions (job→seekers and seeker→jobs) so a
 # recalibration only ever happens in one place.
@@ -232,7 +247,9 @@ def _hybrid_score(
     exp_boost = _experience_fit_boost(years_exp, required_years_min)
     edu_boost = _W_EDUCATION if has_education else 0.0
     recency_boost = _W_RECENCY
-    return _W_COSINE * max(cos, 0.0) + _W_SKILL * skill_overlap + exp_boost + edu_boost + recency_boost
+    return (
+        _W_COSINE * max(cos, 0.0) + _W_SKILL * skill_overlap + exp_boost + edu_boost + recency_boost
+    )
 
 
 def _band_label(score: float, strong_th: float, possible_th: float) -> str:
@@ -414,18 +431,53 @@ class SemanticMatcher:
 
     @staticmethod
     def _prefilter_limit(top_k: int) -> int:
-        """ANN candidate pool size: enough headroom that structured boosts can
-        reshuffle the semantic order without losing relevant rows."""
-        return max(top_k * 5, 200)
+        """ANN candidate pool size for the (large-dataset-only) ANN path.
+
+        Below `settings.matching_full_scan_safe_limit` active rows, this
+        function is never called at all — every row gets the full hybrid
+        formula (see `_job_candidates`'s docstring for why that's the
+        correct default, not just a fallback). Above that threshold, some
+        residual omission risk is unavoidable with a single-vector ANN
+        index: cosine-only ordering can still rank a structurally strong
+        candidate (great skill/experience fit, weak embedding match) outside
+        this cutoff. A wide multiplier here shrinks that risk window without
+        fetching the whole table — eliminating it completely needs a
+        skill-aware retrieval query (a JSON, not JSONB, `skills`/
+        `required_skills` column today, so no indexed overlap query exists
+        yet) or the multi-vector representation already tracked as planned
+        work in ROADMAP.md. Not a same-session fix; this multiplier is the
+        honest mitigation available without a schema change.
+        """
+        return max(top_k * 20, 1000)
 
     async def _job_candidates(
         self, query_vec: list[float], top_k: int
     ) -> list[tuple[JobPosting, float | None]]:
         """Fetch job candidates DB-side. Returns (job, cosine) pairs — cosine is
-        precomputed by pgvector (`embedding <=> query`, HNSW index). Falls back
-        to a full scan with in-Python cosine (cos=None) if the ANN query can't run."""
+        precomputed by pgvector (`embedding <=> query`, HNSW index) when the ANN
+        path runs. Prefers a full scan (cos=None, scored in Python against the
+        complete hybrid formula) whenever the active-job count is at or below
+        `settings.matching_full_scan_safe_limit`. This isn't just a fallback —
+        it's more CORRECT: the ANN prefilter orders candidates by cosine
+        similarity alone, while the hybrid score it's supposed to approximate
+        weighs skill overlap, experience, education and recency too (55%
+        combined, cosine is only 45%). A candidate with a weak embedding match
+        but excellent skill/experience fit can score well on the real formula
+        yet never reach it if their row falls outside the ANN's cosine-only
+        top-K. A full scan hands every active row to the real formula instead
+        of pre-judging on cosine alone — cheap and safe at this platform's
+        actual near-term scale (see ROADMAP.md's Level 1/2 pilot numbers),
+        with the ANN path still there once a dataset genuinely outgrows a full
+        scan. Only escalates to the ANN-capped path once the true count is
+        large or unknown (a count query failure is treated as "assume large",
+        never as "assume small")."""
         from backend.app.config.settings import settings
         from backend.app.db import postgres_store as store
+
+        count = await store.count_active_jobs()
+        if count is not None and count <= settings.matching_full_scan_safe_limit:
+            all_jobs = await store.get_repositories().jobs.list()
+            return [(j, None) for j in all_jobs]
 
         model = settings.gemini_embed_model
         if query_vec:
@@ -440,9 +492,15 @@ class SemanticMatcher:
     async def _seeker_candidates(
         self, query_vec: list[float], top_k: int
     ) -> list[tuple[SeekerProfile, float | None]]:
-        """Seeker-side twin of `_job_candidates` (employer reverse matching)."""
+        """Seeker-side twin of `_job_candidates` (employer reverse matching) —
+        same full-scan-when-small preference and why it matters."""
         from backend.app.config.settings import settings
         from backend.app.db import postgres_store as store
+
+        count = await store.count_seekers()
+        if count is not None and count <= settings.matching_full_scan_safe_limit:
+            all_seekers = await store.get_repositories().seekers.list()
+            return [(s, None) for s in all_seekers]
 
         model = settings.gemini_embed_model
         if query_vec:
@@ -486,7 +544,13 @@ class SemanticMatcher:
         years_exp = _experience_years(seeker)  # loop-invariant — compute once
 
         if jobs is None:
-            candidates = await self._job_candidates(query_vec, top_k)
+            if _has_hard_filter(filters):
+                from backend.app.db import postgres_store as store
+
+                all_jobs = await store.get_repositories().jobs.list()
+                candidates = [(j, None) for j in all_jobs]
+            else:
+                candidates = await self._job_candidates(query_vec, top_k)
         else:
             candidates = [(j, None) for j in jobs]
 
@@ -603,7 +667,13 @@ class SemanticMatcher:
             query_vec = []
 
         if seekers is None:
-            candidates = await self._seeker_candidates(query_vec, top_k)
+            if _has_hard_filter(filters):
+                from backend.app.db import postgres_store as store
+
+                all_seekers = await store.get_repositories().seekers.list()
+                candidates = [(s, None) for s in all_seekers]
+            else:
+                candidates = await self._seeker_candidates(query_vec, top_k)
         else:
             candidates = [(s, None) for s in seekers]
 

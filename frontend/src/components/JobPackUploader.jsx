@@ -1,63 +1,223 @@
-/**
- * JobPackUploader — Clean enterprise bulk PDF job pack uploader.
- */
 import { useState, useRef } from 'react'
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react'
 import useStore from '../store/useStore'
 import toast from 'react-hot-toast'
-import { KC, BrutalCard, Tag, topBtn, DesignStyles } from './_design'
+import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
+import { createEmployerJob } from '../services/api'
+import { UploadCloud, CheckCircle2, ArrowRight } from 'lucide-react'
 
 export default function JobPackUploader() {
     const { uploadJobPack, jobPackUploading, navigate } = useStore()
-    const [dragActive, setDragActive] = useState(false)
     const [selectedFile, setSelectedFile] = useState(null)
-    const [successResult, setSuccessResult] = useState(null)
-    const [uploadError, setUploadError] = useState(null)
+    const [parsedResult, setParsedResult] = useState(null)
+    const [dragActive, setDragActive] = useState(false)
+    const [publishing, setPublishing] = useState(false)
+    // Which parsed postings the employer actually wants published — a job
+    // pack can extract entries nobody asked to publish (a stray table row,
+    // a listing that's actually closed, etc.), so confirming the batch must
+    // let each one be reviewed and excluded, not just accepted wholesale.
+    const [checkedIds, setCheckedIds] = useState(() => new Set())
     const inputRef = useRef(null)
+
+    const sha256Hex = async (bytes) => {
+        const digest = await crypto.subtle.digest('SHA-256', bytes)
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('')
+    }
+
+    // client_ref must be stable across retries and unique per posting.
+    // Both now hold because the SERVER (not this component) guarantees a
+    // repeat upload of the identical file returns the exact same parsed
+    // postings — same title/salary/region text, same local_id — from a
+    // content-addressed cache keyed by the file's own hash (see
+    // job_pack_parse_cache / models.py's JobPackParseCache). Gemini is
+    // never re-invoked for a file it has already parsed for this employer,
+    // so there is no re-parse for wording/formatting to drift across. A
+    // browser-side cache used to carry that guarantee here instead — it
+    // was removed because it could be cleared, expire, or simply not exist
+    // on a different device, which is exactly the gap that made retries
+    // unsafe in the first place. local_id (this parse's own array
+    // position, itself now server-guaranteed stable) is included so two
+    // distinct postings with identical title/region/salary in the same
+    // pack still get different refs instead of the second collapsing into
+    // the first.
+    const computeClientRef = async (fileHash, job) => {
+        const identity = [
+            fileHash,
+            job.local_id ?? '',
+            (job.title || '').trim().toLowerCase(),
+            job.region_code || '',
+            job.salary_min ?? '',
+            job.salary_max ?? '',
+        ].join(':')
+        return sha256Hex(new TextEncoder().encode(identity))
+    }
+
+    const toggleJobChecked = (localId) => {
+        setCheckedIds(prev => {
+            const next = new Set(prev)
+            if (next.has(localId)) next.delete(localId)
+            else next.add(localId)
+            return next
+        })
+    }
 
     const handleFile = async (file) => {
         if (!file) return
-        // Reset the previous outcome so a stale success banner never survives
-        // into the next attempt.
-        setSuccessResult(null)
-        setUploadError(null)
         if (!file.name.toLowerCase().endsWith('.pdf')) {
             toast.error('Format berkas wajib PDF')
-            setUploadError('Format berkas wajib PDF. Silakan pilih dokumen berekstensi .pdf.')
             return
         }
         setSelectedFile(file)
-        // uploadJobPack (store action) already handles its own success/error
-        // toasts and never rethrows, so no try/catch or duplicate toast here.
-        const res = await uploadJobPack(file)
-        if (res) setSuccessResult(res)
-        else setUploadError('Ekstraksi dokumen gagal. Periksa berkas Anda lalu coba unggah ulang.')
+
+        const startedAt = performance.now()
+        try {
+            const fileHash = await sha256Hex(await file.arrayBuffer())
+
+            // Parsing only extracts and returns the postings — nothing is
+            // written to the jobs table yet (see POST /uploads/job-pack), so
+            // there is nothing to track or clean up if this batch is later
+            // replaced or abandoned before the employer confirms it. A retry
+            // of the identical file replays the server's cached parse rather
+            // than re-invoking Gemini, so this always returns the same
+            // postings for the same bytes.
+            const res = await uploadJobPack(file)
+            if (!res?.jobs?.length) {
+                toast.error('Tidak ada lowongan yang berhasil diurai dari berkas PDF ini.')
+                setSelectedFile(null)
+                setParsedResult(null)
+                return
+            }
+            const elapsedSeconds = (performance.now() - startedAt) / 1000
+            const jobs = await Promise.all(
+                res.jobs.map(async job => ({ ...job, client_ref: await computeClientRef(fileHash, job) }))
+            )
+
+            setParsedResult({
+                fileName: file.name,
+                time: `${elapsedSeconds.toFixed(1)} dtk`,
+                jobs,
+            })
+            // Everything starts checked — reviewing is opt-out (uncheck what
+            // you don't want), which matches what most packs need (mostly
+            // real postings) without forcing a click per row for the common
+            // case.
+            setCheckedIds(new Set(jobs.map(j => j.local_id)))
+        } catch (e) {
+            toast.error('Ekstraksi dokumen gagal: ' + (e.message || 'Periksa berkas Anda lalu coba unggah ulang.'))
+            setSelectedFile(null)
+            setParsedResult(null)
+        }
     }
 
-    const createdCount = successResult?.created_job_ids?.length ?? 0
+    // Nothing exists in the database until this runs — this is the only
+    // point a parsed posting is actually created (via the same endpoint the
+    // manual "Pasang Lowongan" form uses), so an abandoned/replaced batch
+    // simply never gets this far and never touches the database at all.
+    const handleConfirmPublish = async () => {
+        const jobs = (parsedResult?.jobs || []).filter(job => checkedIds.has(job.local_id))
+        if (!jobs.length) return
+        setPublishing(true)
+        try {
+            const results = await Promise.allSettled(
+                jobs.map(job => createEmployerJob({
+                    title: job.title,
+                    description: job.description,
+                    responsibilities: job.responsibilities,
+                    required_skills: job.required_skills,
+                    nice_to_have_skills: job.nice_to_have_skills,
+                    education_min: job.education_min,
+                    experience_years_min: job.experience_years_min,
+                    region_code: job.region_code,
+                    location: job.location,
+                    remote_allowed: job.remote_allowed,
+                    salary_min: job.salary_min,
+                    salary_max: job.salary_max,
+                    kbji_code: job.kbji_code,
+                    client_ref: job.client_ref,
+                }))
+            )
+            // A fulfilled response can still be a replay — the server
+            // recognized client_ref from an earlier attempt (this confirm
+            // click retried a partial failure, or the whole PDF was
+            // re-uploaded and re-confirmed) and returned the job that
+            // already existed instead of creating a new one. Both counts as
+            // "resolved" (nothing left to retry for that row), but only a
+            // genuine create is a NEW vacancy — conflating them would report
+            // a re-publish of an already-live posting as fresh progress.
+            const outcomes = jobs.map((job, i) => {
+                const r = results[i]
+                if (r.status !== 'fulfilled') return { job, resolved: false, created: false }
+                return { job, resolved: true, created: r.value?.created !== false }
+            })
+            const resolvedLocalIds = new Set(outcomes.filter(o => o.resolved).map(o => o.job.local_id))
+            const createdCount = outcomes.filter(o => o.created).length
+            const alreadyPublishedCount = outcomes.filter(o => o.resolved && !o.created).length
+            const failedJobs = outcomes.filter(o => !o.resolved).map(o => o.job)
+            await useStore.getState().refreshEmployerJobs()
+
+            if (failedJobs.length === 0) {
+                if (createdCount === 0) {
+                    toast.success(`${alreadyPublishedCount} lowongan sudah dipublikasikan sebelumnya — tidak ada duplikat dibuat.`)
+                } else if (alreadyPublishedCount > 0) {
+                    toast.success(`${createdCount} lowongan baru dipublikasikan (${alreadyPublishedCount} sudah ada sebelumnya).`)
+                } else {
+                    toast.success(`${createdCount} lowongan berhasil dipublikasikan dan siap dikelola!`)
+                }
+                navigate('employer-jobs')
+                return
+            }
+
+            // Failed postings were never persisted (createEmployerJob threw,
+            // so there is no row for them in Kelola Lowongan to retry from)
+            // — navigating away here would lose the only copy of them. Drop
+            // only the ones that resolved (created or already existed);
+            // anything still unpublished (failed just now, or simply left
+            // unchecked) stays on screen so retrying is one more click on
+            // this same button.
+            setParsedResult(prev => prev ? { ...prev, jobs: prev.jobs.filter(j => !resolvedLocalIds.has(j.local_id)) } : prev)
+            setCheckedIds(new Set(failedJobs.map(j => j.local_id)))
+
+            if (resolvedLocalIds.size > 0) {
+                toast.error(`${resolvedLocalIds.size} dari ${jobs.length} lowongan diproses. ${failedJobs.length} gagal — coba lagi di bawah.`)
+            } else {
+                toast.error('Gagal mempublikasikan lowongan. Coba lagi.')
+            }
+        } finally {
+            setPublishing(false)
+        }
+    }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <DesignStyles />
 
-            {/* Header */}
-            <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                    <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
-                        Bulk Upload Lowongan (Job Pack PDF)
+                    <h1 style={{ font: '900 21px/1.1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.9px', color: KC.ink, margin: '0 0 5px' }}>
+                        Upload Job Pack
                     </h1>
-                    <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
-                        Unggah 1 dokumen PDF kompilasi — AI otomatis mengekstrak seluruh posisi ke dalam sistem
-                    </p>
+                    <div style={{ font: '600 11.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                        Satu PDF berisi banyak lowongan sekaligus. AI memecahnya jadi entri terstruktur — dari jam menjadi detik.
+                    </div>
                 </div>
-                <button onClick={() => navigate('employer-post-job')} style={topBtn('#fff')}>
-                    Input Manual Lowongan →
+                <button
+                    onClick={() => navigate('employer-post-job')}
+                    style={{ ...topBtn('#fff', KC.ink), padding: '6px 12px', fontSize: 12, flexShrink: 0 }}
+                >
+                    Manual →
                 </button>
-            </header>
+            </div>
 
-            {/* Main Upload Box */}
-            <div className="kc-grid-main">
-                <BrutalCard color="#FFFFFF" padding={32} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
+            {/* Dropzone Box */}
+            <input
+                ref={inputRef}
+                type="file"
+                accept=".pdf"
+                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+                style={{ display: 'none' }}
+            />
+
+            {!parsedResult ? (
+                <>
                     <div
                         aria-busy={jobPackUploading}
                         onDragOver={(e) => {
@@ -77,91 +237,195 @@ export default function JobPackUploader() {
                             inputRef.current?.click()
                         }}
                         style={{
-                            width: '100%',
-                            padding: '40px 20px',
-                            border: `2px dashed ${dragActive ? KC.orange : KC.ink}`,
-                            borderRadius: 10,
-                            background: dragActive ? KC.orangeSoft : KC.surface,
+                            background: '#fff',
+                            border: `1.5px dashed ${dragActive ? KC.orange : KC.ink}`,
+                            borderRadius: 14,
+                            boxShadow: `3px 3px 0 ${KC.ink}`,
+                            padding: '26px 18px',
+                            textAlign: 'center',
                             cursor: jobPackUploading ? 'progress' : 'pointer',
                             pointerEvents: jobPackUploading ? 'none' : 'auto',
                             opacity: jobPackUploading ? 0.7 : 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 12,
-                            boxSizing: 'border-box',
+                            animation: 'kcUp .4s both',
                             transition: 'all 0.15s ease',
                         }}
                     >
-                        <input
-                            ref={inputRef}
-                            type="file"
-                            accept=".pdf"
+                        <div style={{ width: 52, height: 52, margin: '0 auto 12px', borderRadius: 13, background: '#FFF1EB', border: `1.5px solid ${KC.orange}`, display: 'grid', placeItems: 'center' }}>
+                            <div style={{ width: 0, height: 0, borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderBottom: `13px solid ${KC.orange}` }} />
+                        </div>
+                        <div style={{ font: '800 14.5px/1.3 "Plus Jakarta Sans", sans-serif', color: KC.ink, marginBottom: 5 }}>
+                            {jobPackUploading ? 'Mengurai Job Pack PDF…' : 'Ketuk atau seret Job Pack PDF ke sini'}
+                        </div>
+                        <div style={{ font: '400 11.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                            Maks 10 MB · header %PDF- divalidasi
+                        </div>
+                        <button
+                            type="button"
                             disabled={jobPackUploading}
-                            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-                            style={{ display: 'none' }}
-                        />
-                        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', color: jobPackUploading ? KC.orange : KC.ink }}>
-                            {jobPackUploading ? <Loader2 size={26} className="animate-spin" /> : <UploadCloud size={26} />}
+                            className="kc-btn"
+                            style={{
+                                marginTop: 14,
+                                padding: '12px 18px',
+                                background: jobPackUploading ? '#64748B' : KC.orange,
+                                color: '#fff',
+                                border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 10,
+                                boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
+                                font: '800 13.5px/1 "Plus Jakarta Sans", sans-serif',
+                                minHeight: 44,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            {jobPackUploading ? 'Memproses Berkas…' : 'Pilih Berkas PDF'}
+                        </button>
+                    </div>
+
+                    <div style={{ background: '#FEF3C7', border: '1.5px solid #F59E0B', borderRadius: 12, padding: '13px 15px' }}>
+                        <div style={{ font: '800 12px/1.3 "Plus Jakarta Sans", sans-serif', color: '#92400E', marginBottom: 4 }}>
+                            Format yang bekerja paling baik
+                        </div>
+                        <div style={{ font: '400 11.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#92400E' }}>
+                            Satu lowongan per halaman, judul sebagai heading, keahlian dalam bullet. Hasil parsing tetap bisa diedit sebelum publikasi.
+                        </div>
+                    </div>
+                </>
+            ) : (
+                /* Parsed Result Display */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 12, padding: '13px 15px', display: 'flex', alignItems: 'center', gap: 11, animation: 'kcSlideUp .35s both' }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#10B981', display: 'grid', placeItems: 'center', color: '#fff', font: '900 14px/1 "Plus Jakarta Sans", sans-serif', flex: 'none' }}>
+                            ✓
                         </div>
                         <div>
-                            <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: KC.ink }}>
-                                {jobPackUploading ? 'Mengekstrak Dokumen Massal…' : 'Upload Dokumen Job Pack (PDF)'}
-                            </h3>
-                            <p style={{ fontSize: 12, color: KC.mute, margin: 0 }}>
-                                Pilih atau drag & drop berkas PDF hingga 20 lowongan per dokumen (maks. 10 MB).
-                            </p>
+                            <div style={{ font: '800 13px/1.2 "Plus Jakarta Sans", sans-serif', color: '#065F46' }}>
+                                {parsedResult.fileName} terurai
+                            </div>
+                            <div style={{ font: '700 11px/1.3 "JetBrains Mono", monospace', color: '#059669', marginTop: 2 }}>
+                                {parsedResult.jobs.length} lowongan ditemukan · {parsedResult.time}
+                            </div>
                         </div>
                     </div>
 
-                    {successResult && (
-                        <div style={{ width: '100%', padding: '16px', background: KC.limeSoft, border: `1px solid ${KC.lime}`, borderRadius: 8, textAlign: 'left' }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: '#047857', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <CheckCircle2 size={15} /> Ekstraksi Berhasil
+                    <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 15, animation: 'kcSlideUp .35s .07s both' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                            <div style={{ font: '800 10px/1 "JetBrains Mono", monospace', letterSpacing: '0.7px', textTransform: 'uppercase', color: '#059669' }}>
+                                Daftar lowongan terurai · pilih yang ingin dipublikasikan
                             </div>
-                            <div style={{ fontSize: 12, color: '#065F46' }}>
-                                {createdCount > 0
-                                    ? `Ditemukan ${createdCount} lowongan baru siap dipublikasikan ke dasbor rekrutmen.`
-                                    : 'Dokumen berhasil diproses, namun tidak ada lowongan yang dapat diekstrak.'}
+                            <div style={{ font: '700 10.5px/1 "JetBrains Mono", monospace', color: '#94A3B8' }}>
+                                {checkedIds.size}/{parsedResult.jobs.length} dipilih
                             </div>
                         </div>
-                    )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {parsedResult.jobs.map((job, idx) => {
+                                const checked = checkedIds.has(job.local_id)
+                                return (
+                                    <div
+                                        key={job.local_id}
+                                        onClick={() => toggleJobChecked(job.local_id)}
+                                        role="checkbox"
+                                        aria-checked={checked}
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault()
+                                                toggleJobChecked(job.local_id)
+                                            }
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: 10,
+                                            paddingBottom: 10,
+                                            borderBottom: idx < parsedResult.jobs.length - 1 ? '1px dashed #E2E8F0' : 'none',
+                                            cursor: 'pointer',
+                                            opacity: checked ? 1 : 0.5,
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                width: 19,
+                                                height: 19,
+                                                borderRadius: 5,
+                                                background: checked ? '#10B981' : '#fff',
+                                                border: `1.5px solid ${checked ? '#10B981' : '#CBD5E1'}`,
+                                                display: 'grid',
+                                                placeItems: 'center',
+                                                color: '#fff',
+                                                font: '900 11px/1 "Plus Jakarta Sans", sans-serif',
+                                                flex: 'none',
+                                                marginTop: 1,
+                                            }}
+                                        >
+                                            {checked ? '✓' : ''}
+                                        </span>
+                                        <div>
+                                            <div style={{ font: '800 12.5px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink, textDecoration: checked ? 'none' : 'line-through' }}>
+                                                {job.title}
+                                            </div>
+                                            <div style={{ font: '600 10.5px/1.35 "Plus Jakarta Sans", sans-serif', color: '#64748B', marginTop: 3 }}>
+                                                {job.details}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
 
-                    {uploadError && (
-                        <div style={{ width: '100%', padding: '16px', background: KC.roseSoft, border: `1px solid ${KC.rose}`, borderRadius: 8, textAlign: 'left' }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: '#B91C1C', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <AlertCircle size={15} /> Ekstraksi Gagal
-                            </div>
-                            <div style={{ fontSize: 12, color: '#991B1B' }}>
-                                {uploadError}
-                            </div>
-                        </div>
-                    )}
-                </BrutalCard>
-
-                {/* Right Column: Spec Tips */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <BrutalCard color="#FFFFFF" padding={22}>
-                        <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.ink, margin: '0 0 12px' }}>
-                            Spesifikasi Dokumen Job Pack
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: KC.inkLight, lineHeight: 1.45 }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} style={{ flexShrink: 0, marginTop: 1 }} />
-                                <span>Gunakan judul posisi yang jelas pada tiap halaman.</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} style={{ flexShrink: 0, marginTop: 1 }} />
-                                <span>Sertakan daftar keahlian utama dan rentang kompensasi.</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                <CheckCircle2 size={15} color={KC.lime} style={{ flexShrink: 0, marginTop: 1 }} />
-                                <span>Format dokumen teks terstruktur (bukan gambar raster).</span>
-                            </div>
-                        </div>
-                    </BrutalCard>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <button
+                            onClick={() => { setParsedResult(null); setSelectedFile(null); setCheckedIds(new Set()) }}
+                            className="kc-btn"
+                            style={{
+                                flex: 'none',
+                                padding: '14px 16px',
+                                background: '#fff',
+                                border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 11,
+                                boxShadow: `3px 3px 0 ${KC.ink}`,
+                                font: '800 12.5px/1 "Plus Jakarta Sans", sans-serif',
+                                color: KC.ink,
+                                cursor: 'pointer',
+                                minHeight: 48,
+                                display: 'flex',
+                                alignItems: 'center',
+                            }}
+                        >
+                            ← Unggah Ulang
+                        </button>
+                        <button
+                            onClick={handleConfirmPublish}
+                            disabled={publishing || checkedIds.size === 0}
+                            className="kc-btn"
+                            style={{
+                                flex: 1,
+                                padding: 14,
+                                background: publishing || checkedIds.size === 0 ? '#64748B' : KC.ink,
+                                border: `1.5px solid ${KC.ink}`,
+                                borderRadius: 11,
+                                boxShadow: `3px 3px 0 ${KC.orange}`,
+                                font: '800 13.5px/1 "Plus Jakarta Sans", sans-serif',
+                                color: '#fff',
+                                minHeight: 48,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: publishing || checkedIds.size === 0 ? 'not-allowed' : 'pointer',
+                                animation: 'kcSlideUp .35s .14s both',
+                            }}
+                        >
+                            {publishing
+                                ? 'Mempublikasikan…'
+                                : checkedIds.size === 0
+                                    ? 'Pilih minimal 1 lowongan'
+                                    : `Konfirmasi & Publikasikan (${checkedIds.size}) →`}
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     )
 }

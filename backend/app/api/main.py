@@ -76,6 +76,20 @@ async def lifespan(app: FastAPI):
     reconfigure(settings.effective_database_url)
     await init_db()
 
+    # A real Replit *deployment* (as opposed to the interactive dev workspace)
+    # always sets REPLIT_DEPLOYMENT — independent of whether anyone remembered
+    # to also set APP_ENV=production in that deployment's own secrets. Without
+    # this check, a deployment that forgot APP_ENV=production would silently
+    # keep every dev-mode default (ephemeral JWT secret, public /docs, in-band
+    # OTP codes) while being reachable from the public internet, with no error
+    # raised anywhere to signal the mistake.
+    if os.environ.get("REPLIT_DEPLOYMENT") and not settings.is_production:
+        raise RuntimeError(
+            "REPLIT_DEPLOYMENT is set (this is a real Replit deployment) but "
+            "APP_ENV is not 'production'. Set APP_ENV=production in this "
+            "deployment's secrets before exposing it publicly."
+        )
+
     jwt_secret = settings.jwt_secret_key or secrets.token_urlsafe(32)
     if not settings.jwt_secret_key and settings.is_production:
         raise RuntimeError("JWT_SECRET_KEY must be set in production")
@@ -86,6 +100,28 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "OTP_DEMO_MODE is on in production — /verify/otp/send returns the "
             "generated code in its response, so phone verification proves nothing"
+        )
+
+    # Both prod deployment topologies (docker-compose.prod.yml's own comment
+    # explains them) share this same backend image and settings, so this
+    # can't be a hard failure — a deployment where the browser calls the API
+    # directly (no Nginx in front) is correct to leave this unset. But a
+    # deployment where Nginx DOES front the API and the operator forgot to
+    # set PROXY_SHARED_SECRET degrades completely silently: rate_limiter.py
+    # falls back to trusting request.client.host, which is always Nginx's
+    # own peer address, collapsing every real client behind it into one
+    # shared rate-limit bucket per route. That's not just coarser throttling
+    # — one busy or malicious client can exhaust login/OTP/agent limits for
+    # every other real user sharing that bucket. A warning here is the only
+    # signal an operator gets that this is happening, since there's nothing
+    # else in the request path that would reveal it.
+    if settings.is_production and not settings.proxy_shared_secret:
+        logger.warning(
+            "PROXY_SHARED_SECRET is not set. If this API sits behind the "
+            "Nginx frontend (docker-compose.prod.yml), every proxied client "
+            "shares one rate-limit bucket per route instead of one per real "
+            "client — see rate_limiter.py's _is_trusted_proxy. Safe to "
+            "ignore only if the browser calls this API directly."
         )
     configure_auth(secret_key=jwt_secret, expire_minutes=settings.jwt_access_token_expire_minutes)
 
@@ -102,6 +138,24 @@ app = FastAPI(
     redoc_url=None if settings.is_production else "/redoc",
     openapi_url=None if settings.is_production else "/openapi.json",
 )
+
+_DOCS_PATHS = {"/docs", "/redoc", "/openapi.json"}
+
+
+@app.middleware("http")
+async def _gate_docs_in_production(request: Request, call_next):
+    """Swagger UI / Redoc / the raw OpenAPI schema expose every route's
+    request/response shape. Fine on a private dev workspace; not fine once
+    a tunnel or a real domain puts the API on the public internet.
+
+    Checked per-request (rather than fixed at app construction via
+    docs_url=None) so it reads the live settings.is_production value, the
+    same way every other production guard in this file does — and so tests
+    can flip it with monkeypatch without rebuilding the FastAPI app."""
+    if settings.is_production and request.url.path in _DOCS_PATHS:
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+    return await call_next(request)
+
 
 # Middleware is applied in LIFO order (last-added = outermost).
 # Outermost to innermost execution:
@@ -276,4 +330,8 @@ else:
 
     @app.get("/")
     async def root():
-        return {"service": "KerjaCerdas API", "docs": "/docs", "health": "/health"}
+        return {
+            "service": "KerjaCerdas API",
+            "docs": None if settings.is_production else "/docs",
+            "health": "/health",
+        }

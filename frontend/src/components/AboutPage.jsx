@@ -448,7 +448,7 @@ export default function AboutPage() {
                                 {
                                     label: 'Integritas & Privasi',
                                     title: 'Validasi Dokumen e-KYC Terenkripsi',
-                                    desc: 'Memvalidasi keaslian profil melalui KTP dan Ijazah SIVIL dengan enkripsi penuh tanpa mengekspos data pribadi ke publik.',
+                                    desc: 'Memvalidasi format KTP dan nomor ijazah dengan data terenkripsi tanpa mengekspos informasi pribadi ke publik.',
                                     color: KC.cyan,
                                     bg: KC.cyanSoft,
                                 },

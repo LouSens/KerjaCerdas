@@ -50,6 +50,36 @@ class FakeEmbedder:
 
 
 @pytest.fixture(autouse=True)
+def _disable_llm_candidate_summary(monkeypatch):
+    """rank_seekers_for_job optionally upgrades each candidate's one-liner via
+    a real Gemini call when GEMINI_API_KEY is configured (see matcher.py) —
+    these tests only check DB-path vs in-memory score/band parity, not that
+    enhancement, and a live network call per rank_seekers_for_job invocation
+    makes the test slow and prone to timing out under CI's rate-limited key.
+    The call site already wraps this in try/except and degrades gracefully,
+    so forcing it to raise here is a clean way to make it a no-op.
+    """
+
+    def _raise(*_a, **_k):
+        raise RuntimeError("disabled in tests")
+
+    monkeypatch.setattr("backend.app.services.llm_factory.build_chat_llm", _raise)
+
+
+@pytest.fixture(autouse=True)
+def _force_ann_path(monkeypatch: pytest.MonkeyPatch):
+    """This whole test module exists to exercise the ANN prefilter path
+    (jobs=None/seekers=None routes through semantic_search_jobs/seekers) —
+    but matcher.py now prefers a full scan whenever the active row count is
+    small (see SemanticMatcher._job_candidates's docstring), and this test's
+    seeded dataset (4 jobs, 4 seekers) is always small. Without this, every
+    test here would silently take the full-scan branch instead of the ANN
+    branch it's named for, still pass, and test nothing about the ANN path.
+    Setting the safe-scan limit to 0 forces the ANN path unconditionally."""
+    monkeypatch.setattr(settings, "matching_full_scan_safe_limit", 0)
+
+
+@pytest.fixture(autouse=True)
 async def setup_database():
     """Bind the engine to the current loop (NullPool) and init schema."""
     db_url = settings.effective_database_url

@@ -136,8 +136,9 @@ class TestIdentityVerificationEndpoint:
         yield
         app.dependency_overrides.pop(get_current_user, None)
 
-    def test_verify_identity_returns_verified_for_valid_demo_nik(self, client: TestClient) -> None:
-        """Valid demo NIK should verify successfully."""
+    def test_verify_identity_returns_pending_for_valid_demo_nik(self, client: TestClient) -> None:
+        """A format-valid demo NIK returns PENDING, not VERIFIED — the mock
+        format check has no authority to confirm a real identity."""
         payload = {
             "nik": "3171123412341234",
             "full_name": "Budi Santoso",
@@ -148,9 +149,11 @@ class TestIdentityVerificationEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "VERIFIED"
+        assert data["status"] == "PENDING"
         assert data["match_percentage"] == 98.5
-        assert data["message"] == "Identitas terverifikasi (mode demo)."
+        assert data["message"] == (
+            "Format NIK diterima — menunggu verifikasi resmi (mode demo, bukan konfirmasi identitas)."
+        )
         assert data["verification_hash"]
         assert data["pii_redacted"] is True
 
@@ -272,6 +275,57 @@ class TestStartupConfiguration:
             pass
 
         assert captured["secret_key"]
+
+    @pytest.mark.asyncio
+    async def test_lifespan_rejects_a_real_replit_deployment_not_in_production(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A real Replit *deployment* always sets REPLIT_DEPLOYMENT, regardless
+        of whether APP_ENV=production was also set in its secrets. Catch the
+        mismatch before any other startup step runs, instead of silently
+        keeping dev-mode defaults (ephemeral JWT, public docs, in-band OTP)
+        on something reachable from the public internet."""
+
+        def fake_reconfigure(database_url: str) -> None:
+            return None
+
+        async def fake_init_db() -> None:
+            return None
+
+        monkeypatch.setattr("backend.app.api.main.reconfigure", fake_reconfigure)
+        monkeypatch.setattr("backend.app.api.main.init_db", fake_init_db)
+        monkeypatch.setattr("backend.app.api.main.settings.app_env", "development")
+        monkeypatch.setenv("REPLIT_DEPLOYMENT", "1")
+
+        with pytest.raises(RuntimeError, match="APP_ENV is not 'production'"):
+            async with app.router.lifespan_context(app):
+                pass
+
+    @pytest.mark.asyncio
+    async def test_lifespan_allows_a_replit_deployment_correctly_configured(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The same signal, but APP_ENV=production was set correctly — must
+        not be rejected."""
+
+        def fake_reconfigure(database_url: str) -> None:
+            return None
+
+        async def fake_init_db() -> None:
+            return None
+
+        def fake_configure_auth(secret_key: str, expire_minutes: int) -> None:
+            return None
+
+        monkeypatch.setattr("backend.app.api.main.reconfigure", fake_reconfigure)
+        monkeypatch.setattr("backend.app.api.main.init_db", fake_init_db)
+        monkeypatch.setattr("backend.app.api.main.configure_auth", fake_configure_auth)
+        monkeypatch.setattr("backend.app.api.main.settings.app_env", "production")
+        monkeypatch.setattr("backend.app.api.main.settings.jwt_secret_key", "configured-secret")
+        monkeypatch.setenv("REPLIT_DEPLOYMENT", "1")
+
+        async with app.router.lifespan_context(app):
+            pass
 
     @pytest.mark.asyncio
     async def test_lifespan_requires_secret_in_production(

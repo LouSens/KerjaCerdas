@@ -10,8 +10,7 @@ from backend.app.api.dependencies import get_current_user
 from backend.app.api.services.identity_verifier import MockIdentityVerificationService
 from backend.app.config.settings import settings
 from backend.app.db.models import OTPRecord, User
-from backend.app.db.postgres_store import find_seeker_by_user_id, get_repositories
-from backend.app.db.schemas import VerificationStatus
+from backend.app.db.postgres_store import find_seeker_by_user_id, update_seeker_verification_status
 from backend.app.db.session import async_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -52,47 +51,90 @@ class EkycReq(BaseModel):
 
 @router.post("/identity")
 async def verify_identity(req: EkycReq, current_user: User = Depends(get_current_user)) -> dict:
-    """Verify Indonesian NIK identity.
+    """Mock e-KYC identity check (demo mode — no real Dukcapil integration).
 
-    Stores ONLY the SHA-256 hash of the NIK in compliance with UU-PDP-2022.
+    This endpoint, like /education and /npwp below, is a placeholder for a
+    verification microservice that doesn't exist yet. The check itself only
+    validates NIK *format* (16 digits, not a "99"-prefixed demo-fail value)
+    — it never confirms the NIK belongs to the submitting seeker, so a
+    passing check must never be recorded as VERIFIED: any authenticated
+    seeker could submit any format-valid NIK (their own or not) and get a
+    durable "verified" badge with zero identity evidence behind it. A pass
+    is persisted as PENDING instead — "submitted, format accepted, awaiting
+    a real verification this build doesn't have" — a value only a genuine
+    Dukcapil integration should ever be allowed to upgrade to VERIFIED. That
+    PENDING status still survives a reload or a login from another browser
+    (see `nik_verified` on the seeker's profile), which is what makes the
+    badge durable — durability and authority are separate properties, and
+    this endpoint only earns the former. The raw NIK is never stored
+    (UU-PDP-2022) — not even hashed, since there is no legitimate reason to
+    retain it once this response is returned; only the status is written.
     """
     nik_hash = _hash_token(req.nik)
     r = MockIdentityVerificationService.verify_identity(nik=req.nik, full_name=req.full_name)
+    is_valid = r["is_valid"]
 
-    if r["is_valid"]:
-        # Update seeker profile if exists
-        seeker = await find_seeker_by_user_id(current_user.id)
-        if seeker:
-            seeker.nik = nik_hash
-            seeker.nik_verified = VerificationStatus.VERIFIED
-            repos = get_repositories()
-            await repos.seekers.upsert(seeker)
+    seeker = await find_seeker_by_user_id(current_user.id)
+    if seeker:
+        await update_seeker_verification_status(
+            seeker.id, nik_verified="pending" if is_valid else "failed"
+        )
 
     return {
         "request_id": str(uuid.uuid4()),
-        "status": "VERIFIED" if r["is_valid"] else "FAILED",
+        "status": "PENDING" if is_valid else "FAILED",
         "match_percentage": r["match_score"],
         "verification_hash": r.get("verification_hash") or nik_hash,
         "pii_redacted": True,
-        "message": "Identitas terverifikasi (mode demo)."
-        if r["is_valid"]
+        "message": "Format NIK diterima — menunggu verifikasi resmi (mode demo, bukan konfirmasi identitas)."
+        if is_valid
         else "Verifikasi identitas gagal.",
     }
 
 
 class SivilReq(BaseModel):
-    ijazah_number: str
+    ijazah_number: str = Field(min_length=6, max_length=64)
     university_name: str
     major: str
 
 
+def _looks_like_placeholder(value: str) -> bool:
+    """Reject input that couldn't plausibly be a real diploma number: every
+    character the same ("0000000", "aaaaaa"), or a well-known junk token.
+
+    There is no single canonical format for an Indonesian diploma number
+    (unlike NIK's fixed 16 digits — see MockIdentityVerificationService), so
+    this can only screen out obviously-fake input, not confirm a real
+    registry match.
+    """
+    if len(set(value)) <= 1:
+        return True
+    return value.lower() in {"000000", "test", "testtest", "xxxxxx", "asdfasdf", "unknown", "123456"}
+
+
 @router.post("/education")
 async def verify_education(req: SivilReq, current_user: User = Depends(get_current_user)) -> dict:
-    ok = bool(req.ijazah_number) and req.ijazah_number != "0000"
+    """Mock SIVIL diploma-number format check (demo mode — no real SIVIL
+    integration; the mirror of verify_identity's NIK mock above). Persisted
+    as PENDING, never VERIFIED — see verify_identity's docstring for why a
+    format-only pass must not be recorded as an authoritative identity/
+    credential claim, only as a durable "submitted, awaiting real
+    verification" status."""
+    ijazah_number = req.ijazah_number.strip()
+    ok = len(ijazah_number) >= 6 and not _looks_like_placeholder(ijazah_number)
+
+    seeker = await find_seeker_by_user_id(current_user.id)
+    if seeker:
+        await update_seeker_verification_status(
+            seeker.id, ijazah_verified="pending" if ok else "failed"
+        )
+
     return {
         "request_id": str(uuid.uuid4()),
-        "status": "VERIFIED" if ok else "NOT_FOUND",
-        "message": "Ijazah terverifikasi di SIVIL." if ok else "Ijazah tidak ditemukan.",
+        "status": "PENDING" if ok else "NOT_FOUND",
+        "message": "Format nomor ijazah diterima — menunggu verifikasi resmi (mode demo)."
+        if ok
+        else "Nomor ijazah tidak valid.",
         "verified_data": {
             "university": req.university_name,
             "major": req.major,

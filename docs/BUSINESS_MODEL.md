@@ -47,11 +47,11 @@ Rincian alokasi budget awal untuk tahap pembuktian konsep (*proof of concept*) d
 | Pos Alokasi Pengeluaran | Biaya (IDR) | Proporsi | Rasionalisasi & Peruntukan Operasional |
 |---|---|---|---|
 | **Server Hosting (FastAPI & Docker VPS)** | Rp 450.000 | 11.7% | 1 Cloud VPS (4 vCPU, 8GB RAM) online 24/7 untuk menjamin latensi API <200ms |
-| **Database & Cache (PostgreSQL pgvector & Redis)** | Rp 100.000 | 2.6% | PostgreSQL pgvector cloud-hosted + Upstash Redis Serverless |
+| **Database (PostgreSQL pgvector)** | Rp 100.000 | 2.6% | PostgreSQL pgvector cloud-hosted |
 | **Penyimpanan Berkas CV (Cloudflare R2)** | Rp 0 (Free 10GB) | 0.0% | Kapasitas penyimpanan gratis 10GB (>10.000 PDF) tanpa biaya transfer bandwidth |
 | **Kuota API LLM & Embeddings (Gemini Flash)** | Rp 500.000 | 13.0% | Kuota parsing ~100.000 token ekstraksi CV, skill gap, dan conversational advisor |
 | **WhatsApp OTP Gateway (Fonnte / Wablas)** | Rp 300.000 | 7.8% | Paket 2.000 pesan OTP untuk verifikasi nomor telepon pengguna baru |
-| **Domain Resmi `.id` & Keamanan SSL Cloudflare** | Rp 250.000 | 6.5% | Registrasi domain resmi `.id` 1 tahun + proteksi mitigasi serangan DDoS |
+| **Domain Resmi `.id` & Keamanan SSL** | Rp 250.000 | 6.5% | Registrasi domain resmi `.id` 1 tahun + proteksi mitigasi serangan DDoS |
 | **Program Outreach Pilot (5 UMKM & 100 Penguji)** | Rp 1.800.000 | 46.7% | Insentif pengujian validasi, onboarding langsung 5 UMKM, dan akuisisi talenta awal |
 | **Cadangan Kontinjensi & Operasional (10%)** | Rp 450.000 | 11.7% | Buffer fluktuasi kurs mata uang dan kebutuhan operasional tak terduga |
 | **TOTAL BUDGET BULAN KE-1 (PILOT)** | **Rp 3.850.000** | **100.0%** | **Budget awal yang rasional untuk tahap validasi pilot (rentang Rp 2–5 jt/bln)** |
@@ -67,7 +67,7 @@ Biaya Operasional Tetap Bulanan (Fixed OPEX Level 1 Full Cloud) = Rp 1.200.000 /
   - Cloud VPS Server (4 vCPU, 8GB RAM)   : Rp  450.000
   - Kuota API LLM Gemini 3.1 Flash       : Rp  400.000
   - WhatsApp OTP Gateway                 : Rp  200.000
-  - Redis Cache & Cloud Tools            : Rp  100.000
+  - Database Cloud Tools                 : Rp  100.000
   - Domain, SSL & Maintenance            : Rp   50.000
 
 Harga Jual per Pay-to-Unlock (P)            = Rp 50.000
@@ -126,11 +126,11 @@ graph TD
     classDef l3 fill:#702459,stroke:#D6BCFA,stroke-width:2px,color:#FFF,font-weight:bold
 
     subgraph Level1 ["🟢 Level 1: Tahun 1 (0 s.d. 5.000 Talenta | <100 UMKM) — 100% Full Cloud"]
-        L1_Desc["• Dedicated Cloud VPS (4 vCPU, 8GB RAM)\n• Cloud-Hosted PostgreSQL 16 + pgvector HNSW (768-dim)\n• Upstash Cloud Redis + Cloudflare R2 Global CDN Storage\n• Kuota API Gemini LLM & Fonnte WhatsApp OTP\n• Total Biaya Operasional: Rp 1.200.000 / bulan (Rp 14,4jt/thn)"]:::l1
+        L1_Desc["• Dedicated Cloud VPS (4 vCPU, 8GB RAM)\n• Cloud-Hosted PostgreSQL 16 + pgvector HNSW (768-dim)\n• Cloudflare R2 Global Storage\n• Kuota API Gemini LLM & Fonnte WhatsApp OTP\n• Total Biaya Operasional: Rp 1.200.000 / bulan (Rp 14,4jt/thn)"]:::l1
     end
 
     subgraph Level2 ["🟡 Level 2: Tahun 2 (5.000 s.d. 25.000 Talenta | 100-400 UMKM) — Cloud Managed"]
-        L2_Desc["• Google Cloud Run Auto-scaling (2-8 instance)\n• Google Cloud SQL PostgreSQL Managed HA (4 vCPU, 16GB RAM)\n• Managed Distributed Upstash Redis Cache + High-Volume LLM/OTP\n• Total Biaya Operasional: Rp 5.000.000 / bulan (Rp 60jt/thn)"]:::l2
+        L2_Desc["• Google Cloud Run Auto-scaling (2-8 instance)\n• Google Cloud SQL PostgreSQL Managed HA (4 vCPU, 16GB RAM)\n• High-Volume LLM/OTP\n• Total Biaya Operasional: Rp 5.000.000 / bulan (Rp 60jt/thn)"]:::l2
     end
 
     subgraph Level3 ["🔴 Level 3: Tahun 3+ (>25.000 Talenta | >400 Perusahaan) — Enterprise Cloud Mesh"]
@@ -146,7 +146,7 @@ graph TD
 | Tingkatan (*Tier*) | Periode & Skala | Pemicu Peningkatan (*Upgrade Triggers*) | Komposisi Arsitektur Cloud (100% Online) | Estimasi Biaya Bulanan Total | Sumber Pembiayaan |
 |---|---|---|---|---|---|
 | **Level 1 (Full Cloud Pilot)** | **Tahun 1**<br>0 – 5.000 Seeker<br><100 UMKM | Tahap peluncuran awal, pilot project, dan demonstrasi produk | 1 Dedicated Cloud VPS Server (4 vCPU, 8GB RAM) + Cloud-Hosted pgvector + Cloudflare R2 + Gemini Flash + WhatsApp OTP Gateway | **Rp 1.200.000 / bln**<br>(Rp 14.400.000 / thn) | Budget Awal Bulan 1 + Laba Operasional Pay-to-Unlock |
-| **Level 2 (Managed Cloud)** | **Tahun 2**<br>5.000 – 25.000 Seeker<br>100 – 400 UMKM | 1. Kueri harian > 5.000 kueri/hari<br>2. Transaksi unlock > 10 unlock/hari<br>3. Pendapatan > Rp 15.000.000/bln | Google Cloud Run Auto-scaling + Google Cloud SQL PostgreSQL Managed HA + Upstash Redis Paid + High-Volume Gemini/OTP | **Rp 5.000.000 / bln**<br>(Rp 60.000.000 / thn) | 100% didanai Laba Kotor Pay-to-Unlock Tahun 2 |
+| **Level 2 (Managed Cloud)** | **Tahun 2**<br>5.000 – 25.000 Seeker<br>100 – 400 UMKM | 1. Kueri harian > 5.000 kueri/hari<br>2. Transaksi unlock > 10 unlock/hari<br>3. Pendapatan > Rp 15.000.000/bln | Google Cloud Run Auto-scaling + Google Cloud SQL PostgreSQL Managed HA + High-Volume Gemini/OTP | **Rp 5.000.000 / bln**<br>(Rp 60.000.000 / thn) | 100% didanai Laba Kotor Pay-to-Unlock Tahun 2 |
 | **Level 3 (Enterprise Cloud)** | **Tahun 3+**<br>>25.000 Seeker<br>>400 B2B | 1. Kueri harian > 30.000 kueri/hari<br>2. Transaksi unlock > 30 unlock/hari<br>3. Integrasi SLA Enterprise ATS | Multi-Zone Kubernetes (GKE) + Vertex AI Vector Search Engine + Vertex AI VPC Endpoint + Enterprise Security | **Rp 15.000.000 / bln**<br>(Rp 180.000.000 / thn) | 100% didanai Arus Kas Surplus Mandiri (>Rp 200jt) |
 
 ---

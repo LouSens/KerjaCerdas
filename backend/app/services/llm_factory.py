@@ -113,11 +113,20 @@ def build_chat_llm(temperature: float = 0.4, **kwargs) -> Runnable:
     interface as ChatGoogleGenerativeAI.
     """
     api_key = resolve_gemini_key()
+    if not api_key:
+        # Passing api_key=None lets ChatGoogleGenerativeAI's underlying client
+        # fall back to Application Default Credentials (gcloud/service-account
+        # discovery) instead of failing cleanly — this deployment only ever
+        # authenticates via GEMINI_API_KEY, so that fallback would just crash
+        # with a confusing google.auth.exceptions.DefaultCredentialsError
+        # instead of a clear, catchable error. Mirrors GeminiEmbedder's
+        # equivalent guard (embeddings/gemini.py's _client_or_raise).
+        raise RuntimeError("No Gemini auth configured (set GEMINI_API_KEY)")
     llms = [
         ChatGoogleGenerativeAI(
             model=m,
             temperature=temperature,
-            api_key=api_key or None,
+            api_key=api_key,
             max_retries=1,  # fail over fast instead of long same-model backoff
             timeout=30,
             **kwargs,

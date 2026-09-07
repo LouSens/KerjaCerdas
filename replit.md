@@ -50,7 +50,7 @@ frontend/         React + Vite app
     components/   UI components
     services/     api.js — fetch wrapper with auto-logout
     store/        Zustand global state
-database/         init.sql reference dump
+scripts/          seed_all.py and friends — Python demo-data seeding (DB starts empty)
 docs/             Architecture, product docs, API spec, sequence diagrams
 ```
 

@@ -2,8 +2,9 @@
 Gemini embedding service.
 
 Supported models (set GEMINI_EMBED_MODEL in .env):
-  gemini-embedding-exp-03-07  — 3072-d (default, best quality, experimental)
-  text-embedding-004          — 768-d  (stable fallback)
+  gemini-embedding-2          — 3072-d, MRL-truncated to 768-d (default — see settings.py)
+  gemini-embedding-exp-03-07  — 3072-d (previous default, experimental)
+  text-embedding-004          — 768-d  (stable fallback, native 768-d, no truncation)
 
 Task types:
   RETRIEVAL_DOCUMENT  — use when indexing job postings / seeker profiles

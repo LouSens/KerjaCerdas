@@ -264,31 +264,35 @@ sequenceDiagram
     S->>F: Enter NIK (16 digits) + Full Name + optional selfie
     F->>F: Validate NIK length === 16, name non-empty
     F->>VR: POST /api/v1/verify/identity<br/>{nik, full_name, date_of_birth, selfie_image_base64}
-    VR->>VR: Compute SHA-256 hash of NIK
+    VR->>VR: Compute SHA-256 hash of NIK (raw NIK is never stored)
     VR->>ID: verify_identity(nik, full_name)
-    ID->>ID: Fuzzy-match name against registry<br/>Compute match_score (0–1)
-    alt Match score ≥ 0.7
-        ID-->>VR: {is_valid: true, match_score, verification_hash, pii_redacted: true}
-        VR->>DB: Update SeekerProfile (nik=nik_hash, nik_verified='verified')
-        VR-->>F: 200 {status: "VERIFIED", match_percentage: 0.97, verification_hash}
-        F-->>S: Show green "Identitas Terverifikasi ✓" badge
-    else Match failed
-        ID-->>VR: {is_valid: false, match_score}
+    Note over ID: Format check ONLY — 16-digit length and not<br/>prefixed "99" (demo fail rule). full_name is never<br/>checked against anything; this cannot confirm the<br/>NIK belongs to the submitting seeker.
+    alt Format valid
+        ID-->>VR: {is_valid: true, match_score: 98.5, verification_hash}
+        VR->>DB: find_seeker_by_user_id, then<br/>update_seeker_verification_status(nik_verified='pending')
+        VR-->>F: 200 {status: "PENDING", match_percentage: 98.5, verification_hash}
+        F-->>S: Show "Format Tervalidasi — Menunggu Verifikasi Resmi" badge
+    else Format invalid (prefix "99")
+        ID-->>VR: {is_valid: false, match_score: 45.2}
+        VR->>DB: update_seeker_verification_status(nik_verified='failed')
         VR-->>F: 200 {status: "FAILED", message: "Verifikasi identitas gagal."}
         F-->>S: Show red "Gagal" badge + retry prompt
     end
+    Note over VR,DB: PENDING/FAILED persist durably (survive reload/another<br/>browser) but PENDING is never upgraded to VERIFIED by this<br/>mock — that value is reserved for a real Dukcapil integration.
 
     %% Step 2 — Ijazah / Education
     S->>F: Enter Ijazah Number + University + Major
     F->>VR: POST /api/v1/verify/education<br/>{ijazah_number, university_name, major}
-    VR->>SI: Query SIVIL registry (mock)
-    alt Ijazah found & valid
+    VR->>SI: Check ijazah_number format (mock — length >= 6, not an<br/>obvious placeholder like "000000" or "test")
+    alt Format valid
         SI-->>VR: {ok: true, graduation_year, degree, status: "Lulus"}
-        VR-->>F: 200 {status: "VERIFIED", verified_data: {university, major, degree}}
-        F-->>S: Show "Ijazah Terverifikasi ✓"
-    else Not found (ijazah_number == "0000" or empty)
+        VR->>DB: update_seeker_verification_status(ijazah_verified='pending')
+        VR-->>F: 200 {status: "PENDING", verified_data: {university, major, degree}}
+        F-->>S: Show "Format Tervalidasi — Menunggu Verifikasi Resmi"
+    else Placeholder / too short
         SI-->>VR: {ok: false}
-        VR-->>F: 200 {status: "NOT_FOUND", message: "Ijazah tidak ditemukan."}
+        VR->>DB: update_seeker_verification_status(ijazah_verified='failed')
+        VR-->>F: 200 {status: "NOT_FOUND", message: "Nomor ijazah tidak valid."}
         F-->>S: Show warning
     end
 

@@ -20,9 +20,8 @@ flowchart LR
 
     subgraph Fase2 ["Fase 2: Cloud Stabilitas (Bulan 4-8)"]
         F2_1["Google Cloud SQL (pgvector HA)"]:::phase
-        F2_2["Cloudflare R2 / GCS (10GB Free Storage)"]:::phase
-        F2_3["Redis / Upstash (Semantic Cache & Rate Limiter)"]:::phase
-        F2_4["WhatsApp Gateway (Fonnte) & Midtrans Sandbox"]:::phase
+        F2_2["Cloudflare R2 (10GB Free Storage)"]:::phase
+        F2_3["WhatsApp Gateway (Fonnte) & Midtrans Sandbox"]:::phase
     end
 
     subgraph Fase3 ["Fase 3: Enterprise & B2G (Bulan 9-18)"]
@@ -42,13 +41,12 @@ flowchart LR
 - **Alembic ORM Migrations:** Skema tabel dikelola progresif menggunakan Alembic, menjamin *Zero-Downtime Migration*.
 - **Injeksi Kontainer Otomatis:** Infrastruktur diorkestrasi mutlak menggunakan Docker Compose, mendemonstrasikan keandalan peluncuran (*plug-and-play*).
 
-### 1.2 Fase 2 (Bulan 4 - 8): Migrasi Stabilitas Awan (GCP Cloud SQL, Redis & Cloudflare R2)
+### 1.2 Fase 2 (Bulan 4 - 8): Migrasi Stabilitas Awan (GCP Cloud SQL & GCS)
 *Target: Skalabilitas tinggi hingga 1 juta kueri API/hari dengan latensi rendah dan biaya operasional ramping.*
 
 1. **Google Cloud SQL (Postgres + pgvector):** Database dipindahkan secara *managed* dengan *Read Replica* menjamin ketersediaan tinggi (*High Availability*) 99.9% Uptime.
-2. **Cloudflare R2 Storage:** Penyimpanan dokumen CV PDF dan berkas identitas menggunakan Cloudflare R2 (gratis 10GB pertama, $0.015/GB setelahnya tanpa biaya *egress*), dengan enkripsi AES-256 pada level aplikasi sebelum berkas diunggah.
-3. **Upstash / Cloud Redis:** Cache semantik untuk komputasi kalkulasi jarak vektor yang identik, memangkas biaya API LLM bulanan hingga 20%, serta menjadi backend penyimpanan terdistribusi untuk `RateLimiterMiddleware` (saat ini in-memory, process-local).
-4. **Celery / Background Worker:** Menangani tugas ekstraksi dokumen dan pemrosesan batch secara asinkron terisolasi.
+2. **Google Cloud Storage (GCS):** Penyimpanan dokumen CV PDF dan berkas identitas menggunakan GCS, dengan enkripsi AES-256 pada level aplikasi sebelum berkas diunggah.
+3. **Celery / Background Worker:** Menangani tugas ekstraksi dokumen dan pemrosesan batch secara asinkron terisolasi.
 
 ### 1.3 Fase 3 (Bulan 9 - 18): Privasi Kognitif Mutlak (Vertex AI & B2G Enterprise)
 *Target: Kepatuhan penuh terhadap standar keamanan tingkat perbankan dan pemerintahan (UU PDP No.27/2022).*
@@ -62,6 +60,7 @@ flowchart LR
 > **Status saat ini (desain permanen, bukan langkah antara):** satu node LangGraph (`START → agent_node → END`) memanggil Gemini untuk sintesis teks; routing intent dan pemanggilan `SemanticMatcher`/skill-gap berjalan sebagai fungsi Python prosedural, dipanggil langsung dari `agent.py` router — **bukan** node/edge LangGraph. Tool-calling (`bind_tools()`) dinonaktifkan karena inkompatibilitas `google-generativeai` dengan skema Pydantic v2. Lihat [`ARCHITECTURE.md`](ARCHITECTURE.md) untuk detail arsitektur lengkap.
 
 **Item roadmap matching/skill-gap (belum dibangun, urutan prioritas):**
+0. **Skill-aware SQL prefilter untuk retrieval berskala besar** — di atas `matching_full_scan_safe_limit` baris aktif, prefilter ANN saat ini hanya mengurutkan berdasarkan cosine similarity, sehingga kandidat dengan kecocokan skill/pengalaman kuat tapi kemiripan embedding lemah berisiko terlewat sebelum sampai ke formula hybrid lengkap. Solusi tercepat (union query berbasis kecocokan `skills`/`required_skills`) memerlukan migrasi kolom `JSON` → `JSONB` + indeks GIN pada nama skill yang diekstrak — belum ada saat ini. Item termurah/tercepat untuk dikerjakan di daftar ini; item 2 di bawah (Multi-Vector Representation) adalah solusi jangka panjang untuk masalah yang sama.
 1. **Skill Taxonomy terbuka (ESCO/O*NET)** dan **Fuzzy/Semantic Subsumption Matrix** — bobot hierarkis antar skill terkait (mis. `PostgreSQL` sebagai subset `SQL/Relational DB`), menggantikan exact-match pada skill ternormalisasi saat ini.
 2. **Multi-Vector Representation** — embedding terpisah untuk *Role Summary Vector* vs *Hard Skills Vector*, dengan pencarian berbobot (*late interaction*/RRF), menggantikan satu vektor gabungan tunggal saat ini.
 3. **Dynamic Reranking Rules berbasis Seniority Level** — bobot statis saat ini tidak membedakan role junior (lebih mementingkan edukasi/potensi) dari role senior (lebih mementingkan pengalaman).
@@ -139,11 +138,11 @@ Anggaran ini diajukan untuk mendanai peluncuran pilot awal (rentang budget Rp 2�
 | Pos Alokasi Pengeluaran | Biaya (IDR) | Proporsi | Rasionalisasi & Peruntukan Operasional |
 |---|---|---|---|
 | **Server Hosting (FastAPI & Docker VPS)** | Rp 450.000 | 11.7% | 1 Cloud VPS (4 vCPU, 8GB RAM) online 24/7 untuk menjamin latensi API <200ms |
-| **Database & Cache (PostgreSQL pgvector & Redis)** | Rp 100.000 | 2.6% | PostgreSQL pgvector cloud-hosted + Upstash Redis Serverless |
-| **Penyimpanan Berkas CV (Cloudflare R2)** | Rp 0 (Free 10GB) | 0.0% | Kapasitas penyimpanan gratis 10GB (>10.000 PDF) tanpa biaya transfer bandwidth |
+| **Database (PostgreSQL pgvector)** | Rp 100.000 | 2.6% | PostgreSQL pgvector cloud-hosted |
+| **Penyimpanan Berkas CV (GCS)** | Rp 0 (Free 10GB) | 0.0% | Kapasitas penyimpanan gratis 10GB (>10.000 PDF) tanpa biaya transfer bandwidth |
 | **Kuota API LLM & Embeddings (Gemini Flash)** | Rp 500.000 | 13.0% | Kuota parsing ~100.000 token ekstraksi CV, skill gap, dan conversational advisor |
 | **WhatsApp OTP Gateway (Fonnte / Wablas)** | Rp 300.000 | 7.8% | Paket 2.000 pesan OTP untuk verifikasi nomor telepon pengguna baru |
-| **Domain Resmi `.id` & Keamanan SSL Cloudflare** | Rp 250.000 | 6.5% | Registrasi domain resmi `.id` 1 tahun + proteksi mitigasi DDoS |
+| **Domain Resmi `.id` & Keamanan SSL** | Rp 250.000 | 6.5% | Registrasi domain resmi `.id` 1 tahun + proteksi mitigasi DDoS |
 | **Program Outreach Pilot (5 UMKM & 100 Penguji)** | Rp 1.800.000 | 46.7% | Insentif pengujian validasi, onboarding langsung 5 UMKM, dan akuisisi talenta awal |
 | **Cadangan Kontinjensi & Operasional (10%)** | Rp 450.000 | 11.7% | Buffer fluktuasi kurs mata uang dan kebutuhan operasional tak terduga |
 | **TOTAL BUDGET BULAN KE-1 (PILOT)** | **Rp 3.850.000** | **100.0%** | **Budget awal yang rasional untuk tahap validasi pilot (rentang Rp 2–5 jt/bln)** |
@@ -155,8 +154,8 @@ Seluruh tingkatan infrastruktur (termasuk Level 1) beroperasi **100% Full Online
 
 | Tingkatan (*Tier*) | Periode & Skala | Pemicu Peningkatan (*Upgrade Triggers*) | Komposisi Arsitektur Cloud (100% Online) | Estimasi Biaya Bulanan Total | Sumber Pembiayaan |
 |---|---|---|---|---|---|
-| **Level 1 (Full Cloud Pilot)** | **Tahun 1**<br>0 – 5.000 Seeker<br><100 UMKM | Tahap peluncuran awal, pilot project, dan demonstrasi produk | 1 Dedicated Cloud VPS Server (4 vCPU, 8GB RAM) + Cloud-Hosted pgvector + Cloudflare R2 + Gemini Flash + WhatsApp OTP Gateway | **Rp 1.200.000 / bln**<br>(Rp 14.400.000 / thn) | Budget Awal Bulan 1 + Laba Operasional Pay-to-Unlock |
-| **Level 2 (Managed Cloud)** | **Tahun 2**<br>5.000 – 25.000 Seeker<br>100 – 400 UMKM | 1. Kueri harian > 5.000 kueri/hari<br>2. Transaksi unlock > 10 unlock/hari<br>3. Pendapatan > Rp 15.000.000/bln | Google Cloud Run Auto-scaling + Google Cloud SQL PostgreSQL Managed HA + Upstash Redis Paid + High-Volume Gemini/OTP | **Rp 5.000.000 / bln**<br>(Rp 60.000.000 / thn) | 100% didanai Laba Kotor Pay-to-Unlock Tahun 2 |
+| **Level 1 (Full Cloud Pilot)** | **Tahun 1**<br>0 – 5.000 Seeker<br><100 UMKM | Tahap peluncuran awal, pilot project, dan demonstrasi produk | 1 Dedicated Cloud VPS Server (4 vCPU, 8GB RAM) + Cloud-Hosted pgvector + GCS + Gemini Flash + WhatsApp OTP Gateway | **Rp 1.200.000 / bln**<br>(Rp 14.400.000 / thn) | Budget Awal Bulan 1 + Laba Operasional Pay-to-Unlock |
+| **Level 2 (Managed Cloud)** | **Tahun 2**<br>5.000 – 25.000 Seeker<br>100 – 400 UMKM | 1. Kueri harian > 5.000 kueri/hari<br>2. Transaksi unlock > 10 unlock/hari<br>3. Pendapatan > Rp 15.000.000/bln | Google Cloud Run Auto-scaling + Google Cloud SQL PostgreSQL Managed HA + High-Volume Gemini/OTP | **Rp 5.000.000 / bln**<br>(Rp 60.000.000 / thn) | 100% didanai Laba Kotor Pay-to-Unlock Tahun 2 |
 | **Level 3 (Enterprise Cloud)** | **Tahun 3+**<br>>25.000 Seeker<br>>400 B2B | 1. Kueri harian > 30.000 kueri/hari<br>2. Transaksi unlock > 30 unlock/hari<br>3. Integrasi SLA Enterprise ATS | Multi-Zone Kubernetes (GKE) + Vertex AI Vector Search Engine + Vertex AI VPC Endpoint + Enterprise Security | **Rp 15.000.000 / bln**<br>(Rp 180.000.000 / thn) | 100% didanai Arus Kas Surplus Mandiri (>Rp 200jt) |
 
 ---

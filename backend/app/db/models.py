@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -106,6 +107,7 @@ class SeekerProfile(Base, TimestampedMixin):
         String(64), nullable=True
     )  # Stores SHA-256 hash of NIK for UU-PDP compliance
     nik_verified: Mapped[str] = mapped_column(String(20), default="unverified")
+    ijazah_verified: Mapped[str] = mapped_column(String(20), default="unverified")
     date_of_birth: Mapped[str | None] = mapped_column(String(20), nullable=True)
     region_code: Mapped[str] = mapped_column(String(50))
     preferred_regions: Mapped[list[Any]] = mapped_column(JSON, default=list)
@@ -139,6 +141,22 @@ class Employer(Base, TimestampedMixin):
 
 class JobPosting(Base, TimestampedMixin):
     __tablename__ = "jobs"
+    # Optional client-supplied idempotency token (see create_job): if a
+    # create request is retried after its response was lost — a timeout, a
+    # dropped connection, anything short of the client seeing a definitive
+    # failure — replaying it with the same client_ref must return the
+    # already-created job instead of inserting a second one. Partial (only
+    # rows that actually set it) so employer.post-job's normal create path,
+    # which never sends one, is unaffected.
+    __table_args__ = (
+        Index(
+            "uq_job_employer_client_ref",
+            "employer_id",
+            "client_ref",
+            unique=True,
+            postgresql_where="client_ref IS NOT NULL",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     employer_id: Mapped[str] = mapped_column(String(36), ForeignKey("employers.id"), index=True)
@@ -155,6 +173,7 @@ class JobPosting(Base, TimestampedMixin):
     salary_min: Mapped[int] = mapped_column(Integer, default=0)
     salary_max: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    client_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
     embedding = mapped_column(_VectorCol(), nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
@@ -260,6 +279,35 @@ class AIPerformanceLog(Base, TimestampedMixin):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     flagged: Mapped[bool] = mapped_column(Boolean, default=False)
     rating: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+
+class JobPackParseCache(Base):
+    """Server-side cache of a job-pack PDF's parsed postings, keyed by
+    sha256(employer_id + file bytes).
+
+    Retrying a job-pack upload — the response was lost, the tab was
+    reloaded, a different browser/device — must return the EXACT SAME
+    parsed postings (same order, same title/salary/region text, same
+    local_id) as the first parse, because JobPackUploader's client_ref is
+    derived from that content. Without this cache, a second call to
+    POST /uploads/job-pack for the identical file re-invokes Gemini, and
+    extraction isn't perfectly deterministic even at low temperature — a
+    reworded title or reformatted salary produces a different client_ref,
+    which the backend then treats as a brand-new posting instead of a
+    retry (see the client_ref uniqueness index in migration
+    d5e9f3a7b210). Caching the parse itself, not just deduping the
+    resulting publish, is what makes retries safe regardless of client
+    state — a browser-side cache can be cleared, expire, or simply not be
+    available (a different device), which is exactly the gap the previous
+    client-only fix left open.
+    """
+
+    __tablename__ = "job_pack_parse_cache"
+
+    cache_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    employer_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    postings: Mapped[list[Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
 class QueryEmbedding(Base):

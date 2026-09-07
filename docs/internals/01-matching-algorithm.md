@@ -38,7 +38,9 @@ Embeddings are computed when a profile/job is created or updated (`embed_seeker`
 
 ## 2. Retrieval Stage (online, per request)
 
-Candidate retrieval runs DB-side through the pgvector HNSW index (`embedding <=> query`, `m=16, ef_construction=64`) rather than scanning every row in Python: `_job_candidates` / `_seeker_candidates` fetch a prefiltered pool of `max(top_k * 5, 200)` candidates with their cosine already computed by Postgres, plus any rows still missing an embedding (scored at cosine 0). If the query embedding or the pgvector index is unavailable, the matcher falls back to a full in-memory scan instead of failing the request.
+`_job_candidates` / `_seeker_candidates` first run a cheap `COUNT(*)` of active rows. **Below `settings.matching_full_scan_safe_limit` (default 500), every active row is scored directly** — no ANN prefilter at all — because the prefilter's ordering is cosine-only, while the actual hybrid score it stands in for weighs skill overlap, experience, education and recency too (55% combined, cosine is only 45%). A candidate with a weak embedding match but a strong skill/experience fit can score well on the real formula yet never reach it if their row falls outside a cosine-only top-K — a full scan is both cheap and strictly more correct at this platform's near-term scale (see `ROADMAP.md`'s Level 1/2 numbers). A count-query failure is treated as "assume large", never as "assume small".
+
+Only once the active-row count genuinely exceeds that threshold does retrieval switch to the pgvector HNSW index (`embedding <=> query`, `m=16, ef_construction=64`): `_job_candidates` / `_seeker_candidates` fetch a prefiltered pool of `max(top_k * 20, 1000)` candidates with their cosine already computed by Postgres, plus any rows still missing an embedding (scored at cosine 0). The wide multiplier is a deliberate mitigation, not a magic number: cosine-only ANN ordering can still rank a structurally strong candidate (great skill/experience fit, weak embedding match) outside any fixed cutoff, so the pool is sized to shrink that risk window rather than eliminate it — full elimination needs a skill-aware SQL retrieval query, blocked today on `skills`/`required_skills` being `JSON` (not `JSONB`) columns with no overlap index; see ROADMAP.md §1.4 item 0. If the query embedding or the pgvector index is unavailable, the matcher falls back to a full in-memory scan instead of failing the request. `test_matching_parity.py` forces this ANN path unconditionally (via `matching_full_scan_safe_limit = 0`) against its small seeded dataset, since it exists specifically to test ANN-vs-in-memory parity.
 
 The query vector itself is cached two ways: an in-process LRU (512 entries, keyed by `sha256(model + text)`) and a persistent `query_embeddings` table in Postgres, so repeat requests for the same profile/job text skip the ~1s Gemini embedding call entirely. Any edit to the underlying text changes the cache key automatically.
 
@@ -90,7 +92,7 @@ Results are then shuffled within each band using a seed stable per job (seeker v
 
 | Entry point | Flow |
 |---|---|
-| `POST /api/v1/agent/invoke` | rank jobs via the ANN-backed path → token gate: if `max_score < 0.10`, skip the LLM entirely and return a cheap templated reply |
+| `POST /api/v1/agent/invoke` | rank jobs via the retrieval path (§2) → token gate: if `max_score < 0.10` across the ranked list, skip the LLM entirely and return a cheap templated reply |
 | `POST /api/v1/employer/jobs/{id}/candidates` | rank all seekers against one job |
 | `POST /api/v1/employer/jobs/estimate` | no-LLM heuristic (skill overlap + location) to preview candidate-pool size while composing a job |
 
