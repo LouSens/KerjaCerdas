@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import useStore from '../store/useStore'
+import useStore, { hasMeaningfulProfile } from '../store/useStore'
 import { KC, ScoreDonut, topBtn, DesignStyles, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
 
@@ -12,8 +12,8 @@ const bandOf = (m) => {
 
 export default function SeekerMatchResults() {
     const isMobile = useIsMobile()
-    const { matches, agentLoading, runAgent, navigate, savedJobs, toggleSaveJob: storeSaveJob, seekerId, profile } = useStore()
-    const hasProfile = Boolean(seekerId || profile?.skills?.length > 0)
+    const { matches, agentLoading, runAgent, navigate, savedJobs, toggleSaveJob: storeSaveJob, profile } = useStore()
+    const hasProfile = hasMeaningfulProfile(profile)
     const [selectedJob, setSelectedJob] = useState(null)
     const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'strong' | 'possible' | 'stretch'
     const [refreshing, setRefreshing] = useState(false)

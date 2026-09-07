@@ -56,6 +56,15 @@ const DEFAULT_PROFILE = {
     salary_expectation_min: 0, salary_expectation_max: 0,
 }
 
+// A saved SeekerProfile row (seekerId truthy) can still be empty — the
+// manual-edit form can be submitted with nothing filled in, and a CV upload
+// that fails to extract anything still creates a row. seekerId alone is
+// just "a row exists," not "there's something to match on," so both the
+// matching gate and the components that decide whether to show a "ready to
+// match" CTA need to check the row's actual content instead.
+export const hasMeaningfulProfile = (profile) =>
+    Boolean(profile?.skills?.length || profile?.experience?.length || profile?.education?.length)
+
 const useStore = create(
     persist(
         (set, get) => ({
@@ -320,16 +329,21 @@ const useStore = create(
             runAgent: async ({ message, targetJobId, explicitIntent, filters } = {}) => {
                 const { seekerId, profile, advisorLog, advisorSessionId } = get()
 
-                // Job matching specifically needs a real profile — without a
-                // seekerId, the backend falls back to a generic, no-skills
-                // "anonymous" profile and returns a plausible-looking but
-                // completely non-personalized ranking (see agent.py's
-                // _ANONYMOUS_SEEKER). Silently showing that as if it were the
-                // user's own matches is exactly the confusing behavior this
-                // gate exists to prevent — general advisor chat (explicitIntent
-                // 'advise' or none) is fine to run without a profile, since
-                // that's legitimately useful without any personal data.
-                if (explicitIntent === 'match_jobs' && !seekerId) {
+                // Job matching specifically needs a real profile. Checking
+                // just `seekerId` isn't enough — a saved-but-empty profile
+                // row (submitted blank, or a CV upload that extracted
+                // nothing) has a seekerId with no skills/experience/
+                // education, and without a skills/experience-bearing
+                // profile the backend falls back to a generic "anonymous"
+                // profile and returns a plausible-looking but completely
+                // non-personalized ranking (see agent.py's
+                // _ANONYMOUS_SEEKER). Silently showing that as if it were
+                // the user's own matches is exactly the confusing behavior
+                // this gate exists to prevent — general advisor chat
+                // (explicitIntent 'advise' or none) is fine to run without
+                // a profile, since that's legitimately useful without any
+                // personal data.
+                if (explicitIntent === 'match_jobs' && !hasMeaningfulProfile(profile)) {
                     toast('Lengkapi profil dulu — upload CV atau isi manual, baru pencocokan AI bisa personal.', { icon: '📄' })
                     return { requiresProfile: true, matches: [] }
                 }

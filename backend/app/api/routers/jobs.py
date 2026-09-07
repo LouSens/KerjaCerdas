@@ -43,6 +43,18 @@ def _is_employer_verified(employer) -> bool:
     return status == VerificationStatus.VERIFIED
 
 
+def _industry_label(employer) -> str:
+    """Employer's industry, falling back to "Lainnya" when unset.
+
+    /jobs/industries groups jobs under this exact label so an unset
+    industry still shows up as a selectable category — and the `industry`
+    filter below has to use this SAME label, not the raw (often empty)
+    `employer.industry`, or selecting the "Lainnya" category that's
+    displayed with a real count would silently match nothing.
+    """
+    return (employer.industry if employer is not None else "") or "Lainnya"
+
+
 @router.get("")
 async def list_jobs(
     limit: int = Query(20, ge=1, le=100),
@@ -93,8 +105,7 @@ async def list_jobs(
         kept = []
         for j in jobs:
             emp = await _employer(j.employer_id)
-            employer_industry = (emp.industry if emp is not None else "") or "Lainnya"
-            if employer_industry == industry:
+            if _industry_label(emp) == industry:
                 kept.append(j)
         jobs = kept
 
@@ -105,7 +116,7 @@ async def list_jobs(
         item.pop("embedding", None)
         item.pop("embedding_model", None)
         item["verified"] = _is_employer_verified(emp)
-        item["industry"] = emp.industry if emp is not None else ""
+        item["industry"] = _industry_label(emp)
 
         location_str = get_region_name(j.region_code)
         if j.remote_allowed:
@@ -154,7 +165,7 @@ async def list_industries():
         if j.employer_id not in employer_cache:
             employer_cache[j.employer_id] = await repos.employers.get(j.employer_id)
         emp = employer_cache[j.employer_id]
-        name = (emp.industry if emp is not None else "") or "Lainnya"
+        name = _industry_label(emp)
         counts[name] = counts.get(name, 0) + 1
 
     industries = [{"name": name, "job_count": count} for name, count in counts.items()]
@@ -177,9 +188,8 @@ async def get_job(job_id: str):
     item = j.model_dump()
     item.pop("embedding", None)
     item.pop("embedding_model", None)
-    industry_name = employer.industry if employer is not None else ""
     return item | {
         "verified": _is_employer_verified(employer),
         "location": location_str,
-        "industry": industry_name,
+        "industry": _industry_label(employer),
     }

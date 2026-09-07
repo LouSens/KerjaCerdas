@@ -97,3 +97,21 @@ class TestIndustryFilter:
         assert len(items) == 1
         assert items[0]["id"] == culinary_job["job_id"]
         assert items[0]["industry"] == "Kuliner / UMKM F&B"
+
+    def test_filtering_by_the_displayed_lainnya_category_actually_returns_jobs(
+        self, client: TestClient, employer_account: dict, stub_embedder
+    ) -> None:
+        """/jobs/industries shows "Lainnya" (with a real count) for jobs whose
+        employer never set an industry. Selecting that exact category in the
+        UI has to return those jobs, not silently zero results just because
+        the underlying `employer.industry` is "" rather than "Lainnya"."""
+        job = _post_job(client, employer_account["headers"])
+
+        listing = client.get("/api/v1/jobs/industries").json()["items"]
+        lainnya = next((i for i in listing if i["name"] == "Lainnya"), None)
+        assert lainnya is not None, listing
+        assert lainnya["job_count"] >= 1
+
+        resp = client.get("/api/v1/jobs", params={"industry": "Lainnya"})
+        items = resp.json()["items"]
+        assert any(i["id"] == job["job_id"] for i in items), items

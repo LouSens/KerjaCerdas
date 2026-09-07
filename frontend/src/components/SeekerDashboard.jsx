@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import useStore from '../store/useStore'
+import useStore, { hasMeaningfulProfile } from '../store/useStore'
 import { KC, topBtn, DesignStyles, useIsMobile } from './_design'
 import { Sparkles } from 'lucide-react'
 import JobDetailModal from './JobDetailModal'
@@ -19,7 +19,6 @@ export default function SeekerDashboard() {
         navigate,
         runAgent,
         agentLoading,
-        seekerId,
         profile,
         recommendedCourses,
         missingSkills,
@@ -27,7 +26,7 @@ export default function SeekerDashboard() {
     } = useStore()
 
     const [selectedJob, setSelectedJob] = useState(null)
-    const hasProfile = Boolean(seekerId || profile?.skills?.length > 0)
+    const hasProfile = hasMeaningfulProfile(profile)
 
     useEffect(() => {
         if (hasProfile && !matches.length && !agentLoading) {

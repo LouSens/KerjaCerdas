@@ -4,6 +4,32 @@ import useStore from '../store/useStore'
 import { KC, DesignStyles, topBtn, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
 
+// Pure so it's directly unit-testable (see tests/unit/seekerSearchFilters.test.js)
+// without rendering the component. Remote jobs aren't tied to any one place,
+// so a pure Remote search should ignore location — but if Onsite is ALSO
+// selected (a mixed search), location still means something for the Onsite
+// half, so it must only be dropped when Remote is the SOLE selected mode.
+export const isRemoteOnlyMode = (selectedModes) =>
+    selectedModes.includes('Remote') && !selectedModes.includes('Onsite')
+
+// Single source of truth for turning the filter UI state into the params
+// sent to GET /jobs, so handleSearch and any future caller can't drift
+// from isRemoteOnlyMode's definition of "location no longer applies".
+export const buildJobSearchFilters = ({ selectedModes, selectedRegion, selectedIndustry, minSalary }) => {
+    const hasRemoteSignal = selectedModes.includes('Remote') || selectedModes.includes('Hybrid')
+    const hasOnsiteSignal = selectedModes.includes('Onsite')
+    const remoteAllowed = hasRemoteSignal && !hasOnsiteSignal
+        ? true
+        : (hasOnsiteSignal && !hasRemoteSignal ? false : undefined)
+
+    return {
+        region: isRemoteOnlyMode(selectedModes) ? undefined : (selectedRegion || undefined),
+        industry: selectedIndustry || undefined,
+        remote_allowed: remoteAllowed,
+        salary_min: minSalary > 10 ? minSalary * 1_000_000 : undefined,
+    }
+}
+
 export default function SeekerSearch() {
     const isMobile = useIsMobile()
     const [query, setQuery] = useState('')
@@ -26,10 +52,7 @@ export default function SeekerSearch() {
     const [searchError, setSearchError] = useState(null)
     const [selectedJob, setSelectedJob] = useState(null)
 
-    // Remote jobs aren't tied to any one place, so once "Remote" is toggled
-    // on, the location filter stops meaning anything — disable and clear it
-    // instead of leaving a location pill selected that can't actually match.
-    const isRemoteMode = selectedModes.includes('Remote')
+    const isRemoteMode = isRemoteOnlyMode(selectedModes)
 
     useEffect(() => {
         handleSearch()
@@ -50,18 +73,12 @@ export default function SeekerSearch() {
         setLoading(true)
         setSearchError(null)
         try {
-            const hasRemoteSignal = selectedModes.includes('Remote') || selectedModes.includes('Hybrid')
-            const hasOnsiteSignal = selectedModes.includes('Onsite')
-            const remoteAllowed = hasRemoteSignal && !hasOnsiteSignal
-                ? true
-                : (hasOnsiteSignal && !hasRemoteSignal ? false : undefined)
-
-            const res = await searchJobs(query, 0, 20, {
-                region: isRemoteMode ? undefined : (selectedRegion || undefined),
-                industry: selectedIndustry || undefined,
-                remote_allowed: remoteAllowed,
-                salary_min: minSalary > 10 ? minSalary * 1_000_000 : undefined,
-            })
+            const res = await searchJobs(
+                query,
+                0,
+                20,
+                buildJobSearchFilters({ selectedModes, selectedRegion, selectedIndustry, minSalary })
+            )
             setResults(res?.items || [])
         } catch (err) {
             console.error('Search failed', err)
