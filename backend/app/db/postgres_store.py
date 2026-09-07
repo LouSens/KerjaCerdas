@@ -352,7 +352,16 @@ async def get_cached_job_pack_parse(cache_key: str) -> list[dict] | None:
 
 
 async def save_job_pack_parse(cache_key: str, employer_id: str, postings: list[dict]) -> None:
-    """Persist a job-pack parse result (idempotent — a repeat save just overwrites)."""
+    """Persist a job-pack parse result (idempotent — a repeat save just overwrites).
+
+    An overwrite (the `else` branch) only happens after get_cached_job_pack_parse
+    already decided the previous row was stale and let a fresh parse run — so
+    this write must bump created_at to now. Leaving it at the original INSERT
+    time (the ORM default only applies once, never on UPDATE) would make the
+    row look expired again on the very next read, forcing every subsequent
+    upload to re-parse forever after the first TTL window, which is exactly
+    the drift this cache exists to prevent.
+    """
     try:
         async with async_session() as session:
             existing = await session.get(JobPackParseCache, cache_key)
@@ -362,6 +371,7 @@ async def save_job_pack_parse(cache_key: str, employer_id: str, postings: list[d
                 )
             else:
                 existing.postings = postings
+                existing.created_at = datetime.now(UTC)
             await session.commit()
     except Exception as exc:
         _store_logger.warning("save_job_pack_parse failed (%s) — skipping persist", exc)

@@ -101,6 +101,28 @@ async def lifespan(app: FastAPI):
             "OTP_DEMO_MODE is on in production — /verify/otp/send returns the "
             "generated code in its response, so phone verification proves nothing"
         )
+
+    # Both prod deployment topologies (docker-compose.prod.yml's own comment
+    # explains them) share this same backend image and settings, so this
+    # can't be a hard failure — a deployment where the browser calls the API
+    # directly (no Nginx in front) is correct to leave this unset. But a
+    # deployment where Nginx DOES front the API and the operator forgot to
+    # set PROXY_SHARED_SECRET degrades completely silently: rate_limiter.py
+    # falls back to trusting request.client.host, which is always Nginx's
+    # own peer address, collapsing every real client behind it into one
+    # shared rate-limit bucket per route. That's not just coarser throttling
+    # — one busy or malicious client can exhaust login/OTP/agent limits for
+    # every other real user sharing that bucket. A warning here is the only
+    # signal an operator gets that this is happening, since there's nothing
+    # else in the request path that would reveal it.
+    if settings.is_production and not settings.proxy_shared_secret:
+        logger.warning(
+            "PROXY_SHARED_SECRET is not set. If this API sits behind the "
+            "Nginx frontend (docker-compose.prod.yml), every proxied client "
+            "shares one rate-limit bucket per route instead of one per real "
+            "client — see rate_limiter.py's _is_trusted_proxy. Safe to "
+            "ignore only if the browser calls this API directly."
+        )
     configure_auth(secret_key=jwt_secret, expire_minutes=settings.jwt_access_token_expire_minutes)
 
     yield

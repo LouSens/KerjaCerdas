@@ -219,11 +219,19 @@ const useStore = create(
                     // (backend/app/api/routers/verify.py persists the outcome to the
                     // seeker's own profile row), so the backend value is the source of
                     // truth here — it survives a reload or a login from another
-                    // browser, unlike the old local-only flags. The value is "pending"
-                    // on a passing check, never "verified" — the mock format check has
-                    // no authority to confirm a real identity, only a real Dukcapil/
-                    // SIVIL integration should ever be allowed to set "verified". Phone
-                    // verification has no equivalent profile column yet, so
+                    // browser, unlike the old local-only flags.
+                    //
+                    // ktp_verified/ijazah_verified are true ONLY for a genuine
+                    // "verified" status — never for "pending". A passing mock format
+                    // check has no authority to confirm a real identity, so it must
+                    // not light up the same completion/trust signals (checklist ✓,
+                    // Trust Score, sidebar badge) a real verification would. Those
+                    // consumers all read this same boolean, so keeping it strictly
+                    // "verified" is what keeps them all honest at once. ktp_pending/
+                    // ijazah_pending carry the "submitted, awaiting real verification"
+                    // state separately, for VerificationDashboard's own detailed card
+                    // to show — a distinct, less confident state than done.
+                    // Phone verification has no equivalent profile column yet, so
                     // phone_verified still only ever comes from local state.
                     set((s) => ({
                         profile: {
@@ -236,8 +244,10 @@ const useStore = create(
                             education: data.education || [],
                             salary_expectation_min: data.salary_expectation_min || 0,
                             salary_expectation_max: data.salary_expectation_max || 0,
-                            ktp_verified: data.nik_verified === 'pending' || data.nik_verified === 'verified',
-                            ijazah_verified: data.ijazah_verified === 'pending' || data.ijazah_verified === 'verified',
+                            ktp_verified: data.nik_verified === 'verified',
+                            ktp_pending: data.nik_verified === 'pending',
+                            ijazah_verified: data.ijazah_verified === 'verified',
+                            ijazah_pending: data.ijazah_verified === 'pending',
                         },
                         seekerId: data.id,
                     }))

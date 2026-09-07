@@ -431,9 +431,24 @@ class SemanticMatcher:
 
     @staticmethod
     def _prefilter_limit(top_k: int) -> int:
-        """ANN candidate pool size: enough headroom that structured boosts can
-        reshuffle the semantic order without losing relevant rows."""
-        return max(top_k * 5, 200)
+        """ANN candidate pool size for the (large-dataset-only) ANN path.
+
+        Below `settings.matching_full_scan_safe_limit` active rows, this
+        function is never called at all — every row gets the full hybrid
+        formula (see `_job_candidates`'s docstring for why that's the
+        correct default, not just a fallback). Above that threshold, some
+        residual omission risk is unavoidable with a single-vector ANN
+        index: cosine-only ordering can still rank a structurally strong
+        candidate (great skill/experience fit, weak embedding match) outside
+        this cutoff. A wide multiplier here shrinks that risk window without
+        fetching the whole table — eliminating it completely needs a
+        skill-aware retrieval query (a JSON, not JSONB, `skills`/
+        `required_skills` column today, so no indexed overlap query exists
+        yet) or the multi-vector representation already tracked as planned
+        work in ROADMAP.md. Not a same-session fix; this multiplier is the
+        honest mitigation available without a schema change.
+        """
+        return max(top_k * 20, 1000)
 
     async def _job_candidates(
         self, query_vec: list[float], top_k: int

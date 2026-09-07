@@ -11,10 +11,14 @@ posting instead of a replay, producing a duplicate vacancy on confirm.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+
+from backend.app.db.postgres_store import get_cached_job_pack_parse, save_job_pack_parse
+from backend.app.db.session import async_session
 
 _MOCK_PARSE_RESULT = {
     "postings": [
@@ -160,3 +164,39 @@ class TestJobPackParseCache:
         first_ids = [j["local_id"] for j in first.json()["jobs"]]
         second_ids = [j["local_id"] for j in second.json()["jobs"]]
         assert first_ids == second_ids
+
+
+class TestParseCacheRefreshOnOverwrite:
+    """Regression test for the exact bug this fixes: overwriting a cache row
+    without bumping created_at made every cache row permanently "expired"
+    after its first TTL window, because the ORM's created_at default only
+    ever applies on INSERT, never on UPDATE."""
+
+    async def test_overwrite_refreshes_created_at_not_just_postings(self) -> None:
+        key = "test-cache-key-refresh"
+        await save_job_pack_parse(key, "emp-1", [{"title": "v1"}])
+
+        # Simulate the row having aged past the TTL, the way it would after
+        # a real 24h+ gap between uploads.
+        async with async_session() as session:
+            from backend.app.db.models import JobPackParseCache
+
+            row = await session.get(JobPackParseCache, key)
+            row.created_at = datetime.now(UTC) - timedelta(hours=25)
+            await session.commit()
+
+        assert await get_cached_job_pack_parse(key) is None, "must read as expired before the overwrite"
+
+        # This is the exact call site hit when a re-upload's fresh parse is
+        # saved over an expired row (uploads.py after a cache miss).
+        await save_job_pack_parse(key, "emp-1", [{"title": "v2"}])
+
+        # The bug: without refreshing created_at, this second read would
+        # ALSO see the row as expired (created_at still 25h old) and return
+        # None here, even though the row was just written moments ago.
+        result = await get_cached_job_pack_parse(key)
+        assert result == [{"title": "v2"}], (
+            "overwrite must refresh created_at — otherwise the cache never "
+            "recovers from its first expiry and every future upload of "
+            "this file re-parses forever"
+        )

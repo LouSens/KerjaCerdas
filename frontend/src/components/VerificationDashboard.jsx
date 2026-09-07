@@ -10,13 +10,22 @@ import toast from 'react-hot-toast'
 export default function VerificationDashboard() {
     // ktp_verified/ijazah_verified are derived from the backend's
     // nik_verified/ijazah_verified columns (backend/app/api/routers/verify.py
-    // persists the VERIFIED/FAILED outcome to the seeker's own profile row),
-    // refreshed into the store by loadSeekerProfile. Reading them directly
-    // here (instead of snapshotting into local state) is what keeps this
-    // dashboard and SeekerDashboard's checklist showing the same value.
+    // persists the outcome to the seeker's own profile row), refreshed into
+    // the store by loadSeekerProfile. Reading them directly here (instead of
+    // snapshotting into local state) is what keeps this dashboard and
+    // SeekerDashboard's checklist showing the same value.
+    //
+    // *_verified is true ONLY for a genuine "verified" status (a real
+    // Dukcapil/SIVIL integration this build doesn't have yet) — never for
+    // "pending". Trust Score and the "Selesai ✓" treatment below are
+    // reserved for *_verified specifically because they read as a real
+    // completion/trust signal; a passing mock format check hasn't earned
+    // that. *_pending renders its own, less confident state instead.
     const { profile, updateProfile, loadSeekerProfile } = useStore()
     const ktpVerified = Boolean(profile?.ktp_verified)
+    const ktpPending = Boolean(profile?.ktp_pending)
     const ijazahVerified = Boolean(profile?.ijazah_verified)
+    const ijazahPending = Boolean(profile?.ijazah_pending)
     const [ktpChecking, setKtpChecking] = useState(false)
     const [nikInput, setNikInput] = useState('')
     // Never stored anywhere, not even locally — this is only held in memory
@@ -27,7 +36,8 @@ export default function VerificationDashboard() {
     const [ijazahChecking, setIjazahChecking] = useState(false)
     const phoneVerified = Boolean(profile?.phone_verified)
 
-    // Calculate score based on completed items
+    // Trust Score counts only genuine verification — a pending mock check
+    // does not raise it. See the comment above for why.
     const completedCount = (phoneVerified ? 1 : 0) + (ktpVerified ? 1 : 0) + (ijazahVerified ? 1 : 0)
     const trustScore = Math.round((completedCount / 4) * 100)
 
@@ -48,13 +58,14 @@ export default function VerificationDashboard() {
             if (res?.status === 'PENDING') {
                 // Optimistic local flip for instant feedback, then reconcile
                 // with the backend's now-durable nik_verified column so a
-                // reload or another device shows the same "Selesai" state
-                // instead of losing it.
-                updateProfile({ ktp_verified: true })
+                // reload or another device shows the same "pending" state
+                // instead of losing it. Never flips ktp_verified — that
+                // would claim a completion this mock check hasn't earned.
+                updateProfile({ ktp_pending: true })
                 await loadSeekerProfile()
                 setVerifiedNikDisplay(nik)
                 setNikInput('')
-                toast.success('NIK berhasil divalidasi!')
+                toast.success('Format NIK diterima — menunggu verifikasi resmi.')
             } else {
                 toast.error(res?.message || 'Verifikasi NIK gagal')
             }
@@ -80,9 +91,9 @@ export default function VerificationDashboard() {
         try {
             const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), university_name: institution, major })
             if (res?.status === 'PENDING') {
-                updateProfile({ ijazah_verified: true })
+                updateProfile({ ijazah_pending: true })
                 await loadSeekerProfile()
-                toast.success('Format nomor ijazah tervalidasi!')
+                toast.success('Format nomor ijazah diterima — menunggu verifikasi resmi.')
             } else {
                 toast.error(res?.message || 'Format nomor ijazah tidak valid')
             }
@@ -152,7 +163,7 @@ export default function VerificationDashboard() {
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <span style={{ width: 9, height: 9, background: ktpVerified ? '#10B981' : KC.orange, borderRadius: '50%' }} />
+                                <span style={{ width: 9, height: 9, background: ktpVerified ? '#10B981' : ktpPending ? '#F59E0B' : KC.orange, borderRadius: '50%' }} />
                                 <span style={{ fontSize: 14, fontWeight: 900, color: KC.ink }}>
                                     Identitas KTP
                                 </span>
@@ -163,16 +174,16 @@ export default function VerificationDashboard() {
                         </div>
                         <span style={{
                             padding: '4px 9px',
-                            background: ktpVerified ? '#ECFDF5' : '#FFF1EB',
-                            border: `1px solid ${ktpVerified ? '#10B981' : KC.orange}`,
+                            background: ktpVerified ? '#ECFDF5' : ktpPending ? '#FEF3C7' : '#FFF1EB',
+                            border: `1px solid ${ktpVerified ? '#10B981' : ktpPending ? '#F59E0B' : KC.orange}`,
                             borderRadius: 999, fontSize: 9.5, fontWeight: 800,
-                            color: ktpVerified ? '#065F46' : '#9A3412', flexShrink: 0,
+                            color: ktpVerified ? '#065F46' : ktpPending ? '#92400E' : '#9A3412', flexShrink: 0,
                         }}>
-                            {ktpVerified ? 'Selesai ✓' : 'Belum'}
+                            {ktpVerified ? 'Selesai ✓' : ktpPending ? 'Menunggu ⏳' : 'Belum'}
                         </span>
                     </div>
 
-                    {!ktpVerified ? (
+                    {!ktpVerified && !ktpPending ? (
                         <>
                             <input
                                 value={nikInput}
@@ -208,6 +219,24 @@ export default function VerificationDashboard() {
                                 Hanya hash NIK yang disimpan (SHA-256), sesuai UU-PDP-2022.
                             </div>
                         </>
+                    ) : ktpPending && !ktpVerified ? (
+                        <div style={{
+                            padding: '12px 13px', background: '#FEF3C7', border: '1.5px solid #F59E0B',
+                            borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10,
+                        }}>
+                            <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#F59E0B', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 13, fontWeight: 900, flexShrink: 0 }}>⏳</span>
+                            <div>
+                                <div style={{ fontSize: 12, fontWeight: 800, color: '#92400E' }}>Format NIK diterima — menunggu verifikasi resmi</div>
+                                <div style={{ fontSize: 10.5, color: '#92400E', marginTop: 3 }}>
+                                    Belum ada konfirmasi identitas nyata — integrasi Dukcapil resmi belum aktif.
+                                </div>
+                                {verifiedNikDisplay && (
+                                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: '#92400E', marginTop: 3 }}>
+                                        {verifiedNikDisplay.slice(0, 4)}{'•'.repeat(Math.max(0, verifiedNikDisplay.length - 8))}{verifiedNikDisplay.slice(-4)}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     ) : (
                         <div style={{
                             padding: '12px 13px', background: '#ECFDF5', border: '1.5px solid #10B981',
@@ -215,7 +244,7 @@ export default function VerificationDashboard() {
                         }}>
                             <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 13, fontWeight: 900, flexShrink: 0 }}>✓</span>
                             <div>
-                                <div style={{ fontSize: 12, fontWeight: 800, color: '#065F46' }}>NIK terbaca & format valid</div>
+                                <div style={{ fontSize: 12, fontWeight: 800, color: '#065F46' }}>Identitas terverifikasi resmi</div>
                                 {verifiedNikDisplay && (
                                     <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: '#059669', marginTop: 3 }}>
                                         {verifiedNikDisplay.slice(0, 4)}{'•'.repeat(Math.max(0, verifiedNikDisplay.length - 8))}{verifiedNikDisplay.slice(-4)}
@@ -286,7 +315,7 @@ export default function VerificationDashboard() {
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <span style={{ width: 9, height: 9, background: ijazahVerified ? '#10B981' : '#F59E0B', borderRadius: '50%' }} />
+                                <span style={{ width: 9, height: 9, background: ijazahVerified ? '#10B981' : ijazahPending ? '#F59E0B' : '#F59E0B', borderRadius: '50%' }} />
                                 <span style={{ fontSize: 14, fontWeight: 900, color: KC.ink }}>
                                     Ijazah
                                 </span>
@@ -297,16 +326,16 @@ export default function VerificationDashboard() {
                         </div>
                         <span style={{
                             padding: '4px 9px',
-                            background: ijazahVerified ? '#ECFDF5' : '#FFF1EB',
-                            border: `1px solid ${ijazahVerified ? '#10B981' : KC.orange}`,
+                            background: ijazahVerified ? '#ECFDF5' : ijazahPending ? '#FEF3C7' : '#FFF1EB',
+                            border: `1px solid ${ijazahVerified ? '#10B981' : ijazahPending ? '#F59E0B' : KC.orange}`,
                             borderRadius: 999, fontSize: 9.5, fontWeight: 800,
-                            color: ijazahVerified ? '#065F46' : '#9A3412', flexShrink: 0,
+                            color: ijazahVerified ? '#065F46' : ijazahPending ? '#92400E' : '#9A3412', flexShrink: 0,
                         }}>
-                            {ijazahVerified ? 'Selesai ✓' : 'Belum'}
+                            {ijazahVerified ? 'Selesai ✓' : ijazahPending ? 'Menunggu ⏳' : 'Belum'}
                         </span>
                     </div>
 
-                    {!ijazahVerified ? (
+                    {!ijazahVerified && !ijazahPending ? (
                         <>
                             <input
                                 value={ijazahInput}
@@ -335,9 +364,13 @@ export default function VerificationDashboard() {
                                 {ijazahChecking ? 'Memeriksa Format…' : 'Periksa Ijazah'}
                             </button>
                         </>
+                    ) : ijazahPending && !ijazahVerified ? (
+                        <div style={{ padding: '10px 12px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 8, fontSize: 11, color: '#92400E', fontWeight: 700 }}>
+                            ⏳ Format ijazah diterima — menunggu verifikasi resmi
+                        </div>
                     ) : (
                         <div style={{ padding: '10px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8, fontSize: 11, color: '#065F46', fontWeight: 700 }}>
-                            ✓ Format nomor ijazah tervalidasi
+                            ✓ Ijazah terverifikasi resmi
                         </div>
                     )}
                 </div>
