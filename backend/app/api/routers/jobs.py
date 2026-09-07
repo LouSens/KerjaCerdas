@@ -93,7 +93,8 @@ async def list_jobs(
         kept = []
         for j in jobs:
             emp = await _employer(j.employer_id)
-            if emp is not None and emp.industry == industry:
+            employer_industry = (emp.industry if emp is not None else "") or "Lainnya"
+            if employer_industry == industry:
                 kept.append(j)
         jobs = kept
 
