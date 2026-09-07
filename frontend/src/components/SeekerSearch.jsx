@@ -30,6 +30,27 @@ export const buildJobSearchFilters = ({ selectedModes, selectedRegion, selectedI
     }
 }
 
+// Remote AND Onsite both selected, with a region picked, can't be expressed
+// as one GET /jobs query: the backend's `region` filter is a plain equality
+// check with no "OR remote from anywhere" — sending region with no
+// remote_allowed constraint (the only single-query option) would require
+// EVERY result, remote postings included, to carry that exact region code,
+// silently excluding remote jobs headquartered elsewhere. Two scoped
+// queries + a client-side union (below) is how the frontend expresses that
+// union without backend changes.
+export const isMixedRemoteAndOnsite = (selectedModes) =>
+    selectedModes.includes('Remote') && selectedModes.includes('Onsite')
+
+export const mergeUniqueJobs = (...lists) => {
+    const byId = new Map()
+    for (const list of lists) {
+        for (const job of list || []) {
+            if (job && job.id != null) byId.set(job.id, job)
+        }
+    }
+    return [...byId.values()]
+}
+
 export default function SeekerSearch() {
     const isMobile = useIsMobile()
     const [query, setQuery] = useState('')
@@ -73,13 +94,21 @@ export default function SeekerSearch() {
         setLoading(true)
         setSearchError(null)
         try {
-            const res = await searchJobs(
-                query,
-                0,
-                20,
-                buildJobSearchFilters({ selectedModes, selectedRegion, selectedIndustry, minSalary })
-            )
-            setResults(res?.items || [])
+            const filters = buildJobSearchFilters({ selectedModes, selectedRegion, selectedIndustry, minSalary })
+
+            if (isMixedRemoteAndOnsite(selectedModes) && filters.region) {
+                // See isMixedRemoteAndOnsite above: one query can't express
+                // "onsite in this region OR remote from anywhere", so issue
+                // both scoped queries and union the results client-side.
+                const [onsiteRes, remoteRes] = await Promise.all([
+                    searchJobs(query, 0, 20, { ...filters, remote_allowed: false }),
+                    searchJobs(query, 0, 20, { ...filters, region: undefined, remote_allowed: true }),
+                ])
+                setResults(mergeUniqueJobs(onsiteRes?.items, remoteRes?.items))
+            } else {
+                const res = await searchJobs(query, 0, 20, filters)
+                setResults(res?.items || [])
+            }
         } catch (err) {
             console.error('Search failed', err)
             setResults([])

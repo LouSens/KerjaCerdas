@@ -52,7 +52,7 @@ let _routerNavigate = null
 // shape now.
 const DEFAULT_PROFILE = {
     full_name: '', headline: '', region_code: '3171',
-    skills: [], experience: [], education: [],
+    skills: [], experience: [], education: [], resume_text: '',
     salary_expectation_min: 0, salary_expectation_max: 0,
 }
 
@@ -62,8 +62,22 @@ const DEFAULT_PROFILE = {
 // just "a row exists," not "there's something to match on," so both the
 // matching gate and the components that decide whether to show a "ready to
 // match" CTA need to check the row's actual content instead.
+//
+// That content isn't only the structured skills/experience/education
+// lists: matcher.py's embed_seeker() builds the seeker's match embedding
+// from `headline` and `resume_text` too (see matcher.py's profile-to-text
+// helper), so a headline-only manual profile, or a CV upload that yielded
+// free-text resume content but no structured fields, is genuinely
+// matchable — treating it as empty would send a real profile back to
+// "complete your profile" instead of producing a personalized ranking.
 export const hasMeaningfulProfile = (profile) =>
-    Boolean(profile?.skills?.length || profile?.experience?.length || profile?.education?.length)
+    Boolean(
+        profile?.skills?.length ||
+        profile?.experience?.length ||
+        profile?.education?.length ||
+        profile?.headline?.trim() ||
+        profile?.resume_text?.trim()
+    )
 
 const useStore = create(
     persist(
@@ -264,6 +278,7 @@ const useStore = create(
                             skills: data.skills || [],
                             experience: data.experience || [],
                             education: data.education || [],
+                            resume_text: data.resume_text || '',
                             salary_expectation_min: data.salary_expectation_min || 0,
                             salary_expectation_max: data.salary_expectation_max || 0,
                             ktp_verified: data.nik_verified === 'verified',

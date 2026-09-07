@@ -7,7 +7,12 @@
  * beyond the selected region instead of scoping the Onsite half to it.
  */
 import { describe, expect, it } from 'vitest'
-import { buildJobSearchFilters, isRemoteOnlyMode } from '../../components/SeekerSearch'
+import {
+    buildJobSearchFilters,
+    isMixedRemoteAndOnsite,
+    isRemoteOnlyMode,
+    mergeUniqueJobs,
+} from '../../components/SeekerSearch'
 
 describe('isRemoteOnlyMode', () => {
     it('is true when only Remote is selected', () => {
@@ -52,5 +57,31 @@ describe('buildJobSearchFilters', () => {
         const filters = buildJobSearchFilters({ ...base, selectedModes: [] })
         expect(filters.region).toBe('3573')
         expect(filters.remote_allowed).toBeUndefined()
+    })
+})
+
+describe('isMixedRemoteAndOnsite', () => {
+    it('is true only when both Remote and Onsite are selected', () => {
+        expect(isMixedRemoteAndOnsite(['Remote', 'Onsite'])).toBe(true)
+    })
+
+    it('is false for Remote alone, Onsite alone, or neither', () => {
+        expect(isMixedRemoteAndOnsite(['Remote'])).toBe(false)
+        expect(isMixedRemoteAndOnsite(['Onsite'])).toBe(false)
+        expect(isMixedRemoteAndOnsite([])).toBe(false)
+    })
+})
+
+describe('mergeUniqueJobs', () => {
+    it('unions two result lists and dedupes by id', () => {
+        const onsite = [{ id: 'a' }, { id: 'b' }]
+        const remote = [{ id: 'b' }, { id: 'c' }]
+        const merged = mergeUniqueJobs(onsite, remote)
+        expect(merged.map(j => j.id).sort()).toEqual(['a', 'b', 'c'])
+    })
+
+    it('tolerates undefined/empty lists', () => {
+        expect(mergeUniqueJobs(undefined, [{ id: 'x' }], [])).toEqual([{ id: 'x' }])
+        expect(mergeUniqueJobs()).toEqual([])
     })
 })
