@@ -42,6 +42,20 @@ import { VIEW_TO_PATH, PUBLIC_VIEWS, ALLOWED_VIEWS } from '../routes'
 // Allows Zustand navigate() to push to browser URL without React hooks.
 let _routerNavigate = null
 
+// `profile` is persisted to localStorage (see the `persist` partialize below)
+// and, unlike seekerId/matches/applications, was never reset on login,
+// register, or logout — so switching accounts in the SAME browser (exactly
+// what testing demo accounts back-to-back does) leaked the previous
+// account's skills/experience/education into the new session. A brand-new
+// user could see "matches" and profile fields that were never theirs before
+// ever uploading a CV. login/register/logout below all reset to this same
+// shape now.
+const DEFAULT_PROFILE = {
+    full_name: '', headline: '', region_code: '3171',
+    skills: [], experience: [], education: [],
+    salary_expectation_min: 0, salary_expectation_max: 0,
+}
+
 const useStore = create(
     persist(
         (set, get) => ({
@@ -81,6 +95,7 @@ const useStore = create(
                     seekerId: null,
                     matches: [],
                     applications: [],
+                    profile: DEFAULT_PROFILE,
                 })
                 const displayName = (user.name || '').trim() || (resolvedRole === 'employer' ? 'Tim HR' : 'Pencari Kerja')
                 toast.success(`Selamat datang, ${displayName}!`, { id: 'auth-success' })
@@ -114,6 +129,7 @@ const useStore = create(
                     seekerId: null,
                     matches: [],
                     applications: [],
+                    profile: DEFAULT_PROFILE,
                 })
                 const displayName = (user.name || '').trim() || (user.role === 'employer' ? 'Tim HR' : 'Pencari Kerja')
                 toast.success(`Akun dibuat — selamat datang, ${displayName}!`, { id: 'auth-success' })
@@ -141,6 +157,7 @@ const useStore = create(
                     savedJobs: [],
                     applications: [],
                     experiments: {},
+                    profile: DEFAULT_PROFILE,
                     advisorLog: [
                         { role: 'assistant', content: 'Halo! Saya advisor karier KerjaCerdas. Tanya apa saja seputar pekerjaan, skill, atau CV kamu.' },
                     ],
@@ -205,11 +222,7 @@ const useStore = create(
             toggleFloatingAdvisor: () => set((s) => ({ floatingAdvisorOpen: !s.floatingAdvisorOpen })),
 
             // ─── Seeker profile + matching ───────────────────────────────
-            profile: {
-                full_name: '', headline: '', region_code: '3171',
-                skills: [], experience: [], education: [],
-                salary_expectation_min: 0, salary_expectation_max: 0,
-            },
+            profile: DEFAULT_PROFILE,
             updateProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
 
             loadSeekerProfile: async () => {
@@ -306,6 +319,21 @@ const useStore = create(
 
             runAgent: async ({ message, targetJobId, explicitIntent, filters } = {}) => {
                 const { seekerId, profile, advisorLog, advisorSessionId } = get()
+
+                // Job matching specifically needs a real profile — without a
+                // seekerId, the backend falls back to a generic, no-skills
+                // "anonymous" profile and returns a plausible-looking but
+                // completely non-personalized ranking (see agent.py's
+                // _ANONYMOUS_SEEKER). Silently showing that as if it were the
+                // user's own matches is exactly the confusing behavior this
+                // gate exists to prevent — general advisor chat (explicitIntent
+                // 'advise' or none) is fine to run without a profile, since
+                // that's legitimately useful without any personal data.
+                if (explicitIntent === 'match_jobs' && !seekerId) {
+                    toast('Lengkapi profil dulu — upload CV atau isi manual, baru pencocokan AI bisa personal.', { icon: '📄' })
+                    return { requiresProfile: true, matches: [] }
+                }
+
                 const userMsg = message ? { role: 'user', content: message } : null
                 if (userMsg) set({ advisorLog: [...advisorLog, userMsg], advisorInput: '' })
                 set({ agentLoading: true })
