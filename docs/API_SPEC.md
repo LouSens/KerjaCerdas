@@ -434,7 +434,20 @@ Upload a PDF CV. Extracts text via **PyMuPDF**, sends to **Gemini API** for stru
 
 ### `POST /api/v1/uploads/job-pack`
 
-Upload a bulk Job Pack PDF containing one or multiple job descriptions. AI automatically parses each job, populates skill requirements, salary brackets, and region codes, and publishes them.
+Upload a bulk Job Pack PDF containing one or multiple job descriptions. AI
+parses each job and populates skill requirements, salary brackets, and
+region codes — **nothing is published yet**; the employer reviews the
+parsed list and confirms which postings to publish via one `POST
+/employer/jobs` call per posting (same endpoint the manual "Pasang
+Lowongan" form uses, passing back the `client_ref` this response attaches
+to each job for idempotent retries).
+
+Retrying an upload of the identical file (a lost response, a reload, a
+different browser or device) replays a server-side cache
+(`job_pack_parse_cache`, keyed by `sha256(employer_id + file bytes)`)
+instead of re-invoking Gemini — this keeps every field, and therefore the
+derived `client_ref`, byte-identical across retries, so a retried publish
+can't be mistaken for a new posting.
 
 **Request:** `multipart/form-data` with field `file` (PDF).
 
@@ -442,8 +455,19 @@ Upload a bulk Job Pack PDF containing one or multiple job descriptions. AI autom
 ```json
 {
   "employer_id": "uuid",
-  "created_job_ids": ["job-001", "job-002"],
-  "summary": { "jobs_count": 2 }
+  "jobs": [
+    {
+      "local_id": "a1b2c3d4e5f6a7b8-0",
+      "title": "Senior Backend Engineer",
+      "details": "Jakarta · 3 skill wajib",
+      "description": "...",
+      "required_skills": ["Python", "FastAPI", "Docker"],
+      "region_code": "3171",
+      "salary_min": 15000000,
+      "salary_max": 25000000
+    }
+  ],
+  "parsed_offline": false
 }
 ```
 
@@ -473,9 +497,11 @@ List the employer's own job postings, or create a new one.
   "salary_max": 25000000,
   "region_code": "3171",
   "remote_allowed": true,
-  "experience_years_min": 3
+  "experience_years_min": 3,
+  "client_ref": "optional — see /uploads/job-pack above"
 }
 ```
+`client_ref` is an optional idempotency token: retrying a create with the same `(employer_id, client_ref)` returns the already-created job (`created: false`) instead of inserting a duplicate. The manual "Pasang Lowongan" form omits it (each submit is a deliberate new posting); the Job Pack confirm flow always sets it.
 
 **Response `201`:** `{ "job_id": "uuid", "title": "Senior Backend Engineer" }`
 
@@ -536,7 +562,12 @@ Return the current user's verified documents registry.
 
 ### `POST /api/v1/verify/identity`
 
-Verify KTP identity via mock Dukcapil E-KYC.
+Mock Dukcapil E-KYC — a NIK *format* check (16 digits, not a "99"-prefixed
+demo-fail value), not a real identity confirmation. A passing check
+persists `nik_verified: "pending"` to the seeker's profile — never
+`"verified"`, which is reserved for a real Dukcapil integration this build
+doesn't have. `PENDING` is still durable: it survives a reload or a login
+from another browser/device.
 
 **Request:**
 ```json
@@ -552,19 +583,22 @@ Verify KTP identity via mock Dukcapil E-KYC.
 ```json
 {
   "request_id": "uuid",
-  "status": "VERIFIED",
+  "status": "PENDING",
   "match_percentage": 0.97,
   "verification_hash": "sha256:...",
   "pii_redacted": true,
-  "message": "Identitas terverifikasi (mode demo)."
+  "message": "Format NIK diterima — menunggu verifikasi resmi (mode demo, bukan konfirmasi identitas)."
 }
 ```
+`status` is `"FAILED"` (NIK prefixed "99" — the demo fail rule) when the check rejects it.
 
 ---
 
 ### `POST /api/v1/verify/education`
 
-Verify academic diploma via mock SIVIL Kemdikbud.
+Mock SIVIL Kemdikbud diploma-number format check — the mirror of
+`/verify/identity` above, including the PENDING-not-VERIFIED persistence
+(`ijazah_verified`) for the same reason.
 
 **Request:** `{ "ijazah_number": "...", "university_name": "...", "major": "..." }`
 
@@ -572,8 +606,8 @@ Verify academic diploma via mock SIVIL Kemdikbud.
 ```json
 {
   "request_id": "uuid",
-  "status": "VERIFIED",
-  "message": "Ijazah terverifikasi di SIVIL.",
+  "status": "PENDING",
+  "message": "Format nomor ijazah diterima — menunggu verifikasi resmi (mode demo).",
   "verified_data": {
     "university": "Universitas Indonesia",
     "major": "Ilmu Komputer",
@@ -583,6 +617,7 @@ Verify academic diploma via mock SIVIL Kemdikbud.
   }
 }
 ```
+`status` is `"NOT_FOUND"` for an obviously-placeholder number (e.g. `"000000"`, `"test"`).
 
 ---
 

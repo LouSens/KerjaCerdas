@@ -61,7 +61,7 @@ Modul ini dirancang untuk menyelesaikan beban administratif (*screening fatigue*
 3. **Langkah 3 (Pasang Lowongan / Upload Job Pack):** Akses pembuatan lowongan individual atau unggah massal.
 
 ### 📄 Job Pack Bulk Uploader (PDF)
-Perusahaan dapat mengunggah 1 dokumen PDF berisi kumpulan banyak posisi sekaligus. AI mengekstrak setiap jabatan, kualifikasi teknis, ekspektasi kompensasi, dan menerbitkannya secara serentak dalam hitungan detik.
+Perusahaan dapat mengunggah 1 dokumen PDF berisi kumpulan banyak posisi sekaligus. AI mengekstrak setiap jabatan, kualifikasi teknis, dan ekspektasi kompensasi dalam hitungan detik untuk ditinjau — **belum diterbitkan**. Perusahaan memeriksa daftar hasil ekstraksi dan mengonfirmasi posisi mana yang ingin dipublikasikan; setiap konfirmasi dilindungi token idempoten (`client_ref`) sehingga mengunggah ulang berkas yang sama (koneksi terputus, refresh halaman) tidak pernah menghasilkan lowongan duplikat — hasil parsing di-cache di server berdasarkan hash berkas, bukan bergantung pada state browser.
 
 ### 🔓 Pay-to-Unlock Model
 - Profil kandidat dalam daftar pendek (*Shortlist*) ditampilkan dengan **The Teaser Method** (misal: "Someone at Tokopedia", "Someone from ITB") lengkap dengan skor kecocokan teknis.
@@ -85,6 +85,9 @@ Platform ini dirancang untuk menyelesaikan krisis kepercayaan (*Trust Crisis*) d
 | **NPWP Perusahaan** | DJP Online | Nomor Pokok Wajib Pajak (15 digit), Nama Badan Usaha |
 | **Akta Perusahaan** | AHU Kemenkumham | Nomor Akta Pendirian, Nama Notaris |
 | **Nomor HP / WhatsApp** | Phone OTP Gateway | Kode OTP 6-digit via WhatsApp / SMS |
+
+### 🔄 Persistensi Status (Durable, Bukan Otoritatif)
+Hasil pemeriksaan format NIK/ijazah yang lolos disimpan secara permanen pada profil pencari kerja sebagai status **`pending`** — bukan `verified` — sehingga status tersebut tetap muncul setelah reload halaman atau login dari perangkat/browser lain. Nilai `verified` sengaja tidak pernah diberikan oleh mock ini, karena pemeriksaan format tidak dapat membuktikan NIK/ijazah tersebut benar milik pengguna yang mengirimkannya; status itu baru berlaku setelah integrasi resmi Dukcapil/SIVIL benar-benar terpasang.
 
 ### 📱 Phone OTP (Demo & Produksi)
 - **Demo Testing:** Sistem menampilkan kode 6-digit langsung pada respons API / toast notifikasi sehingga pengujian alur verifikasi nomor HP berjalan 100% tanpa biaya vendor.
