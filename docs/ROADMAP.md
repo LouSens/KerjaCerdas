@@ -37,6 +37,8 @@ flowchart LR
 ### 1.1 Fase 1 (Bulan 1 - 3): Enterprise Relational Backend (PostgreSQL + pgvector)
 *Target: Menjamin integritas data untuk 50.000 pengguna MVP dan kueri analitik dengan latensi di bawah 200ms.*
 
+> **Status: sudah dibangun, bukan lagi target.** Seluruh tiga item di bawah sudah berjalan di repo saat ini — `docker-compose.prod.yml` (image dari GHCR, health check, Supabase pooler sebagai `DATABASE_URL`), `backend/alembic/` (migrasi terkelola, dijalankan otomatis oleh `[deployment]` di `.replit` sebelum start), dan pipeline CI (`.github/workflows/ci.yml` — lint, `pip-audit`, unit test dengan coverage gate — plus `.github/workflows/release.yml` yang mem-build & mem-push image ke GHCR pada tag rilis). Deployment harian berjalan di Replit (autoscale, lihat `.replit`); `docker-compose.prod.yml` melayani deployment VPS mandiri. Database terkelola saat ini adalah **Supabase** (pooler Postgres+pgvector terkelola), bukan instance mandiri — sehingga sebagian tujuan "Cloud SQL terkelola" di Fase 2 di bawah sudah tercapai lebih awal lewat Supabase; migrasi ke GCP Cloud SQL tetap menjadi opsi Fase 2 jika kebutuhan region/HA berubah, bukan prasyarat yang belum terpenuhi.
+
 - **pgvector & LangGraph-Assisted Pipeline:** Vektor 768-dimensi (MRL-truncated dari 3072-dimensi Gemini Embedding 2) diolah langsung di PostgreSQL dengan indeks HNSW (`ef_construction=64, m=16`).
 - **Alembic ORM Migrations:** Skema tabel dikelola progresif menggunakan Alembic, menjamin *Zero-Downtime Migration*.
 - **Injeksi Kontainer Otomatis:** Infrastruktur diorkestrasi mutlak menggunakan Docker Compose, mendemonstrasikan keandalan peluncuran (*plug-and-play*).
@@ -53,7 +55,7 @@ flowchart LR
 
 - **Kedaulatan Perlindungan Data (Vertex AI VPC):** *Vertex AI Endpoint* memastikan data *prompt* LLM dieksekusi dalam ruang komputasi *Virtual Private Cloud (VPC)* terisolasi dengan *Zero Data Retention*.
 - **Micro-Tuning Berkelanjutan (LoRA):** Menala model secara internal dengan dialek khas rekrutmen Indonesia (nomenklatur kampus lokal, istilah teknis Disnaker).
-- **Payment Gateway Korporasi Terintegrasi:** Otomatisasi penagihan B2B (*Pay-to-Unlock* Rp 50.000 / 10 kandidat atau Rp 5.000/kontak) melalui integrasi Midtrans/Xendit live.
+- **Payment Gateway Korporasi Terintegrasi:** Otomatisasi penagihan B2B (*Pay-to-Unlock* tarif flat Rp 50.000/kandidat, sesuai implementasi saat ini di `employer.py` — lihat [Business Model](BUSINESS_MODEL.md)) melalui integrasi Midtrans/Xendit live.
 
 ### 1.4 AI Agent & Matching Algorithm Roadmap
 
@@ -75,24 +77,35 @@ Known edge cases already handled in the current matcher (skill alias normalizati
 ## Bagian 2 — Kerangka Kerja Eksperimen A/B Testing
 
 ### 2.1 Konsep & Metrik Eksperimen
-A/B Testing pada KerjaCerdas dirancang untuk memvalidasi alur antarmuka secara empiris berdasarkan data konversi nyata:
+A/B Testing pada KerjaCerdas dirancang untuk memvalidasi alur antarmuka secara empiris berdasarkan data konversi nyata. Berikut adalah registry eksperimen yang **benar-benar terdaftar dan aktif** di `EXPERIMENTS` (`backend/app/api/routers/experiments.py`), masing-masing 50/50 split:
 
-| Eksperimen | Varian A (Control) | Varian B | Metrik Keberhasilan yang Diukur |
-|---|---|---|---|
-| `onboarding_flow` | Langsung ke Dashboard | Wizard 3-Langkah (Welcome $\rightarrow$ CV $\rightarrow$ Match) | % pengguna yang mengunggah CV dalam 24 jam pertama |
-| `match_cta_label` | "Refresh Match" | "Temukan Pekerjaan Impian" | Click-Through Rate (CTR) ke detail lowongan |
-| `skill_gap_prompt` | Tampilkan gap otomatis | Tanya posisi impian terlebih dahulu | % pengguna yang mengklik rekomendasi kursus |
-| `pricing_layout` | Tabel horizontal | Tabel vertikal dengan badge highlight | Tingkat konversi ke akun berbayar |
+| Eksperimen | Varian | Deskripsi |
+|---|---|---|
+| `onboarding_flow` | `cv_first` vs `skill_wizard` | Urutan langkah onboarding: unggah CV dulu vs wizard skill terpandu dulu |
+| `band_legend_default` | `collapsed` vs `open` | Apakah legenda band (Strong/Possible/Stretch) terbuka secara default untuk pengguna baru |
+| `stretch_band_copy` | `challenge_framing` vs `goal_framing` | Framing band "Stretch": "tantangan" vs "tujuan yang bisa dikejar" |
+| `unlock_cta_copy` | `buka_kontak` vs `hubungi_kandidat` | Teks tombol unlock kandidat di sisi employer |
+| `profile_completeness_nudge` | `progress_bar` vs `tooltip_nudge` | Cara kelengkapan profil dikomunikasikan ke pencari kerja |
+
+Metrik keberhasilan (CTR, waktu-ke-upload, konversi) belum dihitung otomatis oleh sistem — event mentah dicatat via `POST /events/track` (lihat §2.3) untuk dianalisis manual/offline; agregasi otomatis per-eksperimen adalah item roadmap, bukan yang sudah berjalan.
 
 ### 2.2 Arsitektur Stateless Feature Flagging
-Sistem menggunakan modul stateless assignment berbasis hash `user_id` atau `session_id` (`GET /api/v1/experiments/assignments`):
+Sistem menggunakan modul stateless assignment berbasis hash `user_id` (`GET /api/v1/experiments/assignments`), diimplementasikan persis seperti berikut (bukan pseudocode — ini kutipan nyata dari `experiments.py`):
 
 ```python
-# Backend: Deterministik & Stateless Assignment
-def get_user_variant(user_id: str, experiment_name: str, variants: list[str]) -> str:
-    hash_val = int(hashlib.sha256(f"{user_id}:{experiment_name}".encode()).hexdigest(), 16)
-    return variants[hash_val % len(variants)]
+# Backend: Deterministik & Stateless Assignment (kutipan nyata, backend/app/api/routers/experiments.py)
+def get_variant(user_id: str, experiment: str) -> str:
+    exp = EXPERIMENTS[experiment]
+    hash_val = int(hashlib.md5(f"{user_id}:{experiment}".encode()).hexdigest(), 16)
+    cumulative = 0.0
+    for variant, alloc in zip(exp["variants"], exp["allocation"]):
+        cumulative += alloc
+        if (hash_val % 10_000) / 10_000.0 < cumulative:
+            return variant
+    return exp["variants"][-1]
 ```
+
+Catatan: hash yang dipakai adalah MD5 (bukan SHA-256) — cukup untuk keperluan pembagian trafik deterministik non-keamanan ini.
 
 ### 2.3 Closed-Loop Event Tracking
 Setiap interaksi krusial dikirim ke endpoint `POST /api/v1/events/track` untuk analisis corong konversi:
@@ -125,8 +138,8 @@ trackEvent('cv_uploaded', {
 - **Integrasi Produksi:** Terhubung ke WhatsApp Business API via Fonnte atau Twilio Verify (~Rp 150–200/pesan).
 
 ### 3.5 Payment Gateway (Midtrans / Xendit)
-- **Status Saat Ini:** Endpoint backend `POST /employer/jobs/{id}/unlock/{seeker_id}` siap menerima token pembayaran.
-- **Integrasi Produksi:** Aktivasi Sandbox $\rightarrow$ Production Midtrans/Xendit dengan biaya MDR standar (1.5–2.9%) per transaksi Pay-to-Unlock.
+- **Status Saat Ini:** Endpoint backend `POST /employer/jobs/{id}/unlock/{seeker_id}` menerima `payment_token` apa pun tanpa validasi (stub demo) dan mengembalikan `unlock_cost_idr` flat Rp 50.000 per kandidat (gratis jika kandidat sudah melamar langsung ke lowongan itu). Belum ada sistem kredit/bundel unlock.
+- **Integrasi Produksi:** Aktivasi Sandbox $\rightarrow$ Production Midtrans/Xendit dengan biaya MDR standar (1.5–2.9%) per transaksi Pay-to-Unlock; paket bundel/kredit gratis awal (jika dipertahankan sebagai fitur produk) juga baru akan dibangun pada tahap ini.
 
 ---
 

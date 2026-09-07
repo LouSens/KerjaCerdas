@@ -83,6 +83,8 @@ class EnrichedMatch(BaseModel):
     score: float
     cosine: float
     skill_overlap: float
+    experience_fit: float = 0.0
+    education_met: bool = False
     region_match: bool
     salary_in_range: bool
     rank: int
@@ -176,6 +178,8 @@ async def _enrich_matches(
                 score=m.score,
                 cosine=m.cosine,
                 skill_overlap=m.skill_overlap,
+                experience_fit=m.experience_fit,
+                education_met=m.education_met,
                 region_match=m.region_match,
                 salary_in_range=m.salary_in_range,
                 rank=m.rank,

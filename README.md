@@ -59,7 +59,7 @@ Setiap komponen dalam aplikasi ini dirancang tidak hanya untuk fungsi teknis, me
 ### 💼 Frontend Components (React 18 & React Router & Zustand)
 | Komponen UI | Fungsi Teknikal | Dampak Bisnis & UX |
 |---|---|---|
-| **`LandingHero` & `PublicHeader`** | Entry point SPA dengan animasi responsif dan direct route navigation. | Mengkonversi pengunjung (Lead Gen) melalui CVR yang dioptimasi dan copy persuasif. |
+| **`LandingHero`** | Entry point SPA (termasuk header navigasi & footer publik) dengan direct route navigation. | Mengkonversi pengunjung (Lead Gen) melalui CVR yang dioptimasi dan copy persuasif. |
 | **`CVUploader`** | Menghandle PDF parsing multipart form data + auto-navigate ke match. | Menghilangkan friksi data entry manual. AI Gemini mengekstrak data JSON dalam detik. |
 | **`SeekerDashboard`** | Mengorkestrasi data profil (trust score, matches) dari `useStore`. | Memberikan umpan balik instan ke kandidat, membangun retensi Active Users. |
 | **`SeekerMatchResults`** | Render array `matches` dari vector search + HNSW distance. | Menyajikan hasil pencocokan berbasis band (Strong, Possible, Stretch). |
@@ -268,7 +268,7 @@ Proyek ini menggunakan **GitHub Actions** (`release.yml`) untuk membangun (build
 
 ## 🧠 Arsitektur Sistem Inti
 
-Platform ini menggunakan **LangGraph** sebagai response layer dan **Gemini 3.1 Flash** untuk embedding semantik dan generasi teks. Arsitektur saat ini berupa *single-node LangGraph graph* yang menghasilkan respons natural-language, sementara logika matching dan skill-gap dijalankan secara prosedural sebelum graph dieksekusi.
+Platform ini menggunakan **LangGraph** sebagai response layer, **Gemini Embedding 2** (768-dim, MRL-truncated dari 3072-dim) untuk embedding semantik, dan **Gemini 3.1 Flash** untuk generasi teks. Arsitektur saat ini berupa *single-node LangGraph graph* yang menghasilkan respons natural-language, sementara logika matching dan skill-gap dijalankan secara prosedural sebelum graph dieksekusi.
 
 > **Status:** Fungsi-fungsi node (router, matcher, skill_gap, advisor, compose) sudah diimplementasikan di `nodes.py` tetapi dijalankan secara prosedural di API router — belum diwiring sebagai multi-node LangGraph StateGraph. Migrasi ke topologi multi-node yang sesungguhnya ada di roadmap teknis.
 
@@ -303,7 +303,7 @@ flowchart TD
     end
 
     subgraph Infrastructure ["Vector & LLM Engine"]
-        Gemini{"✨ Google Gemini\n3.1 Flash (768-dim)"}:::llm
+        Gemini{"✨ Google Gemini\nEmbedding 2 (768-dim) + 3.1 Flash"}:::llm
         PG[("🐘 PostgreSQL 16\n(pgvector HNSW)")]:::db
     end
 
@@ -332,11 +332,11 @@ flowchart TD
 Sistem menggunakan komposit metrik matematis untuk mereplikasi prioritas SDM:
 ```python
 final_score = (
-    cosine_similarity * 0.50 +   # Relevansi Semantik (Vektor Gemini)
-    skill_overlap     * 0.30 +   # Irisan Keahlian Eksplisit
-    region_boost      * 0.10 +   # Kesesuaian Geografis
-    salary_fit        * 0.05 +   # Penyesuaian Anggaran
-    experience_fit    * 0.05     # Validasi Masa Kerja
+    cosine_similarity * 0.45 +   # Relevansi Semantik (Vektor Gemini)
+    skill_overlap     * 0.25 +   # Irisan Keahlian Eksplisit
+    experience_fit    * 0.15 +   # Validasi Masa Kerja
+    education_fit     * 0.10 +   # Kesesuaian Jenjang Pendidikan
+    recency_boost     * 0.05     # Keaktifan/Kebaruan Profil
 )
 ```
 
@@ -472,7 +472,7 @@ KerjaCerdas/
 │   │       └── settings.py        # Manajemen variabel lingkungan (.env)
 │   ├── tests/                # Unit & Integration Tests (Pytest)
 │   ├── alembic/              # Skrip Migrasi Basis Data (Alembic)
-│   └── requirements.txt
+│   └── pyproject.toml        # Dependensi Python (dikelola via pip/uv)
 │
 ├── frontend/                 # Aplikasi Web React.js (Vite + React Router)
 │   ├── src/
@@ -496,9 +496,7 @@ KerjaCerdas/
 │   │   │   ├── PricingPage.jsx       # Halaman harga B2B/B2C & ATS Enterprise
 │   │   │   ├── AuthModal.jsx         # Popup Login/Register terintegrasi
 │   │   │   ├── OnboardingWizard.jsx  # Alur onboarding pengguna baru
-│   │   │   ├── PublicHeader.jsx      # Navigasi utama
-│   │   │   ├── Footer.jsx            # Footer aplikasi
-│   │   │   └── LandingHero.jsx       # Halaman pendaratan publik
+│   │   │   └── LandingHero.jsx       # Halaman pendaratan publik (termasuk header & footer)
 │   │   ├── services/
 │   │   │   └── api.js        # Wrapper fetch API dengan auto-logout 401 & auth header
 │   │   ├── store/

@@ -4,7 +4,7 @@ Dokumen ini disusun sebagai panduan operasional langkah demi langkah (*step-by-s
 
 Daftar lengkap seluruh akun uji coba (*pre-seeded demo accounts*) ada di [Demo Accounts](DEMO_ACCOUNTS.md). Semua akun menggunakan kata sandi default: **`demo`** (atau nilai dari `SEED_DEFAULT_PASSWORD`). Akun yang direkomendasikan untuk demo:
 
-- **Seeker:** `budi.santoso@example.com` — teknisi otomotif & junior developer.
+- **Seeker:** `budi.santoso@example.com` — teknisi otomotif, 5 tahun di Auto2000.
 - **Employer:** `hr@goto.id` (GoTo Group) atau `hr@mandiri.id` (Bank Mandiri).
 
 ---

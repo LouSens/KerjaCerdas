@@ -13,8 +13,10 @@ The pipeline is a **bi-encoder semantic ranker with structured boosts and band-b
 
 ## 1. Embedding Stage (offline, at write time)
 
-**Model:** `gemini-embedding-001`, requested at `output_dimensionality=768`.
-The native model is 3072-dim; Gemini applies **Matryoshka Representation Learning (MRL)** truncation, so the first 768 dims retain most of the semantic signal. 768 was chosen to match the `vector(768)` pgvector column.
+**Model:** `gemini-embedding-2` (`settings.gemini_embed_model`), requested at `output_dimensionality=768`.
+The native model is 3072-dim; Gemini applies **Matryoshka Representation Learning (MRL)** truncation, so the first 768 dims retain most of the semantic signal. 768 was chosen to match the `vector(768)` pgvector column. `text-embedding-004` (native 768-dim, no truncation) is a documented stable-fallback option, settable via `GEMINI_EMBED_MODEL`, but is not the default.
+
+If no `GEMINI_API_KEY`/`VERTEX_AI_PROJECT` is configured, or a Gemini call fails for a non-quota reason, `embeddings/gemini.py` latches to a deterministic offline `HashEmbedder` (token-hash based, 768-dim) so the pipeline never crashes — cosine scores against hash vectors are near-meaningless, logged loudly. Quota (429) errors instead get bounded retries (up to 4 attempts for document embeds, 2 for query embeds) before raising `EmbeddingUnavailableError`.
 
 **Task types matter:** documents are embedded with `task_type="RETRIEVAL_DOCUMENT"`, queries with `"RETRIEVAL_QUERY"`. Gemini optimizes the two spaces to be asymmetric-retrieval-compatible (like DPR/GTR-style dual encoders).
 

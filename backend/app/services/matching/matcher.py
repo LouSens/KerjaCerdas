@@ -562,6 +562,11 @@ class SemanticMatcher:
             score = _hybrid_score(
                 cos, skill, years_exp, j.experience_years_min, bool(seeker.education)
             )
+            # Same helper _hybrid_score used internally, normalized to [0,1] so
+            # the frontend breakdown can show the real per-factor fit instead of
+            # inventing numbers for factors (location, salary) that aren't part
+            # of the weighted formula at all — those are hard filters, below.
+            experience_fit = _experience_fit_boost(years_exp, j.experience_years_min) / _W_EXPERIENCE
             band = _band_label(
                 score,
                 settings.band_strong_threshold,
@@ -600,6 +605,8 @@ class SemanticMatcher:
                     score=round(score, 4),
                     cosine=round(cos, 4),
                     skill_overlap=round(skill, 4),
+                    experience_fit=round(experience_fit, 4),
+                    education_met=bool(seeker.education),
                     region_match=region_ok,
                     salary_in_range=salary_ok,
                     rank=0,

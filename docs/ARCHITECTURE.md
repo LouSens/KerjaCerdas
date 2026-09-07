@@ -53,7 +53,7 @@ Matching, skill-gap computation, and intent routing run as procedural Python in 
 | Model/API | Google Gemini (3.1 Flash) for embeddings + generation | Live calls, with an offline fallback stub on failure |
 | External integration | Curated static course catalogue (35+ items); demo-mode OTP/NIK/NPWP checks | Government/e-KYC and payment integrations (Dukcapil, SIVIL, DJP, WhatsApp/SMS OTP, Midtrans/Xendit) require external contracts and are not wired in this build |
 | Infrastructure | Docker Compose (dev + `docker-compose.prod.yml`), GitHub Actions CI (`ci.yml`) + release image publishing (`release.yml`) | CI runs backend lint, audit, and a build gate; container images publish to GHCR on tagged release |
-| Testing | 22 backend test files (pytest); 2 frontend test files (`api.test.js` unit, `auth.spec.js` e2e) | Covers auth and the API client; component/integration coverage for matching UI, uploads, and verification flows is thin relative to the 25-component frontend |
+| Testing | 24 backend test files (pytest, `backend/tests/unit/` + `backend/tests/integration/`); 4 frontend test files (`api.test.js`, `hasMeaningfulProfile.test.js`, `seekerSearchFilters.test.js` unit; `auth.spec.js` e2e) | Covers auth, the API client, and seeker search/profile-completeness logic; component/integration coverage for matching UI, uploads, and verification flows is thin relative to the 25-component frontend |
 
 ## Verification & Payments — Demo Mode
 

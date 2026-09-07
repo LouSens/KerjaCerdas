@@ -9,7 +9,7 @@ Files:
 
 | Endpoint | Behavior |
 |---|---|
-| `GET /api/v1/jobs` | list with filters: region, type, salary range, experience. Each result is enriched with a `verified` flag pulled from the posting employer's verification status (see `04-identity-verification.md`) |
+| `GET /api/v1/jobs` | list with filters: region, type, salary range, experience. Each result is enriched with a `verified` flag pulled from the posting employer's `Employer.verified` field via `_is_employer_verified()`. The read path is real, but as of today nothing in the codebase ever sets that field to `VERIFIED` (see `04-identity-verification.md`'s Trust Model section) — so this flag is currently always `false` for every listing, not a working badge. |
 | `GET /api/v1/jobs/{id}` | full job detail |
 
 ## Employer Endpoints (`require_employer`)
@@ -20,7 +20,8 @@ Files:
 | `PATCH /employer/jobs/{id}` | update; **re-embeds only if `description` or `required_skills` changed** — cosmetic edits (salary, title tweaks) skip the Gemini call |
 | `DELETE /employer/jobs/{id}` | remove listing |
 | `POST /employer/jobs/estimate` | **live pool preview while composing a job**: cheap heuristic (skill overlap + location, no embeddings, no LLM) estimating how many seekers would match. UX: employer sees "≈14 kandidat" update as they type requirements |
-| `POST /employer/jobs/{id}/candidates` | reverse matching — full ranking of seekers for this job, banded, shuffled within band, **numeric score never shown** (see `01-matching-algorithm.md` §3) |
+| `POST /employer/jobs/{id}/candidates` | reverse matching — full ranking of seekers for this job, banded, shuffled within band, **numeric score never shown** (see `01-matching-algorithm.md` §3). Ownership-checked (`_require_owned_job`) so employer B cannot query employer A's posting. Every candidate who did **not** apply directly to the job is redacted before payment: `full_name` is replaced with a teaser like `"Someone at {company}"` / `"Someone from {institution}"` / `"Someone in region {code}"` (falls back to `"Hidden Candidate"`), derived from the seeker's most recent experience/education/region in that priority order. |
+| `POST /employer/jobs/{job_id}/unlock/{seeker_id}` | **Pay-to-Unlock (demo mode).** Returns the candidate's real name/email/phone. `payment_token` is accepted in the request body but never validated against anything — any value (including none) succeeds; a code comment marks Midtrans/Xendit integration as the intended production path. Unlocks are tracked in an **in-process, non-persisted** `_UNLOCKED_CONTACTS: dict[employer_id, set[seeker_id]]` — they reset on every server restart and don't survive a multi-instance deployment, unlike everything else in this router (which goes through `postgres_store`). Idempotent within a process: unlocking twice doesn't charge twice. `unlock_cost_idr` is `0` if the candidate already applied directly to this job (their contact is already free via `GET /employer/applications`), else `50000` — matching the CLAUDE.md Pay-to-Unlock price point. **[BUILT, DEMO MODE]** |
 
 ## Job Pack Bulk Upload (`backend/app/api/routers/uploads.py`)
 

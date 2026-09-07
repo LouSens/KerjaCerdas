@@ -7,7 +7,9 @@ const bandOf = (m) => {
     if (m.band) return m.band
     const raw = m.overall_score ?? m.score ?? 0
     const pct = raw > 1 ? raw : raw * 100
-    return pct >= 85 ? 'strong' : pct >= 70 ? 'possible' : 'stretch'
+    // Mirrors the backend's real cutoffs (matcher.py band_strong_threshold=0.65,
+    // band_possible_threshold=0.45) — only used when the API didn't send `band`.
+    return pct >= 65 ? 'strong' : pct >= 45 ? 'possible' : 'stretch'
 }
 
 export default function SeekerMatchResults() {
@@ -195,12 +197,16 @@ export default function SeekerMatchResults() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                             {strongMatches.map((job, idx) => {
+                                // Real per-factor breakdown from the matcher's hybrid formula
+                                // (cosine 45% + skill 25% + experience 15% + education 10% +
+                                // recency 5%) — location/salary are hard filters, not weighted
+                                // factors, so they aren't part of this score breakdown.
                                 const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
-                                const sem = Math.round(job.semantic_score ?? (jobScore > 0 ? Math.min(100, Math.round(jobScore * 1.02)) : 0))
-                                const sk = Math.round(job.skill_score ?? (jobScore > 0 ? Math.min(100, Math.round(jobScore * 0.95)) : 0))
-                                const loc = Math.round(job.location_score != null ? (job.location_score > 1 ? job.location_score : job.location_score * 100) : jobScore)
-                                const sal = Math.round(job.salary_score != null ? (job.salary_score > 1 ? job.salary_score : job.salary_score * 100) : jobScore)
-                                const sen = Math.round(job.seniority_score != null ? (job.seniority_score > 1 ? job.seniority_score : job.seniority_score * 100) : jobScore)
+                                const sem = Math.round(job.cosine != null ? job.cosine * 100 : jobScore)
+                                const sk = Math.round(job.skill_overlap != null ? job.skill_overlap * 100 : jobScore)
+                                const exp = Math.round(job.experience_fit != null ? job.experience_fit * 100 : jobScore)
+                                const edu = job.education_met ? 100 : 0
+                                const rec = 100 // recency boost is flat for every candidate today
                                 const isSaved = (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
 
                                 return (
@@ -243,13 +249,16 @@ export default function SeekerMatchResults() {
                                                     <b style={{ color: KC.orange }}>Analisis AI:</b> {job.ai_summary || job.description?.slice(0, 140) || 'Penguasaan keahlian selaras dengan kriteria posisi rekrutmen.'}
                                                 </div>
 
-                                                {/* 5-Component Breakdown Micro-Bars (Desktop Proof) */}
+                                                {/* 5-Component Breakdown Micro-Bars — the real matcher.py weights
+                                                    (cosine/skill/experience/education/recency). Location and
+                                                    salary are hard filters upstream, not weighted factors, so
+                                                    they're intentionally not shown here. */}
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
                                                     <div>
                                                         <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Semantik</div>
                                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
                                                             <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange }}>{sem}</span>
-                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.50</span>
+                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.45</span>
                                                         </div>
                                                         <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
                                                             <div style={{ height: '100%', width: `${sem}%`, background: KC.orange, borderRadius: 999 }} />
@@ -259,40 +268,40 @@ export default function SeekerMatchResults() {
                                                         <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Skill</div>
                                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
                                                             <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#0284C7' }}>{sk}</span>
-                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.30</span>
+                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.25</span>
                                                         </div>
                                                         <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
                                                             <div style={{ height: '100%', width: `${sk}%`, background: '#0284C7', borderRadius: 999 }} />
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Lokasi</div>
+                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Pengalaman</div>
                                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
-                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#10B981' }}>{loc}</span>
+                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#10B981' }}>{exp}</span>
+                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.15</span>
+                                                        </div>
+                                                        <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${exp}%`, background: '#10B981', borderRadius: 999 }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Pendidikan</div>
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
+                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#F59E0B' }}>{edu}</span>
                                                             <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.10</span>
                                                         </div>
                                                         <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
-                                                            <div style={{ height: '100%', width: `${loc}%`, background: '#10B981', borderRadius: 999 }} />
+                                                            <div style={{ height: '100%', width: `${edu}%`, background: '#F59E0B', borderRadius: 999 }} />
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Gaji</div>
+                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Rekensi</div>
                                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
-                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#F59E0B' }}>{sal}</span>
+                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#6366F1' }}>{rec}</span>
                                                             <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.05</span>
                                                         </div>
                                                         <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
-                                                            <div style={{ height: '100%', width: `${sal}%`, background: '#F59E0B', borderRadius: 999 }} />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Senioritas</div>
-                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
-                                                            <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#6366F1' }}>{sen}</span>
-                                                            <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.05</span>
-                                                        </div>
-                                                        <div style={{ height: 5, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
-                                                            <div style={{ height: '100%', width: `${sen}%`, background: '#6366F1', borderRadius: 999 }} />
+                                                            <div style={{ height: '100%', width: `${rec}%`, background: '#6366F1', borderRadius: 999 }} />
                                                         </div>
                                                     </div>
                                                 </div>

@@ -23,7 +23,7 @@ sequenceDiagram
     actor U as User (Browser)
     participant F as Frontend (React)
     participant RL as RateLimiterMiddleware
-    participant SZ as SanitizationMiddleware
+    participant SZ as RequestSizeMiddleware
     participant AR as Auth Router
     participant DB as PostgreSQL
 
@@ -107,42 +107,53 @@ sequenceDiagram
     actor S as Seeker
     participant F as Frontend
     participant RL as RateLimiter (20 req/60s)
-    participant DP as Dependencies (JWT guard)
-    participant AG as Agent Router
+    participant DP as get_current_user() (JWT guard)
+    participant AG as Agent Router (agent.py)
     participant SN as sanitize_text()
-    participant PR as Procedural pipeline (nodes.py)
+    participant SM as SemanticMatcher
     participant LG as LangGraph single node (agent_node)
     participant DB as PostgreSQL (Jobs, Seekers)
 
     S->>F: Type message in FloatingAdvisor chat
-    F->>RL: POST /api/v1/agent/invoke<br/>{user_message, seeker_id, explicit_intent}
+    F->>RL: POST /api/v1/agent/invoke<br/>{user_message, seeker_id, explicit_intent}<br/>Authorization: Bearer <jwt>
     RL->>RL: Sliding window check (20/60s per IP)
-    RL->>AG: Forward
-    AG->>SN: sanitize_text(user_message, max=2000)
-    SN->>SN: Truncate → strip control chars → HTML-escape<br/>→ check injection patterns
+    RL->>DP: Forward
+    DP->>DP: Validate JWT (this endpoint has no anonymous path)
+    alt Missing/invalid token
+        DP-->>F: 401 Could not validate credentials
+    end
+    DP->>AG: Inject current_user
+    AG->>SN: sanitize_text(user_message, max=2000)<br/>sanitize_text(explicit_intent, max=200)
+    SN->>SN: Truncate → strip control chars → strip dangerous<br/>HTML tags (not HTML-escaped) → check injection patterns
     alt Injection detected
         SN-->>AG: raise HTTPException 422
-        AG-->>F: 422 {detail: "Input contains disallowed content"}
+        AG-->>F: 422 {detail: "Input field '...' contains disallowed content."}
         F-->>S: Show error toast
     end
-    AG->>DB: Resolve seeker profile (by seeker_id or inline)
-    AG->>DB: Load all job postings
-    AG->>PR: route_intent(message) → run_matcher / run_skill_gap / run_advisor
-    Note over PR: Plain Python function calls, not LangGraph graph edges.<br/>SemanticMatcher ranking happens here, before any LLM call.
-    PR->>PR: Token Efficiency Gate: if top_cosine < 0.10, skip the LLM call entirely
-    alt Skip condition met
-        PR-->>AG: templated reply, no Gemini call
+    AG->>DB: Resolve seeker (inline seeker if owned → owned seeker_id →<br/>caller's own profile → in-memory anonymous placeholder)
+    AG->>SM: rank_jobs_for_seeker(seeker, filters) — jobs=None,<br/>so the pgvector HNSW prefilter runs DB-side (no "load all jobs" step)
+    SM-->>AG: raw MatchResult list
+    AG->>DB: get_many(matched job_ids) — only the matched jobs, for enrichment
+    AG->>AG: Token Efficiency Gate: if max(match.score) < 0.10, skip the LLM call entirely
+    Note over AG: Routing/dispatch (route_intent/run_matcher/run_skill_gap/run_advisor)<br/>does not exist in this build — matching always runs procedurally here;<br/>the graph's only job is generating final_response text.
+    alt Gate fires (early_exit)
+        AG-->>F: 200 templated "belum ada lowongan relevan" reply, matches only, no Gemini call
     else
-        PR->>LG: ainvoke single agent_node (Gemini call, no tool-calling)
-        LG-->>PR: {messages: [...]}
+        AG->>LG: ainvoke single agent_node (Gemini call, no tool-calling), thread_id = sha256(user_id:session_id)
+        alt LLM busy / graph recursion limit / not configured
+            LG-->>AG: LLMBusyError / GraphRecursionError / RuntimeError
+            AG->>AG: Degrade: canned "matches ready, narrative unavailable" text instead of a 500
+        else
+            LG-->>AG: {messages: [...]}
+        end
     end
-    AG->>AG: Hallucination Guard: Verify match job_ids exist in DB. Drop invalid.
-    AG->>AG: Enrich valid matches with job metadata + employer names
+    AG->>AG: Hallucination Guard: drop matches whose job_id isn't in the loaded job set
+    AG->>DB: Resolve employer company_name per match (cached per request)
     AG-->>F: 200 AgentInvokeResponse
     F-->>S: Render job cards + AI response
 ```
 
-**Catatan arsitektur:** intent routing dan pemanggilan `SemanticMatcher`/skill-gap berjalan sebagai fungsi Python prosedural (`nodes.py`), **bukan** sebagai node/edge LangGraph, dan **bukan** ReAct tool-calling loop — `bind_tools()` dinonaktifkan secara eksplisit di `builder.py` karena inkompatibilitas library. LangGraph hanya dipanggil sekali sebagai node tunggal untuk menghasilkan teks jawaban akhir. Lihat [`ARCHITECTURE.md`](ARCHITECTURE.md) untuk detail lengkap.
+**Catatan arsitektur:** pemanggilan `SemanticMatcher` berjalan sebagai kode Python prosedural langsung di dalam `backend/app/api/routers/agent.py` (bukan di `nodes.py` — modul itu sekarang hanya berisi helper rekomendasi kursus `_recommend_courses`, dipanggil dari `seeker.py`'s skill-gap endpoint). Tidak ada fungsi/edge routing bernama `route_intent`/`run_matcher`/`run_skill_gap`/`run_advisor` di build ini. LangGraph **bukan** ReAct tool-calling loop — `bind_tools()` dinonaktifkan secara eksplisit di `builder.py` karena inkompatibilitas library — dan hanya dipanggil sekali sebagai node tunggal untuk menghasilkan teks jawaban akhir (`final_response`). Lihat [`ARCHITECTURE.md`](ARCHITECTURE.md) untuk detail lengkap.
 
 ---
 
@@ -198,21 +209,26 @@ sequenceDiagram
     participant F as Frontend
     participant RL as RateLimiter (10 req/60s)
     participant UP as Uploads Router
-    participant SZ as sanitize_filename()
     participant GM as Gemini API (PDF extraction)
+    participant SM as SemanticMatcher
     participant DB as PostgreSQL
 
     S->>F: Drop PDF file on CVUploader
     F->>F: Validate: file.type === 'application/pdf'<br/>file.size ≤ 10MB
     F->>RL: POST /api/v1/uploads/cv (multipart/form-data)
     RL->>UP: Forward after rate-limit check
-    UP->>SZ: sanitize_filename(file.filename)
-    UP->>UP: Validate MIME type (must be PDF)
-    UP->>UP: PyMuPDF → extract raw text
-    UP->>GM: Send text + extraction prompt
-    GM-->>UP: Structured JSON (skills, experience, education)
-    UP->>DB: upsert SeekerProfile with extracted data
-    UP-->>F: 200 {seeker_id, skills_count}
+    UP->>UP: Validate Content-Type (pdf/octet-stream) + %PDF- magic header + 10MB cap
+    UP->>GM: parse_cv(pdf_bytes) — sends raw PDF bytes to Gemini's<br/>multimodal endpoint directly (page-count-gated to bound per-doc cost)
+    alt Gemini multimodal fails
+        UP->>UP: PyMuPDF (fitz) text-extraction fallback → re-prompt Gemini on plain text
+    end
+    GM-->>UP: Structured JSON (skills, experience, education) or an offline stub
+    alt Parser fully offline
+        UP-->>F: 503 "Parser AI sedang tidak tersedia"
+    end
+    UP->>SM: embed_seeker(profile) — synchronous, not backgrounded (unlike POST /seeker/profile)
+    UP->>DB: upsert SeekerProfile with extracted + embedded data
+    UP-->>F: 200 {seeker_id, parsed_offline, summary: {skills_count, ...}}
     F-->>S: Show "Profile updated" + skill badges
 ```
 

@@ -31,8 +31,8 @@ const TIPS = [
     {
         id: 'unlock',
         icon: '🔓',
-        title: 'Cara Buka Kontak Kandidat',
-        body: 'Klik "Buka Kontak" pada kartu kandidat. Setiap unlock memotong token dari paket Anda. Kandidat terverifikasi KTP memiliki lencana ✓ — lebih terpercaya.',
+        title: 'Cara Unlock Kontak Kandidat',
+        body: 'Klik "Unlock Kontak" pada kartu kandidat. Setiap unlock dikenakan biaya flat Rp 50.000/kandidat. Kandidat terverifikasi KTP memiliki lencana ✓ — lebih terpercaya.',
     },
     {
         id: 'kanban',

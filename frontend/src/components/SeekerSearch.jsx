@@ -4,6 +4,14 @@ import useStore from '../store/useStore'
 import { KC, DesignStyles, topBtn, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
 
+// This page is the deliberate "manual track" — results are plain filtered
+// listings, never re-ranked or narrowed by AI score (see the header/banner
+// copy below). A job's score is shown only when it's already known from a
+// prior AI-match run (see matchScoreById), purely as context — never as a
+// filter or sort key. Band thresholds mirror the backend's real cutoffs
+// (matcher.py: band_strong_threshold=0.65, band_possible_threshold=0.45).
+const bandOf = (pct) => (pct >= 65 ? 'strong' : pct >= 45 ? 'possible' : 'stretch')
+
 // Pure so it's directly unit-testable (see tests/unit/seekerSearchFilters.test.js)
 // without rendering the component. Remote jobs aren't tied to any one place,
 // so a pure Remote search should ignore location — but if Onsite is ALSO
@@ -60,6 +68,16 @@ const PAGE_SIZE = 20
 
 export default function SeekerSearch() {
     const isMobile = useIsMobile()
+    // Jobs already scored by a prior AI-match run (dashboard/results screen),
+    // keyed by job id — joined onto this page's plain filtered listings so a
+    // job can show its real score as context, without this page ever calling
+    // the matcher or re-ranking/filtering by it itself.
+    const { matches } = useStore()
+    const matchScoreById = new Map(
+        (matches || [])
+            .filter(m => m.job_id != null && typeof m.score === 'number')
+            .map(m => [m.job_id, Math.round(m.score > 1 ? m.score : m.score * 100)])
+    )
     const [query, setQuery] = useState('')
     const [filterPanelOpen, setFilterPanelOpen] = useState(false)
     // Stores the region CODE (e.g. "3171"), not the display name — the picker
@@ -74,7 +92,6 @@ export default function SeekerSearch() {
     const [industries, setIndustries] = useState([])
     const [selectedModes, setSelectedModes] = useState([])
     const [minSalary, setMinSalary] = useState(10)
-    const [selectedBands, setSelectedBands] = useState(['strong', 'possible', 'stretch'])
     const [results, setResults] = useState([])
     const [loading, setLoading] = useState(false)
     const [loadingMore, setLoadingMore] = useState(false)
@@ -197,16 +214,11 @@ export default function SeekerSearch() {
         setSelectedModes(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])
     }
 
-    const toggleBand = (b) => {
-        setSelectedBands(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b])
-    }
-
     const resetFilters = () => {
         setSelectedRegion('')
         setSelectedIndustry('')
         setSelectedModes([])
         setMinSalary(10)
-        setSelectedBands(['strong', 'possible', 'stretch'])
         setQuery('')
     }
 
@@ -395,44 +407,8 @@ export default function SeekerSearch() {
                             step="5"
                             value={minSalary}
                             onChange={(e) => setMinSalary(Number(e.target.value))}
-                            style={{ width: '100%', accentColor: KC.orange, cursor: 'pointer', marginBottom: 22 }}
+                            style={{ width: '100%', accentColor: KC.orange, cursor: 'pointer' }}
                         />
-
-                        {/* Confidence Band Checkboxes */}
-                        <div style={{ font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 10 }}>
-                            Confidence band
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                            {[
-                                { id: 'strong', label: 'Strong Fit', color: '#10B981' },
-                                { id: 'possible', label: 'Possible Fit', color: '#F59E0B' },
-                                { id: 'stretch', label: 'Stretch Fit', color: '#0284C7' },
-                            ].map(b => {
-                                const on = selectedBands.includes(b.id)
-                                return (
-                                    <span
-                                        key={b.id}
-                                        onClick={() => toggleBand(b.id)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 9,
-                                            font: '700 12.5px/1 "Plus Jakarta Sans", sans-serif',
-                                            color: on ? '#334155' : '#94A3B8', cursor: 'pointer',
-                                        }}
-                                    >
-                                        <span style={{
-                                            width: 17, height: 17, borderRadius: 5,
-                                            background: on ? b.color : '#fff',
-                                            border: `1.5px solid ${on ? b.color : '#CBD5E1'}`,
-                                            display: 'grid', placeItems: 'center', color: '#fff',
-                                            font: '900 10px/1 "Plus Jakarta Sans", sans-serif',
-                                        }}>
-                                            {on ? '✓' : ''}
-                                        </span>
-                                        {b.label}
-                                    </span>
-                                )
-                            })}
-                        </div>
                     </div>
 
                     {/* Right Results Column */}
@@ -475,7 +451,16 @@ export default function SeekerSearch() {
                                 </div>
                             )}
 
-                            {!loading && displayList.map((item, idx) => (
+                            {!loading && displayList.map((item, idx) => {
+                                // Real score from a prior AI-match run, if this job happens to
+                                // be in it — context only, never used to filter/sort this list.
+                                const matchPct = matchScoreById.get(item.id)
+                                const band = matchPct != null ? bandOf(matchPct) : null
+                                const bandFg = band === 'strong' ? '#065F46' : band === 'possible' ? '#B45309' : '#075985'
+                                const bandBorder = band === 'strong' ? '#10B981' : band === 'possible' ? '#F59E0B' : '#0284C7'
+                                const bandBg = band === 'strong' ? '#ECFDF5' : band === 'possible' ? '#FEF3C7' : '#E0F2FE'
+                                const bandLabel = band === 'strong' ? 'Strong Fit' : band === 'possible' ? 'Possible Fit' : 'Stretch Fit'
+                                return (
                                 <div
                                     key={item.id || idx}
                                     style={{
@@ -496,16 +481,16 @@ export default function SeekerSearch() {
                                             <span style={{ font: '700 12.5px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
                                                 {item.company || item.company_name}
                                             </span>
-                                            {item.score ? (
+                                            {band ? (
                                                 <span style={{
                                                     padding: '3px 9px',
-                                                    background: item.score >= 85 ? '#ECFDF5' : item.score >= 70 ? '#FEF3C7' : '#E0F2FE',
-                                                    border: `1px solid ${item.score >= 85 ? '#10B981' : item.score >= 70 ? '#F59E0B' : '#0284C7'}`,
+                                                    background: bandBg,
+                                                    border: `1px solid ${bandBorder}`,
                                                     borderRadius: 999,
                                                     font: '800 10px/1.3 "Plus Jakarta Sans", sans-serif',
-                                                    color: item.score >= 85 ? '#065F46' : item.score >= 70 ? '#B45309' : '#075985',
+                                                    color: bandFg,
                                                 }}>
-                                                    {item.score >= 85 ? 'Strong Fit' : item.score >= 70 ? 'Possible Fit' : 'Stretch Fit'}
+                                                    {bandLabel}
                                                 </span>
                                             ) : null}
                                         </div>
@@ -518,17 +503,17 @@ export default function SeekerSearch() {
                                     </div>
 
                                     <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
-                                        {item.score ? (
+                                        {band ? (
                                             <div style={{
                                                 textAlign: 'center', padding: '9px 13px',
-                                                background: item.score >= 85 ? '#ECFDF5' : item.score >= 70 ? '#FEF3C7' : '#E0F2FE',
-                                                border: `1.5px solid ${item.score >= 85 ? '#10B981' : item.score >= 70 ? '#F59E0B' : '#0284C7'}`,
+                                                background: bandBg,
+                                                border: `1.5px solid ${bandBorder}`,
                                                 borderRadius: 9,
                                             }}>
-                                                <div style={{ font: '900 18px/1 "Plus Jakarta Sans", sans-serif', color: item.score >= 85 ? '#065F46' : item.score >= 70 ? '#B45309' : '#075985' }}>
-                                                    {item.score}%
+                                                <div style={{ font: '900 18px/1 "Plus Jakarta Sans", sans-serif', color: bandFg }}>
+                                                    {matchPct}%
                                                 </div>
-                                                <div style={{ font: '800 8.5px/1.5 "Plus Jakarta Sans", sans-serif', color: item.score >= 85 ? '#059669' : item.score >= 70 ? '#B45309' : '#0284C7', letterSpacing: 0.5 }}>
+                                                <div style={{ font: '800 8.5px/1.5 "Plus Jakarta Sans", sans-serif', color: bandFg, letterSpacing: 0.5 }}>
                                                     MATCH
                                                 </div>
                                             </div>
@@ -542,7 +527,8 @@ export default function SeekerSearch() {
                                         </button>
                                     </div>
                                 </div>
-                            ))}
+                                )
+                            })}
 
                             {!loading && hasMore && (
                                 <button
@@ -795,7 +781,13 @@ export default function SeekerSearch() {
                     </div>
                 )}
 
-                {!loading && displayList.map((item, idx) => (
+                {!loading && displayList.map((item, idx) => {
+                    const matchPct = matchScoreById.get(item.id)
+                    const band = matchPct != null ? bandOf(matchPct) : null
+                    const bandFg = band === 'strong' ? '#065F46' : band === 'possible' ? '#B45309' : '#075985'
+                    const bandBorder = band === 'strong' ? '#10B981' : band === 'possible' ? '#F59E0B' : '#0284C7'
+                    const bandBg = band === 'strong' ? '#ECFDF5' : band === 'possible' ? '#FEF3C7' : '#E0F2FE'
+                    return (
                     <div
                         key={item.id || idx}
                         onClick={() => setSelectedJob(item)}
@@ -817,24 +809,25 @@ export default function SeekerSearch() {
                                     {item.location || item.region_name || 'Jakarta'} · {item.work_type || 'Onsite'} · {item.salary_range || 'Kompetitif'}
                                 </div>
                             </div>
-                            {item.score ? (
+                            {band ? (
                                 <div style={{
                                     flexShrink: 0, textAlign: 'center', padding: '6px 8px',
-                                    background: item.score >= 85 ? '#ECFDF5' : item.score >= 70 ? '#FEF3C7' : '#E0F2FE',
-                                    border: `1px solid ${item.score >= 85 ? '#10B981' : item.score >= 70 ? '#F59E0B' : '#0284C7'}`,
+                                    background: bandBg,
+                                    border: `1px solid ${bandBorder}`,
                                     borderRadius: 8,
                                 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 900, color: item.score >= 85 ? '#065F46' : item.score >= 70 ? '#B45309' : '#075985' }}>
-                                        {item.score}%
+                                    <div style={{ fontSize: 13, fontWeight: 900, color: bandFg }}>
+                                        {matchPct}%
                                     </div>
-                                    <div style={{ fontSize: 7.5, fontWeight: 800, color: item.score >= 85 ? '#059669' : item.score >= 70 ? '#B45309' : '#0284C7', letterSpacing: 0.3 }}>
+                                    <div style={{ fontSize: 7.5, fontWeight: 800, color: bandFg, letterSpacing: 0.3 }}>
                                         MATCH
                                     </div>
                                 </div>
                             ) : null}
                         </div>
                     </div>
-                ))}
+                    )
+                })}
 
                 {!loading && hasMore && (
                     <button
