@@ -87,7 +87,7 @@ Platform ini dirancang untuk menyelesaikan krisis kepercayaan (*Trust Crisis*) d
 | **Nomor HP / WhatsApp** | Phone OTP Gateway | Kode OTP 6-digit via WhatsApp / SMS |
 
 ### 🔄 Persistensi Status (Durable, Bukan Otoritatif)
-Hasil pemeriksaan format NIK/ijazah yang lolos disimpan secara permanen pada profil pencari kerja sebagai status **`pending`** — bukan `verified` — sehingga status tersebut tetap muncul setelah reload halaman atau login dari perangkat/browser lain. Nilai `verified` sengaja tidak pernah diberikan oleh mock ini, karena pemeriksaan format tidak dapat membuktikan NIK/ijazah tersebut benar milik pengguna yang mengirimkannya; status itu baru berlaku setelah integrasi resmi Dukcapil/SIVIL benar-benar terpasang.
+Hasil pemeriksaan format NIK/ijazah yang lolos disimpan secara permanen pada profil pencari kerja sebagai status **`pending`** — bukan `verified` — sehingga status tersebut tetap muncul setelah reload halaman atau login dari perangkat/browser lain. Nilai `verified` sengaja tidak pernah diberikan oleh mock ini, karena pemeriksaan format tidak dapat membuktikan NIK/ijazah tersebut benar milik pengguna yang mengirimkannya; status itu baru berlaku setelah integrasi resmi Dukcapil/SIVIL benar-benar terpasang. Tampilan di dashboard mengikuti perbedaan ini secara konsisten: status `pending` ditampilkan sebagai lencana kuning "Menunggu ⏳" (bukan "Selesai ✓" hijau) dan **tidak** menambah Trust Score — hanya status `verified` yang benar-benar akan menambahnya.
 
 ### 📱 Phone OTP (Demo & Produksi)
 - **Demo Testing:** Sistem menampilkan kode 6-digit langsung pada respons API / toast notifikasi sehingga pengujian alur verifikasi nomor HP berjalan 100% tanpa biaya vendor.

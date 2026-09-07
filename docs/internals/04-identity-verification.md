@@ -20,6 +20,7 @@ Files:
 - Everything else (any 16-digit string) → passes with a **98.5% match score**. `full_name` is accepted into the request and folded into `verification_hash`, but it is never checked against anything — the mock cannot confirm the NIK belongs to the submitting seeker.
 - Output includes a deterministic **SHA-256 `verification_hash`** over the submitted identity — the stored proof-of-verification without storing the raw NIK itself.
 - **A passing check persists `nik_verified` / `ijazah_verified` as `"pending"`, never `"verified"`.** Because the check has no real evidentiary basis (previous point), it has no authority to grant a "verified" status — `"verified"` is reserved for a real Dukcapil/SIVIL integration this build doesn't have. `PENDING` is still durable (survives a reload or a login from another browser/device) — durability and authority are independent properties.
+- **The frontend keeps that distinction, not just the database.** `ktp_verified`/`ijazah_verified` (Trust Score, checklist checkmarks, the "Selesai ✓" treatment) are true only for a genuine `verified` status; `ktp_pending`/`ijazah_pending` render their own distinct amber "Menunggu ⏳ — menunggu verifikasi resmi" state in `VerificationDashboard.jsx`. A pending submission does not raise the Trust Score — only a real verification would.
 
 ## Data-Protection Posture
 

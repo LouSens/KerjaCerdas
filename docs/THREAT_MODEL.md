@@ -46,13 +46,14 @@ KerjaCerdas is an AI-powered job matching platform for Indonesia. A FastAPI back
 - **Indirect Prompt Injection & XSS Guard on Documents:** All extracted fields from Gemini Multimodal / PyMuPDF (full name, headline, skills, work history, job responsibilities) pass through `clean_extracted_text()` to neutralize embedded jailbreak triggers (`ignore previous instructions`, `DAN mode`, `system:`) and malicious HTML tags before database persistence or evaluation.
 
 ### Information Disclosure
-- NIK (National ID) is stored strictly as a one-way SHA-256 hash (`String(64)`), ensuring compliance with Indonesian Personal Data Protection Law (UU-PDP-2022).
+- NIK (National ID) is never persisted at all, not even hashed — `/verify/identity` computes a SHA-256 `verification_hash` for the response only; `SeekerProfile.nik` is never written by any code path. Only the pass/fail outcome (`nik_verified: pending|failed`) is stored, satisfying UU-PDP-2022 by having nothing retained to disclose.
 - Detailed health check (`GET /health/detailed`) requires authenticated JWT credentials.
 - Application logs correlate with opaque user IDs and request IDs; PII is stripped from logs.
 
 ### Denial of Service
-- Sliding-window rate limiter protects all endpoints (auth: 10 req/60s, agent: 20 req/60s, general: 60 req/60s).
+- Sliding-window rate limiter protects all endpoints (auth: 10 req/60s, agent: 20 req/60s, general/unlisted routes: 300 req/60s, shared per IP across every unlisted route — not per URL).
 - Rate limiter memory is capped at 10,000 active keys with LRU eviction and amortized stale-lock pruning.
+- **Proxy topology caveat:** the limiter keys on `request.client.host` unless the request carries a shared-secret header (`PROXY_SHARED_SECRET`) proving it came through this deployment's own Nginx. If a production deployment routes browser traffic through Nginx (`docker-compose.prod.yml` topology 2) without setting that secret, every real client collapses into one shared bucket per route — a single busy or malicious client can exhaust it for everyone else. The app logs a startup warning when `APP_ENV=production` and the secret is unset, but can't hard-fail: a deployment where the browser calls the API directly (topology 1) is correct to leave it unset.
 - Gemini LLM calls are protected with fallback model chains and an automatic circuit breaker tripping on consecutive availability errors.
 - PyMuPDF fallback extraction runs in `asyncio.to_thread` to prevent CPU-bound operations from blocking the asyncio event loop.
 - Database connection pools are bounded (`pool_size=5`, `max_overflow=10`, `pool_timeout=30`) to protect against connection exhaustion on serverless Postgres.
