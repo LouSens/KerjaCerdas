@@ -33,7 +33,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column("jobs", sa.Column("client_ref", sa.String(length=64), nullable=True))
+    if not _column_exists("jobs", "client_ref"):
+        op.add_column("jobs", sa.Column("client_ref", sa.String(length=64), nullable=True))
     # Idempotent: publishing's schema-sync step may already have created
     # this index (same reasoning as the applications/seekers/employers
     # migrations this one mirrors) — a plain CREATE would crash on startup.
@@ -43,6 +44,11 @@ def upgrade() -> None:
             "ON jobs (employer_id, client_ref) "
             "WHERE client_ref IS NOT NULL;"
         )
+
+
+def _column_exists(table_name: str, column_name: str) -> bool:
+    inspector = sa.inspect(op.get_bind())
+    return any(column["name"] == column_name for column in inspector.get_columns(table_name))
 
 
 def _index_exists(name: str) -> bool:
