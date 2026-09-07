@@ -136,8 +136,9 @@ class TestIdentityVerificationEndpoint:
         yield
         app.dependency_overrides.pop(get_current_user, None)
 
-    def test_verify_identity_returns_verified_for_valid_demo_nik(self, client: TestClient) -> None:
-        """Valid demo NIK should verify successfully."""
+    def test_verify_identity_returns_pending_for_valid_demo_nik(self, client: TestClient) -> None:
+        """A format-valid demo NIK returns PENDING, not VERIFIED — the mock
+        format check has no authority to confirm a real identity."""
         payload = {
             "nik": "3171123412341234",
             "full_name": "Budi Santoso",
@@ -148,9 +149,11 @@ class TestIdentityVerificationEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "VERIFIED"
+        assert data["status"] == "PENDING"
         assert data["match_percentage"] == 98.5
-        assert data["message"] == "Identitas terverifikasi (mode demo)."
+        assert data["message"] == (
+            "Format NIK diterima — menunggu verifikasi resmi (mode demo, bukan konfirmasi identitas)."
+        )
         assert data["verification_hash"]
         assert data["pii_redacted"] is True
 

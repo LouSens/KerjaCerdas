@@ -67,6 +67,19 @@ def _disable_llm_candidate_summary(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _force_ann_path(monkeypatch: pytest.MonkeyPatch):
+    """This whole test module exists to exercise the ANN prefilter path
+    (jobs=None/seekers=None routes through semantic_search_jobs/seekers) —
+    but matcher.py now prefers a full scan whenever the active row count is
+    small (see SemanticMatcher._job_candidates's docstring), and this test's
+    seeded dataset (4 jobs, 4 seekers) is always small. Without this, every
+    test here would silently take the full-scan branch instead of the ANN
+    branch it's named for, still pass, and test nothing about the ANN path.
+    Setting the safe-scan limit to 0 forces the ANN path unconditionally."""
+    monkeypatch.setattr(settings, "matching_full_scan_safe_limit", 0)
+
+
+@pytest.fixture(autouse=True)
 async def setup_database():
     """Bind the engine to the current loop (NullPool) and init schema."""
     db_url = settings.effective_database_url

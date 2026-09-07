@@ -113,6 +113,13 @@ class Settings(BaseSettings):
     # (see scripts/benchmark_matching.py). Scores are in [0..1].
     band_strong_threshold: float = 0.65
     band_possible_threshold: float = 0.45
+    # Below this many active rows, matcher.py scores every row directly
+    # instead of prefiltering via pgvector ANN (cosine-only ordering can
+    # exclude a candidate the full hybrid formula would otherwise rank well —
+    # see SemanticMatcher._job_candidates's docstring). 0 forces the ANN path
+    # unconditionally, which is how test_matching_parity.py deliberately
+    # exercises it against a tiny seeded dataset.
+    matching_full_scan_safe_limit: int = 500
 
     # ── Agent temperatures ───────────────────────────────────────────────
     advisor_temperature: float = 0.7

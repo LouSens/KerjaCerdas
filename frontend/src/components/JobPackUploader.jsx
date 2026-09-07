@@ -23,23 +23,22 @@ export default function JobPackUploader() {
         return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('')
     }
 
-    // client_ref only needs to be stable ACROSS RETRIES OF THE SAME PARSE —
-    // it does not need to survive a genuine re-parse, because retries never
-    // trigger one (see the parse cache below). That reframing is what makes
-    // both halves of this safe at once:
-    //   - stable across retries: the same cached parse is reused verbatim
-    //     for the same file, so title/region/salary/local_id never drift
-    //     between a first attempt and a retry of it.
-    //   - unique per posting: local_id (this parse's own array position)
-    //     is included, so two genuinely distinct postings in the same pack
-    //     that happen to share identical title/region/salary still get
-    //     different refs instead of the second silently collapsing into
-    //     the first (the backend treats a client_ref collision as "already
-    //     published" and returns the existing job — see employer.py).
-    // Title/region/salary stay in the hash too, purely as defense in depth
-    // (e.g. a corrupted/edited cache entry) — they add no risk now that a
-    // fresh Gemini re-parse of the same file can no longer produce a
-    // different ref for what should be the same retry.
+    // client_ref must be stable across retries and unique per posting.
+    // Both now hold because the SERVER (not this component) guarantees a
+    // repeat upload of the identical file returns the exact same parsed
+    // postings — same title/salary/region text, same local_id — from a
+    // content-addressed cache keyed by the file's own hash (see
+    // job_pack_parse_cache / models.py's JobPackParseCache). Gemini is
+    // never re-invoked for a file it has already parsed for this employer,
+    // so there is no re-parse for wording/formatting to drift across. A
+    // browser-side cache used to carry that guarantee here instead — it
+    // was removed because it could be cleared, expire, or simply not exist
+    // on a different device, which is exactly the gap that made retries
+    // unsafe in the first place. local_id (this parse's own array
+    // position, itself now server-guaranteed stable) is included so two
+    // distinct postings with identical title/region/salary in the same
+    // pack still get different refs instead of the second collapsing into
+    // the first.
     const computeClientRef = async (fileHash, job) => {
         const identity = [
             fileHash,
@@ -50,41 +49,6 @@ export default function JobPackUploader() {
             job.salary_max ?? '',
         ].join(':')
         return sha256Hex(new TextEncoder().encode(identity))
-    }
-
-    // Cache a completed parse by file hash so re-selecting/re-uploading the
-    // identical PDF (a lost-response retry, or the employer picking the same
-    // file again) reuses the exact same parsed jobs — including their
-    // client_refs — instead of asking Gemini to parse it again. Extraction
-    // isn't perfectly deterministic even at low temperature, so a second
-    // parse of the same bytes can shift a title's wording or a salary's
-    // formatting just enough to change computeClientRef's hash; the backend
-    // would then see "a new posting" and create a duplicate. localStorage
-    // (not just component state) so the cache also survives a page reload,
-    // not only a retry within the same render.
-    const PARSE_CACHE_PREFIX = 'kc-jobpack-parse:'
-    const PARSE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000 // 24h — covers a realistic retry window without caching a pack indefinitely
-
-    const loadCachedParse = (fileHash) => {
-        try {
-            const raw = localStorage.getItem(PARSE_CACHE_PREFIX + fileHash)
-            if (!raw) return null
-            const { jobs, cachedAt } = JSON.parse(raw)
-            if (!Array.isArray(jobs) || Date.now() - cachedAt > PARSE_CACHE_MAX_AGE_MS) return null
-            return jobs
-        } catch {
-            return null
-        }
-    }
-
-    const saveCachedParse = (fileHash, jobs) => {
-        try {
-            localStorage.setItem(PARSE_CACHE_PREFIX + fileHash, JSON.stringify({ jobs, cachedAt: Date.now() }))
-        } catch {
-            // Caching is an optimization (in-session retries are already
-            // stable via component state below) — a full/unavailable
-            // localStorage must not block publishing.
-        }
     }
 
     const toggleJobChecked = (localId) => {
@@ -107,31 +71,25 @@ export default function JobPackUploader() {
         const startedAt = performance.now()
         try {
             const fileHash = await sha256Hex(await file.arrayBuffer())
-            const cached = loadCachedParse(fileHash)
 
-            let jobs
-            let elapsedSeconds
-            if (cached) {
-                jobs = cached
-                elapsedSeconds = 0
-            } else {
-                // Parsing only extracts and returns the postings — nothing is
-                // written to the database yet (see POST /uploads/job-pack), so
-                // there is nothing to track or clean up if this batch is later
-                // replaced or abandoned before the employer confirms it.
-                const res = await uploadJobPack(file)
-                if (!res?.jobs?.length) {
-                    toast.error('Tidak ada lowongan yang berhasil diurai dari berkas PDF ini.')
-                    setSelectedFile(null)
-                    setParsedResult(null)
-                    return
-                }
-                elapsedSeconds = (performance.now() - startedAt) / 1000
-                jobs = await Promise.all(
-                    res.jobs.map(async job => ({ ...job, client_ref: await computeClientRef(fileHash, job) }))
-                )
-                saveCachedParse(fileHash, jobs)
+            // Parsing only extracts and returns the postings — nothing is
+            // written to the jobs table yet (see POST /uploads/job-pack), so
+            // there is nothing to track or clean up if this batch is later
+            // replaced or abandoned before the employer confirms it. A retry
+            // of the identical file replays the server's cached parse rather
+            // than re-invoking Gemini, so this always returns the same
+            // postings for the same bytes.
+            const res = await uploadJobPack(file)
+            if (!res?.jobs?.length) {
+                toast.error('Tidak ada lowongan yang berhasil diurai dari berkas PDF ini.')
+                setSelectedFile(null)
+                setParsedResult(null)
+                return
             }
+            const elapsedSeconds = (performance.now() - startedAt) / 1000
+            const jobs = await Promise.all(
+                res.jobs.map(async job => ({ ...job, client_ref: await computeClientRef(fileHash, job) }))
+            )
 
             setParsedResult({
                 fileName: file.name,

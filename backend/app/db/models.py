@@ -281,6 +281,35 @@ class AIPerformanceLog(Base, TimestampedMixin):
     rating: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
+class JobPackParseCache(Base):
+    """Server-side cache of a job-pack PDF's parsed postings, keyed by
+    sha256(employer_id + file bytes).
+
+    Retrying a job-pack upload — the response was lost, the tab was
+    reloaded, a different browser/device — must return the EXACT SAME
+    parsed postings (same order, same title/salary/region text, same
+    local_id) as the first parse, because JobPackUploader's client_ref is
+    derived from that content. Without this cache, a second call to
+    POST /uploads/job-pack for the identical file re-invokes Gemini, and
+    extraction isn't perfectly deterministic even at low temperature — a
+    reworded title or reformatted salary produces a different client_ref,
+    which the backend then treats as a brand-new posting instead of a
+    retry (see the client_ref uniqueness index in migration
+    d5e9f3a7b210). Caching the parse itself, not just deduping the
+    resulting publish, is what makes retries safe regardless of client
+    state — a browser-side cache can be cleared, expire, or simply not be
+    available (a different device), which is exactly the gap the previous
+    client-only fix left open.
+    """
+
+    __tablename__ = "job_pack_parse_cache"
+
+    cache_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    employer_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    postings: Mapped[list[Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
 class QueryEmbedding(Base):
     """Persistent tier of the matcher's query-embedding cache.
 

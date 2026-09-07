@@ -216,10 +216,13 @@ const useStore = create(
                 try {
                     const data = await fetchSeekerProfile()
                     // nik_verified/ijazah_verified now come from the backend
-                    // (backend/app/api/routers/verify.py persists the VERIFIED/FAILED
-                    // outcome to the seeker's own profile row), so the backend value is
-                    // the source of truth here — it survives a reload or a login from
-                    // another browser, unlike the old local-only flags. Phone
+                    // (backend/app/api/routers/verify.py persists the outcome to the
+                    // seeker's own profile row), so the backend value is the source of
+                    // truth here — it survives a reload or a login from another
+                    // browser, unlike the old local-only flags. The value is "pending"
+                    // on a passing check, never "verified" — the mock format check has
+                    // no authority to confirm a real identity, only a real Dukcapil/
+                    // SIVIL integration should ever be allowed to set "verified". Phone
                     // verification has no equivalent profile column yet, so
                     // phone_verified still only ever comes from local state.
                     set((s) => ({
@@ -233,8 +236,8 @@ const useStore = create(
                             education: data.education || [],
                             salary_expectation_min: data.salary_expectation_min || 0,
                             salary_expectation_max: data.salary_expectation_max || 0,
-                            ktp_verified: data.nik_verified === 'verified',
-                            ijazah_verified: data.ijazah_verified === 'verified',
+                            ktp_verified: data.nik_verified === 'pending' || data.nik_verified === 'verified',
+                            ijazah_verified: data.ijazah_verified === 'pending' || data.ijazah_verified === 'verified',
                         },
                         seekerId: data.id,
                     }))

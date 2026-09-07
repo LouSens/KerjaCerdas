@@ -439,10 +439,30 @@ class SemanticMatcher:
         self, query_vec: list[float], top_k: int
     ) -> list[tuple[JobPosting, float | None]]:
         """Fetch job candidates DB-side. Returns (job, cosine) pairs — cosine is
-        precomputed by pgvector (`embedding <=> query`, HNSW index). Falls back
-        to a full scan with in-Python cosine (cos=None) if the ANN query can't run."""
+        precomputed by pgvector (`embedding <=> query`, HNSW index) when the ANN
+        path runs. Prefers a full scan (cos=None, scored in Python against the
+        complete hybrid formula) whenever the active-job count is at or below
+        `settings.matching_full_scan_safe_limit`. This isn't just a fallback —
+        it's more CORRECT: the ANN prefilter orders candidates by cosine
+        similarity alone, while the hybrid score it's supposed to approximate
+        weighs skill overlap, experience, education and recency too (55%
+        combined, cosine is only 45%). A candidate with a weak embedding match
+        but excellent skill/experience fit can score well on the real formula
+        yet never reach it if their row falls outside the ANN's cosine-only
+        top-K. A full scan hands every active row to the real formula instead
+        of pre-judging on cosine alone — cheap and safe at this platform's
+        actual near-term scale (see ROADMAP.md's Level 1/2 pilot numbers),
+        with the ANN path still there once a dataset genuinely outgrows a full
+        scan. Only escalates to the ANN-capped path once the true count is
+        large or unknown (a count query failure is treated as "assume large",
+        never as "assume small")."""
         from backend.app.config.settings import settings
         from backend.app.db import postgres_store as store
+
+        count = await store.count_active_jobs()
+        if count is not None and count <= settings.matching_full_scan_safe_limit:
+            all_jobs = await store.get_repositories().jobs.list()
+            return [(j, None) for j in all_jobs]
 
         model = settings.gemini_embed_model
         if query_vec:
@@ -457,9 +477,15 @@ class SemanticMatcher:
     async def _seeker_candidates(
         self, query_vec: list[float], top_k: int
     ) -> list[tuple[SeekerProfile, float | None]]:
-        """Seeker-side twin of `_job_candidates` (employer reverse matching)."""
+        """Seeker-side twin of `_job_candidates` (employer reverse matching) —
+        same full-scan-when-small preference and why it matters."""
         from backend.app.config.settings import settings
         from backend.app.db import postgres_store as store
+
+        count = await store.count_seekers()
+        if count is not None and count <= settings.matching_full_scan_safe_limit:
+            all_seekers = await store.get_repositories().seekers.list()
+            return [(s, None) for s in all_seekers]
 
         model = settings.gemini_embed_model
         if query_vec:

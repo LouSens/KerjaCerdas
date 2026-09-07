@@ -45,7 +45,7 @@ export default function VerificationDashboard() {
         setKtpChecking(true)
         try {
             const res = await verifyIdentity({ nik, full_name: fullName })
-            if (res?.status === 'VERIFIED') {
+            if (res?.status === 'PENDING') {
                 // Optimistic local flip for instant feedback, then reconcile
                 // with the backend's now-durable nik_verified column so a
                 // reload or another device shows the same "Selesai" state
@@ -79,7 +79,7 @@ export default function VerificationDashboard() {
         setIjazahChecking(true)
         try {
             const res = await verifyEducation({ ijazah_number: ijazahInput.trim(), university_name: institution, major })
-            if (res?.status === 'VERIFIED') {
+            if (res?.status === 'PENDING') {
                 updateProfile({ ijazah_verified: true })
                 await loadSeekerProfile()
                 toast.success('Format nomor ijazah tervalidasi!')

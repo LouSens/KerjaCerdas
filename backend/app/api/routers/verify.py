@@ -54,15 +54,21 @@ async def verify_identity(req: EkycReq, current_user: User = Depends(get_current
     """Mock e-KYC identity check (demo mode — no real Dukcapil integration).
 
     This endpoint, like /education and /npwp below, is a placeholder for a
-    verification microservice that doesn't exist yet — it is not wired to
-    any government registry, and the format check itself is a mock, not a
-    real identity confirmation. What IS real: the VERIFIED/FAILED *outcome*
-    of that mock check is persisted to the seeker's own profile
-    (`nik_verified`), so the badge survives a reload or a login from another
-    browser instead of living only in the frontend's local store. The raw
-    NIK is never stored (UU-PDP-2022) — not even hashed, since there is no
-    legitimate reason to retain it once this response is returned; only the
-    pass/fail status is written.
+    verification microservice that doesn't exist yet. The check itself only
+    validates NIK *format* (16 digits, not a "99"-prefixed demo-fail value)
+    — it never confirms the NIK belongs to the submitting seeker, so a
+    passing check must never be recorded as VERIFIED: any authenticated
+    seeker could submit any format-valid NIK (their own or not) and get a
+    durable "verified" badge with zero identity evidence behind it. A pass
+    is persisted as PENDING instead — "submitted, format accepted, awaiting
+    a real verification this build doesn't have" — a value only a genuine
+    Dukcapil integration should ever be allowed to upgrade to VERIFIED. That
+    PENDING status still survives a reload or a login from another browser
+    (see `nik_verified` on the seeker's profile), which is what makes the
+    badge durable — durability and authority are separate properties, and
+    this endpoint only earns the former. The raw NIK is never stored
+    (UU-PDP-2022) — not even hashed, since there is no legitimate reason to
+    retain it once this response is returned; only the status is written.
     """
     nik_hash = _hash_token(req.nik)
     r = MockIdentityVerificationService.verify_identity(nik=req.nik, full_name=req.full_name)
@@ -71,16 +77,16 @@ async def verify_identity(req: EkycReq, current_user: User = Depends(get_current
     seeker = await find_seeker_by_user_id(current_user.id)
     if seeker:
         await update_seeker_verification_status(
-            seeker.id, nik_verified="verified" if is_valid else "failed"
+            seeker.id, nik_verified="pending" if is_valid else "failed"
         )
 
     return {
         "request_id": str(uuid.uuid4()),
-        "status": "VERIFIED" if is_valid else "FAILED",
+        "status": "PENDING" if is_valid else "FAILED",
         "match_percentage": r["match_score"],
         "verification_hash": r.get("verification_hash") or nik_hash,
         "pii_redacted": True,
-        "message": "Identitas terverifikasi (mode demo)."
+        "message": "Format NIK diterima — menunggu verifikasi resmi (mode demo, bukan konfirmasi identitas)."
         if is_valid
         else "Verifikasi identitas gagal.",
     }
@@ -109,23 +115,26 @@ def _looks_like_placeholder(value: str) -> bool:
 @router.post("/education")
 async def verify_education(req: SivilReq, current_user: User = Depends(get_current_user)) -> dict:
     """Mock SIVIL diploma-number format check (demo mode — no real SIVIL
-    integration; the mirror of verify_identity's NIK mock above). The
-    VERIFIED/NOT_FOUND outcome is persisted to the seeker's profile
-    (`ijazah_verified`) — see verify_identity's docstring for why that
-    matters and what "persisted" does and doesn't mean here."""
+    integration; the mirror of verify_identity's NIK mock above). Persisted
+    as PENDING, never VERIFIED — see verify_identity's docstring for why a
+    format-only pass must not be recorded as an authoritative identity/
+    credential claim, only as a durable "submitted, awaiting real
+    verification" status."""
     ijazah_number = req.ijazah_number.strip()
     ok = len(ijazah_number) >= 6 and not _looks_like_placeholder(ijazah_number)
 
     seeker = await find_seeker_by_user_id(current_user.id)
     if seeker:
         await update_seeker_verification_status(
-            seeker.id, ijazah_verified="verified" if ok else "failed"
+            seeker.id, ijazah_verified="pending" if ok else "failed"
         )
 
     return {
         "request_id": str(uuid.uuid4()),
-        "status": "VERIFIED" if ok else "NOT_FOUND",
-        "message": "Format nomor ijazah valid (mode demo)." if ok else "Nomor ijazah tidak valid.",
+        "status": "PENDING" if ok else "NOT_FOUND",
+        "message": "Format nomor ijazah diterima — menunggu verifikasi resmi (mode demo)."
+        if ok
+        else "Nomor ijazah tidak valid.",
         "verified_data": {
             "university": req.university_name,
             "major": req.major,
