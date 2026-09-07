@@ -56,6 +56,8 @@ export const mergeUniqueJobs = (...lists) => {
     return [...byId.values()]
 }
 
+const PAGE_SIZE = 20
+
 export default function SeekerSearch() {
     const isMobile = useIsMobile()
     const [query, setQuery] = useState('')
@@ -75,10 +77,28 @@ export default function SeekerSearch() {
     const [selectedBands, setSelectedBands] = useState(['strong', 'possible', 'stretch'])
     const [results, setResults] = useState([])
     const [loading, setLoading] = useState(false)
+    const [loadingMore, setLoadingMore] = useState(false)
     const [searchError, setSearchError] = useState(null)
     const [selectedJob, setSelectedJob] = useState(null)
 
+    // Pagination bookkeeping. The mixed Remote/Hybrid+Onsite+region path
+    // (see isMixedRemoteAndOnsite) runs two independent GET /jobs queries
+    // and unions them, so each split needs its own offset/total — a single
+    // combined pair can't express "the onsite split has more pages but the
+    // remote split doesn't" or vice versa.
+    const [offset, setOffset] = useState(0)
+    const [total, setTotal] = useState(0)
+    const [onsiteOffset, setOnsiteOffset] = useState(0)
+    const [onsiteTotal, setOnsiteTotal] = useState(0)
+    const [remoteOffset, setRemoteOffset] = useState(0)
+    const [remoteTotal, setRemoteTotal] = useState(0)
+
     const isRemoteMode = isRemoteOnlyMode(selectedModes)
+    const isMixedSearch = isMixedRemoteAndOnsite(selectedModes) &&
+        Boolean(buildJobSearchFilters({ selectedModes, selectedRegion, selectedIndustry, minSalary }).region)
+    const hasMore = isMixedSearch
+        ? onsiteOffset < onsiteTotal || remoteOffset < remoteTotal
+        : offset < total
 
     useEffect(() => {
         handleSearch()
@@ -105,14 +125,27 @@ export default function SeekerSearch() {
                 // See isMixedRemoteAndOnsite above: one query can't express
                 // "onsite in this region OR remote from anywhere", so issue
                 // both scoped queries and union the results client-side.
+                // Each split's own total/offset drives loadMore below.
                 const [onsiteRes, remoteRes] = await Promise.all([
-                    searchJobs(query, 0, 20, { ...filters, remote_allowed: false }),
-                    searchJobs(query, 0, 20, { ...filters, region: undefined, remote_allowed: true }),
+                    searchJobs(query, 0, PAGE_SIZE, { ...filters, remote_allowed: false }),
+                    searchJobs(query, 0, PAGE_SIZE, { ...filters, region: undefined, remote_allowed: true }),
                 ])
                 setResults(mergeUniqueJobs(onsiteRes?.items, remoteRes?.items))
+                setOnsiteOffset(onsiteRes?.items?.length || 0)
+                setOnsiteTotal(onsiteRes?.total || 0)
+                setRemoteOffset(remoteRes?.items?.length || 0)
+                setRemoteTotal(remoteRes?.total || 0)
+                setOffset(0)
+                setTotal(0)
             } else {
-                const res = await searchJobs(query, 0, 20, filters)
+                const res = await searchJobs(query, 0, PAGE_SIZE, filters)
                 setResults(res?.items || [])
+                setOffset(res?.items?.length || 0)
+                setTotal(res?.total || 0)
+                setOnsiteOffset(0)
+                setOnsiteTotal(0)
+                setRemoteOffset(0)
+                setRemoteTotal(0)
             }
         } catch (err) {
             console.error('Search failed', err)
@@ -120,6 +153,43 @@ export default function SeekerSearch() {
             setSearchError('Pencarian gagal dimuat. Periksa koneksi Anda lalu coba lagi.')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const loadMore = async () => {
+        if (loadingMore || !hasMore) return
+        setLoadingMore(true)
+        try {
+            const filters = buildJobSearchFilters({ selectedModes, selectedRegion, selectedIndustry, minSalary })
+
+            if (isMixedSearch) {
+                const [onsiteRes, remoteRes] = await Promise.all([
+                    onsiteOffset < onsiteTotal
+                        ? searchJobs(query, onsiteOffset, PAGE_SIZE, { ...filters, remote_allowed: false })
+                        : Promise.resolve(null),
+                    remoteOffset < remoteTotal
+                        ? searchJobs(query, remoteOffset, PAGE_SIZE, { ...filters, region: undefined, remote_allowed: true })
+                        : Promise.resolve(null),
+                ])
+                setResults(prev => mergeUniqueJobs(prev, onsiteRes?.items, remoteRes?.items))
+                if (onsiteRes) {
+                    setOnsiteOffset(o => o + (onsiteRes.items?.length || 0))
+                    setOnsiteTotal(onsiteRes.total || 0)
+                }
+                if (remoteRes) {
+                    setRemoteOffset(o => o + (remoteRes.items?.length || 0))
+                    setRemoteTotal(remoteRes.total || 0)
+                }
+            } else {
+                const res = await searchJobs(query, offset, PAGE_SIZE, filters)
+                setResults(prev => mergeUniqueJobs(prev, res?.items))
+                setOffset(o => o + (res?.items?.length || 0))
+                setTotal(res?.total || total)
+            }
+        } catch (err) {
+            console.error('Load more failed', err)
+        } finally {
+            setLoadingMore(false)
         }
     }
 
@@ -473,6 +543,17 @@ export default function SeekerSearch() {
                                     </div>
                                 </div>
                             ))}
+
+                            {!loading && hasMore && (
+                                <button
+                                    onClick={loadMore}
+                                    disabled={loadingMore}
+                                    className="kc-btn"
+                                    style={{ ...topBtn('#fff', KC.ink), padding: '12px 20px', fontSize: 13, alignSelf: 'center' }}
+                                >
+                                    {loadingMore ? 'Memuat…' : 'Muat Lebih Banyak'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -754,6 +835,21 @@ export default function SeekerSearch() {
                         </div>
                     </div>
                 ))}
+
+                {!loading && hasMore && (
+                    <button
+                        onClick={loadMore}
+                        disabled={loadingMore}
+                        style={{
+                            width: '100%', padding: '11px 16px', background: '#fff',
+                            border: `1.5px solid ${KC.ink}`, borderRadius: 10,
+                            boxShadow: `2.5px 2.5px 0 ${KC.ink}`, fontSize: 12, fontWeight: 800,
+                            color: KC.ink, cursor: 'pointer',
+                        }}
+                    >
+                        {loadingMore ? 'Memuat…' : 'Muat Lebih Banyak'}
+                    </button>
+                )}
             </div>
         </div>
     )
