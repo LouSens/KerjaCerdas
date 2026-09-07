@@ -497,7 +497,7 @@ export default function EmployerCandidates() {
                                                             onClick={() => handleUnlock(candId)}
                                                             style={{
                                                                 padding: '13px 12px',
-                                                                background: isUnlocking ? '#64748B' : KC.orange,
+                                                                background: isUnlocking ? '#64748B' : (cand.already_applied ? '#10B981' : KC.orange),
                                                                 border: `1.5px solid ${KC.ink}`,
                                                                 borderRadius: 9,
                                                                 boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
@@ -507,7 +507,11 @@ export default function EmployerCandidates() {
                                                                 cursor: 'pointer',
                                                             }}
                                                         >
-                                                            {isUnlocking ? 'Memproses…' : <>🔒 Unlock Kontak<br />Rp 50.000</>}
+                                                            {isUnlocking
+                                                                ? 'Memproses…'
+                                                                : cand.already_applied
+                                                                    ? <>✓ Sudah Melamar<br />Lihat Kontak Gratis</>
+                                                                    : <>🔒 Unlock Kontak<br />Rp 50.000</>}
                                                         </div>
                                                     ) : (
                                                         <div style={{ padding: '13px 12px', background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 9, font: '800 12px/1.3 "Plus Jakarta Sans", sans-serif', color: '#065F46', textAlign: 'center' }}>
@@ -643,7 +647,7 @@ export default function EmployerCandidates() {
                                                             onClick={() => handleUnlock(candId)}
                                                             style={{
                                                                 padding: '13px 12px',
-                                                                background: isUnlocking ? '#64748B' : KC.orange,
+                                                                background: isUnlocking ? '#64748B' : (cand.already_applied ? '#10B981' : KC.orange),
                                                                 border: `1.5px solid ${KC.ink}`,
                                                                 borderRadius: 9,
                                                                 boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
@@ -653,7 +657,11 @@ export default function EmployerCandidates() {
                                                                 cursor: 'pointer',
                                                             }}
                                                         >
-                                                            {isUnlocking ? 'Memproses…' : <>🔒 Unlock Kontak<br />Rp 50.000</>}
+                                                            {isUnlocking
+                                                                ? 'Memproses…'
+                                                                : cand.already_applied
+                                                                    ? <>✓ Sudah Melamar<br />Lihat Kontak Gratis</>
+                                                                    : <>🔒 Unlock Kontak<br />Rp 50.000</>}
                                                         </div>
                                                     ) : (
                                                         <div style={{ padding: '13px 12px', background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 9, font: '800 12px/1.3 "Plus Jakarta Sans", sans-serif', color: '#065F46', textAlign: 'center' }}>
@@ -1167,7 +1175,7 @@ export default function EmployerCandidates() {
                                                 style={{
                                                     flex: 1,
                                                     padding: '11px 13px',
-                                                    background: isUnlocking ? '#64748B' : KC.orange,
+                                                    background: isUnlocking ? '#64748B' : (cand.already_applied ? '#10B981' : KC.orange),
                                                     border: `1.5px solid ${KC.ink}`,
                                                     borderRadius: 9,
                                                     boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
@@ -1180,7 +1188,11 @@ export default function EmployerCandidates() {
                                                     justifyContent: 'center',
                                                 }}
                                             >
-                                                {isUnlocking ? 'Memproses…' : '🔒 Unlock Kontak · Rp 50.000'}
+                                                {isUnlocking
+                                                    ? 'Memproses…'
+                                                    : cand.already_applied
+                                                        ? '✓ Sudah Melamar · Kontak Gratis'
+                                                        : '🔒 Unlock Kontak · Rp 50.000'}
                                             </button>
                                         ) : (
                                             <div style={{ flex: 1, padding: '11px 13px', background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 9, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1327,7 +1339,7 @@ export default function EmployerCandidates() {
                                                 style={{
                                                     flex: 1,
                                                     padding: '11px 13px',
-                                                    background: isUnlocking ? '#64748B' : KC.orange,
+                                                    background: isUnlocking ? '#64748B' : (cand.already_applied ? '#10B981' : KC.orange),
                                                     border: `1.5px solid ${KC.ink}`,
                                                     borderRadius: 9,
                                                     boxShadow: `2.5px 2.5px 0 ${KC.ink}`,
@@ -1340,7 +1352,11 @@ export default function EmployerCandidates() {
                                                     justifyContent: 'center',
                                                 }}
                                             >
-                                                {isUnlocking ? 'Memproses…' : '🔒 Unlock Kontak · Rp 50.000'}
+                                                {isUnlocking
+                                                    ? 'Memproses…'
+                                                    : cand.already_applied
+                                                        ? '✓ Sudah Melamar · Kontak Gratis'
+                                                        : '🔒 Unlock Kontak · Rp 50.000'}
                                             </button>
                                         ) : (
                                             <div style={{ flex: 1, padding: '11px 13px', background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 9, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#065F46', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
