@@ -243,8 +243,19 @@ export const searchJobs = (q = '', offset = 0, limit = 20, filters = {}) => {
     if (filters.experience_min) url += `&experience_min=${filters.experience_min}`;
     if (filters.salary_min) url += `&salary_min=${filters.salary_min}`;
     if (filters.remote_allowed !== undefined) url += `&remote_allowed=${filters.remote_allowed}`;
+    if (filters.industry) url += `&industry=${encodeURIComponent(filters.industry)}`;
     return request(url);
 }
+
+// Distinct regions actually present among active jobs (with live counts) —
+// used to populate the location filter dynamically instead of a hardcoded
+// city list that silently doesn't match what jobs actually exist.
+export const fetchJobRegions = () => request(`${API_BASE}/jobs/regions`)
+
+// Distinct employer industries actually present among active jobs (with live
+// counts) — powers the category/division filter from real data so it isn't
+// skewed toward whichever industry happens to dominate the seed pool.
+export const fetchJobIndustries = () => request(`${API_BASE}/jobs/industries`)
 
 // ── Events (fire-and-forget analytics) ────────────────────────────────────
 export const trackEvent = (eventType, extra = {}) =>

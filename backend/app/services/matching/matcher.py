@@ -29,6 +29,7 @@ from backend.app.services.matching.embeddings.gemini import (
     EmbeddingUnavailableError,
     get_embedder,
 )
+from backend.app.services.regions import BPS_REGION_NAMES
 from backend.app.utils import content_to_text
 
 _logger = logging.getLogger(__name__)
@@ -148,23 +149,6 @@ def _build_job_text(j: JobPosting) -> str:
         f"Nice to have: {', '.join(j.nice_to_have_skills)}\n"
         f"Tanggung jawab: {' | '.join(j.responsibilities)}"
     )
-
-
-# BPS regency codes → lowercase display names, used by the location filter.
-_BPS_REGION_NAMES: dict[str, str] = {
-    "3171": "jakarta pusat",
-    "3172": "jakarta utara",
-    "3173": "jakarta barat",
-    "3174": "jakarta selatan",
-    "3175": "jakarta timur",
-    "3273": "bandung",
-    "3578": "surabaya",
-    "3471": "yogyakarta",
-    "5171": "denpasar",
-    "1275": "medan",
-    "7371": "makassar",
-    "6371": "balikpapan",
-}
 
 
 def _normalize_filters(filters: dict | None) -> dict:
@@ -590,7 +574,7 @@ class SemanticMatcher:
             region_ok = False
             target_loc = filters.get("location")
             if target_loc:
-                reg_name = _BPS_REGION_NAMES.get(j.region_code, "")
+                reg_name = BPS_REGION_NAMES.get(j.region_code, "").lower()
                 if (
                     j.region_code.lower() == target_loc
                     or target_loc in reg_name
@@ -694,7 +678,7 @@ class SemanticMatcher:
             target_loc = filters.get("location")
             if target_loc:
                 reg_code = (s.region_code or "").lower()
-                reg_name = _BPS_REGION_NAMES.get(s.region_code, "")
+                reg_name = BPS_REGION_NAMES.get(s.region_code, "").lower()
                 if not (
                     reg_code == target_loc
                     or target_loc in reg_name
