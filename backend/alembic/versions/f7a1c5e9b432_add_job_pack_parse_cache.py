@@ -54,9 +54,7 @@ def upgrade() -> None:
             ),
         )
 
-    existing_indexes = {
-        index["name"] for index in inspector.get_indexes("job_pack_parse_cache")
-    }
+    existing_indexes = {index["name"] for index in inspector.get_indexes("job_pack_parse_cache")}
     if "ix_job_pack_parse_cache_employer_id" not in existing_indexes:
         op.create_index(
             "ix_job_pack_parse_cache_employer_id",
