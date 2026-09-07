@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import useStore from '../store/useStore'
+import useStore, { hasMeaningfulProfile } from '../store/useStore'
 import { KC, topBtn, DesignStyles, useIsMobile } from './_design'
 import { Sparkles } from 'lucide-react'
 import JobDetailModal from './JobDetailModal'
@@ -19,7 +19,6 @@ export default function SeekerDashboard() {
         navigate,
         runAgent,
         agentLoading,
-        seekerId,
         profile,
         recommendedCourses,
         missingSkills,
@@ -27,7 +26,7 @@ export default function SeekerDashboard() {
     } = useStore()
 
     const [selectedJob, setSelectedJob] = useState(null)
-    const hasProfile = Boolean(seekerId || profile?.skills?.length > 0)
+    const hasProfile = hasMeaningfulProfile(profile)
 
     useEffect(() => {
         if (hasProfile && !matches.length && !agentLoading) {
@@ -222,20 +221,32 @@ export default function SeekerDashboard() {
                                         <Sparkles size={20} color={KC.ink} />
                                     </div>
                                     <h3 style={{ fontSize: 16, fontWeight: 900, color: KC.ink, margin: '0 0 6px' }}>
-                                        Belum Ada Rekomendasi Lowongan
+                                        {hasProfile ? 'Belum Ada Rekomendasi Lowongan' : 'Lengkapi Profil untuk Mulai'}
                                     </h3>
                                     <p style={{ fontSize: 12.5, color: '#64748B', margin: '0 0 16px', maxWidth: 440, marginLeft: 'auto', marginRight: 'auto' }}>
-                                        Pencocokan AI akan menganalisis profil dan CV Anda terhadap lowongan aktif secara real-time.
+                                        {hasProfile
+                                            ? 'Pencocokan AI akan menganalisis profil dan CV Anda terhadap lowongan aktif secara real-time.'
+                                            : 'Upload CV atau isi profil manual dulu — tanpa data skill/pengalaman, pencocokan AI tidak bisa personal untuk Anda.'}
                                     </p>
                                     <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                                        <button
-                                            onClick={() => runAgent({ explicitIntent: 'match_jobs' })}
-                                            disabled={agentLoading}
-                                            className="kc-btn"
-                                            style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 18px', fontSize: 12.5 }}
-                                        >
-                                            {agentLoading ? 'Menganalisis profil…' : 'Mulai Pencocokan AI →'}
-                                        </button>
+                                        {hasProfile ? (
+                                            <button
+                                                onClick={() => runAgent({ explicitIntent: 'match_jobs' })}
+                                                disabled={agentLoading}
+                                                className="kc-btn"
+                                                style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 18px', fontSize: 12.5 }}
+                                            >
+                                                {agentLoading ? 'Menganalisis profil…' : 'Mulai Pencocokan AI →'}
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => navigate('seeker-profile')}
+                                                className="kc-btn"
+                                                style={{ ...topBtn(KC.orange, '#fff'), padding: '10px 18px', fontSize: 12.5 }}
+                                            >
+                                                Upload CV / Isi Profil →
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => navigate('seeker-search')}
                                             className="kc-btn"
@@ -653,18 +664,20 @@ export default function SeekerDashboard() {
                             <Sparkles size={18} color={KC.ink} />
                         </div>
                         <h3 style={{ fontSize: 14.5, fontWeight: 900, color: KC.ink, margin: '0 0 5px' }}>
-                            Belum Ada Rekomendasi
+                            {hasProfile ? 'Belum Ada Rekomendasi' : 'Lengkapi Profil untuk Mulai'}
                         </h3>
                         <p style={{ fontSize: 11.5, color: '#64748B', margin: '0 0 14px' }}>
-                            Jalankan analisis AI untuk mencocokkan profil kompetensi Anda dengan lowongan aktif.
+                            {hasProfile
+                                ? 'Jalankan analisis AI untuk mencocokkan profil kompetensi Anda dengan lowongan aktif.'
+                                : 'Upload CV atau isi profil manual dulu supaya pencocokan AI bisa personal.'}
                         </p>
                         <button
-                            onClick={() => runAgent({ explicitIntent: 'match_jobs' })}
+                            onClick={() => hasProfile ? runAgent({ explicitIntent: 'match_jobs' }) : navigate('seeker-profile')}
                             disabled={agentLoading}
                             className="kc-btn"
                             style={{ ...topBtn(KC.orange, '#fff'), padding: '9px 16px', fontSize: 12, width: '100%', justifyContent: 'center' }}
                         >
-                            {agentLoading ? 'Menganalisis profil…' : 'Mulai Pencocokan AI →'}
+                            {agentLoading ? 'Menganalisis profil…' : hasProfile ? 'Mulai Pencocokan AI →' : 'Upload CV / Isi Profil →'}
                         </button>
                     </div>
                 ) : (

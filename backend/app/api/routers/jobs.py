@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 
 from backend.app.db.postgres_store import get_repositories
+from backend.app.services.regions import get_region_name
 from fastapi import APIRouter, HTTPException, Query, status
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -42,6 +43,18 @@ def _is_employer_verified(employer) -> bool:
     return status == VerificationStatus.VERIFIED
 
 
+def _industry_label(employer) -> str:
+    """Employer's industry, falling back to "Lainnya" when unset.
+
+    /jobs/industries groups jobs under this exact label so an unset
+    industry still shows up as a selectable category — and the `industry`
+    filter below has to use this SAME label, not the raw (often empty)
+    `employer.industry`, or selecting the "Lainnya" category that's
+    displayed with a real count would silently match nothing.
+    """
+    return (employer.industry if employer is not None else "") or "Lainnya"
+
+
 @router.get("")
 async def list_jobs(
     limit: int = Query(20, ge=1, le=100),
@@ -52,6 +65,7 @@ async def list_jobs(
     experience_min: int | None = None,
     remote_allowed: bool | None = None,
     salary_min: int | None = None,
+    industry: str | None = None,
 ):
     """Return paginated, optionally filtered job listings with verified flag."""
     repos = get_repositories()
@@ -77,35 +91,34 @@ async def list_jobs(
         q_lower = q.lower()
         jobs = [j for j in jobs if q_lower in j.title.lower() or q_lower in j.description.lower()]
 
-    _BPS_REGIONS = {
-        "3171": "Jakarta Pusat",
-        "3172": "Jakarta Utara",
-        "3173": "Jakarta Barat",
-        "3174": "Jakarta Selatan",
-        "3175": "Jakarta Timur",
-        "3273": "Bandung",
-        "3578": "Surabaya",
-        "3471": "Yogyakarta",
-        "5171": "Denpasar",
-        "1275": "Medan",
-        "7371": "Makassar",
-        "6371": "Balikpapan",
-    }
+    # Batch employer lookup — needed for `verified`/`industry`/`location` on
+    # every matched job. `industry` filters on the employer's industry, so
+    # unlike the other filters it can't be applied before this lookup runs.
+    employer_cache: dict[str, object] = {}
 
-    # Enrich with verified flag and location (batch employer lookup)
-    employer_cache: dict[str, bool] = {}
+    async def _employer(emp_id: str):
+        if emp_id not in employer_cache:
+            employer_cache[emp_id] = await repos.employers.get(emp_id)
+        return employer_cache[emp_id]
+
+    if industry:
+        kept = []
+        for j in jobs:
+            emp = await _employer(j.employer_id)
+            if _industry_label(emp) == industry:
+                kept.append(j)
+        jobs = kept
+
     result_items = []
     for j in jobs[offset : offset + limit]:
-        emp_id = j.employer_id
-        if emp_id not in employer_cache:
-            emp = await repos.employers.get(emp_id)
-            employer_cache[emp_id] = _is_employer_verified(emp)
+        emp = await _employer(j.employer_id)
         item = j.model_dump() if hasattr(j, "model_dump") else dict(j)
         item.pop("embedding", None)
         item.pop("embedding_model", None)
-        item["verified"] = employer_cache[emp_id]
+        item["verified"] = _is_employer_verified(emp)
+        item["industry"] = _industry_label(emp)
 
-        location_str = _BPS_REGIONS.get(j.region_code, j.region_code)
+        location_str = get_region_name(j.region_code)
         if j.remote_allowed:
             location_str += " · Remote OK"
         item["location"] = location_str
@@ -113,6 +126,51 @@ async def list_jobs(
         result_items.append(item)
 
     return {"total": len(jobs), "offset": offset, "limit": limit, "items": result_items}
+
+
+@router.get("/regions")
+async def list_regions():
+    """Distinct region codes actually present among active jobs, with a
+    display name where one is known and a live count — so the frontend's
+    location filter always reflects real data instead of a hardcoded guess
+    at which cities happen to have postings."""
+    repos = get_repositories()
+    jobs = await _get_jobs(repos)
+    counts: dict[str, int] = {}
+    for j in jobs:
+        if j.is_active and j.region_code:
+            counts[j.region_code] = counts.get(j.region_code, 0) + 1
+
+    regions = [
+        {"code": code, "name": get_region_name(code), "job_count": count}
+        for code, count in counts.items()
+    ]
+    regions.sort(key=lambda r: r["job_count"], reverse=True)
+    return {"items": regions}
+
+
+@router.get("/industries")
+async def list_industries():
+    """Distinct employer industries actually present among active jobs, with
+    a live count — powers the frontend's category/division filter from real
+    employer data instead of a fixed list that skews toward whichever
+    industry happens to be top-of-mind (e.g. tech)."""
+    repos = get_repositories()
+    jobs = await _get_jobs(repos)
+    employer_cache: dict[str, object] = {}
+    counts: dict[str, int] = {}
+    for j in jobs:
+        if not (j.is_active and j.employer_id):
+            continue
+        if j.employer_id not in employer_cache:
+            employer_cache[j.employer_id] = await repos.employers.get(j.employer_id)
+        emp = employer_cache[j.employer_id]
+        name = _industry_label(emp)
+        counts[name] = counts.get(name, 0) + 1
+
+    industries = [{"name": name, "job_count": count} for name, count in counts.items()]
+    industries.sort(key=lambda i: i["job_count"], reverse=True)
+    return {"items": industries}
 
 
 @router.get("/{job_id}")
@@ -123,25 +181,15 @@ async def get_job(job_id: str):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lowongan tidak ditemukan")
     employer = await repos.employers.get(j.employer_id)
 
-    _BPS_REGIONS = {
-        "3171": "Jakarta Pusat",
-        "3172": "Jakarta Utara",
-        "3173": "Jakarta Barat",
-        "3174": "Jakarta Selatan",
-        "3175": "Jakarta Timur",
-        "3273": "Bandung",
-        "3578": "Surabaya",
-        "3471": "Yogyakarta",
-        "5171": "Denpasar",
-        "1275": "Medan",
-        "7371": "Makassar",
-        "6371": "Balikpapan",
-    }
-    location_str = _BPS_REGIONS.get(j.region_code, j.region_code)
+    location_str = get_region_name(j.region_code)
     if j.remote_allowed:
         location_str += " · Remote OK"
 
     item = j.model_dump()
     item.pop("embedding", None)
     item.pop("embedding_model", None)
-    return item | {"verified": _is_employer_verified(employer), "location": location_str}
+    return item | {
+        "verified": _is_employer_verified(employer),
+        "location": location_str,
+        "industry": _industry_label(employer),
+    }

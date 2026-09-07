@@ -1,42 +1,195 @@
 import { useState, useEffect } from 'react'
-import { searchJobs } from '../services/api'
+import { searchJobs, fetchJobRegions, fetchJobIndustries } from '../services/api'
 import useStore from '../store/useStore'
 import { KC, DesignStyles, topBtn, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
+
+// Pure so it's directly unit-testable (see tests/unit/seekerSearchFilters.test.js)
+// without rendering the component. Remote jobs aren't tied to any one place,
+// so a pure Remote search should ignore location — but if Onsite is ALSO
+// selected (a mixed search), location still means something for the Onsite
+// half, so it must only be dropped when Remote is the SOLE selected mode.
+export const isRemoteOnlyMode = (selectedModes) =>
+    selectedModes.includes('Remote') && !selectedModes.includes('Onsite')
+
+// Single source of truth for turning the filter UI state into the params
+// sent to GET /jobs, so handleSearch and any future caller can't drift
+// from isRemoteOnlyMode's definition of "location no longer applies".
+export const buildJobSearchFilters = ({ selectedModes, selectedRegion, selectedIndustry, minSalary }) => {
+    const hasRemoteSignal = selectedModes.includes('Remote') || selectedModes.includes('Hybrid')
+    const hasOnsiteSignal = selectedModes.includes('Onsite')
+    const remoteAllowed = hasRemoteSignal && !hasOnsiteSignal
+        ? true
+        : (hasOnsiteSignal && !hasRemoteSignal ? false : undefined)
+
+    return {
+        region: isRemoteOnlyMode(selectedModes) ? undefined : (selectedRegion || undefined),
+        industry: selectedIndustry || undefined,
+        remote_allowed: remoteAllowed,
+        salary_min: minSalary > 10 ? minSalary * 1_000_000 : undefined,
+    }
+}
+
+// (Remote or Hybrid) AND Onsite selected, with a region picked, can't be
+// expressed as one GET /jobs query: the backend's `region` filter is a
+// plain equality check with no "OR remote from anywhere" — sending region
+// with no remote_allowed constraint (the only single-query option) would
+// require EVERY result, remote/hybrid postings included, to carry that
+// exact region code, silently excluding those headquartered elsewhere.
+// Two scoped queries + a client-side union (below) is how the frontend
+// expresses that union without backend changes. Hybrid has to be checked
+// alongside Remote here because buildJobSearchFilters' hasRemoteSignal
+// already treats them the same (the backend has no separate hybrid flag —
+// see remote_allowed above) — omitting Hybrid would leave this same bug
+// for a Hybrid+Onsite+region search.
+export const isMixedRemoteAndOnsite = (selectedModes) =>
+    (selectedModes.includes('Remote') || selectedModes.includes('Hybrid')) &&
+    selectedModes.includes('Onsite')
+
+export const mergeUniqueJobs = (...lists) => {
+    const byId = new Map()
+    for (const list of lists) {
+        for (const job of list || []) {
+            if (job && job.id != null) byId.set(job.id, job)
+        }
+    }
+    return [...byId.values()]
+}
+
+const PAGE_SIZE = 20
 
 export default function SeekerSearch() {
     const isMobile = useIsMobile()
     const [query, setQuery] = useState('')
     const [filterPanelOpen, setFilterPanelOpen] = useState(false)
-    const [selectedLocation, setSelectedLocation] = useState('')
+    // Stores the region CODE (e.g. "3171"), not the display name — the picker
+    // below renders real names fetched from the backend, but the value sent
+    // to the API has to be the code jobs are actually stored under.
+    const [selectedRegion, setSelectedRegion] = useState('')
+    const [regions, setRegions] = useState([])
+    // Employer industries actually present in the data — not a fixed,
+    // IT-skewed category list — so UMKM/non-tech postings surface as real
+    // filterable divisions instead of being lumped together.
+    const [selectedIndustry, setSelectedIndustry] = useState('')
+    const [industries, setIndustries] = useState([])
     const [selectedModes, setSelectedModes] = useState([])
     const [minSalary, setMinSalary] = useState(10)
     const [selectedBands, setSelectedBands] = useState(['strong', 'possible', 'stretch'])
     const [results, setResults] = useState([])
     const [loading, setLoading] = useState(false)
+    const [loadingMore, setLoadingMore] = useState(false)
     const [searchError, setSearchError] = useState(null)
     const [selectedJob, setSelectedJob] = useState(null)
 
+    // Pagination bookkeeping. The mixed Remote/Hybrid+Onsite+region path
+    // (see isMixedRemoteAndOnsite) runs two independent GET /jobs queries
+    // and unions them, so each split needs its own offset/total — a single
+    // combined pair can't express "the onsite split has more pages but the
+    // remote split doesn't" or vice versa.
+    const [offset, setOffset] = useState(0)
+    const [total, setTotal] = useState(0)
+    const [onsiteOffset, setOnsiteOffset] = useState(0)
+    const [onsiteTotal, setOnsiteTotal] = useState(0)
+    const [remoteOffset, setRemoteOffset] = useState(0)
+    const [remoteTotal, setRemoteTotal] = useState(0)
+
+    const isRemoteMode = isRemoteOnlyMode(selectedModes)
+    const isMixedSearch = isMixedRemoteAndOnsite(selectedModes) &&
+        Boolean(buildJobSearchFilters({ selectedModes, selectedRegion, selectedIndustry, minSalary }).region)
+    const hasMore = isMixedSearch
+        ? onsiteOffset < onsiteTotal || remoteOffset < remoteTotal
+        : offset < total
+
     useEffect(() => {
         handleSearch()
+        fetchJobRegions()
+            .then(res => setRegions(res?.items || []))
+            .catch(err => { console.error('Failed to load regions', err); setRegions([]) })
+        fetchJobIndustries()
+            .then(res => setIndustries(res?.items || []))
+            .catch(err => { console.error('Failed to load industries', err); setIndustries([]) })
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (isRemoteMode && selectedRegion) setSelectedRegion('')
+    }, [isRemoteMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSearch = async (e) => {
         if (e) e.preventDefault()
         setLoading(true)
         setSearchError(null)
         try {
-            const res = await searchJobs(query, 0, 20, {
-                region: selectedLocation === 'Jakarta' ? '3171' : undefined,
-                salary_min: minSalary > 10 ? minSalary * 1_000_000 : undefined,
-            })
-            setResults(res?.items || [])
+            const filters = buildJobSearchFilters({ selectedModes, selectedRegion, selectedIndustry, minSalary })
+
+            if (isMixedRemoteAndOnsite(selectedModes) && filters.region) {
+                // See isMixedRemoteAndOnsite above: one query can't express
+                // "onsite in this region OR remote from anywhere", so issue
+                // both scoped queries and union the results client-side.
+                // Each split's own total/offset drives loadMore below.
+                const [onsiteRes, remoteRes] = await Promise.all([
+                    searchJobs(query, 0, PAGE_SIZE, { ...filters, remote_allowed: false }),
+                    searchJobs(query, 0, PAGE_SIZE, { ...filters, region: undefined, remote_allowed: true }),
+                ])
+                setResults(mergeUniqueJobs(onsiteRes?.items, remoteRes?.items))
+                setOnsiteOffset(onsiteRes?.items?.length || 0)
+                setOnsiteTotal(onsiteRes?.total || 0)
+                setRemoteOffset(remoteRes?.items?.length || 0)
+                setRemoteTotal(remoteRes?.total || 0)
+                setOffset(0)
+                setTotal(0)
+            } else {
+                const res = await searchJobs(query, 0, PAGE_SIZE, filters)
+                setResults(res?.items || [])
+                setOffset(res?.items?.length || 0)
+                setTotal(res?.total || 0)
+                setOnsiteOffset(0)
+                setOnsiteTotal(0)
+                setRemoteOffset(0)
+                setRemoteTotal(0)
+            }
         } catch (err) {
             console.error('Search failed', err)
             setResults([])
             setSearchError('Pencarian gagal dimuat. Periksa koneksi Anda lalu coba lagi.')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const loadMore = async () => {
+        if (loadingMore || !hasMore) return
+        setLoadingMore(true)
+        try {
+            const filters = buildJobSearchFilters({ selectedModes, selectedRegion, selectedIndustry, minSalary })
+
+            if (isMixedSearch) {
+                const [onsiteRes, remoteRes] = await Promise.all([
+                    onsiteOffset < onsiteTotal
+                        ? searchJobs(query, onsiteOffset, PAGE_SIZE, { ...filters, remote_allowed: false })
+                        : Promise.resolve(null),
+                    remoteOffset < remoteTotal
+                        ? searchJobs(query, remoteOffset, PAGE_SIZE, { ...filters, region: undefined, remote_allowed: true })
+                        : Promise.resolve(null),
+                ])
+                setResults(prev => mergeUniqueJobs(prev, onsiteRes?.items, remoteRes?.items))
+                if (onsiteRes) {
+                    setOnsiteOffset(o => o + (onsiteRes.items?.length || 0))
+                    setOnsiteTotal(onsiteRes.total || 0)
+                }
+                if (remoteRes) {
+                    setRemoteOffset(o => o + (remoteRes.items?.length || 0))
+                    setRemoteTotal(remoteRes.total || 0)
+                }
+            } else {
+                const res = await searchJobs(query, offset, PAGE_SIZE, filters)
+                setResults(prev => mergeUniqueJobs(prev, res?.items))
+                setOffset(o => o + (res?.items?.length || 0))
+                setTotal(res?.total || total)
+            }
+        } catch (err) {
+            console.error('Load more failed', err)
+        } finally {
+            setLoadingMore(false)
         }
     }
 
@@ -49,7 +202,8 @@ export default function SeekerSearch() {
     }
 
     const resetFilters = () => {
-        setSelectedLocation('')
+        setSelectedRegion('')
+        setSelectedIndustry('')
         setSelectedModes([])
         setMinSalary(10)
         setSelectedBands(['strong', 'possible', 'stretch'])
@@ -57,7 +211,7 @@ export default function SeekerSearch() {
     }
 
     const displayList = results
-    const activeFilterCount = (selectedLocation ? 1 : 0) + selectedModes.length + (minSalary > 10 ? 1 : 0)
+    const activeFilterCount = (selectedRegion ? 1 : 0) + (selectedIndustry ? 1 : 0) + selectedModes.length + (minSalary > 10 ? 1 : 0)
 
     // ─────────────────────────────────────────────────────────────────────────
     // DESKTOP LAYOUT (Desktop v2 · Screen D07)
@@ -138,24 +292,65 @@ export default function SeekerSearch() {
                         <div style={{ font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 10 }}>
                             Lokasi
                         </div>
+                        {isRemoteMode ? (
+                            <div style={{ padding: '10px 12px', background: '#F1F5F9', border: '1.5px dashed #94A3B8', borderRadius: 9, font: '600 11.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#64748B', marginBottom: 20 }}>
+                                Lowongan Remote tidak terikat lokasi — filter ini dinonaktifkan.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 20 }}>
+                                {regions.length === 0 ? (
+                                    <span style={{ font: '600 11.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                                        Memuat daftar lokasi…
+                                    </span>
+                                ) : regions.map(r => {
+                                    const on = selectedRegion === r.code
+                                    return (
+                                        <span
+                                            key={r.code}
+                                            onClick={() => setSelectedRegion(on ? '' : r.code)}
+                                            style={{
+                                                padding: '8px 13px',
+                                                background: on ? KC.ink : '#FEF3C7',
+                                                border: `1.5px solid ${on ? KC.ink : '#F59E0B'}`,
+                                                borderRadius: 999,
+                                                font: '800 12px/1 "Plus Jakarta Sans", sans-serif',
+                                                color: on ? '#fff' : '#B45309',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            {r.name} <span style={{ opacity: 0.6, fontWeight: 700 }}>({r.job_count})</span>
+                                        </span>
+                                    )
+                                })}
+                            </div>
+                        )}
+
+                        {/* Industry / Division */}
+                        <div style={{ font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#334155', marginBottom: 10 }}>
+                            Kategori / Divisi
+                        </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 20 }}>
-                            {['Jakarta', 'Bandung', 'Surabaya'].map(loc => {
-                                const on = selectedLocation === loc
+                            {industries.length === 0 ? (
+                                <span style={{ font: '600 11.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
+                                    Memuat daftar kategori…
+                                </span>
+                            ) : industries.map(ind => {
+                                const on = selectedIndustry === ind.name
                                 return (
                                     <span
-                                        key={loc}
-                                        onClick={() => setSelectedLocation(on ? '' : loc)}
+                                        key={ind.name}
+                                        onClick={() => setSelectedIndustry(on ? '' : ind.name)}
                                         style={{
                                             padding: '8px 13px',
-                                            background: on ? KC.ink : '#FEF3C7',
-                                            border: `1.5px solid ${on ? KC.ink : '#F59E0B'}`,
+                                            background: on ? KC.ink : '#E0F2FE',
+                                            border: `1.5px solid ${on ? KC.ink : '#0284C7'}`,
                                             borderRadius: 999,
                                             font: '800 12px/1 "Plus Jakarta Sans", sans-serif',
-                                            color: on ? '#fff' : '#B45309',
+                                            color: on ? '#fff' : '#075985',
                                             cursor: 'pointer',
                                         }}
                                     >
-                                        {loc}
+                                        {ind.name} <span style={{ opacity: 0.6, fontWeight: 700 }}>({ind.job_count})</span>
                                     </span>
                                 )
                             })}
@@ -348,6 +543,17 @@ export default function SeekerSearch() {
                                     </div>
                                 </div>
                             ))}
+
+                            {!loading && hasMore && (
+                                <button
+                                    onClick={loadMore}
+                                    disabled={loadingMore}
+                                    className="kc-btn"
+                                    style={{ ...topBtn('#fff', KC.ink), padding: '12px 20px', fontSize: 13, alignSelf: 'center' }}
+                                >
+                                    {loadingMore ? 'Memuat…' : 'Muat Lebih Banyak'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -421,22 +627,54 @@ export default function SeekerSearch() {
                         </div>
 
                         <div style={{ fontSize: 10.5, fontWeight: 800, color: '#334155', marginBottom: 7 }}>Lokasi</div>
+                        {isRemoteMode ? (
+                            <div style={{ padding: '9px 11px', background: '#F1F5F9', border: '1.5px dashed #94A3B8', borderRadius: 9, fontSize: 11, lineHeight: 1.5, color: '#64748B', marginBottom: 13 }}>
+                                Lowongan Remote tidak terikat lokasi — filter ini dinonaktifkan.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 13 }}>
+                                {regions.length === 0 ? (
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>Memuat daftar lokasi…</span>
+                                ) : regions.map(r => {
+                                    const on = selectedRegion === r.code
+                                    return (
+                                        <span
+                                            key={r.code}
+                                            onClick={() => setSelectedRegion(on ? '' : r.code)}
+                                            style={{
+                                                padding: '8px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 800,
+                                                background: on ? KC.ink : '#FEF3C7',
+                                                color: on ? '#fff' : '#B45309',
+                                                border: `1.5px solid ${on ? KC.ink : '#F59E0B'}`,
+                                                cursor: 'pointer', minHeight: 38, display: 'inline-flex', alignItems: 'center',
+                                            }}
+                                        >
+                                            {r.name} <span style={{ opacity: 0.6, marginLeft: 4 }}>({r.job_count})</span>
+                                        </span>
+                                    )
+                                })}
+                            </div>
+                        )}
+
+                        <div style={{ fontSize: 10.5, fontWeight: 800, color: '#334155', marginBottom: 7 }}>Kategori / Divisi</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 13 }}>
-                            {['Jakarta', 'Bandung', 'Surabaya'].map(loc => {
-                                const on = selectedLocation === loc
+                            {industries.length === 0 ? (
+                                <span style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>Memuat daftar kategori…</span>
+                            ) : industries.map(ind => {
+                                const on = selectedIndustry === ind.name
                                 return (
                                     <span
-                                        key={loc}
-                                        onClick={() => setSelectedLocation(on ? '' : loc)}
+                                        key={ind.name}
+                                        onClick={() => setSelectedIndustry(on ? '' : ind.name)}
                                         style={{
                                             padding: '8px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 800,
-                                            background: on ? KC.ink : '#FEF3C7',
-                                            color: on ? '#fff' : '#B45309',
-                                            border: `1.5px solid ${on ? KC.ink : '#F59E0B'}`,
+                                            background: on ? KC.ink : '#E0F2FE',
+                                            color: on ? '#fff' : '#075985',
+                                            border: `1.5px solid ${on ? KC.ink : '#0284C7'}`,
                                             cursor: 'pointer', minHeight: 38, display: 'inline-flex', alignItems: 'center',
                                         }}
                                     >
-                                        {loc}
+                                        {ind.name} <span style={{ opacity: 0.6, marginLeft: 4 }}>({ind.job_count})</span>
                                     </span>
                                 )
                             })}
@@ -597,6 +835,21 @@ export default function SeekerSearch() {
                         </div>
                     </div>
                 ))}
+
+                {!loading && hasMore && (
+                    <button
+                        onClick={loadMore}
+                        disabled={loadingMore}
+                        style={{
+                            width: '100%', padding: '11px 16px', background: '#fff',
+                            border: `1.5px solid ${KC.ink}`, borderRadius: 10,
+                            boxShadow: `2.5px 2.5px 0 ${KC.ink}`, fontSize: 12, fontWeight: 800,
+                            color: KC.ink, cursor: 'pointer',
+                        }}
+                    >
+                        {loadingMore ? 'Memuat…' : 'Muat Lebih Banyak'}
+                    </button>
+                )}
             </div>
         </div>
     )

@@ -346,8 +346,23 @@ async def find_candidates(
     # Load only the ranked seekers (needed for the name-redaction teaser below).
     seekers = await repos.seekers.get_many([c["seeker_id"] for c in ranked])
 
+    # Pay-to-Unlock only applies to candidates the employer found by
+    # searching the wider seeker pool. A candidate who already applied
+    # DIRECTLY to this job is already fully visible for free in the
+    # Pelamar Langsung tab (GET /employer/applications returns their real
+    # name/email/phone unconditionally) — redacting them here too, and then
+    # charging to "unlock" someone whose contact the employer already has,
+    # would be charging twice for the same access.
+    applied_seeker_ids = {
+        a.seeker_id for a in await repos.applications.find(lambda a: a.job_id == job_id)
+    }
+
     # Redact full_name (Teaser Method / LinkedIn Style)
     for c in ranked:
+        c["already_applied"] = c["seeker_id"] in applied_seeker_ids
+        if c["already_applied"]:
+            continue
+
         seeker = next((s for s in seekers if s.id == c["seeker_id"]), None)
         if (
             seeker
@@ -414,12 +429,26 @@ async def unlock_candidate(
     if not seeker:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kandidat tidak ditemukan")
 
+    # Pay-to-Unlock is for the AI-sourced talent pool (a candidate the
+    # employer found by searching the wider seeker DB, who never chose to
+    # share their contact with this employer). A candidate who applied
+    # DIRECTLY to this job already handed their contact over voluntarily —
+    # GET /employer/applications returns it unconditionally — so charging
+    # to "unlock" them here would be charging twice for the same access.
+    already_applied = bool(
+        await repos.applications.find(
+            lambda a: a.job_id == job_id and a.seeker_id == seeker_id
+        )
+    )
+
     # Check if already unlocked (idempotent)
     employer_unlocks = _UNLOCKED_CONTACTS.setdefault(employer.id, set())
     if seeker_id not in employer_unlocks:
-        # In production: validate payment_token with payment gateway here
-        # if not _validate_payment(payload.payment_token if payload else None):
-        #     raise HTTPException(402, "Payment required")
+        if not already_applied:
+            # In production: validate payment_token with payment gateway here
+            # if not _validate_payment(payload.payment_token if payload else None):
+            #     raise HTTPException(402, "Payment required")
+            pass
         employer_unlocks.add(seeker_id)
         logger.info("Employer %s unlocked seeker %s for job %s", employer.id, seeker_id, job_id)
 
@@ -436,8 +465,12 @@ async def unlock_candidate(
         "email": real_user.email if real_user else "demo@kerjacerdas.id",
         "phone": getattr(seeker, "phone", _DEMO_PHONE_FALLBACK) or _DEMO_PHONE_FALLBACK,
         "unlock_id": f"unlock_{employer.id[:8]}_{seeker_id[:8]}",
-        "unlock_cost_idr": 50000,  # Rp 50.000 per unlock
-        "note": "[DEMO] Dalam produksi, verifikasi payment_token Midtrans/Xendit terlebih dahulu.",
+        "unlock_cost_idr": 0 if already_applied else 50000,
+        "note": (
+            "Kandidat sudah melamar langsung ke lowongan ini — kontak gratis, tidak dikenakan biaya unlock."
+            if already_applied
+            else "[DEMO] Dalam produksi, verifikasi payment_token Midtrans/Xendit terlebih dahulu."
+        ),
     }
 
 

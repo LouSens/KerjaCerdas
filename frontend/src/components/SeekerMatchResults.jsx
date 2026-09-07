@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import useStore from '../store/useStore'
+import useStore, { hasMeaningfulProfile } from '../store/useStore'
 import { KC, ScoreDonut, topBtn, DesignStyles, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
 
@@ -12,7 +12,8 @@ const bandOf = (m) => {
 
 export default function SeekerMatchResults() {
     const isMobile = useIsMobile()
-    const { matches, agentLoading, runAgent, navigate, savedJobs, toggleSaveJob: storeSaveJob } = useStore()
+    const { matches, agentLoading, runAgent, navigate, savedJobs, toggleSaveJob: storeSaveJob, profile } = useStore()
+    const hasProfile = hasMeaningfulProfile(profile)
     const [selectedJob, setSelectedJob] = useState(null)
     const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'strong' | 'possible' | 'stretch'
     const [refreshing, setRefreshing] = useState(false)
@@ -141,20 +142,32 @@ export default function SeekerMatchResults() {
                             <ScoreDonut score={0} size={44} strokeWidth={4} />
                         </div>
                         <h2 style={{ fontSize: 20, fontWeight: 900, color: KC.ink, margin: '0 0 8px' }}>
-                            Belum Ada Hasil Pencocokan AI
+                            {hasProfile ? 'Belum Ada Hasil Pencocokan AI' : 'Lengkapi Profil Dulu'}
                         </h2>
                         <p style={{ fontSize: 13.5, color: '#64748B', margin: '0 0 22px', maxWidth: 500, marginLeft: 'auto', marginRight: 'auto' }}>
-                            Pencocokan semantik akan membandingkan keahlian dan profil Anda terhadap lowongan aktif secara real-time.
+                            {hasProfile
+                                ? 'Pencocokan semantik akan membandingkan keahlian dan profil Anda terhadap lowongan aktif secara real-time.'
+                                : 'Upload CV atau isi profil manual dulu — tanpa data skill/pengalaman, hasil pencocokan tidak akan personal untuk Anda.'}
                         </p>
                         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                            <button
-                                onClick={handleRefresh}
-                                disabled={refreshing || agentLoading}
-                                className="kc-btn"
-                                style={{ ...topBtn(KC.orange, '#fff'), padding: '12px 22px', fontSize: 13 }}
-                            >
-                                {agentLoading ? 'Menganalisis profil…' : '↻ Jalankan Pencocokan AI'}
-                            </button>
+                            {hasProfile ? (
+                                <button
+                                    onClick={handleRefresh}
+                                    disabled={refreshing || agentLoading}
+                                    className="kc-btn"
+                                    style={{ ...topBtn(KC.orange, '#fff'), padding: '12px 22px', fontSize: 13 }}
+                                >
+                                    {agentLoading ? 'Menganalisis profil…' : '↻ Jalankan Pencocokan AI'}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => navigate('seeker-profile')}
+                                    className="kc-btn"
+                                    style={{ ...topBtn(KC.orange, '#fff'), padding: '12px 22px', fontSize: 13 }}
+                                >
+                                    Upload CV / Isi Profil →
+                                </button>
+                            )}
                             <button
                                 onClick={() => navigate('seeker-search')}
                                 className="kc-btn"

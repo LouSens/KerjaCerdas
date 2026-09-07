@@ -42,6 +42,43 @@ import { VIEW_TO_PATH, PUBLIC_VIEWS, ALLOWED_VIEWS } from '../routes'
 // Allows Zustand navigate() to push to browser URL without React hooks.
 let _routerNavigate = null
 
+// `profile` is persisted to localStorage (see the `persist` partialize below)
+// and, unlike seekerId/matches/applications, was never reset on login,
+// register, or logout — so switching accounts in the SAME browser (exactly
+// what testing demo accounts back-to-back does) leaked the previous
+// account's skills/experience/education into the new session. A brand-new
+// user could see "matches" and profile fields that were never theirs before
+// ever uploading a CV. login/register/logout below all reset to this same
+// shape now.
+const DEFAULT_PROFILE = {
+    full_name: '', headline: '', region_code: '3171',
+    skills: [], experience: [], education: [], resume_text: '',
+    salary_expectation_min: 0, salary_expectation_max: 0,
+}
+
+// A saved SeekerProfile row (seekerId truthy) can still be empty — the
+// manual-edit form can be submitted with nothing filled in, and a CV upload
+// that fails to extract anything still creates a row. seekerId alone is
+// just "a row exists," not "there's something to match on," so both the
+// matching gate and the components that decide whether to show a "ready to
+// match" CTA need to check the row's actual content instead.
+//
+// That content isn't only the structured skills/experience/education
+// lists: matcher.py's embed_seeker() builds the seeker's match embedding
+// from `headline` and `resume_text` too (see matcher.py's profile-to-text
+// helper), so a headline-only manual profile, or a CV upload that yielded
+// free-text resume content but no structured fields, is genuinely
+// matchable — treating it as empty would send a real profile back to
+// "complete your profile" instead of producing a personalized ranking.
+export const hasMeaningfulProfile = (profile) =>
+    Boolean(
+        profile?.skills?.length ||
+        profile?.experience?.length ||
+        profile?.education?.length ||
+        profile?.headline?.trim() ||
+        profile?.resume_text?.trim()
+    )
+
 const useStore = create(
     persist(
         (set, get) => ({
@@ -81,6 +118,7 @@ const useStore = create(
                     seekerId: null,
                     matches: [],
                     applications: [],
+                    profile: DEFAULT_PROFILE,
                 })
                 const displayName = (user.name || '').trim() || (resolvedRole === 'employer' ? 'Tim HR' : 'Pencari Kerja')
                 toast.success(`Selamat datang, ${displayName}!`, { id: 'auth-success' })
@@ -114,6 +152,7 @@ const useStore = create(
                     seekerId: null,
                     matches: [],
                     applications: [],
+                    profile: DEFAULT_PROFILE,
                 })
                 const displayName = (user.name || '').trim() || (user.role === 'employer' ? 'Tim HR' : 'Pencari Kerja')
                 toast.success(`Akun dibuat — selamat datang, ${displayName}!`, { id: 'auth-success' })
@@ -141,6 +180,7 @@ const useStore = create(
                     savedJobs: [],
                     applications: [],
                     experiments: {},
+                    profile: DEFAULT_PROFILE,
                     advisorLog: [
                         { role: 'assistant', content: 'Halo! Saya advisor karier KerjaCerdas. Tanya apa saja seputar pekerjaan, skill, atau CV kamu.' },
                     ],
@@ -205,11 +245,7 @@ const useStore = create(
             toggleFloatingAdvisor: () => set((s) => ({ floatingAdvisorOpen: !s.floatingAdvisorOpen })),
 
             // ─── Seeker profile + matching ───────────────────────────────
-            profile: {
-                full_name: '', headline: '', region_code: '3171',
-                skills: [], experience: [], education: [],
-                salary_expectation_min: 0, salary_expectation_max: 0,
-            },
+            profile: DEFAULT_PROFILE,
             updateProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
 
             loadSeekerProfile: async () => {
@@ -242,6 +278,7 @@ const useStore = create(
                             skills: data.skills || [],
                             experience: data.experience || [],
                             education: data.education || [],
+                            resume_text: data.resume_text || '',
                             salary_expectation_min: data.salary_expectation_min || 0,
                             salary_expectation_max: data.salary_expectation_max || 0,
                             ktp_verified: data.nik_verified === 'verified',
@@ -306,6 +343,26 @@ const useStore = create(
 
             runAgent: async ({ message, targetJobId, explicitIntent, filters } = {}) => {
                 const { seekerId, profile, advisorLog, advisorSessionId } = get()
+
+                // Job matching specifically needs a real profile. Checking
+                // just `seekerId` isn't enough — a saved-but-empty profile
+                // row (submitted blank, or a CV upload that extracted
+                // nothing) has a seekerId with no skills/experience/
+                // education, and without a skills/experience-bearing
+                // profile the backend falls back to a generic "anonymous"
+                // profile and returns a plausible-looking but completely
+                // non-personalized ranking (see agent.py's
+                // _ANONYMOUS_SEEKER). Silently showing that as if it were
+                // the user's own matches is exactly the confusing behavior
+                // this gate exists to prevent — general advisor chat
+                // (explicitIntent 'advise' or none) is fine to run without
+                // a profile, since that's legitimately useful without any
+                // personal data.
+                if (explicitIntent === 'match_jobs' && !hasMeaningfulProfile(profile)) {
+                    toast('Lengkapi profil dulu — upload CV atau isi manual, baru pencocokan AI bisa personal.', { icon: '📄' })
+                    return { requiresProfile: true, matches: [] }
+                }
+
                 const userMsg = message ? { role: 'user', content: message } : null
                 if (userMsg) set({ advisorLog: [...advisorLog, userMsg], advisorInput: '' })
                 set({ agentLoading: true })
