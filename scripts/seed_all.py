@@ -8,6 +8,7 @@ IT-only, so the demo pool shouldn't be either.
 
 Run:
     python -m scripts.seed_all
+    python -m scripts.seed_all --reset-passwords
     python -m scripts.seed_all --clear     # wipe data/ first
 
 Companies, regions (BPS kabupaten/kota), salaries, KBJI codes, and course
@@ -1712,7 +1713,7 @@ COURSES = [
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-async def seed(clear: bool) -> None:
+async def seed(clear: bool, reset_passwords: bool = False) -> None:
     await init_db()
 
     if clear:
@@ -1727,7 +1728,12 @@ async def seed(clear: bool) -> None:
     existing_employers = {emp.user_id: emp for emp in await repos.employers.list()}
     emp_by_key: dict[str, Employer] = {}
     for key, name, ind, size, region, desc in EMPLOYERS:
-        u = await _seed_auth_user(email=f"hr@{key}.id", name=name, role=UserRole.EMPLOYER.value)
+        u = await _seed_auth_user(
+            email=f"hr@{key}.id",
+            name=name,
+            role=UserRole.EMPLOYER.value,
+            reset_password=reset_passwords,
+        )
         existing_emp = existing_employers.get(u.id)
         emp = await repos.employers.upsert(
             Employer(
@@ -1783,7 +1789,12 @@ async def seed(clear: bool) -> None:
     existing_seekers = {seeker.user_id: seeker for seeker in await repos.seekers.list()}
     seeker_count = 0
     for s in SEEKERS:
-        u = await _seed_auth_user(email=s["email"], name=s["full_name"], role=UserRole.SEEKER.value)
+        u = await _seed_auth_user(
+            email=s["email"],
+            name=s["full_name"],
+            role=UserRole.SEEKER.value,
+            reset_password=reset_passwords,
+        )
         existing_seeker = existing_seekers.get(u.id)
 
         edu_objs = [
@@ -1917,5 +1928,10 @@ async def seed(clear: bool) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--clear", action="store_true", help="wipe data/* before seeding")
+    ap.add_argument(
+        "--reset-passwords",
+        action="store_true",
+        help="reset seeded demo accounts to SEED_DEFAULT_PASSWORD",
+    )
     args = ap.parse_args()
-    asyncio.run(seed(clear=args.clear))
+    asyncio.run(seed(clear=args.clear, reset_passwords=args.reset_passwords))
