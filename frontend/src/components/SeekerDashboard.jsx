@@ -482,31 +482,18 @@ export default function SeekerDashboard() {
             <DesignStyles />
             <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
 
-            {/* Top User Greeting Bar */}
-            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 6 }}>
-                <div>
-                    <div style={{
-                        fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 800,
-                        letterSpacing: 0.6, color: '#64748B', textTransform: 'uppercase',
-                    }}>
-                        Selamat pagi
-                    </div>
-                    <h1 style={{
-                        fontSize: 21, fontWeight: 900, letterSpacing: -0.7,
-                        color: KC.ink, margin: '4px 0 0', lineHeight: 1.15,
-                    }}>
-                        {userName}
-                    </h1>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{
-                        width: 38, height: 38, borderRadius: 11, background: '#00B8D9',
-                        border: `1.5px solid ${KC.ink}`, boxShadow: `2px 2px 0 ${KC.ink}`,
-                        display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 15,
-                        color: KC.ink,
-                    }}>
-                        {initials[0] || 'B'}
-                    </div>
+            <header style={{ paddingBottom: 6 }}>
+                <h1 style={{
+                    fontSize: 22, fontWeight: 900, letterSpacing: -0.8,
+                    color: KC.ink, margin: '0 0 2px', lineHeight: 1.1,
+                }}>
+                    Dashboard Karir
+                </h1>
+                <div style={{
+                    fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700,
+                    letterSpacing: 0.4, color: '#64748B',
+                }}>
+                    Selamat datang, <b style={{ color: KC.ink }}>{userName}</b>
                 </div>
             </header>
 
@@ -542,26 +529,26 @@ export default function SeekerDashboard() {
                 </div>
             </div>
 
-            {/* 2-Column KPI Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+            {/* 3-Column KPI Stats — matches desktop's 3-stat layout */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 9 }}>
                 <div
                     onClick={() => navigate('seeker-match')}
                     style={{
                         background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
                         borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`,
-                        padding: 14, cursor: 'pointer',
+                        padding: '12px 10px', cursor: 'pointer',
                     }}
                 >
                     <div style={{
-                        fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 800,
-                        letterSpacing: 0.6, textTransform: 'uppercase', color: '#64748B',
+                        fontFamily: 'JetBrains Mono, monospace', fontSize: 8.5, fontWeight: 800,
+                        letterSpacing: 0.5, textTransform: 'uppercase', color: '#64748B',
                     }}>
                         Lowongan cocok
                     </div>
-                    <div style={{ fontSize: 29, fontWeight: 900, letterSpacing: -1.3, color: KC.ink, margin: '8px 0 4px', lineHeight: 1 }}>
+                    <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: -1.2, color: KC.ink, margin: '7px 0 3px', lineHeight: 1 }}>
                         {matchCount}
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94A3B8' }}>
                         siap dilamar
                     </div>
                 </div>
@@ -571,20 +558,42 @@ export default function SeekerDashboard() {
                     style={{
                         background: '#FEF3C7', border: `1.5px solid ${KC.ink}`,
                         borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`,
-                        padding: 14, cursor: 'pointer',
+                        padding: '12px 10px', cursor: 'pointer',
                     }}
                 >
                     <div style={{
-                        fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 800,
-                        letterSpacing: 0.6, textTransform: 'uppercase', color: '#92400E',
+                        fontFamily: 'JetBrains Mono, monospace', fontSize: 8.5, fontWeight: 800,
+                        letterSpacing: 0.5, textTransform: 'uppercase', color: '#92400E',
                     }}>
                         Skill gap
                     </div>
-                    <div style={{ fontSize: 29, fontWeight: 900, letterSpacing: -1.3, color: KC.ink, margin: '8px 0 4px', lineHeight: 1 }}>
+                    <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: -1.2, color: KC.ink, margin: '7px 0 3px', lineHeight: 1 }}>
                         {gapCount}
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#B45309' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#B45309' }}>
                         perlu dipelajari
+                    </div>
+                </div>
+
+                <div
+                    onClick={() => navigate('seeker-skill-gap')}
+                    style={{
+                        background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
+                        borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`,
+                        padding: '12px 10px', cursor: 'pointer',
+                    }}
+                >
+                    <div style={{
+                        fontFamily: 'JetBrains Mono, monospace', fontSize: 8.5, fontWeight: 800,
+                        letterSpacing: 0.5, textTransform: 'uppercase', color: '#64748B',
+                    }}>
+                        Rek. kursus
+                    </div>
+                    <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: -1.2, color: KC.ink, margin: '7px 0 3px', lineHeight: 1 }}>
+                        {courseCount}
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94A3B8' }}>
+                        tersedia
                     </div>
                 </div>
             </div>
@@ -595,49 +604,49 @@ export default function SeekerDashboard() {
                     onClick={() => navigate('seeker-search')}
                     style={{
                         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
-                        padding: '12px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        padding: '12px 6px', background: '#fff', border: `1.5px solid ${KC.ink}`,
                         borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, cursor: 'pointer',
                         minHeight: 64, justifyContent: 'center',
                     }}
                 >
                     <div style={{ width: 15, height: 15, border: `2.5px solid ${KC.ink}`, borderRadius: '50%' }} />
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: KC.ink }}>Cari</span>
+                    <span style={{ fontSize: 9.5, fontWeight: 800, color: KC.ink, textAlign: 'center', lineHeight: 1.2 }}>Cari Lowongan</span>
                 </div>
                 <div
                     onClick={() => navigate('seeker-saved')}
                     style={{
                         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
-                        padding: '12px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        padding: '12px 6px', background: '#fff', border: `1.5px solid ${KC.ink}`,
                         borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, cursor: 'pointer',
                         minHeight: 64, justifyContent: 'center',
                     }}
                 >
                     <div style={{ width: 12, height: 16, background: KC.ink, clipPath: 'polygon(0 0,100% 0,100% 100%,50% 74%,0 100%)' }} />
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: KC.ink }}>Tersimpan</span>
+                    <span style={{ fontSize: 9.5, fontWeight: 800, color: KC.ink, textAlign: 'center', lineHeight: 1.2 }}>Tersimpan</span>
                 </div>
                 <div
                     onClick={() => navigate('seeker-profile')}
                     style={{
                         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
-                        padding: '12px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        padding: '12px 6px', background: '#fff', border: `1.5px solid ${KC.ink}`,
                         borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, cursor: 'pointer',
                         minHeight: 64, justifyContent: 'center',
                     }}
                 >
                     <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderBottom: `12px solid ${KC.orange}` }} />
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: KC.ink }}>Unggah CV</span>
+                    <span style={{ fontSize: 9.5, fontWeight: 800, color: KC.ink, textAlign: 'center', lineHeight: 1.2 }}>Upload CV</span>
                 </div>
                 <div
                     onClick={() => navigate('seeker-verification')}
                     style={{
                         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
-                        padding: '12px 8px', background: '#fff', border: `1.5px solid ${KC.ink}`,
+                        padding: '12px 6px', background: '#fff', border: `1.5px solid ${KC.ink}`,
                         borderRadius: 11, boxShadow: `2.5px 2.5px 0 ${KC.ink}`, cursor: 'pointer',
                         minHeight: 64, justifyContent: 'center',
                     }}
                 >
                     <div style={{ width: 14, height: 16, background: KC.ink, clipPath: 'polygon(50% 0,100% 22%,100% 62%,50% 100%,0 62%,0 22%)' }} />
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: KC.ink }}>E-KYC</span>
+                    <span style={{ fontSize: 9.5, fontWeight: 800, color: KC.ink, textAlign: 'center', lineHeight: 1.2 }}>Verifikasi E-KYC</span>
                 </div>
             </div>
 

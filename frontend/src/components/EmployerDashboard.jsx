@@ -411,29 +411,27 @@ export default function EmployerDashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <DesignStyles />
 
-            {/* Mobile Top Bar */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 4 }}>
-                <div>
+            {/* Mobile Top Bar — single clean row for employer */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 4 }}>
+                <div style={{
+                    width: 42, height: 42, borderRadius: 11, background: '#090A0F',
+                    border: `1.5px solid ${KC.ink}`, boxShadow: `2px 2px 0 ${KC.orange}`,
+                    display: 'grid', placeItems: 'center',
+                    fontWeight: 900, fontSize: 17, color: '#FFFFFF', flexShrink: 0,
+                }}>
+                    {companyInitial}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                    <h1 style={{ fontSize: 18, fontWeight: 900, letterSpacing: -0.6, color: KC.ink, margin: 0, lineHeight: 1.2 }}>
+                        {companyName}
+                    </h1>
                     <div style={{
-                        display: 'inline-flex', padding: '3px 8px', background: KC.orange,
-                        borderRadius: 999, fontWeight: 900, fontSize: 9,
-                        letterSpacing: 0.6, textTransform: 'uppercase', color: '#FFFFFF',
-                        marginBottom: 6,
+                        display: 'inline-flex', marginTop: 4, padding: '2px 7px', background: KC.orange,
+                        borderRadius: 999, fontWeight: 900, fontSize: 8.5,
+                        letterSpacing: 0.5, textTransform: 'uppercase', color: '#fff',
                     }}>
                         Employer / HR
                     </div>
-                    <h1 style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.8, color: KC.ink, margin: 0, lineHeight: 1.15 }}>
-                        {companyName}
-                    </h1>
-                </div>
-
-                <div style={{
-                    width: 38, height: 38, borderRadius: 11, background: '#090A0F',
-                    border: `1.5px solid ${KC.ink}`, boxShadow: `2px 2px 0 ${KC.orange}`,
-                    display: 'grid', placeItems: 'center', fontWeight: 900,
-                    fontSize: 16, color: '#FFFFFF',
-                }}>
-                    {companyInitial}
                 </div>
             </div>
 

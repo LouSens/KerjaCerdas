@@ -204,7 +204,7 @@ export default function SavedJobsPage() {
             {/* Mobile Header */}
             <div>
                 <h1 style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.9, color: KC.ink, margin: '0 0 5px', lineHeight: 1.1 }}>
-                    Tersimpan
+                    Lowongan Tersimpan
                 </h1>
                 <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600 }}>
                     {list.length} lowongan · skor disegarkan tiap profil diperbarui

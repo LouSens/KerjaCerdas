@@ -133,6 +133,17 @@ export default function EmployerHelpPanel() {
                         <p className="text-sm font-bold text-kc-dark leading-tight">Panduan Platform</p>
                         <p className="text-[10px] font-mono text-kc-dark opacity-70 leading-tight">Tips untuk employer & HRD</p>
                     </div>
+                    <button
+                        onClick={() => setOpen(false)}
+                        aria-label="Tutup panduan"
+                        style={{
+                            width: 28, height: 28, display: 'grid', placeItems: 'center',
+                            background: 'rgba(9,10,15,0.12)', border: '1.5px solid rgba(9,10,15,0.25)',
+                            borderRadius: 7, cursor: 'pointer', flexShrink: 0, color: '#090A0F',
+                        }}
+                    >
+                        <X size={14} />
+                    </button>
                 </header>
 
                 <div className="px-3 py-3 space-y-2">

@@ -113,7 +113,15 @@ const useStore = create(
                     userRole: resolvedRole,
                     user: { id: user.id, name: user.name, email: user.email, role: resolvedRole, createdAt: new Date().toISOString() },
                     authToken: access_token,
+                    // ── Clear all transient UI state ────────────────────────────
+                    // login() replaces the active session without going through
+                    // logout(), so we must reset every modal flag here too.
+                    // Omitting upgradeModalOpen (an employer-only modal) would
+                    // render it to the incoming account if it was left open.
                     showAuthModal: false,
+                    upgradeModalOpen: false,
+                    floatingAdvisorOpen: false,
+                    // ────────────────────────────────────────────────────────────
                     activeView: homeView,
                     seekerId: null,
                     matches: [],
@@ -147,7 +155,11 @@ const useStore = create(
                     userRole: user.role,
                     user: { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: new Date().toISOString() },
                     authToken: access_token,
+                    // ── Clear all transient UI state (same reason as login()) ───
                     showAuthModal: false,
+                    upgradeModalOpen: false,
+                    floatingAdvisorOpen: false,
+                    // ────────────────────────────────────────────────────────────
                     activeView: homeView,
                     seekerId: null,
                     matches: [],
@@ -173,12 +185,24 @@ const useStore = create(
                     userRole: null,
                     user: { id: null, name: '', email: '', role: null, createdAt: null },
                     activeView: 'home',
+                    // ── Close every modal that may have been left open ──────────
+                    // Without this, a modal opened by User A stays mounted and
+                    // renders employer-scoped UI to User B who logs in next on
+                    // the same browser tab.
+                    showAuthModal: false,
+                    authTab: 'login',
+                    preferredAuthRole: null,
+                    upgradeModalOpen: false,
                     floatingAdvisorOpen: false,
+                    // ────────────────────────────────────────────────────────────
                     seekerId: null,
                     matches: [],
                     authToken: null,
                     savedJobs: [],
                     applications: [],
+                    employerProfile: null,
+                    employerJobs: [],
+                    employerApplications: [],
                     experiments: {},
                     profile: DEFAULT_PROFILE,
                     advisorLog: [
@@ -204,6 +228,13 @@ const useStore = create(
                     return
                 }
                 if (view === 'pricing') {
+                    // Authenticated employers see the in-app plan modal — never leave the page.
+                    // Unauthenticated visitors get the original landing-page anchor-scroll.
+                    const { isAuthenticated: authed, userRole: role } = get()
+                    if (authed && role === 'employer') {
+                        set({ upgradeModalOpen: true })
+                        return
+                    }
                     set({ activeView: 'home' })
                     if (_routerNavigate) {
                         _routerNavigate('/')
@@ -243,6 +274,11 @@ const useStore = create(
             // ─── Floating advisor ────────────────────────────────────────
             floatingAdvisorOpen: false,
             toggleFloatingAdvisor: () => set((s) => ({ floatingAdvisorOpen: !s.floatingAdvisorOpen })),
+
+            // ─── Upgrade modal (employer only) ───────────────────────────
+            upgradeModalOpen: false,
+            openUpgradeModal: () => set({ upgradeModalOpen: true }),
+            closeUpgradeModal: () => set({ upgradeModalOpen: false }),
 
             // ─── Seeker profile + matching ───────────────────────────────
             profile: DEFAULT_PROFILE,
