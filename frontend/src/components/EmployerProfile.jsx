@@ -88,7 +88,8 @@ export default function EmployerProfile() {
                     animation: 'kcUp .4s both',
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 15 }}>
+                {/* Row 1: avatar + company name (always full width) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 12 }}>
                     <div
                         style={{
                             width: 56,
@@ -113,6 +114,9 @@ export default function EmployerProfile() {
                             {form.industry}
                         </div>
                     </div>
+                </div>
+                {/* Row 2: action buttons — always wrap so they're never clipped on narrow screens */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 15 }}>
                     {/* PRO upgrade button */}
                     <button
                         id="employer-profile-upgrade-btn"
@@ -127,31 +131,32 @@ export default function EmployerProfile() {
                             borderRadius: 8,
                             font: '900 11px/1 "Plus Jakarta Sans", sans-serif',
                             cursor: 'pointer',
-                            flexShrink: 0,
                             whiteSpace: 'nowrap',
                         }}
                     >
                         <Crown size={12} />
                         Upgrade ke PRO
                     </button>
-                    {/* Logout button — beside PRO, rightmost */}
+                    {/* Logout button */}
                     <button
                         id="employer-profile-logout-btn"
                         onClick={logout}
                         title="Keluar dari akun"
                         aria-label="Keluar dari akun"
                         style={{
-                            width: 34, height: 34,
-                            display: 'grid', placeItems: 'center',
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '7px 12px',
                             background: 'rgba(239,68,68,0.15)',
                             color: '#EF4444',
                             border: '1.5px solid rgba(239,68,68,0.35)',
                             borderRadius: 8,
+                            font: '800 11px/1 "Plus Jakarta Sans", sans-serif',
                             cursor: 'pointer',
-                            flexShrink: 0,
+                            whiteSpace: 'nowrap',
                         }}
                     >
-                        <LogOut size={14} />
+                        <LogOut size={13} />
+                        Keluar
                     </button>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

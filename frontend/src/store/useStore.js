@@ -173,12 +173,24 @@ const useStore = create(
                     userRole: null,
                     user: { id: null, name: '', email: '', role: null, createdAt: null },
                     activeView: 'home',
+                    // ── Close every modal that may have been left open ──────────
+                    // Without this, a modal opened by User A stays mounted and
+                    // renders employer-scoped UI to User B who logs in next on
+                    // the same browser tab.
+                    showAuthModal: false,
+                    authTab: 'login',
+                    preferredAuthRole: null,
+                    upgradeModalOpen: false,
                     floatingAdvisorOpen: false,
+                    // ────────────────────────────────────────────────────────────
                     seekerId: null,
                     matches: [],
                     authToken: null,
                     savedJobs: [],
                     applications: [],
+                    employerProfile: null,
+                    employerJobs: [],
+                    employerApplications: [],
                     experiments: {},
                     profile: DEFAULT_PROFILE,
                     advisorLog: [
