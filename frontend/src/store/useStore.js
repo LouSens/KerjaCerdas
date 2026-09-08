@@ -113,7 +113,15 @@ const useStore = create(
                     userRole: resolvedRole,
                     user: { id: user.id, name: user.name, email: user.email, role: resolvedRole, createdAt: new Date().toISOString() },
                     authToken: access_token,
+                    // ── Clear all transient UI state ────────────────────────────
+                    // login() replaces the active session without going through
+                    // logout(), so we must reset every modal flag here too.
+                    // Omitting upgradeModalOpen (an employer-only modal) would
+                    // render it to the incoming account if it was left open.
                     showAuthModal: false,
+                    upgradeModalOpen: false,
+                    floatingAdvisorOpen: false,
+                    // ────────────────────────────────────────────────────────────
                     activeView: homeView,
                     seekerId: null,
                     matches: [],
@@ -147,7 +155,11 @@ const useStore = create(
                     userRole: user.role,
                     user: { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: new Date().toISOString() },
                     authToken: access_token,
+                    // ── Clear all transient UI state (same reason as login()) ───
                     showAuthModal: false,
+                    upgradeModalOpen: false,
+                    floatingAdvisorOpen: false,
+                    // ────────────────────────────────────────────────────────────
                     activeView: homeView,
                     seekerId: null,
                     matches: [],
