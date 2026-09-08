@@ -204,6 +204,13 @@ const useStore = create(
                     return
                 }
                 if (view === 'pricing') {
+                    // Authenticated employers see the in-app plan modal — never leave the page.
+                    // Unauthenticated visitors get the original landing-page anchor-scroll.
+                    const { isAuthenticated: authed, userRole: role } = get()
+                    if (authed && role === 'employer') {
+                        set({ upgradeModalOpen: true })
+                        return
+                    }
                     set({ activeView: 'home' })
                     if (_routerNavigate) {
                         _routerNavigate('/')
@@ -243,6 +250,11 @@ const useStore = create(
             // ─── Floating advisor ────────────────────────────────────────
             floatingAdvisorOpen: false,
             toggleFloatingAdvisor: () => set((s) => ({ floatingAdvisorOpen: !s.floatingAdvisorOpen })),
+
+            // ─── Upgrade modal (employer only) ───────────────────────────
+            upgradeModalOpen: false,
+            openUpgradeModal: () => set({ upgradeModalOpen: true }),
+            closeUpgradeModal: () => set({ upgradeModalOpen: false }),
 
             // ─── Seeker profile + matching ───────────────────────────────
             profile: DEFAULT_PROFILE,

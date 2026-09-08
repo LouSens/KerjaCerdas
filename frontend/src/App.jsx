@@ -3,9 +3,10 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import useStore from './store/useStore'
 import { VIEW_TO_PATH, PATH_TO_VIEW } from './routes'
 
-import Sidebar, { MobileBottomNav } from './components/Sidebar'
+import Sidebar, { MobileBottomNav, MobileTopBar } from './components/Sidebar'
 import FloatingAdvisor from './components/FloatingAdvisor'
 import EmployerHelpPanel from './components/EmployerHelpPanel'
+import UpgradeModal from './components/UpgradeModal'
 import AuthModal from './components/AuthModal'
 import OnboardingWizard from './components/OnboardingWizard'
 
@@ -85,12 +86,14 @@ function AppShell({ children }) {
             <Sidebar />
             <main className="mobile-main flex-1 min-h-screen transition-[margin] duration-200 md:ml-64 ml-0 w-full max-w-full overflow-x-hidden">
                 <div className="max-w-5xl mx-auto px-3.5 sm:px-6 py-4 sm:py-8 w-full box-border">
+                    <MobileTopBar />
                     {children}
                 </div>
             </main>
             <MobileBottomNav />
             <FloatingAdvisor />
             <EmployerHelpPanel />
+            <UpgradeModal />
         </div>
     )
 }

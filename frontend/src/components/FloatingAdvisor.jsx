@@ -123,6 +123,10 @@ export default function FloatingAdvisor({ asPage = false }) {
     // If activeView is already seeker-advisor and this is the global FloatingAdvisor instance, don't show duplicate floating button
     if (!asPage && activeView === 'seeker-advisor') return null
 
+    // On mobile the bottom-nav "Advisor" tab already provides full access;
+    // hide the floating button to avoid redundancy.
+    if (!asPage && isMobile) return null
+
     const hasCV = Boolean(seekerId || profile?.skills?.length > 0)
     const topSkills = (profile?.skills || []).slice(0, 3).map(s => s.name || s).join(', ')
 
@@ -330,26 +334,7 @@ export default function FloatingAdvisor({ asPage = false }) {
               height: 530px;
               max-height: calc(100vh - 110px);
             }
-            @media (max-width: 768px) {
-              .kc-advisor-btn {
-                bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
-                right: 16px !important;
-                height: 44px !important;
-                padding: 0 14px !important;
-                font-size: 12px !important;
-                border-radius: 10px !important;
-              }
-              .kc-advisor-panel {
-                bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
-                right: 10px !important;
-                left: 10px !important;
-                width: auto !important;
-                max-width: calc(100vw - 20px) !important;
-                height: 480px !important;
-                max-height: calc(100vh - 84px) !important;
-                border-radius: 12px !important;
-              }
-            }
+
             `}</style>
 
             {/* Bubble toggle button */}

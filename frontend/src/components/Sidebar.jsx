@@ -5,11 +5,12 @@
  */
 import {
     LayoutDashboard, Search, BarChart3, ShieldCheck, Bookmark,
-    Building2, Briefcase, Users, Upload, LogOut, Crown,
+    Building2, Briefcase, Users, Upload, LogOut,
     FileText, User, ClipboardList, Sparkles, PlusCircle, CheckCircle2, Bot,
 } from 'lucide-react'
 import useStore from '../store/useStore'
 import { ALLOWED_VIEWS } from '../routes'
+import { useIsMobile } from './_design'
 
 const SEEKER_GROUPS = [
     {
@@ -254,47 +255,7 @@ export default function Sidebar() {
                 ))}
             </nav>
 
-            {/* Streamlined Enterprise CTA */}
-            <div className="px-3 py-2.5 border-t border-white/10">
-                <div style={{
-                    background: '#141724',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 8,
-                    padding: '10px 12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 8,
-                }}>
-                    <div style={{ minWidth: 0 }}>
-                        <div className="flex items-center gap-1.5">
-                            <Crown size={13} className="text-[#FFC800] flex-shrink-0" />
-                            <span className="text-xs font-black text-white truncate">KerjaCerdas PRO</span>
-                        </div>
-                        <p className="text-[10px] text-white/50 truncate mt-0.5">
-                            {userRole === 'employer' ? 'Akses ATS & Kandidat' : 'Prioritas AI Advisor'}
-                        </p>
-                    </div>
-                    <button
-                        id="sidebar-upgrade-btn"
-                        onClick={() => navigate('pricing')}
-                        style={{
-                            padding: '4px 8px',
-                            background: '#FFC800',
-                            color: '#090A0F',
-                            border: '1px solid #090A0F',
-                            borderRadius: 6,
-                            fontSize: 10,
-                            fontWeight: 900,
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        Upgrade →
-                    </button>
-                </div>
-            </div>
+
 
             {/* Ergonomic User Bar + Logout */}
             <div className="px-3 py-2.5 border-t border-white/10 flex items-center justify-between gap-2 bg-[#090A0F]">
@@ -397,5 +358,106 @@ export function MobileBottomNav() {
                 )
             })}
         </nav>
+    )
+}
+
+/**
+ * MobileTopBar — mobile-only account bar shown at the top of every
+ * authenticated page. Hidden on desktop (md+) via Tailwind.
+ *
+ * Displays the account name / company name with a small avatar,
+ * and a logout icon button to the right — mirroring the desktop
+ * sidebar's "name + LogOut icon" pattern.
+ */
+export function MobileTopBar() {
+    const isMobile = useIsMobile()
+    const { user, userRole, isAuthenticated, logout, employerProfile } = useStore()
+    if (!isAuthenticated || !isMobile || userRole === 'employer') return null
+
+    const isEmployer = userRole === 'employer'
+    const displayName = isEmployer
+        ? (employerProfile?.company_name || user?.full_name || 'Perusahaan')
+        : (user?.name || user?.email || 'Pencari Kerja')
+    const initial = displayName ? displayName[0].toUpperCase() : '?'
+    const avatarBg = isEmployer ? '#090A0F' : '#00B8D9'
+    const avatarShadow = isEmployer ? '#FF4800' : '#090A0F'
+    const avatarColor = isEmployer ? '#FFFFFF' : '#090A0F'
+
+    return (
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                paddingBottom: 10,
+                borderBottom: '1.5px solid rgba(9,10,15,0.1)',
+                marginBottom: 4,
+                fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
+            }}
+        >
+            {/* Avatar + name */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, flex: 1 }}>
+                <div style={{
+                    width: 34, height: 34, borderRadius: 9,
+                    background: avatarBg,
+                    border: `1.5px solid #090A0F`,
+                    boxShadow: `2px 2px 0 ${avatarShadow}`,
+                    display: 'grid', placeItems: 'center',
+                    fontWeight: 900, fontSize: 14, color: avatarColor,
+                    flexShrink: 0,
+                }}>
+                    {initial}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                    <div style={{
+                        fontSize: 13, fontWeight: 800,
+                        color: '#090A0F', letterSpacing: '-0.3px',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        maxWidth: '52vw',
+                    }}>
+                        {displayName}
+                    </div>
+                    <div style={{
+                        fontSize: 9.5, fontWeight: 700,
+                        color: isEmployer ? '#FF4800' : '#64748B',
+                        textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 1,
+                    }}>
+                        {isEmployer ? 'Employer / HR' : 'Pencari Kerja'}
+                    </div>
+                </div>
+            </div>
+
+            {/* Logout icon — same action as desktop sidebar */}
+            <button
+                id="mobile-top-bar-logout-btn"
+                onClick={logout}
+                title="Keluar dari akun"
+                aria-label="Keluar dari akun"
+                style={{
+                    width: 34, height: 34,
+                    display: 'grid', placeItems: 'center',
+                    background: 'rgba(239,68,68,0.1)',
+                    color: '#EF4444',
+                    border: '1.5px solid rgba(239,68,68,0.25)',
+                    borderRadius: 9,
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    transition: 'background 0.12s, color 0.12s, border-color 0.12s',
+                }}
+                onMouseEnter={e => {
+                    e.currentTarget.style.background = '#EF4444'
+                    e.currentTarget.style.color = '#FFFFFF'
+                    e.currentTarget.style.borderColor = '#EF4444'
+                }}
+                onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(239,68,68,0.1)'
+                    e.currentTarget.style.color = '#EF4444'
+                    e.currentTarget.style.borderColor = 'rgba(239,68,68,0.25)'
+                }}
+            >
+                <LogOut size={14} />
+            </button>
+        </div>
     )
 }

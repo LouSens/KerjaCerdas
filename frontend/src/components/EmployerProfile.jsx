@@ -3,10 +3,10 @@ import useStore from '../store/useStore'
 import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
 import { updateEmployerProfile } from '../services/api'
 import toast from 'react-hot-toast'
-import { Building2, ShieldCheck, Check, ArrowRight, UserPlus, LogOut } from 'lucide-react'
+import { Building2, ShieldCheck, Check, ArrowRight, UserPlus, LogOut, Crown } from 'lucide-react'
 
 export default function EmployerProfile() {
-    const { employerProfile, loadEmployerProfile, navigate, logout, user } = useStore()
+    const { employerProfile, loadEmployerProfile, navigate, logout, user, openUpgradeModal } = useStore()
     // Empty defaults — a real employer must not be able to save a pre-filled
     // demo company as their own profile.
     const [form, setForm] = useState({
@@ -105,7 +105,7 @@ export default function EmployerProfile() {
                     >
                         {form.brand_name.charAt(0) || 'G'}
                     </div>
-                    <div style={{ minWidth: 0 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ font: '900 19px/1.15 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.7px', color: '#fff' }}>
                             {form.brand_name}
                         </div>
@@ -113,6 +113,46 @@ export default function EmployerProfile() {
                             {form.industry}
                         </div>
                     </div>
+                    {/* PRO upgrade button */}
+                    <button
+                        id="employer-profile-upgrade-btn"
+                        onClick={openUpgradeModal}
+                        title="Upgrade ke KerjaCerdas PRO"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '7px 12px',
+                            background: '#FFC800',
+                            color: '#090A0F',
+                            border: '1.5px solid rgba(255,255,255,0.3)',
+                            borderRadius: 8,
+                            font: '900 11px/1 "Plus Jakarta Sans", sans-serif',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        <Crown size={12} />
+                        Upgrade ke PRO
+                    </button>
+                    {/* Logout button — beside PRO, rightmost */}
+                    <button
+                        id="employer-profile-logout-btn"
+                        onClick={logout}
+                        title="Keluar dari akun"
+                        aria-label="Keluar dari akun"
+                        style={{
+                            width: 34, height: 34,
+                            display: 'grid', placeItems: 'center',
+                            background: 'rgba(239,68,68,0.15)',
+                            color: '#EF4444',
+                            border: '1.5px solid rgba(239,68,68,0.35)',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                        }}
+                    >
+                        <LogOut size={14} />
+                    </button>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     <span style={{ padding: '5px 10px', background: 'rgba(16,185,129,.2)', border: '1px solid #10B981', borderRadius: 999, font: '800 10.5px/1 "Plus Jakarta Sans", sans-serif', color: '#10B981' }}>
@@ -294,22 +334,6 @@ export default function EmployerProfile() {
                 </span>
             </button>
 
-            {/* Logout button */}
-            <div style={{ textAlign: 'center', marginTop: 6, marginBottom: 8 }}>
-                <button
-                    onClick={logout}
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#94A3B8',
-                        font: '700 12px/1 "Plus Jakarta Sans", sans-serif',
-                        cursor: 'pointer',
-                        padding: 8,
-                    }}
-                >
-                    Keluar dari Akun Employer
-                </button>
-            </div>
         </div>
     )
 }

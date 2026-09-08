@@ -237,6 +237,9 @@ const KC_CSS = `
   .kc-mobile-sticky-cta {
     display: flex !important;
   }
+  .kc-hero-inline-cta {
+    display: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1086,7 +1089,7 @@ export default function LandingHero() {
                         </p>
 
                         {/* Dual Action CTAs */}
-                        <div className="kc-fade-up d3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
+                        <div className="kc-fade-up d3 kc-hero-inline-cta" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
                             <BrutalButton variant="primary" size="lg" icon={<I.ArrowRight s={15} c="#fff" />} onClick={onDaftar}>
                                 Cari Lowongan Kerja
                             </BrutalButton>

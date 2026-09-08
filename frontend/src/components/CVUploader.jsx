@@ -100,7 +100,7 @@ export default function CVUploader() {
             <header className="kc-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, borderBottom: `1.5px solid ${KC.ink}` }}>
                 <div>
                     <h1 className="kc-h1" style={{ animation: 'kc-fade-up .4s ease both' }}>
-                        Unggah Resume & Profil
+                        Upload CV
                     </h1>
                     <p style={{ fontSize: 14, color: KC.mute, margin: '4px 0 0' }}>
                         Ekstraksi otomatis struktur kompetensi, riwayat karir, dan preferensi kompensasi Anda

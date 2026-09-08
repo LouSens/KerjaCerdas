@@ -121,7 +121,7 @@ export default function VerificationDashboard() {
                     fontSize: 22, fontWeight: 900, letterSpacing: -0.9,
                     color: KC.ink, margin: '0 0 5px', lineHeight: 1.1,
                 }}>
-                    Verifikasi Identitas
+                    Verifikasi E-KYC
                 </h1>
                 <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600 }}>
                     {completedCount} dari {TOTAL_APPLICABLE_STEPS} selesai · prioritas kurasi hingga 3× lipat
