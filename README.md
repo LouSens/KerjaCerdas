@@ -336,7 +336,7 @@ final_score = (
     skill_overlap     * 0.25 +   # Irisan Keahlian Eksplisit
     experience_fit    * 0.15 +   # Validasi Masa Kerja
     education_fit     * 0.10 +   # Kesesuaian Jenjang Pendidikan
-    recency_boost     * 0.05     # Keaktifan/Kebaruan Profil
+    recency_boost     * 0.05     # Aktualitas Profil
 )
 ```
 

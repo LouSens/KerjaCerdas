@@ -295,7 +295,7 @@ export default function SeekerMatchResults() {
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Rekensi</div>
+                                                        <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Aktualitas</div>
                                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
                                                             <span style={{ font: '900 15px/1 "Plus Jakarta Sans", sans-serif', color: '#6366F1' }}>{rec}</span>
                                                             <span style={{ font: '700 9.5px/1 "JetBrains Mono", monospace', color: '#CBD5E1' }}>×.05</span>
