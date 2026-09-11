@@ -65,12 +65,12 @@ export default function JobDetailModal({ job, onClose }) {
             desc: 'Riwayat pendidikan tercantum di profil kandidat',
         },
         {
-            label: 'Rekensi Profil',
+            label: 'Aktualitas Profil',
             weight: 'Bobot 5%',
             multiplier: '×0.05',
             pct: 100,
             color: '#6366F1',
-            desc: 'Keaktifan profil kandidat di platform',
+            desc: 'Bobot konstan untuk saat ini'
         },
     ]
 
