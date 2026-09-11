@@ -70,7 +70,7 @@ export default function JobDetailModal({ job, onClose }) {
             multiplier: '×0.05',
             pct: 100,
             color: '#6366F1',
-            desc: 'Seberapa baru profil kandidat diperbarui di platform'
+            desc: 'Faktor aktualitas profil bersifat konstan untuk saat ini'
         },
     ]
 
