@@ -657,30 +657,6 @@ export default function AuthModal() {
                                 )}
                             </button>
 
-                            {/* Demo Accounts Helper (Frame 00b) */}
-                            <div style={{
-                                marginTop: 12, padding: '10px 12px', background: '#F1F5F9',
-                                border: '1px solid #E2E8F0', borderRadius: 9,
-                                fontSize: 11, lineHeight: 1.5, color: '#64748B', fontFamily: FONT,
-                            }}>
-                                Akun demo:{' '}
-                                <b
-                                    style={{ color: '#090A0F', cursor: 'pointer', textDecoration: 'underline' }}
-                                    onClick={() => { setEmail('budi.santoso@example.com'); setPassword('demo'); setRole('seeker'); }}
-                                    title="Klik untuk mengisi akun seeker"
-                                >
-                                    budi.santoso@example.com
-                                </b>{' '}
-                                /{' '}
-                                <b
-                                    style={{ color: '#090A0F', cursor: 'pointer', textDecoration: 'underline' }}
-                                    onClick={() => { setEmail('hr@goto.id'); setPassword('demo'); setRole('employer'); }}
-                                    title="Klik untuk mengisi akun HR"
-                                >
-                                    hr@goto.id
-                                </b>{' '}
-                                — sandi <b style={{ color: '#090A0F' }}>demo</b>
-                            </div>
                         </form>
                     </div>
 
