@@ -27,7 +27,13 @@ def _get_seed_password_hash() -> str:
     return bcrypt.hashpw(raw.encode(), bcrypt.gensalt(rounds=12)).decode()
 
 
-async def seed_auth_user(email: str, name: str, role: str) -> SqlUser:
+async def seed_auth_user(
+    email: str,
+    name: str,
+    role: str,
+    *,
+    reset_password: bool = False,
+) -> SqlUser:
     async with async_session_factory() as session:
         stmt = select(SqlUser).where(SqlUser.email == email)
         result = await session.execute(stmt)
@@ -41,9 +47,11 @@ async def seed_auth_user(email: str, name: str, role: str) -> SqlUser:
             )
             session.add(u)
         else:
-            # Update role only – never overwrite a password that may have
-            # been legitimately changed after the initial seed.
+            # Existing demo users keep their password by default so a normal
+            # reseed cannot overwrite a password changed through the app.
             u.role = role
+            if reset_password:
+                u.password_hash = _get_seed_password_hash()
         await session.commit()
         await session.refresh(u)
         return u

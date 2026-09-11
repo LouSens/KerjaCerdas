@@ -70,6 +70,9 @@ externalPort = 80
 APP_ENV = "production"
 CORS_ALLOW_ORIGINS = "[\"https://kerjacerdas.tech\"]"
 
+[userenv.development]
+SEED_DEFAULT_PASSWORD = "ended-tapering-recollect-empathic-speed-backwater"
+
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 240000

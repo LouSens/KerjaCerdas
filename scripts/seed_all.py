@@ -8,6 +8,7 @@ IT-only, so the demo pool shouldn't be either.
 
 Run:
     python -m scripts.seed_all
+    python -m scripts.seed_all --reset-passwords
     python -m scripts.seed_all --clear     # wipe data/ first
 
 Companies, regions (BPS kabupaten/kota), salaries, KBJI codes, and course
@@ -19,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import uuid
 
 from backend.app.api.database import init_db
 from backend.app.db.postgres_store import get_repositories
@@ -1711,7 +1713,7 @@ COURSES = [
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-async def seed(clear: bool) -> None:
+async def seed(clear: bool, reset_passwords: bool = False) -> None:
     await init_db()
 
     if clear:
@@ -1723,12 +1725,19 @@ async def seed(clear: bool) -> None:
     matcher = SemanticMatcher()
 
     # ── Employers ──────────────────────────────────────────────────────────
+    existing_employers = {emp.user_id: emp for emp in await repos.employers.list()}
     emp_by_key: dict[str, Employer] = {}
     for key, name, ind, size, region, desc in EMPLOYERS:
-        u = await _seed_auth_user(email=f"hr@{key}.id", name=name, role=UserRole.EMPLOYER.value)
+        u = await _seed_auth_user(
+            email=f"hr@{key}.id",
+            name=name,
+            role=UserRole.EMPLOYER.value,
+            reset_password=reset_passwords,
+        )
+        existing_emp = existing_employers.get(u.id)
         emp = await repos.employers.upsert(
             Employer(
-                id=u.id,
+                id=existing_emp.id if existing_emp else u.id,
                 user_id=u.id,
                 company_name=name,
                 industry=ind,
@@ -1738,9 +1747,13 @@ async def seed(clear: bool) -> None:
             )
         )
         emp_by_key[key] = emp
+        existing_employers[u.id] = emp
     print(f"[employers] {len(emp_by_key)} created")
 
     # ── Jobs ───────────────────────────────────────────────────────────────
+    existing_jobs = {
+        (job.employer_id, job.title): job for job in await repos.jobs.list()
+    }
     job_count = 0
     for jp in JOB_POSTINGS:
         (key, title, kbji, desc, resps, req, nice, edu, yrs, region, remote, smin, smax) = jp
@@ -1749,7 +1762,9 @@ async def seed(clear: bool) -> None:
             edu_lv = EducationLevel(edu)
         except ValueError:
             edu_lv = EducationLevel.S1
+        existing_job = existing_jobs.get((emp.id, title))
         job = JobPosting(
+            id=existing_job.id if existing_job else str(uuid.uuid4()),
             employer_id=emp.id,
             title=title,
             kbji_code=kbji,
@@ -1766,13 +1781,21 @@ async def seed(clear: bool) -> None:
         )
         await matcher.embed_job(job)
         await repos.jobs.upsert(job)
+        existing_jobs[(emp.id, title)] = job
         job_count += 1
     print(f"[jobs] {job_count} created")
 
     # ── Seekers ────────────────────────────────────────────────────────────
+    existing_seekers = {seeker.user_id: seeker for seeker in await repos.seekers.list()}
     seeker_count = 0
     for s in SEEKERS:
-        u = await _seed_auth_user(email=s["email"], name=s["full_name"], role=UserRole.SEEKER.value)
+        u = await _seed_auth_user(
+            email=s["email"],
+            name=s["full_name"],
+            role=UserRole.SEEKER.value,
+            reset_password=reset_passwords,
+        )
+        existing_seeker = existing_seekers.get(u.id)
 
         edu_objs = [
             Education(
@@ -1798,7 +1821,7 @@ async def seed(clear: bool) -> None:
         skill_objs = [Skill(name=n, level=lv, years=yr) for (n, lv, yr) in s["skills"]]
 
         seeker = SeekerProfile(
-            id=u.id,
+            id=existing_seeker.id if existing_seeker else u.id,
             user_id=u.id,
             full_name=s["full_name"],
             headline=s["headline"],
@@ -1813,6 +1836,7 @@ async def seed(clear: bool) -> None:
         )
         await matcher.embed_seeker(seeker)
         await repos.seekers.upsert(seeker)
+        existing_seekers[u.id] = seeker
         seeker_count += 1
     print(f"[seekers] {seeker_count} created")
 
@@ -1824,6 +1848,10 @@ async def seed(clear: bool) -> None:
     # ── Applications ───────────────────────────────────────────────────────
     all_jobs = await repos.jobs.list()
     all_seekers = await repos.seekers.list()
+    existing_applications = {
+        (application.job_id, application.seeker_id): application
+        for application in await repos.applications.list()
+    }
     app_count = 0
     if all_jobs and all_seekers:
         # Seed realistic application lifecycle for first few seekers
@@ -1869,7 +1897,9 @@ async def seed(clear: bool) -> None:
             if s_idx < len(all_seekers) and j_idx < len(all_jobs):
                 s_obj = all_seekers[s_idx]
                 j_obj = all_jobs[j_idx]
+                existing_application = existing_applications.get((j_obj.id, s_obj.id))
                 app_obj = Application(
+                    id=existing_application.id if existing_application else str(uuid.uuid4()),
                     job_id=j_obj.id,
                     seeker_id=s_obj.id,
                     status=status_val,
@@ -1878,6 +1908,7 @@ async def seed(clear: bool) -> None:
                     match_score=0.88,
                 )
                 await repos.applications.upsert(app_obj)
+                existing_applications[(j_obj.id, s_obj.id)] = app_obj
                 app_count += 1
     print(f"[applications] {app_count} created")
 
@@ -1897,5 +1928,10 @@ async def seed(clear: bool) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--clear", action="store_true", help="wipe data/* before seeding")
+    ap.add_argument(
+        "--reset-passwords",
+        action="store_true",
+        help="reset seeded demo accounts to SEED_DEFAULT_PASSWORD",
+    )
     args = ap.parse_args()
-    asyncio.run(seed(clear=args.clear))
+    asyncio.run(seed(clear=args.clear, reset_passwords=args.reset_passwords))

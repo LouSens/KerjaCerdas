@@ -21,42 +21,51 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.create_table(
-        "partnership_inquiries",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("category", sa.String(length=50), nullable=False),
-        sa.Column("name", sa.String(length=150), nullable=False),
-        sa.Column("organization", sa.String(length=150), nullable=False),
-        sa.Column("email", sa.String(length=255), nullable=False),
-        sa.Column("message", sa.Text(), nullable=False, server_default=""),
-        sa.Column("status", sa.String(length=30), nullable=False, server_default="pending"),
-        sa.Column("notes", sa.Text(), nullable=False, server_default=""),
-        sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
-        ),
-        sa.Column(
-            "updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_partnership_inquiries_category"),
-        "partnership_inquiries",
-        ["category"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_partnership_inquiries_email"),
-        "partnership_inquiries",
-        ["email"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_partnership_inquiries_status"),
-        "partnership_inquiries",
-        ["status"],
-        unique=False,
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    # The ORM startup/publish schema sync may have created this table before
+    # Alembic reaches the revision. Treat the matching table as already
+    # provisioned rather than crashing on a duplicate relation.
+    if not inspector.has_table("partnership_inquiries"):
+        op.create_table(
+            "partnership_inquiries",
+            sa.Column("id", sa.String(length=36), nullable=False),
+            sa.Column("category", sa.String(length=50), nullable=False),
+            sa.Column("name", sa.String(length=150), nullable=False),
+            sa.Column("organization", sa.String(length=150), nullable=False),
+            sa.Column("email", sa.String(length=255), nullable=False),
+            sa.Column("message", sa.Text(), nullable=False, server_default=""),
+            sa.Column("status", sa.String(length=30), nullable=False, server_default="pending"),
+            sa.Column("notes", sa.Text(), nullable=False, server_default=""),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
+            sa.PrimaryKeyConstraint("id"),
+        )
+
+    existing_indexes = {index["name"] for index in inspector.get_indexes("partnership_inquiries")}
+    for index_name, column_name in (
+        ("ix_partnership_inquiries_category", "category"),
+        ("ix_partnership_inquiries_email", "email"),
+        ("ix_partnership_inquiries_status", "status"),
+    ):
+        if index_name not in existing_indexes:
+            op.create_index(
+                op.f(index_name),
+                "partnership_inquiries",
+                [column_name],
+                unique=False,
+            )
 
 
 def downgrade() -> None:

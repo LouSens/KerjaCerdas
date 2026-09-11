@@ -28,10 +28,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column(
-        "seekers",
-        sa.Column("ijazah_verified", sa.String(length=20), nullable=False, server_default="unverified"),
-    )
+    inspector = sa.inspect(op.get_bind())
+    existing_columns = {column["name"] for column in inspector.get_columns("seekers")}
+    if "ijazah_verified" not in existing_columns:
+        op.add_column(
+            "seekers",
+            sa.Column(
+                "ijazah_verified",
+                sa.String(length=20),
+                nullable=False,
+                server_default="unverified",
+            ),
+        )
 
 
 def downgrade() -> None:
