@@ -14,11 +14,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <BrowserRouter>
             <App />
             <Toaster
-                position="top-right"
-                gutter={12}
+                position="top-center"
+                gutter={10}
                 containerStyle={{
-                    top: 20,
-                    right: 24,
+                    top: 16,
                 }}
                 toastOptions={{
                     duration: 3500,
@@ -32,7 +31,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                         fontWeight: 700,
                         fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
                         padding: '10px 16px',
-                        maxWidth: '440px',
+                        maxWidth: '92vw',
                         lineHeight: 1.4,
                     },
                     success: {

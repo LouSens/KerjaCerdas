@@ -468,19 +468,20 @@ const useStore = create(
             isJobApplied: (jobId) => get().applications.some(a => a.job_id === jobId || a.job?.id === jobId),
 
 
-            applyJob: async (jobId, coverLetter = '') => {
+            applyJob: async (jobId, coverLetter = '', companyName = '') => {
                 try {
                     const res = await applyToJob(jobId, coverLetter)
+                    const target = companyName ? ` ke ${companyName}` : ''
                     if (res.already_applied) {
-                        toast('Sudah melamar ke lowongan ini', { icon: '✓' })
+                        toast('Sudah melamar ke lowongan ini', { icon: '✓', id: 'apply-job' })
                     } else {
-                        toast.success('Lamaran terkirim!')
+                        toast.success(`Lamaran terkirim${target}!`, { id: 'apply-job' })
                         // Refresh applications after applying
                         get().loadApplications()
                     }
                     return res
                 } catch (e) {
-                    toast.error('Gagal melamar: ' + e.message)
+                    toast.error('Gagal melamar: ' + e.message, { id: 'apply-job' })
                 }
             },
 

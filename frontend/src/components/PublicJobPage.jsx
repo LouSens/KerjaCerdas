@@ -46,9 +46,9 @@ export default function PublicJobPage() {
         try {
             const r = await applyToJob(job.id, '', { source: 'link' })
             setApplied(r)
-            toast.success(r.already_applied ? 'Kamu sudah melamar lowongan ini' : 'Lamaran terkirim!')
+            toast.success(r.already_applied ? 'Kamu sudah melamar lowongan ini' : 'Lamaran terkirim!', { id: 'apply-job' })
         } catch (e) {
-            toast.error(e.message)
+            toast.error(e.message, { id: 'apply-job' })
         }
     }
 
