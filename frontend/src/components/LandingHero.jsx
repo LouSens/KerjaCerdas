@@ -1016,7 +1016,7 @@ export default function LandingHero() {
     const FAQS = [
         {
             q: 'Apakah platform ini sepenuhnya gratis untuk pencari kerja?',
-            a: 'Ya. Pencocokan AI, skill gap, rekomendasi kursus, kuis skill, melamar, dan peringkat persis tiap lamaranmu (mis. #14 dari 62) beserta skill mana yang menahannya — semuanya gratis. Kamu tidak membayar untuk peringkat, dan tidak membayar untuk tahu peringkatmu. Paket Prism (Rp15.000 / 30 hari) hanya menambah kuota advisor — latihan, bukan peringkat. Jeda ulang kuis 1 hari untuk semua paket.',
+            a: 'Ya. Pencocokan AI, skill gap, rekomendasi kursus, kuis skill, melamar, dan peringkat persis tiap lamaranmu (mis. #14 dari 62) beserta skill mana yang menahannya — semuanya gratis. Kamu tidak membayar untuk peringkat, dan tidak membayar untuk tahu peringkatmu. Paket Premium (Rp35.000 / bulan) hanya menambah kuota advisor — latihan, bukan peringkat. Jeda ulang kuis 1 hari untuk semua paket.',
         },
         {
             q: 'Data apa yang dikumpulkan? Apakah perlu KTP?',
@@ -1028,7 +1028,7 @@ export default function LandingHero() {
         },
         {
             q: 'Bagaimana skema harga untuk perusahaan?',
-            a: 'Pasang lowongan gratis (Spark: 1 lowongan aktif, semua pelamar diperingkat tanpa batas). Upgrade ke paket berbayar (Beacon atau Lighthouse) untuk fitur pertanyaan wawancara AI, ekspor, dan pencarian kandidat yang belum melamar. Tanpa kontrak. Pembayaran saat ini via QRIS / transfer yang dikonfirmasi admin.',
+            a: 'Pasang lowongan gratis (Lite: 1 lowongan aktif, semua pelamar diperingkat tanpa batas). Upgrade ke paket berbayar (Pro atau Max) untuk fitur pertanyaan wawancara AI, ekspor, dan pencarian kandidat yang belum melamar. Tanpa kontrak. Pembayaran saat ini via QRIS / transfer yang dikonfirmasi admin.',
         },
     ]
 
@@ -1104,7 +1104,7 @@ export default function LandingHero() {
                                     Rp0
                                 </div>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: KC.mute, marginTop: 2 }}>
-                                    Pasang Lowongan (Spark)
+                                    Pasang Lowongan (Lite)
                                 </div>
                             </div>
                             <div>
@@ -1390,7 +1390,7 @@ export default function LandingHero() {
                 <div className="kc-pricing-grid">
                     {[
                         {
-                            name: 'Spark',
+                            name: 'Lite',
                             price: '0',
                             period: 'gratis',
                             desc: 'Coba dulu: pasang lowongan, bagikan link / QR.',
@@ -1408,38 +1408,38 @@ export default function LandingHero() {
                             action: onEmployer,
                         },
                         {
-                            name: 'Beacon',
-                            price: '49rb',
-                            period: '/ lowongan / 30 hari',
+                            name: 'Pro',
+                            price: '79rb',
+                            period: '/ lowongan / bulan',
                             desc: 'Untuk usaha kecil yang sesekali merekrut.',
-                            highlight: true,
-                            bg: KC.orange,
+                            highlight: false,
+                            bg: KC.ink,
                             color: '#fff',
                             btnVariant: 'lime',
                             cta: 'Mulai Rekrut',
                             perks: [
-                                'Pelamar tanpa batas diperingkat',
+                                'Semua fitur Lite',
                                 'Pertanyaan wawancara AI per kandidat',
-                                'Konfirmasi "skill terbukti" setelah wawancara',
                                 'Ekspor pelamar (CSV)',
+                                'Cari 30 kandidat proaktif',
                             ],
                             action: onEmployer,
                         },
                         {
-                            name: 'Lighthouse',
-                            price: '149rb',
-                            period: '/ 30 hari',
+                            name: 'Max 5x',
+                            price: '229rb',
+                            period: '/ bulan',
                             desc: 'Untuk usaha yang merekrut setiap bulan.',
-                            highlight: false,
-                            bg: KC.ink,
+                            highlight: true,
+                            bg: KC.orange,
                             color: '#fff',
                             btnVariant: 'accent',
-                            cta: 'Pilih Lighthouse',
+                            cta: 'Pilih Max 5x',
                             perks: [
-                                'Semua fitur Beacon',
+                                'Semua fitur Pro',
                                 'Hingga 5 lowongan aktif',
-                                'Laporan rekrutmen lintas lowongan',
-                                'Pencari kerja tetap gratis (Prism opsional Rp15rb)',
+                                'Cari 150 kandidat proaktif',
+                                'Pencari kerja tetap gratis (Premium opsional Rp35rb)',
                             ],
                             action: onEmployer,
                         },

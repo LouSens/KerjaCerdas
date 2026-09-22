@@ -610,7 +610,7 @@ export default function AboutPage() {
                                     { phase: 'Fase 1 (Aktif)', desc: 'Matching semantik + kuis skill + link/QR lowongan + AutoMod', color: KC.lime },
                                     { phase: 'Fase 2 (Rencana)', desc: 'Payment gateway (Midtrans/Xendit) + bank soal ditinjau praktisi HR', color: KC.cyan },
                                     { phase: 'Fase 3 (Rencana)', desc: 'Kalibrasi skor dengan data wawancara & diterima kerja', color: KC.yellow },
-                                    { phase: 'Fase 4 (Rencana)', desc: 'Latihan wawancara AI untuk pencari kerja (Prism)', color: KC.orange },
+                                    { phase: 'Fase 4 (Rencana)', desc: 'Latihan wawancara AI untuk pencari kerja (Premium)', color: KC.orange },
                                 ].map((r, i) => (
                                     <div key={i} style={{
                                         background: '#14151D', border: `1.5px solid rgba(255,255,255,0.2)`,

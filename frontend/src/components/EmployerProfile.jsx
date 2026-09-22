@@ -57,7 +57,7 @@ export default function EmployerProfile() {
 
     const active = (employerJobs || []).filter((j) => j.is_active).length
     const lighthouse = plans?.lighthouse_until
-    const planLabel = lighthouse ? `Lighthouse s/d ${String(lighthouse).slice(0, 10)}` : 'Spark (gratis)'
+    const planLabel = lighthouse ? `Max 5x s/d ${String(lighthouse).slice(0, 10)}` : 'Lite (gratis)'
     const badges = trust?.badges || {}
 
     return (
@@ -88,11 +88,11 @@ export default function EmployerProfile() {
                 <BrutalCard padding={16}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: KC.mute, textTransform: 'uppercase' }}>Paket</div>
                     <div style={{ fontWeight: 900, fontSize: 18, margin: '6px 0' }}>{planLabel}</div>
-                    <button style={topBtn(KC.orange, '#fff')} onClick={() => openUpgradeModal()}><Crown size={14} /> Lihat paket</button>
+                    <button style={{ ...topBtn('#F59E0B', KC.ink), background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', padding: '10px 16px', fontSize: 13 }} onClick={() => openUpgradeModal()}><Crown size={15} /> Upgrade Premium</button>
                 </BrutalCard>
                 <BrutalCard padding={16}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: KC.mute, textTransform: 'uppercase' }}>Lowongan aktif</div>
-                    <div style={{ fontWeight: 900, fontSize: 26, margin: '6px 0' }}>{active}<span style={{ fontSize: 14, color: KC.mute }}> / {lighthouse ? 5 : 1} (+ lowongan Beacon)</span></div>
+                    <div style={{ fontWeight: 900, fontSize: 26, margin: '6px 0' }}>{active}<span style={{ fontSize: 14, color: KC.mute }}> / {lighthouse ? 5 : 1} (+ lowongan Pro)</span></div>
                     <button style={topBtn()} onClick={() => navigate('employer-jobs')}>Kelola lowongan</button>
                 </BrutalCard>
             </div>

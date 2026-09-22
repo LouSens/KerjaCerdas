@@ -1,4 +1,4 @@
-// Per-applicant hiring tools: AI interview questions (Beacon/Lighthouse) and
+// Per-applicant hiring tools: AI interview questions (Pro/Max) and
 // the post-interview "skill terbukti" confirmation (HR proof = 100% weight).
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -49,8 +49,8 @@ export default function HiringToolsModal({ app, onClose }) {
                 <p style={{ fontSize: 12, color: KC.mute, margin: '2px 0 8px' }}>Fokus pada skill yang baru diklaim. Kuis menyaring, wawancara memastikan.</p>
                 {kitError?.status === 402 && (
                     <div style={{ background: KC.yellowSoft, border: `1px solid ${KC.yellow}`, borderRadius: 9, padding: 12, fontSize: 13 }}>
-                        Pertanyaan wawancara AI tersedia di paket Beacon atau Lighthouse.
-                        <button style={{ ...topBtn(KC.orange, '#fff'), marginLeft: 8 }} onClick={() => { onClose(); openUpgradeModal({ plan: 'beacon', jobId: app.job_id }) }}>Beli Beacon</button>
+                        Pertanyaan wawancara AI tersedia di paket Pro atau Max.
+                        <button style={{ ...topBtn(KC.orange, '#fff'), marginLeft: 8 }} onClick={() => { onClose(); openUpgradeModal({ plan: 'beacon', jobId: app.job_id }) }}>Beli Pro</button>
                     </div>
                 )}
                 {kitError && kitError.status !== 402 && <p style={{ color: KC.rose }}>{kitError.message}</p>}

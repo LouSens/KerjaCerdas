@@ -66,7 +66,7 @@ export default function EmployerDashboard() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
-                <Stat label="Pelamar" value={total} sub={locked ? `${locked} terkunci (Spark)` : 'semua diperingkat'} />
+                <Stat label="Pelamar" value={total} sub={locked ? `${locked} terkunci (Lite)` : 'semua diperingkat'} />
                 <Stat label="Punya skill terbukti" value={withProof} sub="lulus kuis / dikonfirmasi HR" color="#059669" />
                 <Stat label="Sampai wawancara" value={interviews} color={KC.orange} />
                 <Stat label="Diterima" value={hired} color={KC.indigo} />
@@ -90,7 +90,7 @@ export default function EmployerDashboard() {
                             <div>
                                 <div style={{ fontWeight: 800 }}>{j.title}</div>
                                 <div style={{ fontSize: 12, color: KC.mute }}>
-                                    {j.application_count || 0} pelamar · {j.is_active ? 'aktif' : (j.moderation_status === 'published' ? 'ditutup' : 'menunggu moderasi')} · paket {j.plan_tier || 'spark'}
+                                    {j.application_count || 0} pelamar · {j.is_active ? 'aktif' : (j.moderation_status === 'published' ? 'ditutup' : 'menunggu moderasi')} · paket {j.plan_tier === 'spark' ? 'Lite' : (j.plan_tier === 'beacon' ? 'Pro' : 'Max')}
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 6 }}>
@@ -115,7 +115,7 @@ export default function EmployerDashboard() {
                 <BrutalCard>
                     <div style={{ fontWeight: 900 }}>Paket</div>
                     <p style={{ fontSize: 13, margin: '6px 0 10px' }}>
-                        Spark gratis: 1 lowongan aktif, semua pelamar diperingkat. Upgrade ke Beacon atau Lighthouse untuk fitur ekstra.
+                        Lite gratis: 1 lowongan aktif, semua pelamar diperingkat. Upgrade ke Pro atau Max untuk fitur ekstra.
                         untuk pelamar tanpa batas, pertanyaan wawancara AI, dan ekspor.
                     </p>
                     <button style={topBtn(KC.orange, '#fff')} onClick={() => openUpgradeModal()}>Lihat paket</button>

@@ -303,7 +303,7 @@ export default function EmployerJobs() {
                                 <span><b style={{ fontSize: 16 }}>{job.candidates_count}</b> pelamar</span>
                                 <span style={{ fontWeight: 800, textTransform: 'capitalize' }}>Paket: {job.plan_tier}</span>
                                 {job.plan_tier === 'spark' && (
-                                    <button onClick={() => openUpgradeModal({ plan: 'beacon', jobId: job.id })} style={{ background: 'none', border: 'none', color: KC.orange, fontWeight: 800, cursor: 'pointer', padding: 0 }}>Beli Beacon →</button>
+                                    <button onClick={() => openUpgradeModal({ plan: 'beacon', jobId: job.id })} style={{ background: 'none', border: 'none', color: KC.orange, fontWeight: 800, cursor: 'pointer', padding: 0 }}>Beli Pro →</button>
                                 )}
                                 {job.moderation_status === 'published' && (
                                     <button onClick={() => toggleActive(job)} style={{ background: 'none', border: 'none', color: KC.mute, fontWeight: 700, cursor: 'pointer', padding: 0 }}>
