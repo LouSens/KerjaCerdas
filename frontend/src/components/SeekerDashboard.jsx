@@ -111,6 +111,7 @@ export default function SeekerDashboard() {
                             padding: '24px 26px',
                             marginBottom: 20,
                             display: 'flex',
+                            flexWrap: 'wrap',
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             gap: 28,
