@@ -42,6 +42,7 @@ async def seed_auth_user(
             u = SqlUser(
                 id=str(uuid.uuid4()),
                 email=email,
+                name=name,
                 password_hash=_get_seed_password_hash(),
                 role=role,
             )
@@ -50,6 +51,8 @@ async def seed_auth_user(
             # Existing demo users keep their password by default so a normal
             # reseed cannot overwrite a password changed through the app.
             u.role = role
+            if name and not u.name:
+                u.name = name
             if reset_password:
                 u.password_hash = _get_seed_password_hash()
         await session.commit()
