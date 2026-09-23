@@ -431,9 +431,9 @@ class TestSecondReviewFindingsStayFixed:
 
         root = Path(__file__).resolve().parents[3]
         stale = {
-            r"Rp\s?29[.,]?000|Rp29k|(?:Rp\s?)?29\s?rb": "old Beacon price",
-            r"Rp\s?99[.,]?000|Rp99k|(?:Rp\s?)?99\s?rb": "old Lighthouse price",
-            r"Rp\s?25[.,]?000|Rp25k|(?:Rp\s?)?25\s?rb": "old Prism price",
+            r"Rp\s?29[.,]?000\b|Rp29k\b|(?<!\d)(?:Rp\s?)?29\s?rb\b": "old Beacon price",
+            r"Rp\s?99[.,]?000\b|Rp99k\b|(?<!\d)(?:Rp\s?)?99\s?rb\b": "old Lighthouse price",
+            r"Rp\s?25[.,]?000\b|Rp25k\b|(?<!\d)(?:Rp\s?)?25\s?rb\b": "old Prism price",
             # Config carries the price as a BARE integer with no "Rp", so the
             # money patterns above sail straight past it. That is precisely how
             # .env.example kept serving last month's prices while every doc and
@@ -545,8 +545,10 @@ class TestReporterHistoryIsActuallyWritten:
         from backend.app.api.routers.admin import moderate_job
         from backend.app.db.postgres_store import find_reports_for_job, get_repositories
 
-        _ = monkeypatch, moderate_job
-        from tests.unit.test_v2_trust import _post
+        try:
+            from backend.tests.unit.test_v2_trust import _post
+        except ImportError:
+            from tests.unit.test_v2_trust import _post
 
         code = _post(client, employer_account["headers"])["public_code"]
 

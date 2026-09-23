@@ -291,11 +291,11 @@ export default function Sidebar() {
                         border: '1px solid #FFFFFF', display: 'grid', placeItems: 'center',
                         color: '#090A0F', fontWeight: 900, fontSize: 12, flexShrink: 0,
                     }}>
-                        {(user?.name || 'U').charAt(0).toUpperCase()}
+                        {(user?.name || profile?.full_name || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
                         <p className="text-xs font-extrabold text-white truncate leading-tight">
-                            {user?.name || 'Pengguna'}
+                            {user?.name || profile?.full_name || 'Pengguna'}
                         </p>
                         <p className="text-[10px] text-white/40 font-mono truncate leading-tight">
                             {user?.email || '—'}

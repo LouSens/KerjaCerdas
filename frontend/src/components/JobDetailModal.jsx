@@ -10,7 +10,6 @@ export default function JobDetailModal({ job, onClose }) {
     const isMobile = useIsMobile()
     const { applyJob, toggleSaveJob, isJobSaved, isJobApplied } = useStore()
     const [xaiExpanded, setXaiExpanded] = useState(true)
-    const [toastMessage, setToastMessage] = useState(null)
     const [appliedLocally, setAppliedLocally] = useState(false)
 
     if (!job) return null
@@ -78,13 +77,9 @@ export default function JobDetailModal({ job, onClose }) {
         // applyJob already reports success/failure via its own toast and
         // never throws — it resolves to undefined on failure — so success
         // here must be read from the return value, not assumed up front.
-        const res = await applyJob(jobId)
+        const res = await applyJob(jobId, '', company)
         if (res) {
             setAppliedLocally(true)
-            setToastMessage(`Lamaran terkirim ke ${company}`)
-            setTimeout(() => {
-                setToastMessage(null)
-            }, 2600)
         }
     }
 
@@ -108,29 +103,6 @@ export default function JobDetailModal({ job, onClose }) {
             }}
         >
             <DesignStyles />
-
-            {/* Floating Toast Notification */}
-            {toastMessage && (
-                <div style={{
-                    position: 'fixed', top: 20, left: 20, right: 20, zIndex: 1100,
-                    maxWidth: 420, margin: '0 auto', background: '#FFFFFF',
-                    border: `1.5px solid ${KC.ink}`, borderRadius: 11,
-                    boxShadow: `3px 3px 0 ${KC.ink}`, padding: '12px 14px',
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    animation: 'kcSlideUp .3s both',
-                }}>
-                    <span style={{
-                        width: 22, height: 22, borderRadius: '50%', background: '#10B981',
-                        display: 'grid', placeItems: 'center', color: '#fff',
-                        fontWeight: 900, fontSize: 12, flexShrink: 0,
-                    }}>
-                        ✓
-                    </span>
-                    <span style={{ fontWeight: 800, fontSize: 12.5, color: KC.ink }}>
-                        {toastMessage}
-                    </span>
-                </div>
-            )}
 
             {/* Modal Body */}
             <div
