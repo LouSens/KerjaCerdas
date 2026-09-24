@@ -48,5 +48,5 @@ npm run build
 - **Verification badges** — visual indicators on seeker/employer cards for completed identity checks (currently backed by demo-mode verification — see [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)).
 - **Floating AI Advisor** — a persistent chat widget available across the authenticated app for conversational job search and career questions.
 
-See [`docs/PRODUCT_FEATURES.md`](../docs/PRODUCT_FEATURES.md) for full feature descriptions and [`docs/PRODUCT_OVERVIEW.md`](../docs/PRODUCT_OVERVIEW.md) for the problem this UI is designed around.
+See [`docs/PRODUCT_FEATURES.md`](../docs/PRODUCT_FEATURES.md) for full feature descriptions.
 </div>

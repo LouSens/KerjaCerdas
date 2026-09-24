@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     # count of accounts measures coordination, not harm.
     moderation_report_threshold: int = 3
 
-    # ── Plans (prices in IDR; see docs/BUSINESS_MODEL.md) ────────────────
+    # ── Plans (prices in IDR) ────────────────────────────────────────────
     plan_price_beacon: int = 49_000  # per job, 30 days
     plan_price_lighthouse: int = 149_000  # per 30 days, up to 5 active jobs
     plan_price_prism: int = 15_000  # seeker, per 30 days

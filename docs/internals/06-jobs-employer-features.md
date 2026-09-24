@@ -31,8 +31,7 @@ Files:
 **Contact details are never sold.** An applicant who applies has already given their contact to that
 employer, so it is theirs for free; a candidate who has *not* applied stays anonymous and there is no
 endpoint that reveals them. Employers pay per job (Beacon) or per month (Lighthouse) for ranking,
-interview kits and export — never for access to a person. See
-[BUSINESS_MODEL.md](../BUSINESS_MODEL.md).
+interview kits and export — never for access to a person.
 
 ## Moderation & share links
 

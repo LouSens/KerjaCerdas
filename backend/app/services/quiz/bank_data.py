@@ -2,8 +2,8 @@
 
 Scenario-based multiple choice, Bahasa Indonesia, graded by answer key only
 (no AI call per attempt). Every item is seeded with `reviewed=False`: before
-public launch an HR practitioner / teacher must review each question (see
-docs/BUSINESS_MODEL.md, one-time cost "quiz bank review"). Six items per skill;
+public launch an HR practitioner / teacher must review each question (a
+budgeted one-time "quiz bank review" cost). Six items per skill;
 each quiz draws 5 at random, so the bank must grow to ~30 per skill before
 leaked questions stop mattering.
 
