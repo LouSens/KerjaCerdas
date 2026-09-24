@@ -55,7 +55,7 @@ flowchart LR
 
 - **Kedaulatan Perlindungan Data (Vertex AI VPC):** *Vertex AI Endpoint* memastikan data *prompt* LLM dieksekusi dalam ruang komputasi *Virtual Private Cloud (VPC)* terisolasi dengan *Zero Data Retention*.
 - **Micro-Tuning Berkelanjutan (LoRA):** Menala model secara internal dengan dialek khas rekrutmen Indonesia (nomenklatur kampus lokal, istilah teknis Disnaker).
-- **Payment Gateway Terintegrasi:** Otomatisasi penagihan paket Beacon (Rp49.000/lowongan), Lighthouse (Rp149.000/bulan), dan Prism (Rp15.000/30 hari) lewat Midtrans/Xendit — menggantikan aktivasi manual oleh admin. Lihat [Business Model](BUSINESS_MODEL.md).
+- **Payment Gateway Terintegrasi:** Otomatisasi penagihan paket Beacon (Rp49.000/lowongan), Lighthouse (Rp149.000/bulan), dan Prism (Rp15.000/30 hari) lewat Midtrans/Xendit — menggantikan aktivasi manual oleh admin.
 
 ### 1.4 AI Agent & Matching Algorithm Roadmap
 
@@ -166,7 +166,7 @@ trackEvent('cv_uploaded', {
 ### 4.1 Rencana Budget Operasional Bulan ke-1 (Fase Validasi Pilot)
 
 > **Catatan:** rincian biaya bersumber, unit economics, proyeksi 24 bulan, skenario, dan kebutuhan
-> pendanaan v2 ada di [BUSINESS_MODEL.md](BUSINESS_MODEL.md). Tabel di bawah adalah rencana pilot
+> pendanaan v2 ada di dokumen model bisnis (di luar repositori). Tabel di bawah adalah rencana pilot
 > versi ringkas dan harus dibaca bersama dokumen itu bila ada selisih angka.
 Anggaran ini diajukan untuk mendanai peluncuran pilot awal (rentang budget Rp 2–5 juta/bulan):
 

@@ -22,7 +22,7 @@ A functional prototype of an AI talent-matching platform that ranks candidates b
 
 ## 📌 Platform Overview
 
-**KerjaCerdas** memecahkan masalah ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja melalui pendekatan AI semantik. Untuk melihat detail latar belakang masalah dan perbedaan dengan portal konvensional, silakan baca [Product Overview](docs/PRODUCT_OVERVIEW.md).
+**KerjaCerdas** memecahkan masalah ketimpangan ganda (*Triple Mismatch*) di pasar tenaga kerja melalui pendekatan AI semantik.
 
 ## 🎯 Fitur Utama
 
@@ -511,11 +511,8 @@ KerjaCerdas/
 │
 ├── docs/                     # Dokumentasi Resmi
 │   ├── ARCHITECTURE.md       # Arsitektur Sistem & Pemetaan 3-Layer (UX/Logic/Infra)
-│   ├── PRODUCT_OVERVIEW.md   # Masalah, Pengguna, Use Case, Model Bisnis Ringkas, Tim
 │   ├── PRODUCT_FEATURES.md   # Deskripsi Detail Fitur Utama Produk
-│   ├── BUSINESS_MODEL.md     # Dokumen Detail Keuangan, Arus Kas & Anggaran Pre-Seed
 │   ├── ROADMAP.md            # Roadmap Teknis, A/B Testing & Skalabilitas Cloud
-│   ├── DEMO_GUIDE.md         # Panduan Live Demo
 │   ├── DEMO_ACCOUNTS.md      # Daftar Akun Pengujian (Pre-Seeded)
 │   ├── API_SPEC.md           # Spesifikasi API Lengkap (semua endpoint + schema)
 │   ├── SEQUENCE_DIAGRAMS.md  # Diagram Alur Mermaid (Auth, AI, Bukti Skill, Moderasi, dll.)
@@ -527,16 +524,13 @@ KerjaCerdas/
 
 ## 📚 Dokumen Referensi
 
-Seluruh dokumentasi produk, teknis, dan bisnis ada di folder `docs/`. Mulai dari [ARCHITECTURE.md](docs/ARCHITECTURE.md) untuk gambaran sistem secara keseluruhan.
+Seluruh dokumentasi produk dan teknis ada di folder `docs/`. Mulai dari [ARCHITECTURE.md](docs/ARCHITECTURE.md) untuk gambaran sistem secara keseluruhan.
 
 | Dokumen | Deskripsi | Tautan |
 |---|---|---|
 | **Arsitektur** | Arsitektur sistem, pemetaan Layer 1/2/3 (UX/System Logic/Technical Architecture), dan status Built vs Planned, disitasi ke file kode. | [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| **Ringkasan Produk** | Masalah, pengguna, use case inti, diferensiasi, dan tim. | [PRODUCT_OVERVIEW.md](docs/PRODUCT_OVERVIEW.md) |
 | **Fitur Produk** | Uraian mendalam kapabilitas AI, Explainable AI, Phone OTP, Job Pack Uploader, dan pelacakan lamaran. | [PRODUCT_FEATURES.md](docs/PRODUCT_FEATURES.md) |
-| **Model Bisnis** | Model monetisasi, budget operasional, peta pemicu upgrade infrastruktur, dan proyeksi finansial. | [BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) |
 | **Roadmap** | Roadmap infrastruktur cloud, A/B testing, integrasi mitra, dan roadmap algoritma matching/AI agent. | [ROADMAP.md](docs/ROADMAP.md) |
-| **Panduan Live Demo** | Skrip presentasi langkah demi langkah untuk alur seeker dan employer. | [DEMO_GUIDE.md](docs/DEMO_GUIDE.md) |
 | **Akun Demo** | Daftar seluruh akun uji coba (*pre-seeded credentials*). | [DEMO_ACCOUNTS.md](docs/DEMO_ACCOUNTS.md) |
 | **Spesifikasi API** | Kontrak lengkap semua endpoint FastAPI: skema request/response, rate limit, middleware, dan error codes. | [API_SPEC.md](docs/API_SPEC.md) |
 | **Diagram Alur (Sequence)** | Diagram Mermaid untuk alur kerja kritis: Auth, AI Agent, CV Upload, Bukti Skill, Moderasi lowongan, dan lainnya. | [SEQUENCE_DIAGRAMS.md](docs/SEQUENCE_DIAGRAMS.md) |
