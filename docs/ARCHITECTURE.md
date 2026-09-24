@@ -41,7 +41,7 @@ Matching, skill-gap computation, and intent routing run as procedural Python in 
 
 | Capability | Input | Processing | Algorithm/Model | Output |
 |---|---|---|---|---|
-| CV parsing | PDF bytes, magic-byte validated (`%PDF-`), 10 MB cap | Gemini multimodal extraction | Gemini 3.1 Flash | Structured skills/experience/education JSON |
+| CV parsing | PDF bytes, magic-byte validated (`%PDF-`), 10 MB cap | Gemini multimodal extraction | `gemini-3.1-flash-lite` (fallback chain in `settings.py`) | Structured skills/experience/education JSON |
 | Embedding | Seeker/job text | Task-typed embedding calls (`RETRIEVAL_QUERY` / `RETRIEVAL_DOCUMENT`) | Gemini embedding model, 768-dim (MRL-truncated from 3072) | Vector stored in a `pgvector` column |
 | Vector search | Seeker embedding | Below 500 active rows: every row scored directly (no ANN — more correct at this scale, see internals/01). Above it: HNSW ANN search (`ef_construction=64, m=16`), in-process scan fallback if the index is unavailable | pgvector HNSW | Top-K nearest job candidates |
 | Hybrid ranking | Vector similarity + structured profile/job fields + **skill proof levels** | `SemanticMatcher` reranking (`matcher.py`) with proof weights from `matching/evidence.py` | `0.35` cosine + `0.40` proof-weighted skills (proof deliberately outweighs text similarity — cosine is what keyword stuffing inflates) (claimed 0.30 / quiz 0.85 / HR-confirmed 1.00; required skills 80%, nice-to-have 20%) + `0.15` experience + `0.10` education vs `education_min`. The old flat `0.05` recency term was removed — it was identical for every candidate | Ranked `MatchResult` list with band, per-factor breakdown and per-skill proof status |
@@ -50,8 +50,8 @@ Matching, skill-gap computation, and intent routing run as procedural Python in 
 | PII redaction | Any text heading to an LLM | Fixed-rule removal of emails, phone numbers and 16-digit NIKs **before** the call (prompt instructions are only a second layer). Text-based CVs are extracted locally and redacted; only scanned PDFs go as documents | `services/privacy/redact.py`, wired into `llm_factory` and `pdf_parser` | Redacted prompt |
 | Cost accounting | Every chat/parse call | Tokens logged to `ai_logs` (task, model, in/out) | `GET /admin/metrics` × Gemini price list × USD/IDR | Measured Rupiah cost per action |
 | Skill gap | Seeker skill set, target job's required skills | Deterministic set-difference, then Gemini-generated course narration | Set difference + Gemini text generation | Missing-skill list, action plan, course recommendations |
-| Intent routing | Advisor chat message | Gemini LLM classification with a regex fallback | Gemini 3.1 Flash / regex | Routes procedurally to matcher, skill-gap, or advisor logic |
-| NL response synthesis | Structured result from whichever path ran | Single LangGraph node invocation | Gemini via LangGraph `agent_node` | Natural-language response, JSON (not streamed) |
+| Button intent | Advisor chat message + optional `explicit_intent` from a UI button (`match_jobs` / `advise`) | No classification: the matcher always runs, and the intent is passed to the model as a hint line | — | Hint in the prompt; the response `intent` field is hardcoded |
+| NL response synthesis | Seeker name, profile skill list and the message (not the match list) | Single LangGraph node invocation | Gemini via LangGraph `agent_node` | Natural-language response, JSON (not streamed) |
 | Employer resource ownership | Employer's job/candidate mutation requests | Per-endpoint check `job.employer_id == employer.id` | Deterministic guard at every mutating call site in `employer.py` | 403/404 on cross-tenant access |
 | A/B experiment analysis | Logged events (`job_viewed`, `cv_uploaded`, `apply_submitted`, …) | — | — | Event capture only (`POST /api/v1/events/track`); no aggregation job, dashboard, or retraining loop yet |
 

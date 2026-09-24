@@ -1,6 +1,8 @@
 # KerjaCerdas — Demo Accounts
 
-All accounts use the password set in `SEED_DEFAULT_PASSWORD`.
+These accounts exist in the **demo deployment's database on Replit**. A local database starts empty: run `python -m scripts.seed_all` (see the README Quick Start) to create the same accounts locally.
+
+All accounts use the password set in `SEED_DEFAULT_PASSWORD` at seed time, so the Replit demo and a local seed can have different passwords.
 
 ## Seeker Accounts
 
