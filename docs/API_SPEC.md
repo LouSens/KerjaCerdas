@@ -882,11 +882,26 @@ call). Passing (4/5) sets that skill's proof level to `quiz` for 180 days and re
 writes no evidence. `proof_granted` in the response says which of the two happened.
 Returns which answers were right — never which option was correct.
 
+### `POST /api/v1/quiz/abandon`
+
+Body `{ "attempt_id": "…", "elapsed_seconds": 42 }` (`elapsed_seconds` optional; measured from the
+attempt's start when omitted). Called when a seeker leaves a quiz before submitting. Under 30 seconds
+the attempt stays open (`"status": "in_progress"`, `"used_attempt": false`). From 30 seconds on it is
+closed as failed with score 0 (`"status": "abandoned"`, `"used_attempt": true`), so leaving a quiz to
+see the questions still counts as an attempt. An already submitted attempt is returned unchanged.
+`404` if the attempt is not this seeker's.
+
 ---
 
 ## Public Jobs Router — `/api/v1/public/jobs`
 
 The shareable job link / QR surface. Rate limit: **60 / 60 s**.
+
+### `GET /api/v1/public/jobs/rules`
+
+The published posting rulebook, `{ "rules": [...] }`: the same list shown to employers before posting,
+to seekers when reporting, and to the AI reviewer. Source of truth: `services/trust/rules.py`
+(human-readable copy in [`RULES.md`](RULES.md)).
 
 ### `GET /api/v1/public/jobs/{code}`
 

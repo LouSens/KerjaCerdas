@@ -13,12 +13,12 @@ This directory contains the FastAPI-powered backend that orchestrates the AI age
 
 ## 🤖 AI Pipeline
 
-This is not a multi-agent orchestrator. It's a procedural pipeline (`route_intent → run_matcher → run_skill_gap/run_advisor → compose_response`, in `backend/app/agents/graph/nodes.py`), called directly from `agent.py`, plus **one** LangGraph node (`START → agent_node → END`) that makes a single Gemini call to synthesize the final natural-language reply. There is no orchestrator/agent-to-agent handoff and no tool-calling loop — see `docs/ARCHITECTURE.md` for the full architecture and roadmap.
+This is not a multi-agent orchestrator. It's procedural code inline in `routers/agent.py` (matching, a token gate, a hallucination guard) plus **one** LangGraph node (`START → agent_node → END`) that makes a single Gemini call to synthesize the final natural-language reply. There is no orchestrator/agent-to-agent handoff and no tool-calling loop — see `docs/ARCHITECTURE.md` for the full architecture and roadmap.
 
-1. **Intent routing**: classifies the message (Gemini zero-shot JSON with a regex fallback), procedurally, before any graph is invoked.
-2. **Matching**: `SemanticMatcher` — pgvector HNSW search + structured hybrid reranking.
-3. **Skill gap**: deterministic set-difference + Gemini-narrated course recommendations.
-4. **Response synthesis**: the single LangGraph node calls Gemini to phrase the final reply in Bahasa Indonesia.
+1. **Matching** (every chat message): `SemanticMatcher` — pgvector HNSW search + structured hybrid reranking. There is no intent classifier; a UI button's intent is only passed to the model as a hint.
+2. **Token gate**: if no job carries any relevance signal, a templated reply is returned without calling the LLM.
+3. **Response synthesis**: the single LangGraph node calls Gemini to phrase the reply in Bahasa Indonesia. The match cards go to the UI separately; job IDs not in the DB are stripped.
+4. **Skill gap** (separate endpoint, `POST /api/v1/seeker/skill-gap`): deterministic set-difference + Gemini-narrated course recommendations via `nodes.py`'s `_recommend_courses`.
 
 ## 🛠️ Development Setup
 

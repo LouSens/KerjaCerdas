@@ -39,7 +39,7 @@ flowchart LR
 
 > **Status: sudah dibangun, bukan lagi target.** Seluruh tiga item di bawah sudah berjalan di repo saat ini — `docker-compose.prod.yml` (image dari GHCR, health check, Supabase pooler sebagai `DATABASE_URL`), `backend/alembic/` (migrasi terkelola, dijalankan otomatis oleh `[deployment]` di `.replit` sebelum start), dan pipeline CI (`.github/workflows/ci.yml` — lint, `pip-audit`, unit test dengan coverage gate — plus `.github/workflows/release.yml` yang mem-build & mem-push image ke GHCR pada tag rilis). Deployment harian berjalan di Replit (autoscale, lihat `.replit`); `docker-compose.prod.yml` melayani deployment VPS mandiri. Database terkelola saat ini adalah **Supabase** (pooler Postgres+pgvector terkelola), bukan instance mandiri — sehingga sebagian tujuan "Cloud SQL terkelola" di Fase 2 di bawah sudah tercapai lebih awal lewat Supabase; migrasi ke GCP Cloud SQL tetap menjadi opsi Fase 2 jika kebutuhan region/HA berubah, bukan prasyarat yang belum terpenuhi.
 
-- **pgvector & LangGraph-Assisted Pipeline:** Vektor 768-dimensi (MRL-truncated dari 3072-dimensi Gemini Embedding 2) diolah langsung di PostgreSQL dengan indeks HNSW (`ef_construction=64, m=16`).
+- **pgvector & LangGraph-Assisted Pipeline:** Vektor 768-dimensi (MRL-truncated, model `gemini-embedding-1`) diolah langsung di PostgreSQL dengan indeks HNSW (`ef_construction=64, m=16`).
 - **Alembic ORM Migrations:** Skema tabel dikelola progresif menggunakan Alembic, menjamin *Zero-Downtime Migration*.
 - **Injeksi Kontainer Otomatis:** Infrastruktur diorkestrasi mutlak menggunakan Docker Compose, mendemonstrasikan keandalan peluncuran (*plug-and-play*).
 

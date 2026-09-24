@@ -37,10 +37,10 @@ Detail lengkap mengenai fitur produk dapat dilihat di [Product Features](docs/PR
 
 ## 🚀 Pembaruan MVP v1.0.0 (Latest Release)
 Sistem telah berevolusi menjadi arsitektur yang tangguh dan siap pakai untuk uji beta publik, dengan peningkatan berikut:
-- **Performa Backend**: Pemrosesan asinkron untuk ekstraksi CV (<200ms latency), TTL Caching pada korpus pencarian, dan index HNSW pgvector.
+- **Performa Backend**: Pemrosesan asinkron untuk ekstraksi CV, cache lowongan in-memory (TTL 5 menit), dan index HNSW pgvector.
 - **Agentic AI & Keamanan**: *Token Efficiency Gate* (mencegah *cost overrun* LLM jika *vector match* terlalu rendah), *Hallucination Guards*, serta filter kata teknis untuk UI yang lebih humanis.
 - **UX & Frontend**: Alur Onboarding Wizard yang ramah, *Empty States* cerdas dengan rekomendasi, *Mobile-First CSS*, dukungan pengeditan profil pasca-unggah PDF, dan sistem Notifikasi Global (Toast) untuk *Error/Auth Session*.
-- **DevOps & CI/CD**: Workflow terotomasi dengan 4 fase pengecekan (Linting, Unit Test, Integrasi Database, Latency Benchmark), serta *Docker Compose* produksi yang dioptimasi.
+- **DevOps & CI/CD**: Workflow CI dengan 5 job (lint & audit backend, lint & build frontend, unit test, integrasi database, benchmark matching), serta *Docker Compose* produksi.
 
 ## 🧩 Component Architecture & Business Value
 
@@ -52,17 +52,17 @@ Setiap komponen dalam aplikasi ini dirancang tidak hanya untuk fungsi teknis, me
 | **`LandingHero`** | Entry point SPA (termasuk header navigasi & footer publik) dengan direct route navigation. | Mengkonversi pengunjung (Lead Gen) melalui CVR yang dioptimasi dan copy persuasif. |
 | **`CVUploader`** | Menghandle PDF parsing multipart form data + auto-navigate ke match. | Menghilangkan friksi data entry manual. AI Gemini mengekstrak data JSON dalam detik. |
 | **`SeekerDashboard`** | Mengorkestrasi data profil (trust score, matches) dari `useStore`. | Memberikan umpan balik instan ke kandidat, membangun retensi Active Users. |
-| **`SeekerMatchResults`** | Render array `matches` dari vector search + HNSW distance. | Menyajikan hasil pencocokan berbasis band (Strong, Possible, Stretch). |
+| **`SeekerMatchResults`** | Render hasil ranking hybrid (4 komponen skor) dari mesin matching. | Menyajikan hasil pencocokan berbasis band (Strong, Possible, Stretch). |
 | **`JobDetailModal`** | Modal detail lowongan dengan **Explainable AI Score Breakdown**. | Transparansi 4 komponen skor pencocokan (Semantik, Skill, Pengalaman, Pendidikan) untuk trust kandidat. |
 | **`ApplicationsPage`** | Visual milestone pipeline status lamaran interaktif. | Menghilangkan ketidakpastian kandidat dengan pelacakan tahapan lamaran real-time. |
 | **`SkillGapPanel`** | Membandingkan array `skills` pengguna dengan top lowongan (Set Difference). | Agregasi Ed-Tech: menghubungkan pengguna ke kursus/bootcamp partner (potensi komisi referal). |
-| **`FloatingAdvisor`** | Interface chatbot terhubung ke LangGraph response node. | Memberikan layanan career coaching 24/7 berskala massal dengan Zero Marginal Cost. |
+| **`FloatingAdvisor`** | Interface chat ke LangGraph response node (satu panggilan Gemini per pesan, tanpa tool calling). | Tanya jawab karier kapan saja, dengan kuota pesan harian per paket. |
 | **`EmployerDashboard`** | Dasbor analitik (KPIs) pelamar real-time per lowongan dengan context passing. | Meminimalisasi beban kognitif HRD dengan funnel view pelamar yang jelas. |
 | **`EmployerPostJob`** | Wizard pasang lowongan (1: Profil $\rightarrow$ 2: Aturan tayang/AutoMod $\rightarrow$ 3: Lowongan). | Menjelaskan aturan tayang sebelum publish, sehingga lowongan tidak ditahan karena hal yang bisa dihindari. |
 | **`JobPackUploader`** | Drag-and-drop uploader untuk file PDF berisi kumpulan lowongan massal. | Mereduksi waktu input lowongan dari jam menjadi detik dengan AI auto-parsing. |
 | **`EmployerProfile`** | Data perusahaan + badge kepercayaan nyata (email terverifikasi, email domain perusahaan, ditinjau admin) dan paket aktif. | Kredibilitas tanpa dokumen legal pihak ketiga; angka paket/lowongan diambil dari API, bukan placeholder. |
 | **`EmployerCandidates` / `ApplicantList` / `TalentSearch`** | Tab Pelamar (diperingkat skor proof-weighted, badge bukti, status pipeline, pertanyaan wawancara AI, konfirmasi "skill terbukti", ekspor CSV) dan Talent pool anonim. | HR mewawancarai kandidat yang layak; kandidat yang belum melamar tetap anonim (UU PDP). |
-| **`PricingPage`** | Konfigurasi limit tiering, paywall, dan ATS enterprise coming soon. | Transparansi harga B2B/B2C dengan strategi freemium untuk akuisisi awal agresif. |
+| **`UpgradeModal`** | Pilihan paket & upgrade untuk seeker dan employer; pembayaran manual (QRIS/transfer) diaktifkan admin. | Harga transparan; membayar tidak pernah mengubah skor maupun peringkat. |
 | **`SkillProofPage` / `QuizModal`** | Halaman "Bukti Skill": verifikasi email (OTP) + kuis skill bertimer yang menghasilkan badge ✓ Terbukti. | Pencari kerja membuktikan skill sekali dan dipakai di semua lamaran. KerjaCerdas **tidak** mengumpulkan NIK/KTP/ijazah/NPWP. |
 | **`TrustCenter`** | Badge kepercayaan employer, pengajuan "Ditinjau admin", pedoman lowongan, status strike. | Kepercayaan dibangun in-house tanpa Dukcapil/DJP. |
 | **`PublicJobPage` / `AdminPanel`** | Halaman lamaran publik `/j/<kode>` (target QR), panel admin (moderasi, tinjauan usaha, aktivasi paket, bank soal, metrik). | Distribusi lowongan dan operasi harian dalam satu aplikasi. |
@@ -110,9 +110,9 @@ flowchart TD
     classDef action fill:#00D2D3,stroke:#090A0F,stroke-width:2px,color:#090A0F,font-weight:bold
 
     A["📊 Dasbor Pencari Kerja\n(Metrik & Top 3 Match)"]:::page --> B["📄 Profil Saya"]:::page
-    B -->|AI Gemini 3.1 Parser| C["🎯 Hasil Pencocokan AI\n(Semantic & Skill Match)"]:::ai
+    B -->|AI Gemini Parser| C["🎯 Hasil Pencocokan AI\n(Semantic & Skill Match)"]:::ai
     
-    C -->|Buka Detail| D["🔍 Modal Detail Lowongan\nExplainable AI 5-Dimensi"]:::modal
+    C -->|Buka Detail| D["🔍 Modal Detail Lowongan\nExplainable AI 4 Komponen"]:::modal
     D -->|Lamar Instan| E["📬 Pelacakan Status Lamaran\n(Milestone Timeline)"]:::action
     D -->|Simpan| F["⭐ Lowongan Tersimpan"]:::page
     
@@ -173,9 +173,9 @@ flowchart TD
 
 | 18. Bulk Job Pack PDF Uploader | 19. Evaluasi Pelamar (bukti skill) | 20. Kepercayaan & Badge Perusahaan |
 |:---:|:---:|:---:|
-| <img src="docs/assets/18_employer_job_pack_upload.png" width="380" alt="Job Pack Upload"> | <img src="docs/assets/19_employer_candidates.png" width="380" alt="Candidates Shortlist"> | <img src="docs/assets/20_employer_verification.png" width="380" alt="Tax Verification"> |
+| <img src="docs/assets/18_employer_job_pack_upload.png" width="380" alt="Job Pack Upload"> | <img src="docs/assets/19_employer_candidates.png" width="380" alt="Candidates Shortlist"> | <img src="docs/assets/20_employer_verification.png" width="380" alt="Trust Badges"> |
 
-| 21. Profil Entitas & Legalitas Bisnis |
+| 21. Profil Perusahaan & Paket Aktif |
 |:---:|
 | <img src="docs/assets/21_employer_profile.png" width="420" alt="Employer Profile"> |
 
@@ -186,7 +186,7 @@ flowchart TD
 ### Persyaratan Sistem
 - **Docker Desktop** terinstal dan berjalan pada sistem Anda.
 - **Git** untuk mengklon repositori.
-- **Kunci API Gemini (`GEMINI_API_KEY`)** dari Google AI Studio (Wajib untuk fitur *Resume Parsing* dan *Skill Gap Analyzer*).
+- **Kunci API Gemini (`GEMINI_API_KEY`)** dari Google AI Studio. Diperlukan untuk fitur AI (parsing CV, rekomendasi kursus, chat advisor); tanpa kunci, parsing CV memakai heuristik teks dan chat advisor tidak aktif.
 
 ### Langkah 1 — Kloning & Konfigurasi
 ```powershell
@@ -221,17 +221,17 @@ Setelah semua kontainer berjalan (*healthy*), buka tautan berikut di *browser*:
 - **Dokumentasi API (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ### Langkah 4 — Uji Coba (Akun Demo)
-Gunakan kredensial bawaan berikut untuk langsung mengeksplorasi fitur tanpa perlu mendaftar dari awal:
+Akun demo di [DEMO_ACCOUNTS.md](docs/DEMO_ACCOUNTS.md) sudah tersedia di **database deployment demo (Replit)**. Database lokal dimulai kosong: akun-akun itu baru ada setelah Anda menjalankan skrip seed di Langkah 2, dengan sandi sesuai `SEED_DEFAULT_PASSWORD` yang Anda berikan (pada contoh di atas: `demo`).
+
+Setelah seed lokal, coba:
 
 **A. Sebagai Pencari Kerja (Seeker):**
 - **Email:** `budi.santoso@example.com`
-- **Sandi:** `demo`
-- *(Fokus Uji Coba: Unggah CV, AI Job Matching, Skill Gap Analyzer)*
+- *(Fokus Uji Coba: Unggah CV, AI Job Matching, Skill Gap Analyzer, Bukti Skill)*
 
 **B. Sebagai HRD Perusahaan (Employer):**
 - **Email:** `hr@goto.id` (GoTo Group) atau `hr@mandiri.id` (Bank Mandiri)
-- **Sandi:** `demo`
-- *(Fokus Uji Coba: Pembuatan Lowongan Instan, AI Candidate Shortlisting, Buka Akses Kontak)*
+- *(Fokus Uji Coba: Pasang Lowongan + AutoMod, Pelamar Terperingkat, Pertanyaan Wawancara AI, Ekspor CSV)*
 
 ### Langkah 5 — Menghentikan & Membersihkan Sistem
 Jika ingin menghentikan sistem, tekan `CTRL+C` pada terminal yang menjalankan *docker-compose*.
@@ -260,65 +260,58 @@ Proyek ini menggunakan **GitHub Actions** (`release.yml`) untuk membangun (build
 
 ## 🧠 Arsitektur Sistem Inti
 
-Platform ini menggunakan **LangGraph** sebagai response layer, **Gemini Embedding 2** (768-dim, MRL-truncated dari 3072-dim) untuk embedding semantik, dan **Gemini 3.1 Flash** untuk generasi teks. Arsitektur saat ini berupa *single-node LangGraph graph* yang menghasilkan respons natural-language, sementara logika matching dan skill-gap dijalankan secara procedural sebelum graph dieksekusi.
+Platform ini menggunakan **LangGraph** sebagai response layer, **`gemini-embedding-1`** (768-dim, MRL-truncated) untuk embedding semantik, dan **`gemini-3.1-flash-lite`** untuk generasi teks (dengan fallback berantai ke model lain bila kuota habis; lihat `backend/app/config/settings.py`). Arsitektur saat ini berupa *single-node LangGraph graph* yang menghasilkan respons natural-language, sementara matching dan skill-gap dijalankan secara prosedural di luar graph.
 
-> **Status:** Fungsi-fungsi node (router, matcher, skill_gap, advisor, compose) sudah diimplementasikan di `nodes.py` tetapi dijalankan secara prosedural di API router — belum diwiring sebagai multi-node LangGraph StateGraph. Migrasi ke topologi multi-node yang sesungguhnya ada di roadmap teknis.
+> **Status:** Tidak ada intent router terpisah. `routers/agent.py` selalu menjalankan matcher, lalu memanggil satu node LangGraph untuk menulis jawaban; analisis skill-gap adalah endpoint terpisah di `routers/seeker.py`. `nodes.py` kini hanya berisi helper rekomendasi kursus, dan tool calling nonaktif. Topologi multi-node ada di roadmap teknis `[PLANNED]`.
 
 ```mermaid
 flowchart TD
-    %% Accurate Architecture Diagram
     classDef user fill:#1A1A1A,stroke:#646CFF,stroke-width:2px,color:#FFF,font-weight:bold
     classDef api fill:#2D3748,stroke:#38B2AC,stroke-width:2px,color:#FFF,font-weight:bold
     classDef node fill:#4A5568,stroke:#F6E05E,stroke-width:3px,color:#FFF,font-weight:bold
     classDef proc fill:#2B6CB0,stroke:#63B3ED,stroke-width:2px,color:#FFF
     classDef db fill:#276749,stroke:#68D391,stroke-width:2px,color:#FFF
     classDef llm fill:#702459,stroke:#D6BCFA,stroke-width:2px,color:#FFF,font-weight:bold
-    classDef future fill:#4A5568,stroke:#A0AEC0,stroke-width:2px,color:#CBD5E0,stroke-dasharray: 5 5
 
     User(("👤 Seeker / Employer")):::user
 
-    subgraph API_Layer ["API Gateway & Security Layer"]
-        FastAPI["⚡ FastAPI / ASGI"]:::api
-        Middleware["🛡️ Rate Limiter + JWT Auth\n+ PII Redaction"]:::api
+    subgraph API_Layer ["API & Security Layer"]
+        FastAPI["⚡ FastAPI"]:::api
+        Middleware["🛡️ Rate Limiter + JWT Auth\n+ Input Sanitization"]:::api
         FastAPI --- Middleware
     end
 
-    subgraph Processing ["🧠 AI Processing Pipeline (Procedural)"]
-        Router["🔀 Intent Router\n(Gemini LLM / Regex Fallback)"]:::proc
-        Matcher["🔍 SemanticMatcher\n(Hybrid Ranking)"]:::proc
-        SkillGap["🎯 Skill Gap Compute\n(Deterministic + Course Recs)"]:::proc
-        Advisor["💬 Career Advisor\n(Gemini LLM)"]:::proc
+    subgraph Chat ["💬 POST /agent/invoke (routers/agent.py)"]
+        Matcher["🔍 SemanticMatcher\n(Hybrid Ranking, selalu dijalankan)"]:::proc
+        Gate{"Token gate:\nada sinyal relevansi?"}:::proc
+        AgentNode["📝 LangGraph node\nSTART → agent → END"]:::node
     end
 
-    subgraph LangGraph_Node ["📝 LangGraph Response Layer"]
-        AgentNode{"Single Agent Node\nSTART → agent → END"}:::node
+    subgraph Gap ["🎯 Skill gap (routers/seeker.py)"]
+        SkillGap["Hitung gap (deterministik)\n+ rekomendasi kursus"]:::proc
     end
 
     subgraph Infrastructure ["Vector & LLM Engine"]
-        Gemini{"✨ Google Gemini\nEmbedding 2 (768-dim) + 3.1 Flash"}:::llm
+        Redact["🔒 PII Redaction\n(email, NIK, telepon)"]:::api
+        Gemini{"✨ Google Gemini\nembedding-1 (768-dim) + 3.1 Flash-Lite"}:::llm
         PG[("🐘 PostgreSQL 16\n(pgvector HNSW)")]:::db
     end
 
     User -->|HTTP JSON| FastAPI
-    FastAPI --> Router
-    Router -->|match_jobs| Matcher
-    Router -->|skill_gap| SkillGap
-    Router -->|advise| Advisor
-    Matcher --> AgentNode
-    SkillGap --> AgentNode
-    Advisor --> AgentNode
-    AgentNode -->|final_response| FastAPI
-
+    FastAPI --> Matcher
     Matcher -->|HNSW ANN Search| PG
-    SkillGap -->|Read Skills & Courses| PG
-    Matcher -->|Embed Query| Gemini
-    SkillGap -->|Course Recs| Gemini
-    Advisor -->|NL Generation| Gemini
-    AgentNode -->|NL Synthesis| Gemini
+    Matcher --> Gate
+    Gate -->|tidak: balasan template| FastAPI
+    Gate -->|ya| AgentNode
+    AgentNode --> Redact --> Gemini
+    AgentNode -->|jawaban + kartu lowongan| FastAPI
+    FastAPI --> SkillGap
+    SkillGap -->|Katalog kursus| PG
+    SkillGap --> Redact
 ```
 
 ### 1. Pipeline Proses AI
-*Intent Router* menentukan jalur pemrosesan berdasarkan pesan pengguna. Saat ini pipeline dijalankan secara sekuensial (router → matcher → skill_gap/advisor → compose). Migrasi ke topologi LangGraph multi-node paralel ada di roadmap pengembangan.
+Setiap pesan chat menjalankan matcher lebih dulu. Bila tidak ada lowongan dengan sinyal relevansi sama sekali, API langsung membalas tanpa memanggil LLM (*token efficiency gate*). Bila ada, satu node LangGraph memanggil Gemini dengan nama dan daftar skill kandidat serta pesannya; kartu lowongan dikirim terpisah ke UI, dan ID lowongan yang tidak ada di database dibuang (*hallucination guard*).
 
 ### 2. Hibridisasi Penilaian (Hybrid Ranking)
 Sistem menggunakan komposit metrik matematis untuk mereplikasi prioritas SDM:
@@ -332,7 +325,7 @@ final_score = (
 ```
 
 ### 3. Kepatuhan Privasi (Data Isolation)
-Sebelum diproses oleh model eksternal, komponen PII (Personally Identifiable Information) dimitigasi secara otomatis oleh modul penyaring Regex guna memenuhi standar kepatuhan operasional.
+Sebelum teks dikirim ke Gemini, `backend/app/services/privacy/redact.py` mengganti alamat email, NIK 16 digit, dan nomor telepon dengan placeholder. Alamat rumah tidak disaring. KerjaCerdas tidak mengumpulkan NIK/KTP/ijazah/NPWP sama sekali.
 
 ### 4. Skema Basis Data (Entity-Relationship)
 Infrastruktur relasional kami direkayasa untuk menangani entitas dalam skala tinggi (High-Volume) sekaligus memfasilitasi pencarian jarak vektor komputasional menggunakan `pgvector`.
@@ -342,14 +335,14 @@ Roadmap item: sistem dirancang untuk mengakuisisi data melalui tiga jalur di mas
 
 ```mermaid
 ---
-title: Core Relational Schema (PostgreSQL 16 + pgvector)
+title: Core Relational Schema (subset; skema lengkap di backend/app/db/models.py)
 ---
 erDiagram
     USERS ||--o| SEEKERS : "has_profile"
     USERS ||--o| EMPLOYERS : "has_profile"
-    USERS ||--o{ CHAT_SESSIONS : "owns_history"
+    USERS ||--o{ CONVERSATIONS : "owns_history"
     USERS ||--o{ EVENTS : "logs_analytics"
-    USERS ||--o{ OTPS : "verifies_phone"
+    USERS ||--o{ OTPS : "verifies_email"
     EMPLOYERS ||--o{ JOBS : "posts"
     SEEKERS ||--o{ APPLICATIONS : "submits"
     JOBS ||--o{ APPLICATIONS : "receives"
@@ -391,7 +384,7 @@ erDiagram
         UUID job_id FK
         UUID seeker_id FK
         VARCHAR status "Applied / Shortlisted"
-        FLOAT match_score "Cosine Similarity"
+        FLOAT match_score "Skor hybrid saat melamar"
     }
     SKILL_GAPS {
         UUID id PK
@@ -411,7 +404,7 @@ erDiagram
     OTPS {
         UUID id PK
         UUID user_id FK
-        VARCHAR email
+        VARCHAR destination "email"
         VARCHAR code_hash "SHA-256"
         TIMESTAMP expires_at
         BOOLEAN verified
@@ -448,12 +441,12 @@ KerjaCerdas/
 │   │   │   └── services/          # Business logic helpers
 │   │   ├── agents/           # LLM & LangGraph single-node response layer (routing antar matcher/skill-gap/advisor berjalan prosedural, bukan multi-agent graph)
 │   │   │   ├── graph/
-│   │   │   ├── builder.py     # LangGraph single-node graph (START → agent → END)
-│   │   │   │   └── nodes.py       # Processing functions (Router, Matcher, SkillGap, Advisor, Compose)
+│   │   │   │   ├── builder.py     # LangGraph single-node graph (START → agent → END)
+│   │   │   │   └── nodes.py       # Helper rekomendasi kursus untuk skill gap
 │   │   │   ├── tools/
-│   │   │   │   └── superpowers.py # Kumpulan fungsi (tools) untuk Gemini
+│   │   │   │   └── superpowers.py # Fungsi tool (belum di-bind; tool calling nonaktif)
 │   │   │   ├── memory/            # Checkpointer & conversational state
-│   │   │   └── telemetry/         # Logger & tracing performa AI
+│   │   │   └── telemetry/         # Cek batas token (belum dipanggil di mana pun)
 │   │   ├── services/
 │   │   │   └── matching/          # Core Recommendation Engine
 │   │   │       ├── embeddings/    # Gemini Vector generator
@@ -492,7 +485,7 @@ KerjaCerdas/
 │   │   │   ├── TrustCenter.jsx       # Badge kepercayaan employer + pedoman lowongan
 │   │   │   ├── PublicJobPage.jsx     # Halaman lamaran publik /j/<kode>
 │   │   │   ├── AdminPanel.jsx        # Panel admin
-│   │   │   ├── PricingPage.jsx       # Halaman harga B2B/B2C & ATS Enterprise
+│   │   │   ├── UpgradeModal.jsx      # Modal paket & upgrade (seeker/employer)
 │   │   │   ├── AuthModal.jsx         # Popup Login/Register terintegrasi
 │   │   │   ├── OnboardingWizard.jsx  # Alur onboarding pengguna baru
 │   │   │   └── LandingHero.jsx       # Halaman pendaratan publik (termasuk header & footer)
@@ -513,11 +506,12 @@ KerjaCerdas/
 │   ├── ARCHITECTURE.md       # Arsitektur Sistem & Pemetaan 3-Layer (UX/Logic/Infra)
 │   ├── PRODUCT_FEATURES.md   # Deskripsi Detail Fitur Utama Produk
 │   ├── ROADMAP.md            # Roadmap Teknis, A/B Testing & Skalabilitas Cloud
-│   ├── DEMO_ACCOUNTS.md      # Daftar Akun Pengujian (Pre-Seeded)
+│   ├── DEMO_ACCOUNTS.md      # Akun demo (database Replit; lokal via seed)
 │   ├── API_SPEC.md           # Spesifikasi API Lengkap (semua endpoint + schema)
 │   ├── SEQUENCE_DIAGRAMS.md  # Diagram Alur Mermaid (Auth, AI, Bukti Skill, Moderasi, dll.)
 │   ├── THREAT_MODEL.md       # Model Ancaman & Mitigasi Keamanan
-│   └── internals/            # Dokumentasi Teknis Internal Modul (00-09)
+│   ├── RULES.md              # Aturan lowongan yang dipublikasikan (sumber: services/trust/rules.py)
+│   └── internals/            # Dokumentasi Teknis Internal Modul (00-10)
 ```
 
 ---
@@ -529,12 +523,13 @@ Seluruh dokumentasi produk dan teknis ada di folder `docs/`. Mulai dari [ARCHITE
 | Dokumen | Deskripsi | Tautan |
 |---|---|---|
 | **Arsitektur** | Arsitektur sistem, pemetaan Layer 1/2/3 (UX/System Logic/Technical Architecture), dan status Built vs Planned, disitasi ke file kode. | [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| **Fitur Produk** | Uraian mendalam kapabilitas AI, Explainable AI, Phone OTP, Job Pack Uploader, dan pelacakan lamaran. | [PRODUCT_FEATURES.md](docs/PRODUCT_FEATURES.md) |
+| **Fitur Produk** | Uraian fitur beserta status Built/Planned: matching berbobot bukti, kuis skill, link/QR lowongan, AutoMod, verifikasi email (OTP), dan paket. | [PRODUCT_FEATURES.md](docs/PRODUCT_FEATURES.md) |
 | **Roadmap** | Roadmap infrastruktur cloud, A/B testing, integrasi mitra, dan roadmap algoritma matching/AI agent. | [ROADMAP.md](docs/ROADMAP.md) |
-| **Akun Demo** | Daftar seluruh akun uji coba (*pre-seeded credentials*). | [DEMO_ACCOUNTS.md](docs/DEMO_ACCOUNTS.md) |
+| **Akun Demo** | Daftar akun uji coba di database demo (Replit); lokal dibuat oleh skrip seed. | [DEMO_ACCOUNTS.md](docs/DEMO_ACCOUNTS.md) |
 | **Spesifikasi API** | Kontrak lengkap semua endpoint FastAPI: skema request/response, rate limit, middleware, dan error codes. | [API_SPEC.md](docs/API_SPEC.md) |
 | **Diagram Alur (Sequence)** | Diagram Mermaid untuk alur kerja kritis: Auth, AI Agent, CV Upload, Bukti Skill, Moderasi lowongan, dan lainnya. | [SEQUENCE_DIAGRAMS.md](docs/SEQUENCE_DIAGRAMS.md) |
 | **Threat Model** | Aset, batas kepercayaan, dan mitigasi per kategori ancaman (STRIDE). | [THREAT_MODEL.md](docs/THREAT_MODEL.md) |
+| **Aturan Lowongan** | Rulebook publik yang dipakai AutoMod, pelapor, dan peninjau. | [RULES.md](docs/RULES.md) |
 
 ---
 <div align="center">
