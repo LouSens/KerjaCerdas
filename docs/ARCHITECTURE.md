@@ -120,7 +120,7 @@ Architectural debt and open bugs are tracked inline as code comments at the rele
 
 ## Migrations
 
-Alembic only — never `create_all()` (CLAUDE.md §5). Current head: **`b1d3f5a7c902`** (v3), which
+Alembic only — never `create_all()`. Current head: **`b1d3f5a7c902`** (v3), which
 adds `skill_questions.source` / `review_note` (question provenance: `human` | `ai_auto` |
 `ai_draft`), `job_reports.rule_cited` / `upheld` (which published rule was alleged, and how the
 accusation ended), `quiz_attempts.proof_eligible` (whether that draw may award a badge), and

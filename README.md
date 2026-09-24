@@ -492,7 +492,7 @@ KerjaCerdas/
 │   │   │   ├── TrustCenter.jsx       # Badge kepercayaan employer + pedoman lowongan
 │   │   │   ├── PublicJobPage.jsx     # Halaman lamaran publik /j/<kode>
 │   │   │   ├── AdminPanel.jsx        # Panel admin
-│   │   │   ├── PricingPage.jsx       # Halaman harga B2B/B2C & ATS Enterprise
+│   │   │   ├── UpgradeModal.jsx      # Modal paket & upgrade (seeker/employer)
 │   │   │   ├── AuthModal.jsx         # Popup Login/Register terintegrasi
 │   │   │   ├── OnboardingWizard.jsx  # Alur onboarding pengguna baru
 │   │   │   └── LandingHero.jsx       # Halaman pendaratan publik (termasuk header & footer)

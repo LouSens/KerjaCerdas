@@ -9,7 +9,7 @@ Files:
 
 | Endpoint | Behavior |
 |---|---|
-| `GET /api/v1/jobs` | list with filters: region, type, salary range, experience. Each result is enriched with a `verified` flag pulled from the posting employer's `Employer.verified` field via `_is_employer_verified()`. The read path is real, but as of today nothing in the codebase ever sets that field to `VERIFIED` (see `04-identity-verification.md`'s Trust Model section) — so this flag is currently always `false` for every listing, not a working badge. |
+| `GET /api/v1/jobs` | list with filters: region, type, salary range, experience. Each result is enriched with a `verified` flag pulled from the posting employer's `Employer.verified` field via `_is_employer_verified()`. The field becomes `VERIFIED` only when an admin approves the employer's review request (`POST /api/v1/admin/employer-reviews/{employer_id}`); see the `admin_reviewed` badge in [04-trust-and-verification.md](04-trust-and-verification.md#3-employer-trust-badges--servicestrustpolicypy). |
 | `GET /api/v1/jobs/{id}` | full job detail |
 
 ## Employer Endpoints (`require_employer`)
