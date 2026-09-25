@@ -226,12 +226,12 @@ Akun demo di [DEMO_ACCOUNTS.md](docs/DEMO_ACCOUNTS.md) sudah tersedia di **datab
 Setelah seed lokal, coba:
 
 **A. Sebagai Pencari Kerja (Seeker):**
-- **Email:** `budi.santoso@example.com`
-- *(Fokus Uji Coba: Unggah CV, AI Job Matching, Skill Gap Analyzer, Bukti Skill)*
+- **Email:** `maya.sari@example.com`
+- *(Fokus Uji Coba: Lamaran Saya → alasan penolakan dari HR → Rencana Belajar untuk lowongan target → lamar lagi)*
 
 **B. Sebagai HRD Perusahaan (Employer):**
-- **Email:** `hr@goto.id` (GoTo Group) atau `hr@mandiri.id` (Bank Mandiri)
-- *(Fokus Uji Coba: Pasang Lowongan + AutoMod, Pelamar Terperingkat, Pertanyaan Wawancara AI, Ekspor CSV)*
+- **Email:** `hr@kliniksehat.id` (Klinik Sehat Keluarga — fiktif) atau `hr@kelontongmakmur.id`
+- *(Fokus Uji Coba: Pelamar Terperingkat, Peta Skill Pelamar, Tolak dengan alasan, Konfirmasi skill setelah wawancara, Pasang Lowongan + AutoMod)*
 
 ### Langkah 5 — Menghentikan & Membersihkan Sistem
 Jika ingin menghentikan sistem, tekan `CTRL+C` pada terminal yang menjalankan *docker-compose*.
