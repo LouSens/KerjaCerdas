@@ -98,9 +98,54 @@ def plan_price(plan: str) -> int:
     }[plan]
 
 
+EMPLOYER_FREE_FEATURES = [
+    "Lowongan aktif tanpa batas",
+    "Semua pelamar diperingkat dari yang paling cocok",
+    "Pertanyaan wawancara AI per kandidat",
+    "Konfirmasi skill setelah wawancara",
+    "Alasan penolakan terstruktur untuk pelamar",
+    "Ekspor pelamar (CSV)",
+]
+
+
+def employer_plans() -> tuple[str, ...]:
+    """Employer plans that can be ordered right now (none while plans are off)."""
+    return EMPLOYER_PLANS if settings.employer_plans_enabled else ()
+
+
 def catalogue() -> dict:
+    if not settings.employer_plans_enabled:
+        employer = [{"plan": "spark", "price_idr": 0, "period": "gratis",
+                     "features": EMPLOYER_FREE_FEATURES}]
+    else:
+        employer = _paid_employer_catalogue()
     return {
-        "employer": [
+        "employer": employer,
+        "seeker": [
+            {"plan": "free", "price_idr": 0, "period": "gratis",
+             "features": ["Skor kecocokan + skill gap per lowongan target",
+                          "Rencana belajar dan rekomendasi kursus",
+                          "Peringkat persis tiap lamaran (mis. #14 dari 62)",
+                          "Alasan penolakan dari HR",
+                          f"Advisor {ADVISOR_FREE_PER_DAY} pesan / hari"]},
+            {"plan": "prism", "price_idr": settings.plan_price_prism, "period": "per 30 hari",
+             "features": [f"Advisor {ADVISOR_PRISM_PER_DAY} pesan / hari (2x gratis)",
+                          "Segera: simulasi wawancara AI + umpan balik",
+                          "Segera: CV terformat dari profil yang sudah terverifikasi"],
+             "note": ("Prism membeli LATIHAN, bukan peringkat. Semua yang "
+                      "memengaruhi peringkatmu — dan semua yang bisa kamu "
+                      "ketahui tentang peringkatmu — gratis selamanya.")},
+        ],
+        "note": ("Membayar tidak pernah mengubah skor kecocokan maupun peringkat, "
+             "dan tidak pernah membuka informasi tentang peringkatmu yang tidak "
+             "didapat pengguna gratis. Skor, peringkat, dan urutan pelamar "
+             "sama untuk semua paket."),
+        "payment_instructions": settings.payment_instructions,
+    }
+
+
+def _paid_employer_catalogue() -> list[dict]:
+    return [
             {"plan": "spark", "price_idr": 0, "period": "gratis",
              "features": ["1 lowongan aktif", "Link + QR lowongan",
                           "Semua pelamar diperingkat — tanpa batas",
@@ -114,28 +159,7 @@ def catalogue() -> dict:
              "period": "per 30 hari",
              "features": ["Semua fitur Beacon", f"Hingga {LIGHTHOUSE_ACTIVE_JOBS} lowongan aktif",
                           f"Cari kandidat ({TALENT_SEARCHES_LIGHTHOUSE}x / 30 hari)"]},
-        ],
-        "seeker": [
-            {"plan": "free", "price_idr": 0, "period": "gratis",
-             "features": ["Skor kecocokan + skill gap + rekomendasi kursus",
-                          "Kuis skill tanpa batas (ulang besoknya)",
-                          "Peringkat persis tiap lamaran (mis. #14 dari 62)",
-                          "Rincian bukti per skill — apa yang menahan peringkatmu",
-                          f"Advisor {ADVISOR_FREE_PER_DAY} pesan / hari"]},
-            {"plan": "prism", "price_idr": settings.plan_price_prism, "period": "per 30 hari",
-             "features": [f"Advisor {ADVISOR_PRISM_PER_DAY} pesan / hari (2x gratis)",
-                          "Segera: simulasi wawancara AI + umpan balik",
-                          "Segera: CV terformat dari profil yang sudah terverifikasi"],
-             "note": ("Prism membeli LATIHAN, bukan peringkat. Semua yang "
-                      "memengaruhi peringkatmu — dan semua yang bisa kamu "
-                      "ketahui tentang peringkatmu — gratis selamanya.")},
-        ],
-        "note": ("Membayar tidak pernah mengubah skor kecocokan maupun peringkat, "
-             "dan tidak pernah membuka informasi tentang peringkatmu yang tidak "
-             "didapat pengguna gratis. Kuis, skor, peringkat, dan urutan pelamar "
-             "sama untuk semua paket."),
-        "payment_instructions": settings.payment_instructions,
-    }
+    ]
 
 
 def _is_live(order: PlanOrder, now: datetime) -> bool:
@@ -165,7 +189,7 @@ class Entitlements:
         return "beacon" if job_id in self.beacon_jobs else "spark"
 
     def premium_for_job(self, job_id: str) -> bool:
-        if not settings.plan_limits_enforced:
+        if not settings.plan_limits_enforced or not settings.employer_plans_enabled:
             return True
         return self.job_tier(job_id) != "spark"
 
@@ -200,6 +224,10 @@ def talent_search_limit(ent: Entitlements, job_id: str) -> int:
     per account. Lighthouse is genuinely account-wide, so it alone ignores which
     job is being searched.
     """
+    if not settings.employer_plans_enabled:
+        # No paid plans: sourcing is free, with the per-job fair-use allowance
+        # the paid tier used to buy (each search costs an embedding lookup).
+        return TALENT_SEARCHES_BEACON
     tier = ent.job_tier(job_id)
     if tier == "lighthouse":
         return TALENT_SEARCHES_LIGHTHOUSE

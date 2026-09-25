@@ -53,6 +53,7 @@ from backend.app.services.billing.plans import (
     talent_search_limit,
 )
 from backend.app.services.hiring.links import new_public_code, public_path
+from backend.app.services.hiring.rejection import REJECTION_REASONS
 from backend.app.services.matching.matcher import SemanticMatcher, score_pair
 from backend.app.services.trust import policy
 from backend.app.services.trust.automod import moderate
@@ -105,13 +106,25 @@ async def _enforce_active_limit(
 
     A second AutoMod strike also limits the employer to one active job for 30 days.
     """
-    if not settings.plan_limits_enforced:
+    if not settings.plan_limits_enforced or settings.demo_unlimited:
+        return
+    strike_limited = policy.strike_state(employer)["limited"]
+    if not settings.employer_plans_enabled:
+        # No paid plans: active jobs are uncapped; only the strike penalty limits them.
+        if not strike_limited:
+            return
+        if any(j.is_active and j.id != job_id for j in jobs):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Akun dibatasi 1 lowongan aktif selama 30 hari karena pelanggaran aturan. "
+                "Nonaktifkan lowongan lain dulu.",
+            )
         return
     ent = await entitlements_for(user_id)
     if job_id in ent.beacon_jobs:
         return
     limit = active_job_limit(ent)
-    if policy.strike_state(employer)["limited"]:
+    if strike_limited:
         limit = 1
     uncovered_active = [
         j for j in jobs if j.is_active and j.id != job_id and j.id not in ent.beacon_jobs
@@ -451,7 +464,7 @@ async def _check_talent_search_quota(user_id: str, job_id: str) -> None:
     30-search allowance. Lighthouse is account-wide by design, so it meters per
     account.
     """
-    if not settings.plan_limits_enforced:
+    if not settings.plan_limits_enforced or settings.demo_unlimited:
         await add_event(user_id, "talent_search")
         return
 
@@ -662,20 +675,10 @@ async def list_employer_applications(
     }
 
 
+# Rejection reason codes live in services/hiring/rejection.py (shared with the
+# seeker's application list, which shows them back to the candidate).
+
 # Indonesian aliases the frontend has historically sent for pipeline stages.
-# Fixed, machine-readable rejection reasons. A free-text box alone would give
-# the candidate prose we cannot aggregate and HR a blank page they will skip;
-# the codes make the feedback both writable in one tap and countable.
-REJECTION_REASONS: dict[str, str] = {
-    "skill_kurang": "Skill inti belum memadai untuk posisi ini",
-    "pengalaman_kurang": "Pengalaman relevan belum cukup",
-    "lokasi": "Lokasi / kesediaan pindah tidak cocok",
-    "gaji": "Ekspektasi gaji di luar anggaran",
-    "posisi_terisi": "Posisi sudah terisi kandidat lain",
-    "tidak_hadir": "Tidak hadir / tidak merespons undangan",
-    "dokumen": "Dokumen atau syarat administratif tidak terpenuhi",
-    "lainnya": "Alasan lain (tulis di catatan)",
-}
 
 _STATUS_ALIASES: dict[str, ApplicationStatus] = {
     "accepted": ApplicationStatus.HIRED,

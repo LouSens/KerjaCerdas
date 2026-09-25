@@ -471,6 +471,28 @@ async def find_applications_by_seeker_id(seeker_id: str) -> list[ApplicationSche
         return []
 
 
+async def find_status_events_by_application_ids(
+    application_ids: list[str],
+) -> list[StatusEventSchema]:
+    """Status history for a set of applications (one query, not one per application)."""
+    if not application_ids:
+        return []
+    try:
+        async with async_session() as session:
+            stmt = select(ApplicationStatusEvent).where(
+                ApplicationStatusEvent.application_id.in_(application_ids)
+            )
+            result = await session.execute(stmt)
+            cols = ApplicationStatusEvent.__table__.columns
+            return [
+                StatusEventSchema.model_validate({c.name: getattr(obj, c.name) for c in cols})
+                for obj in result.scalars().all()
+            ]
+    except Exception as exc:
+        _store_logger.warning("find_status_events_by_application_ids failed (%s)", exc)
+        return []
+
+
 async def find_jobs_by_employer_id(employer_id: str) -> list[JobSchema]:
     """Return all postings for an employer (indexed on employer_id, no full scan)."""
     try:

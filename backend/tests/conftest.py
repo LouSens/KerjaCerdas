@@ -36,6 +36,12 @@ settings.jwt_secret_key = os.environ["JWT_SECRET_KEY"]
 # (test_v2_*.py) via monkeypatch.
 settings.moderation_first_job_review = False
 settings.plan_limits_enforced = False
+# Employer plans ship OFF (see settings.employer_plans_enabled). The paid-plan
+# suites keep testing the dormant Beacon/Lighthouse gates, so the suite runs
+# with them on; test_framing_a.py covers the shipped default explicitly.
+settings.employer_plans_enabled = True
+# Demo mode switches every limit off; the suite tests the limits themselves.
+settings.demo_unlimited = False
 
 
 # ── Deterministic stand-ins for the AI layer ─────────────────────────────────

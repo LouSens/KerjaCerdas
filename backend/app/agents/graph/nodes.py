@@ -81,12 +81,12 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
         except Exception as exc:
             logger.warning("Gemini skill-gap failed (%s) — checking course store", exc)
 
-    # Try JSON store courses before falling back to hardcoded catalog
+    # Seeded courses first; every skill they do not cover still gets a catalog
+    # entry, so no missing skill is left without a next step.
     store_courses = await _store_courses(missing)
-    if store_courses:
-        return store_courses
-
-    return _catalog_courses(missing)
+    covered = {c.category for c in store_courses}
+    uncovered = [s for s in missing if s not in covered]
+    return (store_courses + (_catalog_courses(uncovered) if uncovered else []))[:8]
 
 
 async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
@@ -102,14 +102,17 @@ async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
 
         repos = get_repositories()
         all_courses = await repos.courses.list()
-        missing_canonical = {_normalize_skill(s) for s in missing}
+        # canonical -> the spelling the job used, so `category` names the skill
+        # this course closes (the learning plan groups courses by it).
+        missing_canonical = {_normalize_skill(s): s for s in missing}
         results: list[CourseRecommendation] = []
         seen: set[str] = set()
         for course in all_courses:
             taught = {
                 _normalize_skill(t) for t in (getattr(course, "skills_taught", None) or [])
             }
-            if taught & missing_canonical and course.name not in seen:
+            hits = [missing_canonical[k] for k in missing_canonical if k in taught]
+            if hits and course.name not in seen:
                 seen.add(course.name)
                 raw_price = getattr(course, "price", 0)
                 price_str = "Gratis" if not raw_price else f"Rp {raw_price:,}"
@@ -122,7 +125,7 @@ async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
                         price=price_str,
                         rating=getattr(course, "rating", 4.5),
                         description=getattr(course, "description", ""),
-                        category=getattr(course, "category", "tech"),
+                        category=hits[0],
                     )
                 )
         return results[:5]  # cap at 5 recommendations
@@ -189,15 +192,17 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
             # every curated course (e.g. Coursera ID) to Dicoding.
             name, provider, dur = entry
         else:
-            # Dynamically generate mock course recommendation for missing skill
-            name = f"Dicoding Academy — Menjadi {skill.title()} Developer"
-            provider = "Dicoding"
-            dur = "1 bulan"
+            # No curated course for this skill: point to a search instead of
+            # inventing a course title a provider does not actually sell.
+            name = f"Cari kursus {skill}"
+            provider = "Prakerja / Dicoding / YouTube"
+            dur = ""
 
         # Catalog entries carry no verified URL, price or rating, so the copy
         # stays provider-neutral and the estimate is flagged as unverified
         # (guardrails.md: "prefix uncertain facts with *belum terverifikasi*").
-        url = f"https://www.google.com/search?q={quote_plus(name + ' ' + provider)}"
+        query = name if not entry else f"{name} {provider}"
+        url = f"https://www.google.com/search?q={quote_plus(query)}"
         price = "*belum terverifikasi* — cek langsung di situs penyedia"
         rating = None
         desc = (
@@ -214,7 +219,7 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
                 price=price,
                 rating=rating,
                 description=desc,
-                category="tech",
+                category=skill,
             )
         )
 

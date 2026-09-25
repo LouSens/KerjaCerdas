@@ -70,6 +70,19 @@ class Settings(BaseSettings):
     # Enforce plan limits (Spark: 1 active job, 20 ranked applicants; premium
     # features need Beacon/Lighthouse). Switchable for live demos / tests.
     plan_limits_enforced: bool = True
+    # Employer paid plans (Beacon / Lighthouse). Off: every employer feature is
+    # free and uncapped — all applicants ranked, interview kit, CSV, any number
+    # of active jobs (the AutoMod strike limit still applies) — and the plans
+    # are not sold. The seeker plan (Prism) and advisor metering are unaffected.
+    # The gating code stays so a deployment can bring the plans back.
+    employer_plans_enabled: bool = False
+    # DEMO: every quota and rate limit off — advisor messages, plan limits,
+    # candidate-search allowance and the per-IP rate limiter (a booth puts
+    # every visitor's phone behind ONE venue IP). ON by default for the
+    # DIGDAYA demo. Set DEMO_UNLIMITED=false for any public deployment:
+    # unmetered advisor chat is unmetered Gemini spend, and the rate limiter
+    # is also the login brute-force guard.
+    demo_unlimited: bool = True
     # Shown on the payment screen until a payment gateway is live.
     payment_instructions: str = (
         "Bayar via QRIS / transfer bank ke rekening KerjaCerdas, lalu kirim bukti "

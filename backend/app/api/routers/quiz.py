@@ -55,8 +55,11 @@ async def quiz_skills(job_id: str | None = None, current_user: User = Depends(ge
     if job_id:
         job = await get_repositories().jobs.get(job_id)
         if job:
-            wanted = [name for name in (job.required_skills or []) if name in claimed_names]
+            # Every required skill, held or not: a job page has to show what is
+            # MISSING, not only what the seeker already listed.
+            wanted = [name for name in (job.required_skills or []) if name]
     names = wanted or list(claimed_names)
+    banked_keys = set(bank)
     bank = {key: row for key, row in bank.items() if key in {skill_key(name) for name in claimed_names}}
 
     # Preload all recent attempts for this seeker in one shot.
@@ -98,13 +101,14 @@ async def quiz_skills(job_id: str | None = None, current_user: User = Depends(ge
             continue
         seen.add(key)
         # quiz_available=True for any skill the seeker has claimed (generator
-        # will produce questions on first start) OR already banked.
+        # will produce questions on first start) OR that already has a bank —
+        # start_quiz serves a banked skill even when it is not on the profile.
         is_claimed = key in held
         cap = _cap_info(key)
         items.append({
             "skill": name,
             "key": key,
-            "quiz_available": key in bank or is_claimed,
+            "quiz_available": key in banked_keys or is_claimed,
             "proof": held.get(key, {}).get("proof", "missing" if job_id else "claimed"),
             "proof_date": held.get(key, {}).get("proof_date"),
             **cap,

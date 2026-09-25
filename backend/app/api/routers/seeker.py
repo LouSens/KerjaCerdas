@@ -23,6 +23,7 @@ from backend.app.db.postgres_store import (
     find_applications_by_seeker_id,
     find_seeker_by_user_id,
     find_skill_gaps_by_seeker_id,
+    find_status_events_by_application_ids,
     get_repositories,
     update_seeker_embedding,
 )
@@ -33,7 +34,8 @@ from backend.app.db.schemas import (
     Skill,
 )
 from backend.app.db.schemas_proof import ApplicationStatusEvent
-from backend.app.services.matching.evidence import carry_proof, skill_snapshot
+from backend.app.services.hiring.rejection import latest_rejection
+from backend.app.services.matching.evidence import carry_proof, skill_proof_view, skill_snapshot
 from backend.app.services.matching.matcher import SemanticMatcher, _normalize_skill, score_pair
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -603,6 +605,9 @@ async def list_applications(current_user: User = Depends(get_current_user)):
     jobs_by_id = {j.id: j for j in await repos.jobs.get_many(list({a.job_id for a in apps}))}
     employer_ids = {j.employer_id for j in jobs_by_id.values()}
     emps_by_id = {e.id: e for e in await repos.employers.get_many(list(employer_ids))}
+    events_by_app: dict[str, list] = {}
+    for ev in await find_status_events_by_application_ids([a.id for a in apps]):
+        events_by_app.setdefault(ev.application_id, []).append(ev)
     result = []
     for app in apps:
         job = jobs_by_id.get(app.job_id)
@@ -638,6 +643,12 @@ async def list_applications(current_user: User = Depends(get_current_user)):
                 "company": emp.company_name if emp else "—",
                 "status": app.status,
                 "note": note_val,
+                # Per required skill, against the profile as it is NOW — so a
+                # skill added after applying shows up here — plus the reason
+                # code HR picked when rejecting. Together they answer "what do
+                # I work on next?" instead of ending the application in silence.
+                "skill_proof": skill_proof_view(profile.skills, job.required_skills) if job else [],
+                "rejection_reason": latest_rejection(events_by_app.get(app.id, [])),
                 "applied_at": applied_dt.strftime("%Y-%m-%d")
                 if hasattr(applied_dt, "strftime")
                 else str(applied_dt)[:10]

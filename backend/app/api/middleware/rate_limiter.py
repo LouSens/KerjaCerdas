@@ -251,6 +251,8 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
                 self._drop(k)
 
     async def dispatch(self, request: Request, call_next) -> Response:
+        if settings.demo_unlimited:  # booth demo: no limits (see settings.demo_unlimited)
+            return await call_next(request)
         ip = _get_client_ip(request)
         path = request.url.path
         bucket, max_req, window = _get_bucket(path)
