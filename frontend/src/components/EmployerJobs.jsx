@@ -301,10 +301,6 @@ export default function EmployerJobs() {
                             <ModerationNotice job={job} onChanged={refreshEmployerJobs} />
                             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', padding: '11px 0', borderTop: '1px dashed #E2E8F0', borderBottom: '1px dashed #E2E8F0', marginBottom: 12, fontSize: 12 }}>
                                 <span><b style={{ fontSize: 16 }}>{job.candidates_count}</b> pelamar</span>
-                                <span style={{ fontWeight: 800, textTransform: 'capitalize' }}>Paket: {job.plan_tier}</span>
-                                {job.plan_tier === 'spark' && (
-                                    <button onClick={() => openUpgradeModal({ plan: 'beacon', jobId: job.id })} style={{ background: 'none', border: 'none', color: KC.orange, fontWeight: 800, cursor: 'pointer', padding: 0 }}>Beli Pro →</button>
-                                )}
                                 {job.moderation_status === 'published' && (
                                     <button onClick={() => toggleActive(job)} style={{ background: 'none', border: 'none', color: KC.mute, fontWeight: 700, cursor: 'pointer', padding: 0 }}>
                                         {job.status === 'active' ? 'Tutup lowongan' : 'Buka lagi'}
@@ -340,7 +336,7 @@ export default function EmployerJobs() {
                                         className="kc-btn"
                                         style={{ flex: 'none', padding: '11px 14px', background: KC.ink, border: `1.5px solid ${KC.ink}`, borderRadius: 9, color: '#fff', font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', minHeight: 44, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
                                     >
-                                        <QrCode size={14} /> Link & QR
+                                        <QrCode size={14} /> Link lamaran
                                     </button>
                                 )}
                                 <button

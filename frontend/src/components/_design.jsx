@@ -81,6 +81,32 @@ export const BAND_META = {
 
 export const BAND_ORDER = ['strong', 'possible', 'stretch']
 
+// Native <select> with the chevron drawn INSIDE the box. The browser arrow
+// sat outside the border on narrow screens; appearance:none + a background
+// chevron + right padding keeps it contained, and long options truncate.
+const CHEVRON = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23090A0F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")"
+export const selectStyle = (extra = {}) => ({
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    boxSizing: 'border-box',
+    maxWidth: '100%',
+    minWidth: 0,
+    padding: '10px 38px 10px 12px',
+    background: `#fff ${CHEVRON} no-repeat right 14px center`,
+    border: `1.5px solid ${KC.ink}`,
+    borderRadius: 9,
+    fontWeight: 700,
+    fontSize: 13.5,
+    fontFamily: 'inherit',
+    color: KC.ink,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    ...extra,
+})
+
 export const topBtn = (bg = '#fff', fg = KC.ink, border = KC.ink) => ({
     padding: '9px 18px',
     background: bg,

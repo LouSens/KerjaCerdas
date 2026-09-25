@@ -1,524 +1,208 @@
-import { useEffect, useState } from 'react'
-import useStore from '../store/useStore'
-import { KC, topBtn, DesignStyles, useIsMobile } from './_design'
+// "Rencana Belajar" — the centre of the seeker loop:
+//   target job → skill yang kurang → belajar → lamar → umpan balik.
+// Every number here comes from the API. The old fixed "20 jam per skill" and
+// the linear "proyeksi match" simulator were removed: the system cannot
+// measure either, and CLAUDE.md forbids shipping a metric it cannot measure.
+// The skill-gap endpoint's match_before uses a different formula from the
+// match list's score, so it is not shown — two different "%" for one job
+// reads as a bug. The skill count is the honest, comparable figure.
+import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import { ArrowRight, BookOpen, CheckCircle2, Plus, Target } from 'lucide-react'
+import useStore from '../store/useStore'
+import { updateSeekerProfile } from '../services/api'
+import { BrutalCard, DesignStyles, KC, selectStyle, topBtn } from './_design'
+import { ProofChip } from './ProofUI'
+import LoopSteps from './LoopSteps'
+
+const skillName = (s) => (typeof s === 'string' ? s : s?.name || '')
+const jobIdOf = (m) => m?.id || m?.job_id
+
+// A course belongs to a skill when its category or name mentions the skill.
+function coursesFor(skill, courses) {
+    const key = skill.toLowerCase()
+    return courses.filter((c) => `${c.category || ''} ${c.name || c.title || ''}`.toLowerCase().includes(key))
+}
+
+function CourseLink({ c }) {
+    const label = c.name || c.title || 'Kursus'
+    const meta = [c.provider, c.duration, c.price].filter(Boolean).join(' · ')
+    const body = (
+        <>
+            <BookOpen size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+            <span><b>{label}</b>{meta && <span style={{ color: KC.mute }}> — {meta}</span>}</span>
+        </>
+    )
+    const style = { display: 'flex', gap: 8, fontSize: 13, color: KC.ink, textDecoration: 'none', lineHeight: 1.45 }
+    return c.url
+        ? <a href={c.url} target="_blank" rel="noopener noreferrer" style={style}>{body}</a>
+        : <div style={style}>{body}</div>
+}
 
 export default function SkillGapPanel() {
-    const isMobile = useIsMobile()
-    const { matches, skillGapResult, runSkillGap, loadSkillGap, recommendedCourses } = useStore()
-    const [selectedChips, setSelectedChips] = useState([])
-    const [selectedTargetJobId, setSelectedTargetJobId] = useState('')
+    const {
+        matches, profile, skillGapResult, runSkillGap, loadSkillGap, loadSeekerProfile,
+        focusJobId, openTargetJob, navigate, runAgent, isJobApplied,
+    } = useStore()
+    const [picked, setPicked] = useState('')
+    const [busySkill, setBusySkill] = useState(null)
 
     useEffect(() => {
-        loadSkillGap()
-    }, [loadSkillGap])
+        // Arriving from "Jadikan target" already ran the analysis for focusJobId.
+        if (!focusJobId) loadSkillGap()
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const currentScore = skillGapResult?.match_before != null
-        ? Math.round(skillGapResult.match_before > 1 ? skillGapResult.match_before : skillGapResult.match_before * 100)
-        : (matches?.[0]?.overall_score ? Math.round(matches[0].overall_score > 1 ? matches[0].overall_score : matches[0].overall_score * 100) : 0)
+    const targetId = skillGapResult?.target_job_id || focusJobId
+    const missing = skillGapResult?.missing_skills || []
+    const matching = skillGapResult?.matching_skills || []
+    const courses = skillGapResult?.recommended_courses || []
+    const total = missing.length + matching.length
 
-    const potentialScore = skillGapResult?.match_after != null
-        ? Math.round(skillGapResult.match_after > 1 ? skillGapResult.match_after : skillGapResult.match_after * 100)
-        : Math.min(100, currentScore + 25)
+    const proofByName = useMemo(() => {
+        const out = {}
+        for (const s of profile?.skills || []) {
+            if (typeof s === 'object' && s?.name) out[s.name.toLowerCase()] = s.proof_level || 'claimed'
+        }
+        return out
+    }, [profile])
 
-    const targetTitle = skillGapResult?.target_job_title
-        || (matches?.[0]?.title ? `${matches[0].title} · ${matches[0].company || matches[0].company_name || ''}` : 'Pilih Lowongan Target')
+    const unmatchedCourses = courses.filter((c) => !missing.some((m) => coursesFor(m, [c]).length))
 
-    const gapSkills = (skillGapResult?.missing_skills && skillGapResult.missing_skills.length)
-        ? skillGapResult.missing_skills.map(s => ({ name: s, hours: 20 }))
-        : (matches?.[0]?.missing_skills || []).map(s => ({ name: s, hours: 20 }))
-
-    const matchingSkills = (skillGapResult?.matching_skills && skillGapResult.matching_skills.length)
-        ? skillGapResult.matching_skills
-        : (matches?.[0]?.matching_skills || [])
-
-    const courses = (skillGapResult?.recommended_courses && skillGapResult.recommended_courses.length)
-        ? skillGapResult.recommended_courses
-        : (recommendedCourses || [])
-
-    const toggleChip = (name) => {
-        setSelectedChips(prev =>
-            prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
-        )
-    }
-
-    const selectedHours = selectedChips.length * 20
-    const projectedMatch = currentScore + Math.round(selectedChips.length * ((potentialScore - currentScore) / (gapSkills.length || 1)))
-
-    const handleRunAnalysis = () => {
-        toast.promise(runSkillGap(selectedTargetJobId || undefined), {
-            loading: 'Menganalisis skill gap…',
-            success: 'Analisis gap selesai!',
-            error: 'Gagal memperbarui analisis',
+    const analyse = () => {
+        const id = picked || targetId
+        toast.promise(runSkillGap(id || undefined), {
+            loading: 'Menganalisis skill yang kurang…', success: 'Rencana belajar diperbarui', error: 'Gagal menganalisis',
         })
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // DESKTOP LAYOUT (Desktop v2 · Screen D06)
-    // ─────────────────────────────────────────────────────────────────────────
-    if (!isMobile) {
-        return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                <DesignStyles />
-
-                {/* Desktop Top Header Bar */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, paddingBottom: 22, borderBottom: `1.5px solid ${KC.ink}` }}>
-                    <div>
-                        <h1 style={{ font: '900 30px/1.1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-1.2px', color: KC.ink, margin: 0 }}>
-                            Skill Gap dan Rencana Belajar
-                        </h1>
-                        <p style={{ font: '400 13.5px/1.5 "Plus Jakarta Sans", sans-serif', color: '#64748B', margin: '8px 0 0' }}>
-                            Target analisis: <b>{targetTitle}</b> · {gapSkills.length} gap wajib, {matchingSkills.length} keahlian sesuai.
-                        </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: 11, flexShrink: 0, alignItems: 'center' }}>
-                        <select
-                            value={selectedTargetJobId}
-                            onChange={(e) => setSelectedTargetJobId(e.target.value)}
-                            style={{
-                                padding: '11px 15px',
-                                background: '#fff',
-                                border: `1.5px solid ${KC.ink}`,
-                                borderRadius: 9,
-                                font: '700 12.5px/1 "Plus Jakarta Sans", sans-serif',
-                                color: KC.ink,
-                                cursor: 'pointer',
-                                outline: 'none',
-                            }}
-                        >
-                            <option value="">{matches?.[0]?.title ? `${matches[0].title} (Target Teratas)` : 'Pilih Lowongan Target'}</option>
-                            {(matches || []).map(m => (
-                                <option key={m.id || m.job_id} value={m.id || m.job_id}>
-                                    {m.title} ({m.company || m.company_name})
-                                </option>
-                            ))}
-                        </select>
-                        <button
-                            onClick={handleRunAnalysis}
-                            className="kc-btn"
-                            style={{ ...topBtn(KC.orange, '#fff'), padding: '11px 17px', fontSize: 12.5 }}
-                        >
-                            Analisis Skill Gap
-                        </button>
-                    </div>
-                </div>
-
-                {/* 2-Column Main Section */}
-                <div style={{ display: 'grid', gridTemplateColumns: '392px minmax(0, 1fr)', gap: 24 }}>
-                    {/* Left Column: Big Dark Radial Dial Card (230px) */}
-                    <div style={{
-                        background: KC.ink,
-                        border: `1.5px solid ${KC.ink}`,
-                        borderRadius: 14,
-                        boxShadow: `4px 4px 0 ${KC.orange}`,
-                        padding: 28,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        animation: 'kcUp .4s both',
-                    }}>
-                        <div style={{ position: 'relative', width: 230, height: 230 }}>
-                            <svg width="230" height="230" viewBox="0 0 230 230" style={{ transform: 'rotate(-90deg)' }}>
-                                <circle cx="115" cy="115" r="97" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="19" />
-                                <circle
-                                    cx="115" cy="115" r="97" fill="none" stroke={KC.orange} strokeWidth="19"
-                                    strokeLinecap="round" strokeDasharray="609.5" strokeDashoffset={609.5 - (609.5 * (potentialScore / 100))}
-                                    opacity="0.28"
-                                />
-                                <circle
-                                    cx="115" cy="115" r="97" fill="none" stroke={KC.orange} strokeWidth="19"
-                                    strokeLinecap="round" strokeDasharray="609.5" strokeDashoffset={609.5 - (609.5 * (currentScore / 100))}
-                                />
-                            </svg>
-                            <div style={{
-                                position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-                                alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
-                            }}>
-                                <div style={{
-                                    font: '800 10.5px/1 "JetBrains Mono", monospace',
-                                    letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,.45)',
-                                }}>
-                                    Kecocokan saat ini
-                                </div>
-                                <div style={{
-                                    font: '900 62px/1 "Plus Jakarta Sans", sans-serif',
-                                    letterSpacing: '-3.4px', color: '#fff', margin: '9px 0 7px', lineHeight: 1,
-                                }}>
-                                    {currentScore}%
-                                </div>
-                                <div style={{ font: '800 13px/1 "Plus Jakarta Sans", sans-serif', color: KC.orange }}>
-                                    ↑ potensi {potentialScore}%
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 3 Metric Box Strip */}
-                        <div style={{ display: 'flex', gap: 11, width: '100%', marginTop: 22 }}>
-                            <div style={{ flex: 1, textAlign: 'center', padding: '14px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                                <div style={{ font: '900 21px/1 "Plus Jakarta Sans", sans-serif', color: '#fff' }}>{gapSkills.length}</div>
-                                <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>Gap wajib</div>
-                            </div>
-                            <div style={{ flex: 1, textAlign: 'center', padding: '14px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                                <div style={{ font: '900 21px/1 "Plus Jakarta Sans", sans-serif', color: '#fff' }}>{gapSkills.length * 20}</div>
-                                <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>Jam estimasi</div>
-                            </div>
-                            <div style={{ flex: 1, textAlign: 'center', padding: '14px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                                <div style={{ font: '900 21px/1 "Plus Jakarta Sans", sans-serif', color: gapSkills.length >= 4 ? '#EF4444' : gapSkills.length >= 2 ? '#F59E0B' : '#10B981' }}>
-                                    {gapSkills.length >= 4 ? 'Tinggi' : gapSkills.length >= 2 ? 'Sedang' : 'Rendah'}
-                                </div>
-                                <div style={{ font: '700 9.5px/1.3 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.5)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>Severity</div>
-                            </div>
-                        </div>
-                        <div style={{ font: '400 11px/1.6 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.45)', marginTop: 18, textAlign: 'center' }}>
-                            Estimasi skenario dari rubric yang sama, bukan jaminan diterima bekerja.
-                        </div>
-                    </div>
-
-                    {/* Right Column: Simulation & Skill Cards */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                        {/* Simulation Card */}
-                        <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 22, animation: 'kcUp .4s .06s both' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                                <span style={{ font: '900 16px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.4px', color: KC.ink }}>
-                                    Simulasi rencana belajar
-                                </span>
-                                <span style={{ font: '800 11.5px/1 "JetBrains Mono", monospace', color: KC.orange }}>
-                                    {selectedChips.length} / {gapSkills.length} dipilih
-                                </span>
-                            </div>
-                            <p style={{ font: '400 12.5px/1.55 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', margin: '0 0 16px' }}>
-                                Ketuk keahlian yang siap Anda pelajari — beban jam dan proyeksi kecocokan diperbarui langsung.
-                            </p>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, marginBottom: 20 }}>
-                                {gapSkills.map(g => {
-                                    const isPicked = selectedChips.includes(g.name)
-                                    return (
-                                        <span
-                                            key={g.name}
-                                            onClick={() => toggleChip(g.name)}
-                                            style={{
-                                                padding: '10px 15px',
-                                                background: isPicked ? KC.ink : '#FEF3C7',
-                                                border: `1.5px solid ${isPicked ? KC.ink : '#F59E0B'}`,
-                                                borderRadius: 999,
-                                                font: '800 13px/1 "Plus Jakarta Sans", sans-serif',
-                                                color: isPicked ? '#fff' : '#B45309',
-                                                cursor: 'pointer',
-                                                userSelect: 'none',
-                                            }}
-                                        >
-                                            {isPicked ? `✓ ${g.name}` : `+ ${g.name}`}
-                                        </span>
-                                    )
-                                })}
-                            </div>
-                            <div style={{ display: 'flex', gap: 14 }}>
-                                <div style={{ flex: 1, padding: '16px 18px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10 }}>
-                                    <div style={{ font: '700 10px/1 "JetBrains Mono", monospace', textTransform: 'uppercase', letterSpacing: 0.6, color: '#94A3B8', marginBottom: 9 }}>
-                                        Beban belajar
-                                    </div>
-                                    <div style={{ font: '900 24px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-1px', color: KC.ink }}>
-                                        {selectedHours} jam
-                                    </div>
-                                </div>
-                                <div style={{ flex: 1, padding: '16px 18px', background: '#FFF1EB', border: `1px solid ${KC.orange}`, borderRadius: 10 }}>
-                                    <div style={{ font: '700 10px/1 "JetBrains Mono", monospace', textTransform: 'uppercase', letterSpacing: 0.6, color: '#9A3412', marginBottom: 9 }}>
-                                        Proyeksi kecocokan
-                                    </div>
-                                    <div style={{ font: '900 24px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-1px', color: KC.orange }}>
-                                        {projectedMatch}%
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 2 Cards: Matching Skills & Missing Skills */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                            <div style={{ background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 13, padding: 20 }}>
-                                <div style={{ font: '900 14px/1.2 "Plus Jakarta Sans", sans-serif', color: '#065F46', marginBottom: 5 }}>
-                                    Skill yang sudah sesuai
-                                </div>
-                                <div style={{ font: '400 11.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#047857', marginBottom: 14 }}>
-                                    Irisan profil dengan kebutuhan lowongan
-                                </div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                                    {matchingSkills.map(s => (
-                                        <span key={s} style={{ padding: '6px 11px', background: '#fff', border: '1px solid #10B981', borderRadius: 7, font: '800 12px/1 "Plus Jakarta Sans", sans-serif', color: '#047857' }}>
-                                            ✓ {s}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div style={{ background: '#FEF3C7', border: '1.5px solid #F59E0B', borderRadius: 13, padding: 20 }}>
-                                <div style={{ font: '900 14px/1.2 "Plus Jakarta Sans", sans-serif', color: '#92400E', marginBottom: 5 }}>
-                                    Skill yang perlu dipelajari
-                                </div>
-                                <div style={{ font: '400 11.5px/1.45 "Plus Jakarta Sans", sans-serif', color: '#B45309', marginBottom: 14 }}>
-                                    Kebutuhan wajib yang belum ada di profil
-                                </div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                                    {gapSkills.map(g => (
-                                        <span key={g.name} style={{ padding: '6px 11px', background: '#fff', border: '1px solid #F59E0B', borderRadius: 7, font: '800 12px/1 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
-                                            + {g.name}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Bottom Course Recommendations */}
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 10 }}>
-                    <div>
-                        <h2 style={{ font: '900 19px/1.15 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.6px', color: KC.ink, margin: 0 }}>
-                            Referensi pembelajaran
-                        </h2>
-                        <p style={{ font: '400 12.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', margin: '5px 0 0' }}>
-                            Dihasilkan dari analisis gap AI untuk target pekerjaan {targetTitle}.
-                        </p>
-                    </div>
-                    <span style={{ padding: '6px 12px', background: '#EEF2FF', border: '1px solid #6366F1', borderRadius: 999, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#3730A3' }}>
-                        {courses.length} rekomendasi
-                    </span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: courses.length > 0 ? 'repeat(auto-fit, minmax(280px, 1fr))' : '1fr', gap: 16 }}>
-                    {courses.length === 0 ? (
-                        <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 28, textAlign: 'center', color: '#64748B' }}>
-                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Belum ada rekomendasi kursus. Jalankan analisis skill gap untuk memuat modul pelatihan AI.</p>
-                        </div>
-                    ) : (
-                        courses.map((c, idx) => (
-                            <div key={idx} style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 22 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
-                                    <span style={{ font: '800 10.5px/1 "JetBrains Mono", monospace', textTransform: 'uppercase', letterSpacing: 0.7, color: '#64748B' }}>
-                                        {c.provider || 'Mitra Pelatihan'}
-                                    </span>
-                                    <span style={{ padding: '4px 10px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, font: '700 11px/1 "Plus Jakarta Sans", sans-serif', color: '#334155' }}>
-                                        {c.price || 'Gratis / Bersubsidi'}
-                                    </span>
-                                </div>
-                                <h3 style={{ font: '900 17px/1.3 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink, margin: '0 0 9px' }}>
-                                    {c.title}
-                                </h3>
-                                <p style={{ font: '400 12.5px/1.6 "Plus Jakarta Sans", sans-serif', color: '#1E293B', margin: '0 0 16px' }}>
-                                    {c.description || 'Program akselerasi kompetensi untuk menutup kesenjangan keahlian.'}
-                                </p>
-                                <div style={{ paddingTop: 14, borderTop: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span style={{ font: '600 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
-                                        ⏱ {c.hours ? `${c.hours} jam` : '20 jam'}
-                                    </span>
-                                    {c.url ? (
-                                        <a
-                                            href={c.url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            style={{ textDecoration: 'none', padding: '9px 14px', background: KC.ink, borderRadius: 8, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#fff' }}
-                                        >
-                                            Periksa penyedia ↗
-                                        </a>
-                                    ) : (
-                                        <span style={{ padding: '9px 14px', background: KC.ink, borderRadius: 8, font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', color: '#fff' }}>
-                                            Tersedia di Platform
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
-        )
+    // Learning a skill makes it a CLAIM on the profile — it counts, but only an
+    // HR confirmation after the interview makes it proven.
+    const markLearned = async (skill) => {
+        setBusySkill(skill)
+        try {
+            const names = (profile?.skills || []).map(skillName).filter(Boolean)
+            await updateSeekerProfile({ skills: [...new Set([...names, skill])] })
+            await loadSeekerProfile?.()
+            // Refresh both views of the same job: this plan and the match list
+            // the seeker returns to ("Kembali ke lowongan & lamar").
+            await Promise.all([runSkillGap(targetId), runAgent({ explicitIntent: 'match_jobs' })])
+            toast.success(`${skill} ditambahkan ke profil`)
+        } catch (e) {
+            toast.error(e.message || 'Gagal menyimpan')
+        } finally {
+            setBusySkill(null)
+        }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // MOBILE LAYOUT (Mobile Spec · Frame 07)
-    // ─────────────────────────────────────────────────────────────────────────
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'grid', gap: 18 }}>
             <DesignStyles />
-
-            {/* Header */}
-            <div>
-                <h1 style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.9, color: KC.ink, margin: '0 0 5px', lineHeight: 1.1 }}>
-                    Skill Gap &amp; Kursus
-                </h1>
-                <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 600 }}>
-                    Target: {targetTitle}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div>
+                    <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: '-1px' }}>Rencana Belajar</h1>
+                    <p style={{ color: KC.mute, margin: '6px 0 0', fontSize: 14 }}>
+                        Skill apa yang dibutuhkan lowongan incaranmu, dan cara menutupnya.
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <select value={picked || targetId || ''} onChange={(e) => setPicked(e.target.value)}
+                        style={selectStyle({ width: 280 })}>
+                        <option value="">Pilih lowongan target</option>
+                        {targetId && !(matches || []).some((m) => jobIdOf(m) === targetId) && (
+                            <option value={targetId}>{skillGapResult?.target_job_title || 'Lowongan target'}</option>
+                        )}
+                        {(matches || []).map((m) => (
+                            <option key={jobIdOf(m)} value={jobIdOf(m)}>{m.title} · {m.company || m.company_name}</option>
+                        ))}
+                    </select>
+                    <button style={topBtn(KC.orange, '#fff')} onClick={analyse}>Analisis</button>
                 </div>
             </div>
 
-            {/* Radial Dial Card */}
-            <div style={{
-                background: '#090A0F', border: `1.5px solid ${KC.ink}`,
-                borderRadius: 16, boxShadow: `3px 3px 0 ${KC.orange}`,
-                padding: '20px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center',
-            }}>
-                <div style={{ position: 'relative', width: 200, height: 200 }}>
-                    <svg width="200" height="200" viewBox="0 0 200 200" style={{ transform: 'rotate(-90deg)' }}>
-                        <circle cx="100" cy="100" r="68" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="17" />
-                        <circle
-                            cx="100" cy="100" r="68" fill="none" stroke={KC.orange} strokeWidth="17"
-                            strokeLinecap="round" strokeDasharray="427"
-                            strokeDashoffset={427 - (427 * (potentialScore / 100))} opacity="0.28"
-                        />
-                        <circle
-                            cx="100" cy="100" r="68" fill="none" stroke={KC.orange} strokeWidth="17"
-                            strokeLinecap="round" strokeDasharray="427"
-                            strokeDashoffset={427 - (427 * (currentScore / 100))}
-                        />
-                    </svg>
+            <LoopSteps active={skillGapResult ? 1 : 0} />
 
-                    <div style={{
-                        position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
-                    }}>
-                        <div style={{
-                            fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 800,
-                            letterSpacing: 0.9, textTransform: 'uppercase', color: 'rgba(255,255,255,.45)',
-                        }}>
-                            Kecocokan
+            {!skillGapResult ? (
+                <BrutalCard color={KC.orangeSoft}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontWeight: 900 }}><Target size={18} /> Belum ada lowongan target</div>
+                    <p style={{ margin: '8px 0 12px', fontSize: 14 }}>
+                        Buka satu lowongan di <b>Lowongan Cocok</b>, lalu tekan <b>Jadikan target</b>. Kami tunjukkan skill yang kurang dan kursus untuk menutupnya.
+                    </p>
+                    <button style={topBtn(KC.ink, '#fff')} onClick={() => navigate('seeker-match')}>Lihat lowongan cocok →</button>
+                </BrutalCard>
+            ) : (
+                <>
+                    <BrutalCard>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: KC.mute, textTransform: 'uppercase' }}>Target</div>
+                        <div style={{ fontSize: 22, fontWeight: 900, margin: '4px 0 10px' }}>{skillGapResult.target_job_title || 'Lowongan'}</div>
+                        <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', fontSize: 14 }}>
+                            <span><b style={{ fontSize: 20 }}>{matching.length}/{total}</b> skill wajib sudah kamu punya</span>
                         </div>
-                        <div style={{ fontSize: 50, fontWeight: 900, letterSpacing: -2.8, color: '#FFFFFF', margin: '4px 0 2px', lineHeight: 1 }}>
-                            {currentScore}%
+                    </BrutalCard>
+
+                    {missing.length === 0 ? (
+                        <BrutalCard color={KC.limeSoft}>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 900 }}><CheckCircle2 size={18} /> Semua skill wajib sudah ada di profilmu</div>
+                            <p style={{ margin: '6px 0 0', fontSize: 14 }}>Saatnya melamar. HR akan mengonfirmasi skill-mu saat wawancara.</p>
+                        </BrutalCard>
+                    ) : (
+                        <div style={{ display: 'grid', gap: 12 }}>
+                            <h2 style={{ fontSize: 17, fontWeight: 900, margin: '4px 0 0' }}>Skill yang perlu kamu pelajari ({missing.length})</h2>
+                            {missing.map((skill) => {
+                                const own = coursesFor(skill, courses)
+                                return (
+                                    <BrutalCard key={skill} padding={16}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                                            <ProofChip name={skill} status="missing" />
+                                            <button style={{ ...topBtn(), padding: '7px 11px', fontSize: 12 }} disabled={busySkill === skill}
+                                                onClick={() => markLearned(skill)}>
+                                                <Plus size={13} /> {busySkill === skill ? 'Menyimpan…' : 'Sudah saya kuasai — tambah ke profil'}
+                                            </button>
+                                        </div>
+                                        <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+                                            {own.length
+                                                ? own.map((c, i) => <CourseLink key={i} c={c} />)
+                                                : <span style={{ fontSize: 13, color: KC.mute }}>Lihat kursus yang relevan di bawah.</span>}
+                                        </div>
+                                    </BrutalCard>
+                                )
+                            })}
                         </div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: KC.orange }}>
-                            ↑ potensi {potentialScore}%
-                        </div>
-                    </div>
-                </div>
+                    )}
 
-                <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 16 }}>
-                    <div style={{ flex: 1, textAlign: 'center', padding: '11px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: '#fff' }}>{gapSkills.length}</div>
-                        <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>Gap wajib</div>
-                    </div>
-                    <div style={{ flex: 1, textAlign: 'center', padding: '11px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: '#fff' }}>{gapSkills.length * 20}</div>
-                        <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>Jam estimasi</div>
-                    </div>
-                    <div style={{ flex: 1, textAlign: 'center', padding: '11px 8px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10 }}>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: gapSkills.length >= 4 ? '#EF4444' : gapSkills.length >= 2 ? '#F59E0B' : '#10B981' }}>
-                            {gapSkills.length >= 4 ? 'Tinggi' : gapSkills.length >= 2 ? 'Sedang' : 'Rendah'}
-                        </div>
-                        <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>Severity</div>
-                    </div>
-                </div>
-            </div>
+                    {unmatchedCourses.length > 0 && missing.length > 0 && (
+                        <BrutalCard>
+                            <div style={{ fontWeight: 900, marginBottom: 10 }}>Kursus yang relevan</div>
+                            <div style={{ display: 'grid', gap: 8 }}>{unmatchedCourses.map((c, i) => <CourseLink key={i} c={c} />)}</div>
+                        </BrutalCard>
+                    )}
 
-            {/* Simulation Card Mobile */}
-            <div style={{
-                background: '#FFFFFF', border: `1.5px solid ${KC.ink}`,
-                borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 15,
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
-                    <span style={{ fontSize: 13, fontWeight: 900, color: KC.ink }}>Simulasi rencana belajar</span>
-                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, fontWeight: 800, color: KC.orange }}>
-                        {selectedChips.length} / {gapSkills.length} dipilih
-                    </span>
-                </div>
-                <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 11 }}>
-                    Ketuk skill yang siap Anda pelajari — proyeksi kecocokan diperbarui langsung.
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 13 }}>
-                    {gapSkills.map(g => {
-                        const isPicked = selectedChips.includes(g.name)
-                        return (
-                            <span
-                                key={g.name}
-                                onClick={() => toggleChip(g.name)}
-                                style={{
-                                    padding: '8px 12px',
-                                    background: isPicked ? KC.ink : '#FEF3C7',
-                                    border: `1.5px solid ${isPicked ? KC.ink : '#F59E0B'}`,
-                                    borderRadius: 999,
-                                    fontSize: 12,
-                                    fontWeight: 800,
-                                    color: isPicked ? '#fff' : '#B45309',
-                                    cursor: 'pointer',
-                                    userSelect: 'none',
-                                }}
-                            >
-                                {isPicked ? `✓ ${g.name}` : `+ ${g.name}`}
-                            </span>
-                        )
-                    })}
-                </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                    <div style={{ flex: 1, padding: '11px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 9 }}>
-                        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 700, color: '#94A3B8', marginBottom: 6 }}>Beban belajar</div>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: KC.ink }}>{selectedHours} jam</div>
-                    </div>
-                    <div style={{ flex: 1, padding: '11px 12px', background: '#FFF1EB', border: `1px solid ${KC.orange}`, borderRadius: 9 }}>
-                        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 700, color: '#9A3412', marginBottom: 6 }}>Proyeksi match</div>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: KC.orange }}>{projectedMatch}%</div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Matching Skills */}
-            <div style={{ background: '#ECFDF5', border: '1.5px solid #10B981', borderRadius: 12, padding: 14 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 900, color: '#065F46', marginBottom: 10 }}>
-                    Sudah sesuai · {matchingSkills.length} keahlian
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {matchingSkills.map(s => (
-                        <span key={s} style={{ padding: '5px 10px', background: '#fff', border: '1px solid #10B981', borderRadius: 999, fontSize: 11, fontWeight: 800, color: '#047857' }}>
-                            ✓ {s}
-                        </span>
-                    ))}
-                </div>
-            </div>
-
-            {/* Recommendations */}
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <h2 style={{ fontSize: 15, fontWeight: 900, letterSpacing: -0.5, color: KC.ink, margin: 0 }}>
-                    Referensi pembelajaran
-                </h2>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, fontWeight: 800, color: '#6366F1' }}>
-                    {courses.length} rekomendasi
-                </span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                {courses.length === 0 ? (
-                    <div style={{ background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 20, textAlign: 'center', color: '#64748B', fontSize: 12 }}>
-                        Belum ada kursus. Jalankan analisis gap untuk melihat modul rekomendasi AI.
-                    </div>
-                ) : (
-                    courses.map((c, idx) => (
-                        <div key={idx} style={{ background: '#FFFFFF', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 14 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 800, color: '#64748B' }}>{c.provider || 'Mitra Pelatihan'}</span>
-                                <span style={{ padding: '3px 8px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 10, fontWeight: 700, color: '#334155' }}>{c.price || 'Bersubsidi'}</span>
+                    {matching.length > 0 && (
+                        <BrutalCard>
+                            <div style={{ fontWeight: 900, marginBottom: 10 }}>Sudah kamu punya</div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {matching.map((s) => <ProofChip key={s} name={s} status={proofByName[s.toLowerCase()] || 'claimed'} />)}
                             </div>
-                            <div style={{ fontSize: 14.5, fontWeight: 900, color: KC.ink, marginBottom: 6 }}>{c.title}</div>
-                            <p style={{ fontSize: 11.5, color: '#1E293B', margin: '0 0 11px', lineHeight: 1.5 }}>
-                                {c.description || 'Program intensif penutupan skill gap pencari kerja.'}
-                            </p>
-                            <div style={{ paddingTop: 11, borderTop: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontSize: 10.5, color: '#94A3B8' }}>⏱ {c.hours ? `${c.hours} jam` : '20 jam'}</span>
-                                {c.url ? (
-                                    <a
-                                        href={c.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style={{ textDecoration: 'none', padding: '7px 11px', background: KC.ink, borderRadius: 7, fontSize: 10.5, fontWeight: 800, color: '#fff' }}
-                                    >
-                                        Periksa penyedia
-                                    </a>
-                                ) : (
-                                    <span style={{ padding: '7px 11px', background: KC.ink, borderRadius: 7, fontSize: 10.5, fontWeight: 800, color: '#fff' }}>
-                                        Tersedia
-                                    </span>
-                                )}
+                        </BrutalCard>
+                    )}
+
+                    <BrutalCard color={KC.ink} shadow={KC.orange} style={{ color: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <div style={{ fontSize: 14, maxWidth: 520, lineHeight: 1.5 }}>
+                                Skill yang kamu tambahkan dihitung sebagai <b>klaim</b>. Skill menjadi <b>dikonfirmasi</b> setelah HR mengujinya di wawancara.
                             </div>
+                            {targetId && (isJobApplied(targetId) ? (
+                                <button style={topBtn(KC.orange, '#fff', KC.orange)} onClick={() => navigate('seeker-applications')}>
+                                    Lihat lamaranku <ArrowRight size={14} />
+                                </button>
+                            ) : (
+                                <button style={topBtn(KC.orange, '#fff', KC.orange)} onClick={() => openTargetJob(targetId)}>
+                                    Kembali ke lowongan & lamar <ArrowRight size={14} />
+                                </button>
+                            ))}
                         </div>
-                    ))
-                )}
-            </div>
+                    </BrutalCard>
+                </>
+            )}
         </div>
     )
 }

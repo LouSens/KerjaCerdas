@@ -3,25 +3,23 @@
 // "Email perusahaan terverifikasi" badge compares the login email against.
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { BadgeCheck, Building2, Crown, LogOut, ShieldCheck } from 'lucide-react'
+import { BadgeCheck, Building2, LogOut, ShieldCheck } from 'lucide-react'
 import useStore from '../store/useStore'
 import { BrutalCard, DesignStyles, KC, topBtn } from './_design'
-import { fetchEmployerTrust, fetchMyPlans, updateEmployerProfile } from '../services/api'
+import { fetchEmployerTrust, updateEmployerProfile } from '../services/api'
 
 const inputStyle = { width: '100%', padding: '10px 12px', border: `1.5px solid ${KC.ink}`, borderRadius: 9, fontFamily: 'inherit', fontSize: 14, boxSizing: 'border-box' }
 
 export default function EmployerProfile() {
-    const { employerProfile, loadEmployerProfile, navigate, logout, user, openUpgradeModal, employerJobs, refreshEmployerJobs } = useStore()
+    const { employerProfile, loadEmployerProfile, navigate, logout, user, employerJobs, refreshEmployerJobs } = useStore()
     const [form, setForm] = useState({ company_name: '', industry: '', website: '', description: '' })
     const [saving, setSaving] = useState(false)
     const [trust, setTrust] = useState(null)
-    const [plans, setPlans] = useState(null)
 
     useEffect(() => {
         loadEmployerProfile()
         refreshEmployerJobs()
         fetchEmployerTrust().then(setTrust).catch(() => setTrust(null))
-        fetchMyPlans().then(setPlans).catch(() => setPlans(null))
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
@@ -56,8 +54,6 @@ export default function EmployerProfile() {
     }
 
     const active = (employerJobs || []).filter((j) => j.is_active).length
-    const lighthouse = plans?.lighthouse_until
-    const planLabel = lighthouse ? `Max 5x s/d ${String(lighthouse).slice(0, 10)}` : 'Lite (gratis)'
     const badges = trust?.badges || {}
 
     return (
@@ -86,13 +82,13 @@ export default function EmployerProfile() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                 <BrutalCard padding={16}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: KC.mute, textTransform: 'uppercase' }}>Paket</div>
-                    <div style={{ fontWeight: 900, fontSize: 18, margin: '6px 0' }}>{planLabel}</div>
-                    <button style={{ ...topBtn('#F59E0B', KC.ink), background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', padding: '10px 16px', fontSize: 13 }} onClick={() => openUpgradeModal()}><Crown size={15} /> Upgrade Premium</button>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: KC.mute, textTransform: 'uppercase' }}>Biaya</div>
+                    <div style={{ fontWeight: 900, fontSize: 18, margin: '6px 0' }}>Gratis untuk perusahaan</div>
+                    <div style={{ fontSize: 12.5, color: KC.mute }}>Semua pelamar diperingkat, pertanyaan wawancara AI, dan ekspor — tanpa paket.</div>
                 </BrutalCard>
                 <BrutalCard padding={16}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: KC.mute, textTransform: 'uppercase' }}>Lowongan aktif</div>
-                    <div style={{ fontWeight: 900, fontSize: 26, margin: '6px 0' }}>{active}<span style={{ fontSize: 14, color: KC.mute }}> / {lighthouse ? 5 : 1} (+ lowongan Pro)</span></div>
+                    <div style={{ fontWeight: 900, fontSize: 26, margin: '6px 0' }}>{active}</div>
                     <button style={topBtn()} onClick={() => navigate('employer-jobs')}>Kelola lowongan</button>
                 </BrutalCard>
             </div>

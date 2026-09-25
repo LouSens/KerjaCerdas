@@ -128,6 +128,8 @@ const useStore = create(
                     seekerId: null,
                     matches: [],
                     applications: [],
+                    focusJobId: null,
+                    openJobOnArrival: null,
                     profile: DEFAULT_PROFILE,
                 })
                 const displayName = (user.name || '').trim() || (resolvedRole === 'employer' ? 'Tim HR' : 'Pencari Kerja')
@@ -172,6 +174,8 @@ const useStore = create(
                     seekerId: null,
                     matches: [],
                     applications: [],
+                    focusJobId: null,
+                    openJobOnArrival: null,
                     profile: DEFAULT_PROFILE,
                 })
                 const displayName = (user.name || '').trim() || (user.role === 'employer' ? 'Tim HR' : 'Pencari Kerja')
@@ -214,6 +218,8 @@ const useStore = create(
                     authToken: null,
                     savedJobs: [],
                     applications: [],
+                    focusJobId: null,
+                    openJobOnArrival: null,
                     employerProfile: null,
                     employerJobs: [],
                     employerApplications: [],
@@ -356,6 +362,25 @@ const useStore = create(
             advisorInput: '',
             setAdvisorInput: (v) => set({ advisorInput: v }),
             advisorSessionId: null,
+
+            // ─── Target job: the thread through the seeker loop ──────────
+            // target job → skill gap → learn → apply → feedback. The durable
+            // copy is the server's latest skill-gap target; this is only the
+            // in-session pointer, deliberately NOT persisted (see partialize).
+            focusJobId: null,
+            // A job the match list should open on arrival ("Kembali ke lowongan").
+            openJobOnArrival: null,
+
+            setTargetJob: async (jobId) => {
+                if (!jobId) return
+                set({ focusJobId: jobId })
+                get().navigate('seeker-skill-gap')
+                await get().runSkillGap(jobId)
+            },
+            openTargetJob: (jobId) => {
+                set({ openJobOnArrival: jobId || get().focusJobId })
+                get().navigate('seeker-match')
+            },
 
             // ─── Skill gap ───────────────────────────────────────────────
             skillGapResult: null,
@@ -650,10 +675,11 @@ const useStore = create(
                 }
             },
 
-            changeApplicationStatus: async (applicationId, status, note = '') => {
+            changeApplicationStatus: async (applicationId, status, note = '', reasonCode = null) => {
                 try {
-                    const res = await updateApplicationStatus(applicationId, status, note)
-                    toast.success(`Status lamaran diperbarui ke ${status}`)
+                    const res = await updateApplicationStatus(applicationId, status, note, reasonCode)
+                    const label = { reviewed: 'Ditinjau', interview: 'Wawancara', offered: 'Ditawari', hired: 'Diterima', rejected: 'Ditolak' }[status] || status
+                    toast.success(`Status lamaran: ${label}`)
                     // Refresh employer applications and jobs
                     await get().loadEmployerApplications()
                     await get().refreshEmployerJobs()

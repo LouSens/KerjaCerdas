@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import OfflineParseConfirmModal from './OfflineParseConfirmModal'
 import { ProofChip } from './ProofUI'
+import { QUIZ_ENABLED } from '../config/features'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 function isValidUrl(str) {
@@ -256,8 +257,8 @@ export default function CVUploader() {
                         <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.mute }}>
                             Keahlian ({totalSkills})
                         </div>
-                        {/* ⚡ X/Y Skill Terbukti — links to Bukti Skill page */}
-                        <button
+                        {/* ⚡ X/Y Skill Terbukti — links to Bukti Skill page (quiz UI only) */}
+                        {QUIZ_ENABLED && <button
                             className="kc-btn"
                             onClick={() => navigate('seeker-verification')}
                             style={{
@@ -274,7 +275,7 @@ export default function CVUploader() {
                             <Zap size={12} fill={provenCount > 0 ? KC.lime : KC.borderMuted} color={provenCount > 0 ? KC.lime : KC.borderMuted} />
                             {proofLoading ? '…' : `${provenCount}/${totalSkills} Skill Terbukti`}
                             <ArrowRight size={11} />
-                        </button>
+                        </button>}
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                         {skills.map((sk, i) => {

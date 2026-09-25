@@ -227,6 +227,10 @@ export const applyToJob = (jobId, coverLetter = '', extra = {}) =>
 
 export const fetchApplications = () => request(`${API_BASE}/seeker/applications`)
 
+// Exact standing among this job's applicants, computed from the score stored at apply time.
+export const fetchApplicationRank = (applicationId) =>
+    request(`${API_BASE}/seeker/applications/${applicationId}/rank`)
+
 // ── Jobs search ──────────────────────────────────────────────────────────────
 export const searchJobs = (q = '', offset = 0, limit = 20, filters = {}) => {
     let url = `${API_BASE}/jobs?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`;
@@ -269,11 +273,29 @@ export const fetchEmployerApplications = (jobId = null) => {
     return request(`${API_BASE}/employer/applications${qs}`)
 }
 
-export const updateApplicationStatus = (applicationId, status, note = null) =>
+// A rejection must carry `reasonCode` (one of the backend's REJECTION_REASONS);
+// the API refuses a bare "rejected" with 422. The code is shown to the seeker.
+export const updateApplicationStatus = (applicationId, status, note = null, reasonCode = null) =>
     request(`${API_BASE}/employer/applications/${applicationId}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status, ...(note !== null ? { note } : {}) }),
+        body: JSON.stringify({
+            status,
+            ...(note !== null ? { note } : {}),
+            ...(reasonCode ? { reason_code: reasonCode } : {}),
+        }),
     })
+
+// Mirrors services/hiring/rejection.py — the codes HR can pick when rejecting.
+export const REJECTION_REASONS = [
+    ['skill_kurang', 'Skill inti belum memadai'],
+    ['pengalaman_kurang', 'Pengalaman relevan belum cukup'],
+    ['lokasi', 'Lokasi / kesediaan pindah tidak cocok'],
+    ['gaji', 'Ekspektasi gaji di luar anggaran'],
+    ['posisi_terisi', 'Posisi sudah terisi kandidat lain'],
+    ['tidak_hadir', 'Tidak hadir / tidak merespons'],
+    ['dokumen', 'Dokumen / syarat administratif'],
+    ['lainnya', 'Alasan lain'],
+]
 
 // ── Partnership & Enterprise Inquiries ──────────────────────────────────────
 export const submitPartnershipInquiry = (data) =>

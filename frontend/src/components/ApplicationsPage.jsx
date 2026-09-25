@@ -4,6 +4,8 @@
 import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, BrutalCard, topBtn, DesignStyles } from './_design'
+import ApplicationFeedback from './ApplicationFeedback'
+import LoopSteps from './LoopSteps'
 import { Send, Clock, RefreshCw, Briefcase, Loader2 } from 'lucide-react'
 
 export default function ApplicationsPage() {
@@ -53,6 +55,8 @@ export default function ApplicationsPage() {
                 </button>
             </div>
 
+            <LoopSteps active={4} />
+
             {/* Loading State */}
             {applicationsLoading && list.length === 0 && (
                 <BrutalCard color="#FFFFFF" padding={24}>
@@ -89,7 +93,7 @@ export default function ApplicationsPage() {
                             Lamaran yang Anda kirimkan ke perusahaan akan terlacak secara otomatis di sini beserta tahapan status rekrutmen.
                         </p>
                         <button
-                            onClick={() => navigate('search')}
+                            onClick={() => navigate('seeker-match')}
                             className="kc-btn"
                             style={{
                                 marginTop: 6,
@@ -103,7 +107,7 @@ export default function ApplicationsPage() {
                                 cursor: 'pointer',
                             }}
                         >
-                            Jelajahi Lowongan Pekerjaan →
+                            Lihat Lowongan Cocok →
                         </button>
                     </div>
                 ) : (
@@ -123,8 +127,9 @@ export default function ApplicationsPage() {
                         const title = app.title || app.job_title || 'Posisi Pekerjaan'
                         const badgeText = isRejected ? 'Ditolak' : isShortlisted ? 'Shortlisted' : isReviewed ? 'Ditinjau' : 'Terkirim'
 
-                        const dateText = app.created_at
-                            ? new Date(app.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                        const sentAt = app.applied_at || app.created_at
+                        const dateText = sentAt
+                            ? new Date(sentAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
                             : null
 
                         return (
@@ -160,7 +165,7 @@ export default function ApplicationsPage() {
 
                                 {isRejected ? (
                                     <div style={{ padding: '10px 14px', background: '#FEE2E2', border: '1px solid #F87171', borderRadius: 9, fontSize: 12, color: '#991B1B', marginBottom: 10 }}>
-                                        <b>Tahapan Selesai:</b> Proses seleksi untuk posisi ini telah ditutup.
+                                        <b>Tidak lolos untuk posisi ini.</b> Lihat alasannya dan skill yang bisa kamu pelajari untuk lamaran berikutnya.
                                     </div>
                                 ) : (
                                 <>
@@ -231,6 +236,8 @@ export default function ApplicationsPage() {
                                 </div>
                                 </>
                                 )}
+
+                                <ApplicationFeedback app={app} />
 
                                 {/* Dynamic Note / Schedule box */}
                                 {app.note && (

@@ -10,16 +10,17 @@ import TrustCenter from '../../components/TrustCenter'
 
 describe('ProofChip', () => {
     it('labels each proof level honestly', () => {
-        expect(renderToStaticMarkup(<ProofChip name="Excel" status="quiz" />)).toContain('Terbukti')
+        // A quiz is a knowledge check, never labelled as proof.
+        expect(renderToStaticMarkup(<ProofChip name="Excel" status="quiz" />)).toContain('Kuis')
+        expect(renderToStaticMarkup(<ProofChip name="Excel" status="quiz" />)).not.toContain('Terbukti')
         expect(renderToStaticMarkup(<ProofChip name="Excel" status="claimed" />)).toContain('Klaim')
         expect(renderToStaticMarkup(<ProofChip name="Excel" status="hr_confirmed" />)).toContain('HR')
         expect(renderToStaticMarkup(<ProofChip name="Excel" status="missing" />)).toContain('Belum ada')
     })
 
-    it('explains the 30/85/100 weights', () => {
+    it('explains the profile vs HR-confirmed weights', () => {
         const html = renderToStaticMarkup(<ProofLegend />)
         expect(html).toContain('30%')
-        expect(html).toContain('85%')
         expect(html).toContain('100%')
     })
 })

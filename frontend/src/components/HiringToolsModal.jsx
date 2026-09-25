@@ -46,7 +46,7 @@ export default function HiringToolsModal({ app, onClose }) {
                 </div>
 
                 <div style={{ fontWeight: 800, marginTop: 14 }}>Pertanyaan wawancara</div>
-                <p style={{ fontSize: 12, color: KC.mute, margin: '2px 0 8px' }}>Fokus pada skill yang baru diklaim. Kuis menyaring, wawancara memastikan.</p>
+                <p style={{ fontSize: 12, color: KC.mute, margin: '2px 0 8px' }}>Fokus pada skill yang baru diklaim. Profil menyaring, wawancara memastikan — konfirmasi skill di bawah setelah wawancara.</p>
                 {kitError?.status === 402 && (
                     <div style={{ background: KC.yellowSoft, border: `1px solid ${KC.yellow}`, borderRadius: 9, padding: 12, fontSize: 13 }}>
                         Pertanyaan wawancara AI tersedia di paket Pro atau Max.

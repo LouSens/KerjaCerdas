@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ProofChip } from './ProofUI'
 import useStore, { hasMeaningfulProfile } from '../store/useStore'
 import { KC, ScoreDonut, topBtn, DesignStyles, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
+import TargetSuggestion from './TargetSuggestion'
+
+// The API sends scores as 0-1 fractions; older payloads used 0-100.
+const toPct = (v) => Math.round(v > 1 ? v : v * 100)
 
 const bandOf = (m) => {
     if (m.band) return m.band
@@ -15,12 +19,18 @@ const bandOf = (m) => {
 
 export default function SeekerMatchResults() {
     const isMobile = useIsMobile()
-    const { matches, agentLoading, runAgent, navigate, savedJobs, toggleSaveJob: storeSaveJob, profile } = useStore()
+    const { matches, agentLoading, runAgent, navigate, savedJobs, toggleSaveJob: storeSaveJob, profile,
+        openJobOnArrival, setTargetJob } = useStore()
     const hasProfile = hasMeaningfulProfile(profile)
-    const [selectedJob, setSelectedJob] = useState(null)
+    // "Kembali ke lowongan" from the learning plan arrives with a job to reopen.
+    const [selectedJob, setSelectedJob] = useState(
+        () => (openJobOnArrival && (matches || []).find(m => (m.id || m.job_id) === openJobOnArrival)) || null
+    )
+    useEffect(() => {
+        if (openJobOnArrival) useStore.setState({ openJobOnArrival: null })
+    }, [openJobOnArrival])
     const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'strong' | 'possible' | 'stretch'
     const [refreshing, setRefreshing] = useState(false)
-    const [showFreshNotice, setShowFreshNotice] = useState(false)
     const [lastUpdatedText, setLastUpdatedText] = useState('Diperbarui secara real-time')
     const [bandsExpanded, setBandsExpanded] = useState(false)
 
@@ -39,7 +49,6 @@ export default function SeekerMatchResults() {
         setRefreshing(true)
         setTimeout(() => {
             setRefreshing(false)
-            setShowFreshNotice(true)
             setLastUpdatedText('Diperbarui baru saja')
             runAgent({ explicitIntent: 'match_jobs' })
         }, 1100)
@@ -142,7 +151,7 @@ export default function SeekerMatchResults() {
                 {baseList.length === 0 && (
                     <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 14, boxShadow: `4px 4px 0 ${KC.ink}`, padding: '48px 24px', textAlign: 'center' }}>
                         <div style={{ width: 56, height: 56, borderRadius: '50%', background: KC.cyanSoft, border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', margin: '0 auto 16px' }}>
-                            <ScoreDonut score={0} size={44} strokeWidth={4} />
+                            <ScoreDonut value={0} size={44} />
                         </div>
                         <h2 style={{ fontSize: 20, fontWeight: 900, color: KC.ink, margin: '0 0 8px' }}>
                             {hasProfile ? 'Belum Ada Hasil Pencocokan AI' : 'Lengkapi Profil Dulu'}
@@ -182,6 +191,8 @@ export default function SeekerMatchResults() {
                     </div>
                 )}
 
+                <TargetSuggestion matches={baseList} onDetail={setSelectedJob} />
+
                 {/* Section 1: Strong Fit */}
                 {strongMatches.length > 0 && (
                     <div>
@@ -202,7 +213,7 @@ export default function SeekerMatchResults() {
                                 // (cosine 35% + proof-weighted skills 40% + experience 15% +
                                 // education 10%) — location/salary are hard filters, not weighted
                                 // factors, so they aren't part of this score breakdown.
-                                const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
+                                const jobScore = toPct(job.overall_score ?? job.score ?? 0)
                                 const sem = Math.round(job.cosine != null ? job.cosine * 100 : jobScore)
                                 const sk = Math.round(job.skill_overlap != null ? job.skill_overlap * 100 : jobScore)
                                 const exp = Math.round(job.experience_fit != null ? job.experience_fit * 100 : jobScore)
@@ -335,28 +346,33 @@ export default function SeekerMatchResults() {
                     </div>
                 )}
 
-                {/* Section 2: Possible Fit */}
-                {possibleMatches.length > 0 && (
-                    <div style={{ marginTop: 10 }}>
+                {/* Sections 2-3: Possible and Stretch. Stretch jobs were never rendered on desktop —
+                    a seeker whose matches were all stretch saw "2 lowongan" and an empty page.
+                    For a fresh grad these are exactly the jobs worth making a learning target. */}
+                {[
+                    ['possible', possibleMatches, 'Possible Fit (Potensial)', 'Possible Fit', '#F59E0B', '#FEF3C7', '#B45309'],
+                    ['stretch', stretchMatches, 'Stretch — jadikan target belajar', 'Stretch', '#6366F1', '#EEF2FF', '#3730A3'],
+                ].map(([bandKey, list, heading, pill, color, pillBg, pillInk]) => list.length > 0 && (
+                    <div key={bandKey} style={{ marginTop: 10 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
-                            <span style={{ width: 10, height: 10, background: '#F59E0B', borderRadius: '50%' }} />
+                            <span style={{ width: 10, height: 10, background: color, borderRadius: '50%' }} />
                             <span style={{ font: '900 17px/1 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.5px', color: KC.ink }}>
-                                Possible Fit (Potensial)
+                                {heading}
                             </span>
                             <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#94A3B8' }}>
-                                {possibleMatches.length} lowongan
+                                {list.length} lowongan
                             </span>
                             <span style={{ flex: 1, height: 1.5, background: '#E2E8F0' }} />
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            {possibleMatches.map((job, idx) => {
-                                const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
+                            {list.map((job, idx) => {
+                                const jobScore = toPct(job.overall_score ?? job.score ?? 0)
                                 const isSaved = (savedJobs || []).some(s => (s.id || s.job_id) === job.id)
 
                                 return (
                                     <div
-                                        key={job.id || idx}
+                                        key={job.id || job.job_id || idx}
                                         style={{
                                             background: '#fff',
                                             border: `1.5px solid ${KC.ink}`,
@@ -372,15 +388,15 @@ export default function SeekerMatchResults() {
                                                     <span style={{ font: '700 13px/1 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
                                                         {job.company || job.company_name}
                                                     </span>
-                                                    <span style={{ padding: '3px 9px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: '#B45309' }}>
-                                                        Possible Fit
+                                                    <span style={{ padding: '3px 9px', background: pillBg, border: `1px solid ${color}`, borderRadius: 999, font: '800 10.5px/1.3 "Plus Jakarta Sans", sans-serif', color: pillInk }}>
+                                                        {pill}
                                                     </span>
                                                 </div>
                                                 <div style={{ font: '900 23px/1.2 "Plus Jakarta Sans", sans-serif', letterSpacing: '-0.9px', color: KC.ink, marginBottom: 9 }}>
                                                     {job.title}
                                                 </div>
                                                 <div style={{ font: '600 13px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginBottom: 16 }}>
-                                                    {job.location} · {job.work_type} &nbsp;·&nbsp; {job.salary_range || 'Rp 25 jt – Rp 38 jt'}
+                                                    {[job.location, job.work_type, job.salary_range].filter(Boolean).join(' · ')}
                                                 </div>
 
                                                 {((job.matching_skills?.length || 0) > 0 || (job.missing_skills?.length || 0) > 0) && (
@@ -393,15 +409,10 @@ export default function SeekerMatchResults() {
                                                         </>}
                                                 </div>
                                                 )}
-                                                {(job.skill_proof || []).some(p => p.status === 'claimed') && (
-                                                    <button onClick={() => navigate('seeker-verification')} style={{ ...topBtn('#fff', KC.ink), marginBottom: 12, padding: '8px 13px', fontSize: 12 }}>
-                                                        Buktikan skill yang masih klaim → skor naik di semua lowongan
-                                                    </button>
-                                                )}
 
                                                 {job.missing_skills?.length > 0 && (
                                                 <div
-                                                    onClick={() => navigate('seeker-skill-gap')}
+                                                    onClick={() => setTargetJob(job.id || job.job_id)}
                                                     style={{
                                                         display: 'inline-flex',
                                                         alignItems: 'center',
@@ -427,7 +438,7 @@ export default function SeekerMatchResults() {
                                                 <svg width="104" height="104" viewBox="0 0 104 104" style={{ transform: 'rotate(-90deg)' }}>
                                                     <circle cx="52" cy="52" r="43" fill="none" stroke="#E2E8F0" strokeWidth="7" />
                                                     <circle
-                                                        cx="52" cy="52" r="43" fill="none" stroke="#F59E0B" strokeWidth="7"
+                                                        cx="52" cy="52" r="43" fill="none" stroke={color} strokeWidth="7"
                                                         strokeLinecap="round" strokeDasharray="270.2"
                                                         strokeDashoffset={270.2 - (270.2 * (jobScore / 100))}
                                                     />
@@ -458,7 +469,7 @@ export default function SeekerMatchResults() {
                             })}
                         </div>
                     </div>
-                )}
+                ))}
             </div>
         )
     }
@@ -553,31 +564,14 @@ export default function SeekerMatchResults() {
                 </div>
             </div>
 
-            {/* Fresh Notification */}
-            {showFreshNotice && baseList.length > 0 && (
-                <div style={{
-                    background: '#090A0F', border: `1.5px solid ${KC.ink}`,
-                    borderRadius: 12, boxShadow: `3px 3px 0 ${KC.orange}`,
-                    padding: '13px 15px', animation: 'kcSlideUp .35s both',
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span style={{ width: 7, height: 7, background: KC.orange, borderRadius: '50%', animation: 'kcPulse 1.4s infinite' }} />
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 800, letterSpacing: 0.7, textTransform: 'uppercase', color: 'rgba(255,255,255,.5)' }}>
-                            Kurasi Terbaru
-                        </span>
-                    </div>
-                    <div style={{ fontSize: 13.5, fontWeight: 900, color: '#fff' }}>
-                        {baseList[0]?.company || baseList[0]?.company_name || 'Lowongan'} · {baseList[0]?.title} — {Math.round(baseList[0]?.score || baseList[0]?.overall_score || 0)}% Match
-                    </div>
-                </div>
-            )}
+            <TargetSuggestion matches={baseList} onDetail={setSelectedJob} />
 
             {/* Mobile Feed Cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {filteredList.length === 0 ? (
                     <div style={{ background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${KC.ink}`, padding: '32px 16px', textAlign: 'center' }}>
                         <div style={{ width: 44, height: 44, borderRadius: '50%', background: KC.cyanSoft, border: `1.5px solid ${KC.ink}`, display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
-                            <ScoreDonut score={0} size={36} strokeWidth={4} />
+                            <ScoreDonut value={0} size={36} />
                         </div>
                         <h3 style={{ fontSize: 15, fontWeight: 900, color: KC.ink, margin: '0 0 6px' }}>
                             Belum Ada Hasil Pencocokan
@@ -596,7 +590,7 @@ export default function SeekerMatchResults() {
                     </div>
                 ) : (
                     filteredList.map((job, idx) => {
-                        const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
+                        const jobScore = toPct(job.overall_score ?? job.score ?? 0)
                         const band = bandOf(job)
                         const isStrong = band === 'strong'
 
@@ -634,7 +628,7 @@ export default function SeekerMatchResults() {
                                             {job.title}
                                         </div>
                                         <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>
-                                            {job.location} · {job.work_type} · {job.salary_range || 'Rp 28–42 jt'}
+                                            {[job.location, job.work_type, job.salary_range].filter(Boolean).join(' · ')}
                                         </div>
                                     </div>
                                     <svg width="58" height="58" viewBox="0 0 58 58" style={{ flexShrink: 0, transform: 'rotate(-90deg)' }}>
