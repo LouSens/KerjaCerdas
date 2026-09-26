@@ -471,6 +471,28 @@ async def find_applications_by_seeker_id(seeker_id: str) -> list[ApplicationSche
         return []
 
 
+async def find_status_events_by_application_ids(
+    application_ids: list[str],
+) -> list[StatusEventSchema]:
+    """Status history for a set of applications (one query, not one per application)."""
+    if not application_ids:
+        return []
+    try:
+        async with async_session() as session:
+            stmt = select(ApplicationStatusEvent).where(
+                ApplicationStatusEvent.application_id.in_(application_ids)
+            )
+            result = await session.execute(stmt)
+            cols = ApplicationStatusEvent.__table__.columns
+            return [
+                StatusEventSchema.model_validate({c.name: getattr(obj, c.name) for c in cols})
+                for obj in result.scalars().all()
+            ]
+    except Exception as exc:
+        _store_logger.warning("find_status_events_by_application_ids failed (%s)", exc)
+        return []
+
+
 async def find_jobs_by_employer_id(employer_id: str) -> list[JobSchema]:
     """Return all postings for an employer (indexed on employer_id, no full scan)."""
     try:
@@ -778,6 +800,19 @@ async def backfill_public_codes() -> int:
 async def set_user_email_verified(user_id: str) -> None:
     async with async_session() as session:
         await session.execute(update(User).where(User.id == user_id).values(email_verified=True))
+        await session.commit()
+
+
+async def find_user_id_by_email(email: str) -> str | None:
+    """User id for an email, WITHOUT validating the row. Old seeds stored logins
+    like hr@warung_bahari.id that fail EmailStr, so a validated read would raise."""
+    async with async_session() as session:
+        return (await session.execute(select(User.id).where(User.email == email))).scalar_one_or_none()
+
+
+async def set_user_email(user_id: str, email: str) -> None:
+    async with async_session() as session:
+        await session.execute(update(User).where(User.id == user_id).values(email=email))
         await session.commit()
 
 

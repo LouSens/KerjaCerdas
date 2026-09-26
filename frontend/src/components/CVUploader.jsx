@@ -5,10 +5,11 @@ import { updateSeekerProfile, fetchQuizSkills } from '../services/api'
 import toast from 'react-hot-toast'
 import {
     UploadCloud, FileText, CheckCircle2, ShieldCheck, ArrowRight,
-    Plus, Edit3, Loader2, Zap, User, Link2, ChevronDown, ChevronUp, Crown,
+    Plus, Edit3, Loader2, Zap, User, Link2, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import OfflineParseConfirmModal from './OfflineParseConfirmModal'
 import { ProofChip } from './ProofUI'
+import { QUIZ_ENABLED } from '../config/features'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 function isValidUrl(str) {
@@ -35,7 +36,7 @@ function ProfileAvatar({ name, size = 72 }) {
 export default function CVUploader() {
     const {
         uploadResume, cvUploading, seekerId, profile,
-        navigate, loadSeekerProfile, computeProfileCompleteness, openUpgradeModal,
+        navigate, loadSeekerProfile, computeProfileCompleteness,
     } = useStore()
 
     const inputRef = useRef(null)
@@ -237,9 +238,6 @@ export default function CVUploader() {
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexDirection: 'column' }}>
-                        <button className="kc-btn" onClick={() => openUpgradeModal({ plan: 'prism' })} style={{ ...topBtn('#F59E0B', KC.ink), background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'center' }}>
-                            <Crown size={15} /> Upgrade Premium
-                        </button>
                         <button className="kc-btn" onClick={() => setEditOpen(v => !v)} style={{ ...topBtn('#fff', KC.ink), padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'center' }}>
                             <Edit3 size={14} />
                             {editOpen ? 'Tutup Editor' : 'Edit Profil'}
@@ -256,8 +254,8 @@ export default function CVUploader() {
                         <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: KC.mute }}>
                             Keahlian ({totalSkills})
                         </div>
-                        {/* ⚡ X/Y Skill Terbukti — links to Bukti Skill page */}
-                        <button
+                        {/* ⚡ X/Y Skill Terbukti — links to Bukti Skill page (quiz UI only) */}
+                        {QUIZ_ENABLED && <button
                             className="kc-btn"
                             onClick={() => navigate('seeker-verification')}
                             style={{
@@ -274,7 +272,7 @@ export default function CVUploader() {
                             <Zap size={12} fill={provenCount > 0 ? KC.lime : KC.borderMuted} color={provenCount > 0 ? KC.lime : KC.borderMuted} />
                             {proofLoading ? '…' : `${provenCount}/${totalSkills} Skill Terbukti`}
                             <ArrowRight size={11} />
-                        </button>
+                        </button>}
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                         {skills.map((sk, i) => {

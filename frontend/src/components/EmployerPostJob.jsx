@@ -92,7 +92,7 @@ export default function EmployerPostJob() {
             // AutoMod verdict: published -> share the link; held/rejected -> the
             // poster sees exactly which sentence and how to fix it on Lowongan Saya.
             if (res.moderation_status === 'published') {
-                toast.success('Lowongan tayang! Bagikan link / QR-nya dari menu Lowongan Saya.')
+                toast.success('Lowongan tayang! Ambil link lamarannya dari menu Lowongan Saya.')
             } else {
                 toast(res.notice, { icon: res.moderation_status === 'rejected' ? '⛔' : '⏳', duration: 10000 })
             }
@@ -330,7 +330,7 @@ export default function EmployerPostJob() {
                         <ul style={{ font: '400 12.5px/1.6 "Plus Jakarta Sans", sans-serif', color: '#334155', paddingLeft: 18, margin: 0 }}>
                             <li>AutoMod memeriksa isi lowongan. Meminta biaya dari pelamar = ditolak; syarat usia/penampilan/jenis kelamin tanpa alasan = ditahan untuk ditinjau.</li>
                             <li>Lowongan pertama ditinjau admin (biasanya &lt; 24 jam), kecuali akun punya badge email perusahaan atau &quot;Ditinjau admin&quot;.</li>
-                            <li>Setelah tayang kamu dapat link + poster QR untuk dibagikan di Instagram, WhatsApp, atau ditempel di toko.</li>
+                            <li>Setelah tayang kamu dapat link lamaran untuk ditempel di iklan lowongan, situs karier, atau dibagikan ke kampus dan BKK.</li>
                         </ul>
                         <button onClick={() => navigate('employer-verification')} style={{ marginTop: 10, background: 'none', border: 'none', color: KC.orange, fontWeight: 800, cursor: 'pointer', padding: 0 }}>
                             Lihat badge & pedoman lengkap →

@@ -147,7 +147,7 @@ function Logo({ size = 28, color = KC.ink, mark = KC.orange }) {
 }
 
 export default function AboutPage() {
-    const { navigate, openAuthModal } = useStore()
+    const { navigate, openAuthModal, isAuthenticated } = useStore()
     const [mobileOpen, setMobileOpen] = useState(false)
     const [inquiryOpen, setInquiryOpen] = useState(false)
     const [inquiryType, setInquiryType] = useState('Institusi & Kampus')
@@ -229,9 +229,12 @@ export default function AboutPage() {
                         <button onClick={() => goToSection('fitur')} className="kc-nav-link" style={{ background: 'none', border: 'none', color: KC.ink, cursor: 'pointer', fontFamily: FONT, fontSize: 14, fontWeight: 700 }}>
                             Fitur
                         </button>
+                        {/* Pricing lives on the public landing page; a signed-in user is not sent there. */}
+                        {!isAuthenticated && (
                         <button onClick={() => goToSection('harga')} className="kc-nav-link" style={{ background: 'none', border: 'none', color: KC.ink, cursor: 'pointer', fontFamily: FONT, fontSize: 14, fontWeight: 700 }}>
                             Harga
                         </button>
+                        )}
                         <span style={{ color: KC.orange, fontWeight: 900, borderBottom: `2.5px solid ${KC.orange}`, paddingBottom: 2 }}>
                             Tentang
                         </span>
@@ -312,9 +315,11 @@ export default function AboutPage() {
                             <button onClick={() => goToSection('fitur')} style={{ textAlign: 'left', padding: '10px 12px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 14 }}>
                                 Fitur
                             </button>
+                            {!isAuthenticated && (
                             <button onClick={() => goToSection('harga')} style={{ textAlign: 'left', padding: '10px 12px', background: '#fff', border: `1.5px solid ${KC.ink}`, borderRadius: 8, fontWeight: 800, fontSize: 14 }}>
                                 Harga
                             </button>
+                            )}
                             <button onClick={() => setMobileOpen(false)} style={{ textAlign: 'left', padding: '10px 12px', background: KC.orangeSoft, border: `1.5px solid ${KC.orange}`, borderRadius: 8, fontWeight: 900, fontSize: 14, color: KC.orange }}>
                                 Tentang (Aktif)
                             </button>
@@ -390,6 +395,7 @@ export default function AboutPage() {
                             >
                                 Solusi Rekrutmen HR
                             </button>
+                            {!isAuthenticated && (
                             <button
                                 onClick={() => goToSection('harga')}
                                 className="kc-btn-about"
@@ -402,6 +408,7 @@ export default function AboutPage() {
                             >
                                 Skema Harga di Beranda
                             </button>
+                            )}
                         </div>
                     </div>
                 </section>
@@ -689,7 +696,7 @@ export default function AboutPage() {
                             { title: 'Produk', items: [
                                 { label: 'Cara Kerja', fn: () => goToSection('how') },
                                 { label: 'Fitur', fn: () => goToSection('fitur') },
-                                { label: 'Harga', fn: () => goToSection('harga') },
+                                ...(isAuthenticated ? [] : [{ label: 'Harga', fn: () => goToSection('harga') }]),
                             ]},
                             { title: 'Solusi', items: [
                                 { label: 'Untuk Talenta', fn: () => openAuthModal('register', 'seeker') },

@@ -4,11 +4,11 @@
 import { useState } from 'react'
 import useStore from '../store/useStore'
 import { KC, DesignStyles, useIsMobile } from './_design'
-import { X } from 'lucide-react'
+import { Target, X } from 'lucide-react'
 
 export default function JobDetailModal({ job, onClose }) {
     const isMobile = useIsMobile()
-    const { applyJob, toggleSaveJob, isJobSaved, isJobApplied } = useStore()
+    const { applyJob, toggleSaveJob, isJobSaved, isJobApplied, setTargetJob } = useStore()
     const [xaiExpanded, setXaiExpanded] = useState(true)
     const [appliedLocally, setAppliedLocally] = useState(false)
 
@@ -27,6 +27,15 @@ export default function JobDetailModal({ job, onClose }) {
     const score = hasScore ? Math.round(rawScore > 1 ? rawScore : rawScore * 100) : 0
 
     const matchingSkills = job.matching_skills || job.required_skills?.slice(0, 4) || []
+    const missingSkills = job.missing_skills || []
+    // Location / type / salary only when the job actually has them — no invented fallbacks.
+    const metaLine = [job.location, job.work_type, job.salary_range].filter(Boolean).join(' · ')
+
+    // "Jadikan target": the entry into the learning loop for THIS job.
+    const makeTarget = () => {
+        onClose()
+        setTargetJob(jobId)
+    }
 
     // Real per-factor breakdown from the matcher's hybrid formula (matcher.py:
     // cosine 35% + proof-weighted skills 40% + experience 15% + education 10%).
@@ -52,8 +61,8 @@ export default function JobDetailModal({ job, onClose }) {
             pct: Math.round(job.skill_overlap != null ? job.skill_overlap * 100 : score),
             color: '#0284C7',
             desc: proof.length
-                ? `${provenCount} dari ${proof.length} skill wajib sudah terbukti · klaim CV dihitung 30%, lulus kuis 85%, dikonfirmasi HR 100%`
-                : 'Klaim CV dihitung 30%, lulus kuis 85%, dikonfirmasi HR 100%',
+                ? `${provenCount} dari ${proof.length} skill wajib sudah dikonfirmasi HR · skill di profil dihitung 30%, dikonfirmasi HR 100%`
+                : 'Skill di profil dihitung 30%, dikonfirmasi HR setelah wawancara 100%',
         },
         {
             label: 'Kesesuaian Pengalaman',
@@ -158,7 +167,7 @@ export default function JobDetailModal({ job, onClose }) {
                                 {title}
                             </h2>
                             <div style={{ font: '600 13px/1.4 "Plus Jakarta Sans", sans-serif', color: '#64748B' }}>
-                                {job.location || 'Jakarta'} · {job.work_type || 'Hybrid'} &nbsp;·&nbsp; {job.salary_range || 'Rp 28.000.000 – Rp 42.000.000'}
+                                {metaLine}
                             </div>
                         </div>
                         <button
@@ -254,7 +263,7 @@ export default function JobDetailModal({ job, onClose }) {
                                         {score}%
                                     </div>
                                     <div style={{ font: '600 11.5px/1.55 "Plus Jakarta Sans", sans-serif', color: 'rgba(255,255,255,.55)' }}>
-                                        Dihitung transparan dari 4 komponen; bagian skill ditimbang bukti (klaim 30%, kuis 85%, HR 100%).
+                                        Dihitung transparan dari 4 komponen; skill yang dikonfirmasi HR bernilai penuh.
                                     </div>
                                 </div>
                             )}
@@ -274,7 +283,29 @@ export default function JobDetailModal({ job, onClose }) {
                                 </div>
                             )}
 
+                            {missingSkills.length > 0 && (
+                                <div>
+                                    <h3 style={{ font: '800 11.5px/1 "Plus Jakarta Sans", sans-serif', textTransform: 'uppercase', letterSpacing: 0.7, color: KC.ink, margin: '0 0 12px' }}>
+                                        Skill yang masih kurang
+                                    </h3>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                                        {missingSkills.map(s => (
+                                            <span key={s} style={{ padding: '6px 12px', background: KC.roseSoft, border: '1px solid #FCA5A5', borderRadius: 7, font: '800 12px/1 "Plus Jakarta Sans", sans-serif', color: '#991B1B' }}>
+                                                + {s}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <button
+                                    onClick={makeTarget}
+                                    className="kc-btn"
+                                    style={{ padding: 13, background: KC.ink, border: `1.5px solid ${KC.ink}`, borderRadius: 10, boxShadow: `3px 3px 0 ${KC.orange}`, font: '800 13.5px/1 "Plus Jakarta Sans", sans-serif', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                                >
+                                    <Target size={15} /> Jadikan target & lihat rencana belajar
+                                </button>
                                 <button
                                     onClick={handleApply}
                                     className="kc-btn"
@@ -297,7 +328,7 @@ export default function JobDetailModal({ job, onClose }) {
                     <>
                         <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 18px' }}>
                             <div style={{ font: '600 12px/1.4 "Plus Jakarta Sans", sans-serif', color: '#64748B', marginBottom: 14 }}>
-                                {job.location || 'Jakarta'} · {job.work_type || 'Hybrid'} &nbsp;·&nbsp; {job.salary_range || 'Rp 28–42 jt'}
+                                {metaLine}
                             </div>
 
                             {hasScore ? (
@@ -378,6 +409,24 @@ export default function JobDetailModal({ job, onClose }) {
                                     </div>
                                 </div>
                             )}
+
+                            {missingSkills.length > 0 && (
+                                <div style={{ marginTop: 16 }}>
+                                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 800, letterSpacing: 0.7, textTransform: 'uppercase', color: '#64748B', marginBottom: 8 }}>
+                                        Skill yang masih kurang
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        {missingSkills.map(s => (
+                                            <span key={s} style={{ padding: '4px 9px', background: KC.roseSoft, border: '1px solid #FCA5A5', borderRadius: 7, fontSize: 11, fontWeight: 800, color: '#991B1B' }}>
+                                                + {s}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            <button onClick={makeTarget} className="kc-btn" style={{ marginTop: 14, width: '100%', padding: '12px 14px', background: KC.ink, border: `1.5px solid ${KC.ink}`, borderRadius: 10, boxShadow: `2.5px 2.5px 0 ${KC.orange}`, fontSize: 13, fontWeight: 800, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                <Target size={14} /> Jadikan target & lihat rencana belajar
+                            </button>
 
                             {/* Job Description Summary */}
                             <div style={{ marginTop: 16 }}>

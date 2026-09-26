@@ -50,9 +50,11 @@ from backend.app.services.billing.plans import (
     TALENT_SEARCHES_LIGHTHOUSE,
     active_job_limit,
     entitlements_for,
+    plan_limits_active,
     talent_search_limit,
 )
 from backend.app.services.hiring.links import new_public_code, public_path
+from backend.app.services.hiring.rejection import REJECTION_REASONS
 from backend.app.services.matching.matcher import SemanticMatcher, score_pair
 from backend.app.services.trust import policy
 from backend.app.services.trust.automod import moderate
@@ -103,15 +105,27 @@ async def _enforce_active_limit(
 ) -> None:
     """Spark: 1 active job, Lighthouse: 5; a Beacon order covers its own job.
 
-    A second AutoMod strike also limits the employer to one active job for 30 days.
+    A second AutoMod strike limits the employer to one active job for 30 days.
+    That is a moderation penalty, not a plan limit, so it applies whether or
+    not plans are sold.
     """
-    if not settings.plan_limits_enforced:
+    strike_limited = policy.strike_state(employer)["limited"]
+    if not plan_limits_active():
+        # No plan limits: active jobs are uncapped; only the strike penalty limits them.
+        if not strike_limited:
+            return
+        if any(j.is_active and j.id != job_id for j in jobs):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Akun dibatasi 1 lowongan aktif selama 30 hari karena pelanggaran aturan. "
+                "Nonaktifkan lowongan lain dulu.",
+            )
         return
     ent = await entitlements_for(user_id)
     if job_id in ent.beacon_jobs:
         return
     limit = active_job_limit(ent)
-    if policy.strike_state(employer)["limited"]:
+    if strike_limited:
         limit = 1
     uncovered_active = [
         j for j in jobs if j.is_active and j.id != job_id and j.id not in ent.beacon_jobs
@@ -451,7 +465,7 @@ async def _check_talent_search_quota(user_id: str, job_id: str) -> None:
     30-search allowance. Lighthouse is account-wide by design, so it meters per
     account.
     """
-    if not settings.plan_limits_enforced:
+    if not plan_limits_active() or settings.demo_unlimited:
         await add_event(user_id, "talent_search")
         return
 
@@ -607,8 +621,11 @@ async def list_employer_applications(
         job = job_map.get(app.job_id)
         seeker = seeker_by_id.get(app.seeker_id)
         user_record = user_by_id.get(seeker.user_id if seeker else app.seeker_id)
+        # Locking is a paid-plan feature: with plans off every applicant is shown,
+        # whatever SPARK_RANKED_APPLICANT_LIMIT an older deployment still sets.
         locked = (
-            cap > 0
+            plan_limits_active()
+            and cap > 0
             and job is not None
             and not ent.premium_for_job(job.id)
             and score_rank.get(app.id, 0) >= cap
@@ -657,25 +674,15 @@ async def list_employer_applications(
     enriched.sort(key=lambda x: (x["locked"], -(x["match_score"] or 0.0)))
     return {
         "total": len(enriched),
-        "ranked_limit": cap if (settings.plan_limits_enforced and cap > 0) else None,
+        "ranked_limit": cap if (plan_limits_active() and cap > 0) else None,
         "items": enriched,
     }
 
 
+# Rejection reason codes live in services/hiring/rejection.py (shared with the
+# seeker's application list, which shows them back to the candidate).
+
 # Indonesian aliases the frontend has historically sent for pipeline stages.
-# Fixed, machine-readable rejection reasons. A free-text box alone would give
-# the candidate prose we cannot aggregate and HR a blank page they will skip;
-# the codes make the feedback both writable in one tap and countable.
-REJECTION_REASONS: dict[str, str] = {
-    "skill_kurang": "Skill inti belum memadai untuk posisi ini",
-    "pengalaman_kurang": "Pengalaman relevan belum cukup",
-    "lokasi": "Lokasi / kesediaan pindah tidak cocok",
-    "gaji": "Ekspektasi gaji di luar anggaran",
-    "posisi_terisi": "Posisi sudah terisi kandidat lain",
-    "tidak_hadir": "Tidak hadir / tidak merespons undangan",
-    "dokumen": "Dokumen atau syarat administratif tidak terpenuhi",
-    "lainnya": "Alasan lain (tulis di catatan)",
-}
 
 _STATUS_ALIASES: dict[str, ApplicationStatus] = {
     "accepted": ApplicationStatus.HIRED,

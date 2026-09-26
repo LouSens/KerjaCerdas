@@ -14,29 +14,26 @@ import { Link } from 'react-router-dom'
 import useStore from '../store/useStore'
 import { ALLOWED_VIEWS } from '../routes'
 import { useIsMobile } from './_design'
+import { QUIZ_ENABLED } from '../config/features'
 
 const SEEKER_GROUPS = [
     {
-        title: 'Utama',
+        // Ordered as the loop: pick a target -> learn -> apply -> feedback.
+        title: 'Alur Kerja',
         items: [
             { id: 'seeker-dashboard', label: 'Dashboard', icon: LayoutDashboard },
-            { id: 'seeker-search', label: 'Cari Lowongan', icon: Search },
-            { id: 'seeker-match', label: 'Pencocokan AI', icon: Sparkles, badge: 'AI', badgeBg: '#FF4800' },
-        ],
-    },
-    {
-        title: 'Aktivitas & Karir',
-        items: [
+            { id: 'seeker-match', label: 'Lowongan Cocok', icon: Sparkles, badge: 'AI', badgeBg: '#FF4800' },
+            { id: 'seeker-skill-gap', label: 'Rencana Belajar', icon: BarChart3 },
             { id: 'seeker-applications', label: 'Lamaran Saya', icon: ClipboardList, countKey: 'applications' },
-            { id: 'seeker-saved', label: 'Tersimpan', icon: Bookmark, countKey: 'savedJobs' },
-            { id: 'seeker-skill-gap', label: 'Skill Gap & Kursus', icon: BarChart3 },
         ],
     },
     {
-        title: 'Profil & Kredibilitas',
+        title: 'Lainnya',
         items: [
+            { id: 'seeker-search', label: 'Cari Lowongan', icon: Search },
+            { id: 'seeker-saved', label: 'Tersimpan', icon: Bookmark, countKey: 'savedJobs' },
             { id: 'seeker-profile', label: 'Profil Saya', icon: User },
-            { id: 'seeker-verification', label: 'Bukti Skill (Kuis)', icon: ShieldCheck, countKey: 'provenSkills' },
+            ...(QUIZ_ENABLED ? [{ id: 'seeker-verification', label: 'Kuis Skill', icon: ShieldCheck, countKey: 'provenSkills' }] : []),
         ],
     },
 ]
@@ -54,7 +51,7 @@ const EMPLOYER_GROUPS = [
         items: [
             { id: 'employer-post-job', label: 'Pasang Lowongan', icon: PlusCircle },
             { id: 'employer-upload', label: 'Upload Job Pack', icon: FileText, badge: 'PDF' },
-            { id: 'employer-candidates', label: 'Top Kandidat', icon: Users, badge: 'AI', badgeBg: '#FF4800' },
+            { id: 'employer-candidates', label: 'Pelamar & Peta Skill', icon: Users, badge: 'AI', badgeBg: '#FF4800' },
         ],
     },
     {
@@ -70,7 +67,7 @@ const EMPLOYER_GROUPS = [
 const SEEKER_MOBILE_PRIMARY = [
     { id: 'seeker-dashboard', label: 'Home', icon: LayoutDashboard },
     { id: 'seeker-match', label: 'Match', icon: Sparkles },
-    { id: 'seeker-skill-gap', label: 'Skill', icon: BarChart3 },
+    { id: 'seeker-skill-gap', label: 'Belajar', icon: BarChart3 },
     { id: 'seeker-applications', label: 'Lamaran', icon: ClipboardList },
     { id: 'lainnya', label: 'Lainnya', icon: LayoutGrid, isAction: true },
 ]
@@ -79,13 +76,13 @@ const SEEKER_LAINNYA_ITEMS = [
     { id: 'seeker-search', label: 'Cari Lowongan', icon: Search },
     { id: 'seeker-saved', label: 'Tersimpan', icon: Bookmark },
     { id: 'seeker-profile', label: 'Profil Saya', icon: User },
-    { id: 'seeker-verification', label: 'Bukti Skill (Kuis)', icon: ShieldCheck },
+    ...(QUIZ_ENABLED ? [{ id: 'seeker-verification', label: 'Kuis Skill', icon: ShieldCheck }] : []),
     { id: 'seeker-advisor', label: 'Advisor', icon: Bot },
 ]
 
 const EMPLOYER_MOBILE_NAV = [
     { id: 'employer-dashboard', label: 'Home', icon: LayoutDashboard },
-    { id: 'employer-candidates', label: 'Kandidat', icon: Users },
+    { id: 'employer-candidates', label: 'Pelamar', icon: Users },
     { id: 'employer-post-job', label: 'Pasang', icon: PlusCircle },
     { id: 'employer-profile', label: 'Profil', icon: Building2 },
 ]

@@ -1,6 +1,6 @@
 // Anonymised talent pool (reverse matching). Candidates who have not applied
 // are shown without name, employer/school names or contact — those would let a
-// profile be re-identified. To reach them, share the job link / QR.
+// profile be re-identified. To reach them, share the job's apply link.
 import { useEffect, useState } from 'react'
 import { Share2 } from 'lucide-react'
 import useStore from '../store/useStore'
@@ -30,11 +30,12 @@ export default function TalentSearch({ job }) {
     return (
         <div style={{ display: 'grid', gap: 12 }}>
             <BrutalCard color={KC.surface} padding={14}>
-                <div style={{ fontSize: 13.5 }}>
-                    Talent pool menampilkan pencari kerja yang cocok <b>secara anonim</b>. Untuk menjangkau mereka,
-                    bagikan link / QR lowongan — yang tertarik akan melamar dan langsung muncul di tab Pelamar.
+                <div style={{ fontSize: 13.5, lineHeight: 1.55 }}>
+                    <b>Pencari kerja yang cocok dengan lowongan ini tetapi belum melamar.</b> Nama dan kontak
+                    mereka baru terlihat setelah mereka melamar sendiri (UU PDP) — kontak tidak pernah dijual.
+                    Bagikan link lamaran agar mereka bisa melamar.
                 </div>
-                <button style={{ ...topBtn(), marginTop: 8 }} onClick={() => navigate('employer-jobs')}><Share2 size={14} /> Ambil link & QR</button>
+                <button style={{ ...topBtn(), marginTop: 8 }} onClick={() => navigate('employer-jobs')}><Share2 size={14} /> Ambil link lamaran</button>
             </BrutalCard>
             <BandLegend side="employer" />
             {loading && <p>Mencari kandidat…</p>}
@@ -49,7 +50,7 @@ export default function TalentSearch({ job }) {
                             <BrutalCard key={c.seeker_id} padding={14}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                                     <b>{c.already_applied ? `${c.full_name} (sudah melamar)` : c.full_name}</b>
-                                    <span style={{ fontSize: 13, color: KC.mute }}>✓ {c.proven_skill_count || 0} skill terbukti</span>
+                                    <span style={{ fontSize: 13, color: KC.mute }}>{c.proven_skill_count || 0} skill terverifikasi</span>
                                 </div>
                                 <p style={{ fontSize: 13, color: KC.inkLight, margin: '6px 0' }}>{c.explanation}</p>
                                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

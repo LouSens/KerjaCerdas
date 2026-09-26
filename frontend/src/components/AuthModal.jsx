@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import useStore from '../store/useStore'
+import DemoAccounts from './DemoAccounts'
 
 // ════════════════════════════════════════════════════════════════════════════
 // KerjaCerdas — Professional Neobrutalism Authentication Modal
@@ -463,6 +464,9 @@ export default function AuthModal() {
                                     : 'Daftar gratis dalam 1 menit dan temukan peluang yang presisi.'}
                             </p>
                         </div>
+
+                        {/* One-click demo accounts (renders only in DEMO_MODE) */}
+                        <DemoAccounts />
 
                         {/* Form */}
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

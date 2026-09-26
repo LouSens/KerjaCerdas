@@ -67,9 +67,23 @@ class Settings(BaseSettings):
     # candidates from the employer who asked for them. The paywall moved to
     # reverse matching (plans.talent_search_limit), which is sourcing.
     spark_ranked_applicant_limit: int = 0
-    # Enforce plan limits (Spark: 1 active job, 20 ranked applicants; premium
-    # features need Beacon/Lighthouse). Switchable for live demos / tests.
-    plan_limits_enforced: bool = True
+    # Paid plans (Beacon / Lighthouse for employers, Prism for seekers). OFF:
+    # nothing is sold, and every limit that only existed to separate the plans
+    # is gone — advisor daily quota, candidate-search allowance, active-job cap,
+    # interview-kit / CSV gates. NOT affected: AutoMod strikes (moderation) and
+    # the login / register / OTP throttles (security). The gating code stays,
+    # tested, so a deployment can bring the plans back.
+    paid_plans_enabled: bool = False
+    # Enforce the per-plan limits above. Only meaningful with paid plans on.
+    plan_limits_enforced: bool = False
+    # DEMO_MODE (the env var docker-compose and CI already set): usage quotas
+    # off — advisor messages, candidate-search allowance and the per-IP usage
+    # rate limits (a booth puts every visitor's phone behind ONE venue IP).
+    # Security limits are NEVER lifted: login, register and email-OTP throttles
+    # stay on (rate_limiter.SECURITY_BUCKETS), and so do AutoMod strikes.
+    # Unset -> follows APP_ENV like OTP_DEMO_MODE: on in development, off in
+    # production. docker-compose.prod.yml sets DEMO_MODE=false explicitly.
+    demo_mode: bool | None = None
     # Shown on the payment screen until a payment gateway is live.
     payment_instructions: str = (
         "Bayar via QRIS / transfer bank ke rekening KerjaCerdas, lalu kirim bukti "
@@ -173,6 +187,13 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def demo_unlimited(self) -> bool:
+        """Whether usage quotas are lifted (see `demo_mode`)."""
+        if self.demo_mode is not None:
+            return self.demo_mode
+        return not self.is_production
 
     @property
     def otp_demo_enabled(self) -> bool:

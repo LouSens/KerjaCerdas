@@ -4,6 +4,11 @@ import { KC, topBtn, DesignStyles, useIsMobile } from './_design'
 import { Sparkles } from 'lucide-react'
 import JobDetailModal from './JobDetailModal'
 
+// Scores arrive as 0-1 fractions (older payloads used 0-100).
+const toPct = (v) => Math.round(v > 1 ? v : v * 100)
+// Only fields the job actually has — no invented "Full-time" / "Gaji Kompetitif".
+const jobMeta = (job) => [job.location, job.work_type, job.salary_range].filter(Boolean).join(' · ')
+
 const bandOf = (m) => {
     if (m.band) return m.band
     const raw = m.overall_score ?? m.score ?? 0
@@ -23,10 +28,15 @@ export default function SeekerDashboard() {
         recommendedCourses,
         missingSkills,
         computeProfileCompleteness,
+        loadSkillGap,
     } = useStore()
 
     const [selectedJob, setSelectedJob] = useState(null)
     const hasProfile = hasMeaningfulProfile(profile)
+
+    // The gap / course counters come from the latest learning plan, which the
+    // dashboard otherwise never loads — they read "0" for a seeker with gaps.
+    useEffect(() => { if (hasProfile) loadSkillGap() }, [hasProfile]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (hasProfile && !matches.length && !agentLoading) {
@@ -47,7 +57,7 @@ export default function SeekerDashboard() {
 
     const cvDone = Boolean(profile?.has_cv || profile?.resume_url || profile?.skills?.length > 0)
     const skillsDone = Boolean((profile?.skills?.length || 0) > 0)
-    const provenCount = (profile?.skills || []).filter((sk) => sk.proof_level === 'quiz' || sk.proof_level === 'hr_confirmed').length
+    const provenCount = (profile?.skills || []).filter((sk) => sk.proof_level === 'hr_confirmed').length
     const proofDone = provenCount > 0
 
     const matchCount = matches.length
@@ -99,7 +109,7 @@ export default function SeekerDashboard() {
                 </div>
 
                 {/* 2-Column Main Layout */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.45fr) 330px', gap: 24 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(260px, 300px)', gap: 24 }}>
                     {/* Left Column */}
                     <div>
                         {/* Big Dominant Hero Card (Decision 01: satu angka utama + 3 inline stats) */}
@@ -262,7 +272,7 @@ export default function SeekerDashboard() {
                                     // (35%/40% of the total weight; the remaining 25% is experience
                                     // and education — not shown in this compact 2-bar view). The skill
                                     // bar is proof-weighted: claimed 0.30, quiz 0.85, HR-confirmed 1.00.
-                                    const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
+                                    const jobScore = toPct(job.overall_score ?? job.score ?? 0)
                                     const sem = Math.round(job.cosine != null ? job.cosine * 100 : jobScore)
                                     const sk = Math.round(job.skill_overlap != null ? job.skill_overlap * 100 : jobScore)
                                     const matchingList = job.matching_skills || []
@@ -303,7 +313,7 @@ export default function SeekerDashboard() {
                                                         {job.title}
                                                     </div>
                                                     <div style={{ font: '600 12.5px/1.4 "Plus Jakarta Sans", sans-serif', color: '#94A3B8', marginBottom: 14 }}>
-                                                        {job.location || 'Indonesia'} · {job.work_type || 'Full-time'} &nbsp;·&nbsp; {job.salary_range || (job.salary_min && job.salary_max ? `Rp ${Math.round(job.salary_min / 1000000)}–${Math.round(job.salary_max / 1000000)} jt` : 'Gaji Kompetitif')}
+                                                        {jobMeta(job)}
                                                     </div>
 
                                                     {/* Desktop 2-Bar Proof Component */}
@@ -330,7 +340,7 @@ export default function SeekerDashboard() {
                                                 </div>
 
                                                 {/* Score Ring Donut + Actions */}
-                                                <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 16 }}>
+                                                <div style={{ flexShrink: 0 }}>
                                                     <svg width="72" height="72" viewBox="0 0 72 72" style={{ transform: 'rotate(-90deg)' }}>
                                                         <circle cx="36" cy="36" r="29" fill="none" stroke="#E2E8F0" strokeWidth="5" />
                                                         <circle
@@ -342,13 +352,6 @@ export default function SeekerDashboard() {
                                                             {jobScore}
                                                         </text>
                                                     </svg>
-                                                    <button
-                                                        onClick={() => setSelectedJob(job)}
-                                                        className="kc-btn"
-                                                        style={{ ...topBtn(KC.ink, '#fff', KC.orange), padding: '11px 18px', fontSize: 12.5, whiteSpace: 'nowrap' }}
-                                                    >
-                                                        Lihat Detail &amp; Lamar →
-                                                    </button>
                                                 </div>
                                             </div>
 
@@ -367,6 +370,15 @@ export default function SeekerDashboard() {
                                                     ))}
                                                 </div>
                                             )}
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+                                                <button
+                                                    onClick={() => setSelectedJob(job)}
+                                                    className="kc-btn"
+                                                    style={{ ...topBtn(KC.ink, '#fff', KC.orange), padding: '10px 16px', fontSize: 12.5 }}
+                                                >
+                                                    Lihat detail & jadikan target →
+                                                </button>
+                                            </div>
                                         </div>
                                     )
                                 })
@@ -413,7 +425,7 @@ export default function SeekerDashboard() {
                                         <span style={{ width: 18, height: 18, borderRadius: 5, background: proofDone ? '#10B981' : '#fff', border: proofDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', font: '900 11px/1 "Plus Jakarta Sans", sans-serif' }}>
                                             {proofDone ? '✓' : ''}
                                         </span>
-                                        Skill terbukti lewat kuis ({provenCount})
+                                        Skill dikonfirmasi HR ({provenCount})
                                     </span>
                                     <span style={{ font: '800 11px/1 "Plus Jakarta Sans", sans-serif', color: proofDone ? '#059669' : '#94A3B8' }}>
                                         {proofDone ? 'Selesai' : 'Belum'}
@@ -422,21 +434,21 @@ export default function SeekerDashboard() {
                             </div>
                         </div>
 
-                        {/* Bukti Skill Banner */}
+                        {/* Rencana Belajar Banner — step 2-3 of the loop */}
                         <div style={{ background: '#FFF1EB', border: `1.5px solid ${KC.orange}`, borderRadius: 13, boxShadow: `3px 3px 0 ${KC.ink}`, padding: 20 }}>
                             <div style={{ font: '900 15px/1.25 "Plus Jakarta Sans", sans-serif', color: KC.ink, marginBottom: 10 }}>
-                                Buktikan skill-mu
+                                Punya lowongan incaran?
                             </div>
                             <p style={{ font: '400 12.5px/1.6 "Plus Jakarta Sans", sans-serif', color: '#9A3412', margin: '0 0 16px' }}>
-                                Skill yang hanya ditulis di CV dihitung 30% di skor kecocokan. Lulus kuis singkat (±3 menit)
-                                menjadikannya <b>✓ Terbukti</b> (85%) di semua lowongan.
+                                Jadikan satu lowongan sebagai <b>target</b>. Kami tunjukkan skill yang masih kurang,
+                                kursus untuk menutupnya, lalu kamu melamar dengan profil yang lebih siap.
                             </p>
                             <button
-                                onClick={() => navigate('seeker-verification')}
+                                onClick={() => navigate('seeker-skill-gap')}
                                 className="kc-btn"
                                 style={{ ...topBtn('#fff', KC.ink), padding: '11px 16px', fontSize: 12.5 }}
                             >
-                                Ikut kuis skill →
+                                Buka rencana belajar →
                             </button>
                         </div>
 
@@ -628,7 +640,7 @@ export default function SeekerDashboard() {
                     <span style={{ fontSize: 9.5, fontWeight: 800, color: KC.ink, textAlign: 'center', lineHeight: 1.2 }}>Profil Saya</span>
                 </div>
                 <div
-                    onClick={() => navigate('seeker-verification')}
+                    onClick={() => navigate('seeker-skill-gap')}
                     style={{
                         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
                         padding: '12px 6px', background: '#fff', border: `1.5px solid ${KC.ink}`,
@@ -637,7 +649,7 @@ export default function SeekerDashboard() {
                     }}
                 >
                     <div style={{ width: 14, height: 16, background: KC.ink, clipPath: 'polygon(50% 0,100% 22%,100% 62%,50% 100%,0 62%,0 22%)' }} />
-                    <span style={{ fontSize: 9.5, fontWeight: 800, color: KC.ink, textAlign: 'center', lineHeight: 1.2 }}>Bukti Skill</span>
+                    <span style={{ fontSize: 9.5, fontWeight: 800, color: KC.ink, textAlign: 'center', lineHeight: 1.2 }}>Rencana Belajar</span>
                 </div>
             </div>
 
@@ -685,7 +697,7 @@ export default function SeekerDashboard() {
                     </div>
                 ) : (
                     topMatches.map((job, idx) => {
-                        const jobScore = Math.round(job.overall_score ?? job.score ?? 0)
+                        const jobScore = toPct(job.overall_score ?? job.score ?? 0)
                         const bandLabel = bandOf(job) === 'strong' ? 'Strong Fit' : bandOf(job) === 'possible' ? 'Possible Fit' : 'Stretch Fit'
                         const bandBg = bandOf(job) === 'strong' ? '#ECFDF5' : bandOf(job) === 'possible' ? '#FEF3C7' : '#E0F2FE'
                         const bandColor = bandOf(job) === 'strong' ? '#065F46' : bandOf(job) === 'possible' ? '#B45309' : '#075985'
@@ -716,7 +728,7 @@ export default function SeekerDashboard() {
                                             {job.title}
                                         </div>
                                         <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>
-                                            {job.location || 'Indonesia'} · {job.work_type || 'Full-time'} · {job.salary_range || (job.salary_min && job.salary_max ? `Rp ${Math.round(job.salary_min / 1000000)}–${Math.round(job.salary_max / 1000000)} jt` : 'Gaji Kompetitif')}
+                                            {jobMeta(job)}
                                         </div>
                                     </div>
                                     <svg width="52" height="52" viewBox="0 0 52 52" style={{ flexShrink: 0, transform: 'rotate(-90deg)' }}>
@@ -787,7 +799,7 @@ export default function SeekerDashboard() {
                             <span style={{ width: 17, height: 17, borderRadius: 5, background: proofDone ? '#10B981' : '#fff', border: proofDone ? 'none' : '1.5px solid #CBD5E1', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 900 }}>
                                 {proofDone ? '✓' : ''}
                             </span>
-                            Skill terbukti lewat kuis ({provenCount})
+                            Skill dikonfirmasi HR ({provenCount})
                         </span>
                         <span style={{ fontSize: 10.5, fontWeight: 800, color: proofDone ? '#059669' : '#94A3B8' }}>
                             {proofDone ? 'Selesai' : 'Belum'}
@@ -795,7 +807,7 @@ export default function SeekerDashboard() {
                     </div>
                 </div>
                 <div style={{ marginTop: 13, padding: '11px 13px', background: '#FFF1EB', border: `1px solid ${KC.orange}`, borderRadius: 10, fontSize: 11.5, lineHeight: 1.5, color: '#9A3412', fontWeight: 600 }}>
-                    Skill yang lulus kuis dihitung <b>85%</b> di skor kecocokan, klaim CV hanya 30%.
+                    Skill yang dikonfirmasi HR setelah wawancara dihitung <b>100%</b> di skor kecocokan; skill yang hanya ada di profil 30%.
                 </div>
             </div>
         </div>

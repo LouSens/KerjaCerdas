@@ -36,48 +36,80 @@ All accounts use the password set in `SEED_DEFAULT_PASSWORD` at seed time, so th
 | `dedi.kurniawan@example.com` | Dedi Kurniawan | Tukang bangunan 5 tahun (Balikpapan) |
 | `fitriani@example.com` | Fitriani | Tutor bimbel matematika 2 tahun (Jakarta) |
 | `bambang.suryanto@example.com` | Bambang Suryanto | Admin & kasir toko kelontong 1 tahun (Semarang) |
+| `salsa.anindya@example.com` | Salsa Anindya | Lulusan DKV 2025 — desain grafis & konten media sosial (Surakarta) |
+| `dimas.saputra@example.com` | Dimas Saputra | Lulusan SMK Multimedia — desain, editing video & 3D (Surakarta) |
 
-The last 8 rows above are UMKM/informal-sector seekers, seeded to match the UMKM job postings below so the reverse-matching demo isn't limited to white-collar/IT profiles.
+The last 2 rows are the digital-skills booth story (`scripts/seed_digital.py`). The 8 rows before them are UMKM/informal-sector seekers, seeded to match the UMKM job postings below so the reverse-matching demo isn't limited to white-collar/IT profiles.
 
 ## Employer Accounts
 
 | Email | Company | Industry |
 |---|---|---|
-| `hr@goto.id` | GoTo Group (Gojek/Tokopedia) | Tech / Marketplace |
-| `hr@mandiri.id` | Bank Mandiri | Perbankan |
-| `hr@bca.id` | Bank Central Asia (BCA) | Perbankan |
-| `hr@telkom.id` | Telkom Indonesia | Telekomunikasi |
-| `hr@pertamina.id` | Pertamina | Energi / Migas |
-| `hr@bibit.id` | Bibit Tumbuh Bersama | Fintech / Wealth |
-| `hr@ruangguru.id` | Ruangguru | Edutech |
-| `hr@halodoc.id` | Halodoc | Healthtech |
-| `hr@indofood.id` | Indofood Sukses Makmur | FMCG / Pangan |
-| `hr@garuda.id` | Garuda Indonesia | Penerbangan |
-| `hr@traveloka.id` | Traveloka | Tech / Travel |
-| `hr@sayurbox.id` | Sayurbox | Agritech / Grocery |
-| `hr@astra.id` | Astra International | Otomotif / Konglomerat |
-| `hr@kalbe.id` | Kalbe Farma | Farmasi / Healthcare |
-| `hr@pegadaian.id` | Pegadaian | Keuangan / BUMN |
-| `hr@unilever.id` | Unilever Indonesia | FMCG |
-| `hr@reddoorz.id` | RedDoorz | Hospitality / Tech |
-| `hr@shopee.id` | Shopee Indonesia | E-commerce |
-| `hr@tanihub.id` | TaniHub | Agritech |
-| `hr@kalbio.id` | Kalbio Global Medika | Bioteknologi |
-| `hr@warung_bahari.id` | Warung Makan Bahari Nusantara | Kuliner / UMKM F&B |
-| `hr@bengkel_jaya.id` | Bengkel Motor Jaya Mandiri | Otomotif / Bengkel |
-| `hr@salon_ayu.id` | Salon & Spa Ayu Kecantikan | Kecantikan / Personal Care |
-| `hr@konveksi_makmur.id` | Konveksi Makmur Jaya | Garmen / Konveksi UMKM |
-| `hr@laundry_bersih.id` | Laundry Bersih Cepat | Jasa Laundry / Rumah Tangga |
-| `hr@catering_sedap.id` | Catering Sedap Rasa | Kuliner / Katering |
-| `hr@konstruksi_mitra.id` | CV Mitra Bangun Sejahtera | Konstruksi / Kontraktor Kecil |
-| `hr@klinik_sehat.id` | Klinik Sehat Keluarga | Kesehatan / Klinik Umum |
-| `hr@bimbel_cerdas.id` | Bimbel Cerdas Prima | Pendidikan Non-Formal / Bimbel |
-| `hr@kelontong_makmur.id` | Toko Kelontong Makmur Jaya | Retail / UMKM Dagang |
+| `hr@nusapay.id` | NusaPay Digital | Tech / Marketplace |
+| `hr@bprsentosa.id` | BPR Sentosa Artha | Perbankan |
+| `hr@bprmitra.id` | BPR Mitra Usaha Kita | Perbankan |
+| `hr@nusantaranet.id` | PT Nusantara Net Media | Telekomunikasi / ISP |
+| `hr@energiborneo.id` | PT Energi Borneo Lestari | Energi / Jasa Migas |
+| `hr@tumbuhinvest.id` | Tumbuh Invest | Fintech / Wealth |
+| `hr@belajarpintar.id` | Belajar Pintar Edukasi | Edutech |
+| `hr@sehatdigital.id` | Sehat Digital Nusantara | Healthtech |
+| `hr@panganjaya.id` | PT Pangan Jaya Abadi | FMCG / Pangan |
+| `hr@angkasacharter.id` | Angkasa Charter Nusantara | Penerbangan Charter |
+| `hr@jelajahtravel.id` | Jelajah Travel Indonesia | Tech / Travel |
+| `hr@kebunsegar.id` | Kebun Segar Nusantara | Agritech / Grocery |
+| `hr@karyaotomotif.id` | PT Karya Otomotif Presisi | Otomotif / Manufaktur Komponen |
+| `hr@farmahusada.id` | PT Farma Husada Nusantara | Farmasi / Healthcare |
+| `hr@gadaiamanah.id` | PT Gadai Amanah Sejahtera | Keuangan / Pergadaian |
+| `hr@rumahbersih.id` | PT Rumah Bersih Indonesia | FMCG |
+| `hr@inapnyaman.id` | InapNyaman Hospitality | Hospitality / Tech |
+| `hr@pasardigital.id` | Pasar Digital Nusantara | E-commerce |
+| `hr@tanimakmur.id` | Tani Makmur Agro | Agritech |
+| `hr@bionusa.id` | PT BioNusa Medika | Bioteknologi |
+| `hr@warungbahari.id` | Warung Makan Bahari Nusantara | Kuliner / UMKM F&B |
+| `hr@bengkeljaya.id` | Bengkel Motor Jaya Mandiri | Otomotif / Bengkel |
+| `hr@salonayu.id` | Salon & Spa Ayu Kecantikan | Kecantikan / Personal Care |
+| `hr@konveksimakmur.id` | Konveksi Makmur Jaya | Garmen / Konveksi UMKM |
+| `hr@laundrybersih.id` | Laundry Bersih Cepat | Jasa Laundry / Rumah Tangga |
+| `hr@cateringsedap.id` | Catering Sedap Rasa | Kuliner / Katering |
+| `hr@konstruksimitra.id` | CV Mitra Bangun Sejahtera | Konstruksi / Kontraktor Kecil |
+| `hr@kliniksehat.id` | Klinik Sehat Keluarga | Kesehatan / Klinik Umum |
+| `hr@bimbelcerdas.id` | Bimbel Cerdas Prima | Pendidikan Non-Formal / Bimbel |
+| `hr@kelontongmakmur.id` | Toko Kelontong Makmur Jaya | Retail / UMKM Dagang |
 
-Setiap lowongan yang ditayangkan mendapat kode publik acak 7 karakter dan halaman `/j/<kode>` beserta
-poster QR-nya — buka **Lowongan Saya → Bagikan** pada akun employer mana pun untuk melihatnya.
+Setiap lowongan yang ditayangkan mendapat kode publik acak 7 karakter dan halaman `/j/<kode>` — buka **Lowongan Saya → Link lamaran** pada akun employer mana pun untuk melihatnya.
 
 Untuk mencoba panel admin, tambahkan email akun mana pun ke `ADMIN_EMAILS` dan set
 `ADMIN_ROUTES_ENABLED=true`, lalu buka `/admin`.
 
-The 10 rows above are UMKM employers (1-50 karyawan) — the platform's stated target segment — seeded alongside the national-enterprise employers above so the employer-side demo covers more than white-collar/IT hiring.
+All 30 employers are **fictional** small and medium businesses (the first 20 are mid-size, the last 10 are UMKM with 1-50 staff). No seeded company or job posting is a real organisation's — real brand names were removed so the demo never implies a partnership that does not exist. Login domains drop underscores (`hr@kliniksehat.id`), because an underscore is not valid in an email domain.
+
+## One-click demo login (DEMO_MODE)
+
+With `DEMO_MODE=true` (or unset in development), the login / register modal shows
+**"Coba akun demo — tanpa kata sandi"** buttons for the accounts below — no password
+is typed or sent to the browser. The list is fixed in
+`backend/app/services/demo_accounts.py`; admins are never included, and the endpoints
+(`GET /auth/demo-accounts`, `POST /auth/demo-login`) return 404 when demo mode is off.
+Only accounts that exist are shown, so run `python -m scripts.seed_all` first.
+
+| Button | Shows |
+|---|---|
+| Salsa Anindya (seeker) | Digital story from the booth video: target *Desainer Grafis Junior* (missing Editing Video → course) · rejected at *Junior Web Developer* with a reason |
+| Maya Sari (seeker) | Rejected with HR's reason → learning plan for that job |
+| Rudi Hartono (seeker) | In interview · skills confirmed by HR |
+| Bambang Suryanto (seeker) | Hired · confirmed skills follow him to other applications |
+| Andi Pratama (seeker) | Fresh S1 graduate with many matches to pick a target from |
+| Konveksi Makmur Jaya (HR) | Digital jobs (graphic design, 3D) with ranked applicants · one HR-confirmed skill |
+| Klinik Sehat Keluarga (HR) | Ranked applicants · skill map · reject with reason · Asisten HR |
+| Toko Kelontong Makmur Jaya (HR) | A hired candidate · skill confirmation |
+| Warung Makan Bahari Nusantara (HR) | Small business with two open jobs |
+
+## Demo story (seeded outcomes, `scripts/seed_outcomes.py`)
+
+| Account | What it shows |
+|---|---|
+| `salsa.anindya@example.com` | Learning plan already targets *Desainer Grafis Junior* (Konveksi Makmur Jaya): 2/3 required skills, missing **Editing Video** → "Dasar Editing Video untuk Konten". Rejected at *Junior Web Developer* (Pasar Digital Nusantara) with "Skill inti belum memadai" → missing JavaScript |
+| `hr@konveksimakmur.id` | *Desainer Grafis Junior* and *3D Artist Junior* with an applicant each; Dimas's Adobe Illustrator is HR-confirmed after the interview |
+| `maya.sari@example.com` | Rejected at *Admin & Kasir Klinik* with reason "Skill inti belum memadai" → Lamaran Saya shows the reason + missing skills (Administrasi, Kasir) → Rencana Belajar |
+| `hr@kliniksehat.id` | 3 ranked applicants on *Admin & Kasir Klinik*, the skill map ("100% belum punya Administrasi"), one interviewed candidate with HR-confirmed skills |
+| `bambang.suryanto@example.com` | Hired at *Kasir & Staff Gudang Toko*; his HR-confirmed Kasir/Stok Barang follow him to other applications |

@@ -1,6 +1,6 @@
 // Employer home: the real hiring funnel (applicants -> interview -> hired),
-// how many applicants bring proven skills, jobs with share links, trust and
-// plan status. Every number comes from the API — no placeholder quotas.
+// how many applicants have HR-confirmed skills, jobs with apply links, trust.
+// Employer features are free (no plans). Every number comes from the API — no placeholder quotas.
 import { useEffect, useState } from 'react'
 import { Briefcase, FileText, PlusCircle, QrCode, ShieldCheck } from 'lucide-react'
 import useStore from '../store/useStore'
@@ -23,7 +23,7 @@ function Stat({ label, value, sub, color = KC.ink }) {
 export default function EmployerDashboard() {
     const {
         employerJobs, refreshEmployerJobs, navigate, employerProfile, loadEmployerProfile,
-        employerApplications, loadEmployerApplications, user, openUpgradeModal,
+        employerApplications, loadEmployerApplications, user,
     } = useStore()
     const [trust, setTrust] = useState(null)
     const [sharing, setSharing] = useState(null)
@@ -39,8 +39,7 @@ export default function EmployerDashboard() {
     const total = employerApplications?.length || 0
     const interviews = apps.filter((a) => REACHED_INTERVIEW.has(a.status)).length
     const hired = apps.filter((a) => a.status === 'hired').length
-    const withProof = apps.filter((a) => (a.skill_proof || []).some((p) => p.status === 'quiz' || p.status === 'hr_confirmed')).length
-    const locked = total - apps.length
+    const withProof = apps.filter((a) => (a.skill_proof || []).some((p) => p.status === 'hr_confirmed')).length
     const jobs = employerJobs || []
     const held = jobs.filter((j) => j.moderation_status && j.moderation_status !== 'published').length
     const badges = trust?.badges || {}
@@ -66,8 +65,8 @@ export default function EmployerDashboard() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
-                <Stat label="Pelamar" value={total} sub={locked ? `${locked} terkunci (Lite)` : 'semua diperingkat'} />
-                <Stat label="Punya skill terbukti" value={withProof} sub="lulus kuis / dikonfirmasi HR" color="#059669" />
+                <Stat label="Pelamar" value={total} sub="semua diperingkat" />
+                <Stat label="Skill dikonfirmasi HR" value={withProof} sub="pelamar dengan ≥1 skill terkonfirmasi" color="#059669" />
                 <Stat label="Sampai wawancara" value={interviews} color={KC.orange} />
                 <Stat label="Diterima" value={hired} color={KC.indigo} />
             </div>
@@ -82,7 +81,7 @@ export default function EmployerDashboard() {
             <BrutalCard>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 900, marginBottom: 10 }}><Briefcase size={17} /> Lowongan</div>
                 {jobs.length === 0 && (
-                    <p style={{ color: KC.mute }}>Belum ada lowongan. Pasang satu (gratis), lalu bagikan link / QR-nya di Instagram atau grup WhatsApp.</p>
+                    <p style={{ color: KC.mute }}>Belum ada lowongan. Pasang satu (gratis), lalu tempel link lamarannya di iklan lowongan Anda.</p>
                 )}
                 <div style={{ display: 'grid', gap: 10 }}>
                     {jobs.slice(0, 6).map((j) => (
@@ -90,12 +89,12 @@ export default function EmployerDashboard() {
                             <div>
                                 <div style={{ fontWeight: 800 }}>{j.title}</div>
                                 <div style={{ fontSize: 12, color: KC.mute }}>
-                                    {j.application_count || 0} pelamar · {j.is_active ? 'aktif' : (j.moderation_status === 'published' ? 'ditutup' : 'menunggu moderasi')} · paket {j.plan_tier === 'spark' ? 'Lite' : (j.plan_tier === 'beacon' ? 'Pro' : 'Max')}
+                                    {j.application_count || 0} pelamar · {j.is_active ? 'aktif' : (j.moderation_status === 'published' ? 'ditutup' : 'menunggu moderasi')}
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 6 }}>
-                                {j.is_active && j.public_code && <button style={{ ...topBtn(), padding: '7px 11px', fontSize: 12 }} onClick={() => setSharing(j)}><QrCode size={13} /> Link & QR</button>}
-                                <button style={{ ...topBtn(KC.ink, '#fff'), padding: '7px 11px', fontSize: 12 }} onClick={() => openJob(j.id)}>Pelamar →</button>
+                                {j.is_active && j.public_code && <button style={{ ...topBtn(), padding: '7px 11px', fontSize: 12 }} onClick={() => setSharing(j)}><QrCode size={13} /> Link lamaran</button>}
+                                <button style={{ ...topBtn(KC.ink, '#fff'), padding: '7px 11px', fontSize: 12 }} onClick={() => openJob(j.id)}>Pelamar & peta skill →</button>
                             </div>
                         </div>
                     ))}
@@ -113,12 +112,12 @@ export default function EmployerDashboard() {
                     <button style={topBtn()} onClick={() => navigate('employer-verification')}>Buka Kepercayaan →</button>
                 </BrutalCard>
                 <BrutalCard>
-                    <div style={{ fontWeight: 900 }}>Paket</div>
+                    <div style={{ fontWeight: 900 }}>Umpan balik untuk pelamar</div>
                     <p style={{ fontSize: 13, margin: '6px 0 10px' }}>
-                        Lite gratis: 1 lowongan aktif, semua pelamar diperingkat. Upgrade ke Pro atau Max untuk fitur ekstra.
-                        untuk pelamar tanpa batas, pertanyaan wawancara AI, dan ekspor.
+                        Saat menolak, pilih alasannya. Pelamar melihat alasan itu dan skill yang masih kurang,
+                        lalu bisa belajar untuk lamaran berikutnya. Konfirmasi skill setelah wawancara agar profilnya kuat di lowongan lain.
                     </p>
-                    <button style={topBtn(KC.orange, '#fff')} onClick={() => openUpgradeModal()}>Lihat paket</button>
+                    <button style={topBtn(KC.orange, '#fff')} onClick={() => navigate('employer-candidates')}>Buka pelamar</button>
                 </BrutalCard>
             </div>
             {sharing && <JobShareModal job={sharing} onClose={() => setSharing(null)} />}

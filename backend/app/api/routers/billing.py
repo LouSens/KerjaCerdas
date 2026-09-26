@@ -17,11 +17,11 @@ from backend.app.db.postgres_store import (
 )
 from backend.app.db.schemas_proof import PlanOrder
 from backend.app.services.billing.plans import (
-    EMPLOYER_PLANS,
-    SEEKER_PLANS,
     catalogue,
+    employer_plans,
     entitlements_for,
     plan_price,
+    seeker_plans,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -54,7 +54,7 @@ async def my_plans(current_user: User = Depends(get_current_user)):
 
 @router.post("/orders", status_code=status.HTTP_201_CREATED)
 async def create_order(req: OrderReq, current_user: User = Depends(get_current_user)):
-    allowed = EMPLOYER_PLANS if current_user.role == "employer" else SEEKER_PLANS
+    allowed = employer_plans() if current_user.role == "employer" else seeker_plans()
     if req.plan not in allowed:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Paket tidak tersedia untuk akun ini.")
     if req.plan == "beacon":

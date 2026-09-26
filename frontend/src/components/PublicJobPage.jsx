@@ -1,6 +1,6 @@
-// Public job page behind the shareable link / QR poster: /j/<code>.
-// Visitor flow: see the job -> sign up -> quick profile -> prove skills
-// (optional quizzes) -> apply. Applications are tagged source="link" so we
+// Public job page behind the shareable apply link: /j/<code>.
+// Visitor flow: see the job -> sign up -> quick profile -> see which required
+// skills are missing (optional learning plan) -> apply. Applications are tagged source="link" so we
 // can measure whether QR / share-link traffic converts better than the board.
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
@@ -13,13 +13,14 @@ import QuizModal from './QuizModal'
 import QuickProfileForm from './QuickProfileForm'
 import ReportJobModal from './ReportJobModal'
 import { applyToJob, fetchPublicJob, fetchQuizSkills } from '../services/api'
+import { QUIZ_ENABLED } from '../config/features'
 
 const rupiah = (n) => (n ? `Rp${Math.round(n / 1e6 * 10) / 10}jt` : '')
 
 export default function PublicJobPage() {
     const { code } = useParams()
     const location = useLocation()
-    const { isAuthenticated, userRole, profile, seekerId, openAuthModal, loadSeekerProfile } = useStore()
+    const { isAuthenticated, userRole, profile, seekerId, openAuthModal, loadSeekerProfile, setTargetJob, navigate } = useStore()
     const [job, setJob] = useState(null)
     const [error, setError] = useState('')
     const [skills, setSkills] = useState([])
@@ -91,7 +92,7 @@ export default function PublicJobPage() {
 
             {job.accepting_applications && !isAuthenticated && (
                 <BrutalCard color={KC.orangeSoft}>
-                    <p style={{ margin: '0 0 10px', fontWeight: 700 }}>Lamar lewat KerjaCerdas: lihat skor kecocokanmu, buktikan skill, dan dapat rekomendasi belajar — gratis.</p>
+                    <p style={{ margin: '0 0 10px', fontWeight: 700 }}>Lamar lewat KerjaCerdas: lihat skill yang masih kurang, dapat rencana belajar, dan tahu alasan HR jika tidak lolos — gratis.</p>
                     <button style={topBtn(KC.orange, '#fff')} onClick={() => openAuthModal('register', 'seeker', returnPath)}>Daftar & lamar</button>
                     <button style={{ ...topBtn(), marginLeft: 8 }} onClick={() => openAuthModal('login', 'seeker', returnPath)}>Sudah punya akun</button>
                 </BrutalCard>
@@ -107,18 +108,25 @@ export default function PublicJobPage() {
 
             {job.accepting_applications && isSeeker && hasProfile && !applied && (
                 <BrutalCard>
-                    <div style={{ fontWeight: 900, marginBottom: 6 }}>1. Buktikan skill-mu (opsional, ±3 menit per skill)</div>
+                    <div style={{ fontWeight: 900, marginBottom: 6 }}>
+                        {QUIZ_ENABLED ? '1. Buktikan skill-mu (opsional, ±3 menit per skill)' : '1. Skill yang dibutuhkan vs profilmu'}
+                    </div>
                     <ProofLegend />
                     <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
                         {skills.map((s) => (
                             <div key={s.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                 <ProofChip name={s.skill} status={s.proof} />
-                                {s.quiz_available && (s.proof === 'claimed' || s.proof === 'missing') && (
+                                {QUIZ_ENABLED && s.quiz_available && (s.proof === 'claimed' || s.proof === 'missing') && (
                                     <button style={topBtn()} onClick={() => setQuizSkill(s.skill)}><PlayCircle size={14} /> Ikut kuis</button>
                                 )}
                             </div>
                         ))}
                     </div>
+                    {!QUIZ_ENABLED && skills.some((s) => s.proof === 'missing') && (
+                        <button style={{ ...topBtn(), marginTop: 10 }} onClick={() => setTargetJob(job.id)}>
+                            Lihat rencana belajar untuk lowongan ini
+                        </button>
+                    )}
                     <div style={{ fontWeight: 900, margin: '18px 0 6px' }}>2. Kirim lamaran</div>
                     <button style={topBtn(KC.orange, '#fff')} onClick={apply}>Lamar sekarang</button>
                 </BrutalCard>
@@ -128,11 +136,12 @@ export default function PublicJobPage() {
                 <BrutalCard color={KC.limeSoft}>
                     <div style={{ fontWeight: 900, fontSize: 18 }}>Lamaran terkirim ✓</div>
                     {applied.match_score != null && (
-                        <p>Skor kecocokanmu saat melamar: <b>{Math.round(applied.match_score * 100)}</b> ({applied.band}). Skor naik setiap kali kamu membuktikan skill.</p>
+                        <p>Skor kecocokanmu saat melamar: <b>{Math.round(applied.match_score * 100)}</b> ({applied.band}). Pantau status dan alasan dari HR di Lamaran Saya.</p>
                     )}
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {(applied.skill_proof || []).map((p) => <ProofChip key={p.name} name={p.name} status={p.status} compact />)}
                     </div>
+                    <button style={{ ...topBtn(), marginTop: 12 }} onClick={() => navigate('seeker-applications')}>Buka Lamaran Saya →</button>
                 </BrutalCard>
             )}
 

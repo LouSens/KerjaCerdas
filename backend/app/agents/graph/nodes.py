@@ -81,16 +81,43 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
         except Exception as exc:
             logger.warning("Gemini skill-gap failed (%s) — checking course store", exc)
 
-    # Try JSON store courses before falling back to hardcoded catalog
-    store_courses = await _store_courses(missing)
-    if store_courses:
-        return store_courses
-
-    return _catalog_courses(missing)
+    return await recommend_courses_offline(missing)
 
 
-async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
-    """Match missing skills against the courses seeded into data/courses/*.json.
+EXTRA_COURSES = 3  # extra store courses beyond the one-per-skill guarantee
+
+
+async def recommend_courses_offline(missing: list[str]) -> list[CourseRecommendation]:
+    """One next step for EVERY missing skill, then a few extra seeded courses.
+
+    Each skill gets its best seeded course, or a catalog entry / honest search
+    link when none exists. Caps apply only to the extras — capping the whole
+    list used to leave the 6th+ missing skill with nothing to do. No AI call.
+    """
+    matched = await _store_course_hits(missing)
+    per_skill: list[CourseRecommendation] = []
+    used: set[str] = set()
+    for skill in missing:
+        # A course teaching several missing skills counts for EACH of them —
+        # crediting only its first hit sent later skills to a generic search.
+        course = next((c for c, hits in matched if skill in hits), None)
+        if course:
+            used.add(course.name)
+            per_skill.append(course.model_copy(update={"category": skill}))
+        else:
+            per_skill.append(_catalog_courses([skill])[0])
+    extras = [c for c, _ in matched if c.name not in used][:EXTRA_COURSES]
+    return per_skill + extras
+
+
+async def _store_courses(missing: list[str], limit: int | None = 5) -> list[CourseRecommendation]:
+    """Seeded courses teaching any missing skill (category = first skill it closes)."""
+    courses = [c for c, _ in await _store_course_hits(missing)]
+    return courses if limit is None else courses[:limit]
+
+
+async def _store_course_hits(missing: list[str]) -> list[tuple[CourseRecommendation, list[str]]]:
+    """Seeded courses that teach a missing skill, each with EVERY missing skill it covers.
 
     Matching goes through `_normalize_skill` so alias spellings ("Node.js" on
     a job posting vs "Node" in a course's `skills_taught`) still hit — a raw
@@ -102,18 +129,21 @@ async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
 
         repos = get_repositories()
         all_courses = await repos.courses.list()
-        missing_canonical = {_normalize_skill(s) for s in missing}
-        results: list[CourseRecommendation] = []
+        # canonical -> the spelling the job used, so `category` names the skill
+        # this course closes (the learning plan groups courses by it).
+        missing_canonical = {_normalize_skill(s): s for s in missing}
+        results: list[tuple[CourseRecommendation, list[str]]] = []
         seen: set[str] = set()
         for course in all_courses:
             taught = {
                 _normalize_skill(t) for t in (getattr(course, "skills_taught", None) or [])
             }
-            if taught & missing_canonical and course.name not in seen:
+            hits = [missing_canonical[k] for k in missing_canonical if k in taught]
+            if hits and course.name not in seen:
                 seen.add(course.name)
                 raw_price = getattr(course, "price", 0)
                 price_str = "Gratis" if not raw_price else f"Rp {raw_price:,}"
-                results.append(
+                results.append((
                     CourseRecommendation(
                         name=course.name,
                         provider=getattr(course, "provider", ""),
@@ -122,10 +152,11 @@ async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
                         price=price_str,
                         rating=getattr(course, "rating", 4.5),
                         description=getattr(course, "description", ""),
-                        category=getattr(course, "category", "tech"),
-                    )
-                )
-        return results[:5]  # cap at 5 recommendations
+                        category=hits[0],
+                    ),
+                    hits,
+                ))
+        return results
     except Exception as exc:
         logger.debug("Course store lookup failed: %s", exc)
         return []
@@ -189,15 +220,17 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
             # every curated course (e.g. Coursera ID) to Dicoding.
             name, provider, dur = entry
         else:
-            # Dynamically generate mock course recommendation for missing skill
-            name = f"Dicoding Academy — Menjadi {skill.title()} Developer"
-            provider = "Dicoding"
-            dur = "1 bulan"
+            # No curated course for this skill: point to a search instead of
+            # inventing a course title a provider does not actually sell.
+            name = f"Cari kursus {skill}"
+            provider = "Prakerja / Dicoding / YouTube"
+            dur = ""
 
         # Catalog entries carry no verified URL, price or rating, so the copy
         # stays provider-neutral and the estimate is flagged as unverified
         # (guardrails.md: "prefix uncertain facts with *belum terverifikasi*").
-        url = f"https://www.google.com/search?q={quote_plus(name + ' ' + provider)}"
+        query = name if not entry else f"{name} {provider}"
+        url = f"https://www.google.com/search?q={quote_plus(query)}"
         price = "*belum terverifikasi* — cek langsung di situs penyedia"
         rating = None
         desc = (
@@ -214,7 +247,7 @@ def _catalog_courses(missing: list[str]) -> list[CourseRecommendation]:
                 price=price,
                 rating=rating,
                 description=desc,
-                category="tech",
+                category=skill,
             )
         )
 

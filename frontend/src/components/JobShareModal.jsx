@@ -1,4 +1,4 @@
-// Share a job where the employer already recruits: link + printable QR poster.
+// Share a job where the employer already recruits: apply link (+ optional printable QR).
 import toast from 'react-hot-toast'
 import { Copy, Printer, X } from 'lucide-react'
 import { KC, topBtn } from './_design'
@@ -37,7 +37,7 @@ export default function JobShareModal({ job, onClose }) {
                     Bagikan lowongan
                     <button aria-label="Tutup" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X /></button>
                 </div>
-                <p style={{ fontSize: 13, color: KC.mute }}>Taruh link di bio Instagram, grup WhatsApp, atau cetak poster QR untuk ditempel di toko. Pelamar masuk langsung ke daftar Pelamar — tidak membanjiri WhatsApp.</p>
+                <p style={{ fontSize: 13, color: KC.mute }}>Tempel link ini di iklan lowongan Anda, situs karier, atau kirim ke pusat karier kampus / BKK SMK. Setiap pelamar masuk ke daftar Pelamar yang sudah diperingkat dan melihat skill yang masih kurang.</p>
                 <img src={publicJobQrUrl(job.public_code)} alt={`QR ${url}`} style={{ width: 220, height: 220 }} />
                 <div style={{ fontFamily: 'monospace', fontSize: 13, background: KC.surfaceAlt, borderRadius: 8, padding: 8, margin: '10px 0', wordBreak: 'break-all' }}>{url}</div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>

@@ -22,7 +22,9 @@ from backend.app.api.services.auth_service import (
 from backend.app.db.models import User
 from backend.app.db.postgres_store import find_employer_by_user_id, get_repositories
 from backend.app.db.schemas import Employer
+from backend.app.services.demo_accounts import DEMO_ACCOUNTS, DEMO_EMAILS
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -143,4 +145,51 @@ async def login_user(request: UserLoginRequest, db: AsyncSession = Depends(get_s
         access_token=token,
         user={"id": user.id, "name": user.name, "email": user.email, "role": user.role,
               "is_admin": is_admin_user(user)},
+    )
+
+
+# ── Demo login (DEMO_MODE only) ──────────────────────────────────────────────
+# One-click login into the seeded demo accounts, so a booth visitor can try
+# every role without a password. Only the fixed list in services/demo_accounts
+# is allowed (never an admin), and both endpoints 404 when demo mode is off —
+# which is the default in production (settings.demo_unlimited follows APP_ENV).
+
+
+class DemoLoginRequest(BaseModel):
+    email: str = Field(max_length=254)
+
+
+def _require_demo_mode() -> None:
+    from backend.app.config.settings import settings
+
+    if not settings.demo_unlimited:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not Found")
+
+
+@router.get("/demo-accounts")
+async def demo_accounts(db: AsyncSession = Depends(get_session)):
+    """The demo accounts that actually exist in this database (run the seed first)."""
+    _require_demo_mode()
+    emails = [email for email, *_ in DEMO_ACCOUNTS]
+    existing = set((await db.execute(select(User.email).where(User.email.in_(emails)))).scalars())
+    return {"accounts": [
+        {"email": email, "role": role, "name": name, "story": story}
+        for email, role, name, story in DEMO_ACCOUNTS if email in existing
+    ]}
+
+
+@router.post("/demo-login", response_model=TokenResponse)
+async def demo_login(request: DemoLoginRequest, db: AsyncSession = Depends(get_session)):
+    _require_demo_mode()
+    email = request.email.strip().lower()
+    if email not in DEMO_EMAILS:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bukan akun demo")
+    user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+    if not user or not user.is_active or is_admin_user(user):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Akun demo belum ada — jalankan seed")
+    logger.info("Demo login: user_id=%s", user.id)
+    token = create_access_token(user_id=user.id, role=user.role, name=user.name)
+    return TokenResponse(
+        access_token=token,
+        user={"id": user.id, "name": user.name, "email": user.email, "role": user.role, "is_admin": False},
     )

@@ -30,6 +30,7 @@ from backend.app.db.schemas import (
     MatchResult,
     SeekerProfile,
 )
+from backend.app.services.regions import get_region_name
 from backend.app.utils import content_to_text
 from fastapi import APIRouter, Depends, HTTPException
 from langgraph.errors import GraphRecursionError
@@ -133,6 +134,11 @@ async def _enrich_matches(
     """Join MatchResult objects with their JobPosting to add human-readable fields."""
     job_index = {j.id: j for j in candidate_jobs}
     enriched: list[EnrichedMatch] = []
+    # Company names resolved here, in one batched read, so EVERY return path
+    # (LLM, early exit, plain match button) shows a name — not an employer id.
+    employer_ids = list({j.employer_id for j in candidate_jobs if j.employer_id})
+    employers = await get_repositories().employers.get_many(employer_ids) if employer_ids else []
+    company_by_id = {e.id: e.company_name for e in employers}
 
     for m in raw_matches:
         job = job_index.get(m.job_id)
@@ -154,21 +160,9 @@ async def _enrich_matches(
         else:
             salary_str = "Competitive"
 
-        _BPS_REGIONS = {
-            "3171": "Jakarta Pusat",
-            "3172": "Jakarta Utara",
-            "3173": "Jakarta Barat",
-            "3174": "Jakarta Selatan",
-            "3175": "Jakarta Timur",
-            "3273": "Bandung",
-            "3578": "Surabaya",
-            "3471": "Yogyakarta",
-            "5171": "Denpasar",
-            "1275": "Medan",
-            "7371": "Makassar",
-            "6371": "Balikpapan",
-        }
-        location = _BPS_REGIONS.get(job.region_code, job.region_code)
+        # Shared table (services/regions.py): the local copy here lacked Malang,
+        # Bogor, Semarang, Surakarta and mislabelled 6371, so cards showed "3573".
+        location = get_region_name(job.region_code) or "Indonesia"
         if job.remote_allowed:
             location += " · Remote OK"
 
@@ -189,9 +183,7 @@ async def _enrich_matches(
                 explanation=m.explanation,
                 # metadata
                 title=job.title,
-                company=str(
-                    job.employer_id
-                ),  # employer_id as placeholder; enriched further if needed
+                company=company_by_id.get(job.employer_id, ""),
                 location=location,
                 salary_range=salary_str,
                 salary_min=job.salary_min,
@@ -217,9 +209,11 @@ async def _check_advisor_quota(user_id: str) -> None:
         ADVISOR_FREE_PER_DAY,
         ADVISOR_PRISM_PER_DAY,
         entitlements_for,
+        plan_limits_active,
     )
 
-    if settings.plan_limits_enforced:
+    # The daily quota only exists to separate Free from Prism; no paid plans, no quota.
+    if plan_limits_active() and not settings.demo_unlimited:
         now = datetime.now(UTC)
         ent = await entitlements_for(user_id)
         # Same window for both tiers, so the paid one cannot come out smaller.
@@ -352,6 +346,25 @@ async def invoke_agent(
             early_exit=True,
         )
 
+    # --- Plain "show my matches" (button, no chat text) -------------------
+    # Ranking is free on every tier (services/billing/plans.py), so it must not
+    # spend an advisor message — it did, and a seeker who refreshed matches ten
+    # times got an empty list with a 429. It also needs no LLM: every match
+    # already carries the matcher's own explanation.
+    if safe_intent == "match_jobs" and not safe_message.strip():
+        seeker_skill_names = [s.name for s in (seeker.skills or [])]
+        enriched = await _enrich_matches(raw_matches, jobs, seeker_skill_names)
+        return AgentInvokeResponse(
+            intent="match_jobs",
+            final_response="Berikut lowongan yang paling cocok dengan profilmu.",
+            matches=enriched,
+            seeker_id=seeker.id if seeker is not _ANONYMOUS_SEEKER else None,
+            target_job_title=None,
+            fallback_used=fallback_used,
+            band_distribution=_band_distribution(enriched),
+            routing_confidence=1.0,
+        )
+
     # --- Plan metering: Free 10 advisor messages / day, Prism 30 / day ---
     await _check_advisor_quota(current_user.id)
 
@@ -443,15 +456,6 @@ async def invoke_agent(
             hallucinated_removed,
             seeker.id,
         )
-
-    # --- Enrich company names from employer profiles ---------------------
-    employer_cache: dict[str, str] = {}
-    for em in enriched:
-        emp_id = em.company  # currently holds employer_id
-        if emp_id not in employer_cache:
-            emp = await repos.employers.get(emp_id)
-            employer_cache[emp_id] = emp.company_name if emp else emp_id
-        em.company = employer_cache[emp_id]
 
     band_dist = _band_distribution(enriched)
     latency_ms = int((time.time() - _start) * 1000)

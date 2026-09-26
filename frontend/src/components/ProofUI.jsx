@@ -9,8 +9,11 @@ import { fetchVerificationStatus, sendEmailOtp, verifyEmailOtp } from '../servic
 
 export const PROOF_META = {
     hr_confirmed: { label: 'Dikonfirmasi HR', short: '✓ HR', color: '#065F46', bg: KC.limeSoft, border: '#059669', icon: ShieldCheck },
-    quiz: { label: 'Terbukti (kuis)', short: '✓ Terbukti', color: '#065F46', bg: KC.limeSoft, border: '#10B981', icon: CheckCircle2 },
-    claimed: { label: 'Klaim CV', short: 'Klaim', color: KC.inkLight, bg: KC.surfaceAlt, border: KC.borderMuted, icon: CircleDashed },
+    // Legacy level: quizzes are off in the UI (config/features.js), but profiles
+    // that passed one keep it. It is a knowledge check, not proof — so it is
+    // never labelled "Terbukti"; only an HR confirmation is.
+    quiz: { label: 'Lulus kuis dasar', short: 'Kuis ✓', color: '#065F46', bg: KC.limeSoft, border: '#10B981', icon: CheckCircle2 },
+    claimed: { label: 'Ada di profil (klaim)', short: 'Klaim', color: KC.inkLight, bg: KC.surfaceAlt, border: KC.borderMuted, icon: CircleDashed },
     missing: { label: 'Belum dimiliki', short: 'Belum ada', color: '#991B1B', bg: KC.roseSoft, border: '#FCA5A5', icon: XCircle },
 }
 
@@ -37,8 +40,8 @@ export function ProofChip({ name, status = 'claimed', compact = false }) {
 export function ProofLegend() {
     return (
         <p style={{ fontSize: 12, color: KC.mute, margin: '6px 0 0' }}>
-            Skor skill: <b>Klaim CV</b> dihitung 30%, <b>Terbukti lewat kuis</b> 85%,
-            <b> Dikonfirmasi HR</b> 100%. Kuis menyaring, wawancara memastikan.
+            Skor skill: skill yang hanya <b>ada di profil</b> dihitung 30%,
+            <b> dikonfirmasi HR</b> setelah wawancara 100%. Profil menyaring, wawancara memastikan.
         </p>
     )
 }

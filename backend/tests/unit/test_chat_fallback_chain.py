@@ -189,7 +189,9 @@ async def test_agent_endpoint_survives_total_quota_exhaustion():
         ),
         jobs=SimpleNamespace(get_many=AsyncMock(return_value=[job])),
         employers=SimpleNamespace(
-            get=AsyncMock(return_value=SimpleNamespace(company_name="PT Test"))
+            get=AsyncMock(return_value=SimpleNamespace(company_name="PT Test")),
+            # Company names are resolved in one batched read (agent._enrich_matches).
+            get_many=AsyncMock(return_value=[SimpleNamespace(id="e1", company_name="PT Test")]),
         ),
     )
 

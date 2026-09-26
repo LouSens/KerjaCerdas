@@ -107,7 +107,7 @@ export default function FloatingAdvisor({ asPage = false }) {
         floatingAdvisorOpen, toggleFloatingAdvisor,
         advisorLog, advisorInput, setAdvisorInput,
         agentLoading, runAgent, isAuthenticated, userRole,
-        profile, seekerId, activeView, navigate,
+        profile, seekerId, activeView, navigate, skillGapResult,
     } = useStore()
     const scrollRef = useRef(null)
 
@@ -140,10 +140,15 @@ export default function FloatingAdvisor({ asPage = false }) {
         if (!customMsg) setAdvisorInput('')
     }
 
+    // Chips follow the loop: plan for the target, act on a rejection, prepare to apply.
+    const target = skillGapResult?.target_job_title
+    const missing = (skillGapResult?.missing_skills || []).slice(0, 2).join(' dan ')
     const PRESET_CHIPS = [
-        { label: 'Bandingkan gaji', prompt: 'Bandingkan gaji backend vs DevOps di pasar saat ini' },
-        { label: 'Gap tercepat', prompt: 'Apa gap tercepat yang bisa saya tutup untuk menaikkan skor match?' },
-        { label: 'Perbaiki CV', prompt: 'Bantu berikan saran perbaikan poin-poin pengalaman pada CV saya' },
+        target && missing
+            ? { label: 'Rencana 2 minggu', prompt: `Susun rencana belajar 2 minggu untuk menguasai ${missing} agar siap melamar ${target}.` }
+            : { label: 'Pilih target', prompt: 'Dari profil saya, lowongan mana yang paling realistis dijadikan target pertama, dan kenapa?' },
+        { label: 'Setelah ditolak', prompt: 'Lamaran saya ditolak karena skill belum memadai. Apa langkah paling efektif sebelum melamar lagi?' },
+        { label: 'Siap wawancara', prompt: target ? `Pertanyaan wawancara apa yang mungkin muncul untuk posisi ${target}, dan bagaimana menjawabnya?` : 'Bantu saya bersiap untuk wawancara kerja pertama.' },
     ]
 
     // Standalone Page Mode (Frame 12)

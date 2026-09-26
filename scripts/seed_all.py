@@ -41,6 +41,9 @@ from backend.app.db.session import async_session as async_session_factory
 from backend.app.services.hiring.links import new_public_code
 from backend.app.services.matching.matcher import SemanticMatcher, score_pair
 from scripts.auth_utils import seed_auth_user as _seed_auth_user
+from scripts.seed_legacy import retire_legacy_employers
+from scripts.seed_digital import DIGITAL_COURSES, DIGITAL_JOBS, DIGITAL_SEEKERS
+from scripts.seed_outcomes import seed_outcomes
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Employers
@@ -49,164 +52,164 @@ from scripts.auth_utils import seed_auth_user as _seed_auth_user
 EMPLOYERS = [
     # (key, company_name, industry, size, region_code, description)
     (
-        "goto",
-        "GoTo Group (Gojek/Tokopedia)",
+        "nusapay",
+        "NusaPay Digital",
         "Tech / Marketplace",
-        "enterprise",
+        "mid",
         "3174",
-        "Super-app dari Indonesia menghubungkan jutaan pengguna ke layanan transportasi, e-commerce, dan keuangan.",
+        "Startup pembayaran & marketplace untuk pedagang kecil di Jabodetabek.",
     ),
     (
-        "mandiri",
-        "Bank Mandiri",
+        "bpr_sentosa",
+        "BPR Sentosa Artha",
         "Perbankan",
-        "enterprise",
+        "mid",
         "3171",
-        "Bank BUMN terbesar di Indonesia, pelopor transformasi digital banking.",
+        "Bank perkreditan rakyat yang melayani UMKM dan nasabah ritel di Jakarta.",
     ),
     (
-        "bca",
-        "Bank Central Asia (BCA)",
+        "bpr_mitra",
+        "BPR Mitra Usaha Kita",
         "Perbankan",
-        "enterprise",
+        "mid",
         "3171",
-        "Bank swasta terbesar di Indonesia dengan layanan digital banking terdepan.",
+        "Bank perkreditan rakyat dengan fokus kredit usaha kecil dan KPR sederhana.",
     ),
     (
-        "telkom",
-        "Telkom Indonesia",
-        "Telekomunikasi",
-        "enterprise",
+        "nusantara_net",
+        "PT Nusantara Net Media",
+        "Telekomunikasi / ISP",
+        "mid",
         "3273",
-        "BUMN telekomunikasi, operator IndiHome dan Telkomsel.",
+        "Penyedia internet fiber rumahan (ISP lokal) di Bandung Raya.",
     ),
     (
-        "pertamina",
-        "Pertamina",
-        "Energi / Migas",
-        "enterprise",
+        "energi_borneo",
+        "PT Energi Borneo Lestari",
+        "Energi / Jasa Migas",
+        "mid",
         "6471",
-        "BUMN energi terbesar di Indonesia, hulu sampai hilir migas.",
+        "Kontraktor jasa lapangan migas skala menengah di Kalimantan Timur.",
     ),
     (
-        "bibit",
-        "Bibit Tumbuh Bersama",
+        "tumbuh_invest",
+        "Tumbuh Invest",
         "Fintech / Wealth",
         "mid",
         "3174",
-        "Aplikasi investasi reksadana #1 dengan basis pengguna 4 juta+ investor ritel.",
+        "Aplikasi investasi reksadana untuk investor ritel pemula.",
     ),
     (
-        "ruangguru",
-        "Ruangguru",
+        "belajar_pintar",
+        "Belajar Pintar Edukasi",
         "Edutech",
         "mid",
         "3174",
-        "Platform belajar online terbesar di Asia Tenggara, mendukung jutaan siswa.",
+        "Platform belajar online untuk siswa SMP dan SMA.",
     ),
     (
-        "halodoc",
-        "Halodoc",
+        "sehat_digital",
+        "Sehat Digital Nusantara",
         "Healthtech",
         "mid",
         "3174",
-        "Aplikasi kesehatan: konsultasi dokter, apotek antar, vaksinasi & tes lab.",
+        "Aplikasi konsultasi kesehatan & apotek antar skala regional.",
     ),
     (
-        "indofood",
-        "Indofood Sukses Makmur",
+        "pangan_jaya",
+        "PT Pangan Jaya Abadi",
         "FMCG / Pangan",
-        "enterprise",
+        "mid",
         "3578",
-        "Produsen mi instan, tepung, dan bahan pangan rumah tangga terbesar.",
+        "Produsen mi & makanan ringan skala menengah di Surabaya.",
     ),
     (
-        "garuda",
-        "Garuda Indonesia",
-        "Penerbangan",
-        "enterprise",
+        "angkasa_charter",
+        "Angkasa Charter Nusantara",
+        "Penerbangan Charter",
+        "mid",
         "3171",
-        "Maskapai penerbangan nasional, melayani rute domestik dan internasional.",
+        "Maskapai carter pesawat kecil untuk rute domestik.",
     ),
     (
-        "traveloka",
-        "Traveloka",
+        "jelajah_travel",
+        "Jelajah Travel Indonesia",
         "Tech / Travel",
-        "enterprise",
+        "mid",
         "3174",
-        "Platform travel & lifestyle terbesar di Asia Tenggara.",
+        "Agen perjalanan online untuk tiket dan paket wisata domestik.",
     ),
     (
-        "sayurbox",
-        "Sayurbox",
+        "kebun_segar",
+        "Kebun Segar Nusantara",
         "Agritech / Grocery",
         "mid",
         "3174",
-        "Belanja sayur & bahan segar langsung dari petani.",
+        "Toko sayur & bahan segar online langsung dari petani.",
     ),
     (
-        "astra",
-        "Astra International",
-        "Otomotif / Konglomerat",
-        "enterprise",
+        "karya_otomotif",
+        "PT Karya Otomotif Presisi",
+        "Otomotif / Manufaktur Komponen",
+        "mid",
         "3271",
-        "Konglomerat otomotif (Toyota, Daihatsu, Honda motor), agribisnis, jasa keuangan.",
+        "Pemasok komponen otomotif untuk pabrik perakitan di Karawang & Bekasi.",
     ),
     (
-        "kalbe",
-        "Kalbe Farma",
+        "farma_husada",
+        "PT Farma Husada Nusantara",
         "Farmasi / Healthcare",
-        "enterprise",
+        "mid",
         "3174",
-        "Perusahaan farmasi terbesar di Asia Tenggara berbasis Indonesia.",
+        "Produsen obat generik skala menengah di Bekasi.",
     ),
     (
-        "pegadaian",
-        "Pegadaian",
-        "Keuangan / BUMN",
-        "enterprise",
+        "gadai_amanah",
+        "PT Gadai Amanah Sejahtera",
+        "Keuangan / Pergadaian",
+        "mid",
         "3471",
-        "Lembaga keuangan BUMN, layanan gadai, emas, dan mikrofinansial.",
+        "Perusahaan pergadaian swasta berizin dengan cabang di Yogyakarta.",
     ),
     (
-        "unilever",
-        "Unilever Indonesia",
+        "rumah_bersih",
+        "PT Rumah Bersih Indonesia",
         "FMCG",
-        "enterprise",
+        "mid",
         "3171",
-        "Produsen consumer goods global; brand Wall's, Sunsilk, Bango, Rinso, dll.",
+        "Produsen sabun, sampo, dan produk kebersihan rumah tangga lokal.",
     ),
     (
-        "reddoorz",
-        "RedDoorz",
+        "inap_nyaman",
+        "InapNyaman Hospitality",
         "Hospitality / Tech",
         "mid",
         "5171",
-        "Aplikasi pemesanan hotel budget terbesar di Asia Tenggara.",
+        "Jaringan hotel & guest house budget di Bali dan Lombok.",
     ),
     (
-        "shopee",
-        "Shopee Indonesia",
+        "pasar_digital",
+        "Pasar Digital Nusantara",
         "E-commerce",
-        "enterprise",
+        "mid",
         "3174",
-        "Platform e-commerce #1 di Indonesia, ekosistem Sea Group.",
+        "Marketplace untuk produk UMKM lokal.",
     ),
     (
-        "tanihub",
-        "TaniHub",
+        "tani_makmur",
+        "Tani Makmur Agro",
         "Agritech",
         "mid",
         "3573",
-        "Marketplace B2B yang menghubungkan petani Indonesia ke buyer besar.",
+        "Pemasok sayur & buah dari petani mitra ke restoran dan ritel.",
     ),
     (
-        "kalbio",
-        "Kalbio Global Medika",
+        "bionusa",
+        "PT BioNusa Medika",
         "Bioteknologi",
         "mid",
         "3171",
-        "Perusahaan vaksin & terapi biologis afiliasi Kalbe Group.",
+        "Perusahaan riset vaksin & terapi biologis skala menengah.",
     ),
     # ── UMKM (usaha kecil, 1-50 karyawan) — the platform's stated target
     # segment, but until now every employer above was a national enterprise.
@@ -303,10 +306,10 @@ EMPLOYERS = [
 
 JOB_POSTINGS = [
     (
-        "goto",
+        "nusapay",
         "Senior Backend Engineer (Go)",
         "2511",
-        "Bangun layanan microservice high-throughput untuk fitur pembayaran Gojek/Tokopedia.",
+        "Bangun layanan microservice high-throughput untuk fitur pembayaran pedagang.",
         [
             "Desain API REST & gRPC",
             "Optimasi latency pada Kafka pipeline",
@@ -322,7 +325,7 @@ JOB_POSTINGS = [
         42_000_000,
     ),
     (
-        "mandiri",
+        "bpr_sentosa",
         "Junior Data Analyst (Banking)",
         "2511",
         "Analisis data transaksi nasabah untuk dashboard manajemen risiko & marketing campaign.",
@@ -341,10 +344,10 @@ JOB_POSTINGS = [
         13_000_000,
     ),
     (
-        "goto",
+        "nusapay",
         "Mobile Engineer - Flutter",
         "2511",
-        "Develop fitur baru aplikasi Tokopedia Seller di Android & iOS.",
+        "Develop fitur baru aplikasi penjual (seller app) di Android & iOS.",
         ["Implementasi UI Flutter", "Integrasi REST API", "A/B testing fitur"],
         ["Flutter", "Dart", "REST API", "Git"],
         ["Firebase", "iOS", "Android Studio"],
@@ -356,10 +359,10 @@ JOB_POSTINGS = [
         28_000_000,
     ),
     (
-        "telkom",
+        "nusantara_net",
         "Network Engineer (FTTH)",
         "2152",
-        "Operasi dan troubleshoot jaringan akses IndiHome FTTH wilayah Bandung Raya.",
+        "Operasi dan troubleshoot jaringan fiber rumahan (FTTH) wilayah Bandung Raya.",
         ["Maintenance OLT/ONT", "Network monitoring", "Penanganan eskalasi pelanggan"],
         ["TCP/IP", "Cisco IOS", "Linux", "FTTH"],
         ["Mikrotik", "OSPF"],
@@ -371,10 +374,10 @@ JOB_POSTINGS = [
         20_000_000,
     ),
     (
-        "pertamina",
+        "energi_borneo",
         "Petroleum Engineer (Production)",
         "2146",
-        "Optimasi produksi sumur minyak di lapangan East Kalimantan.",
+        "Optimasi produksi sumur minyak di lapangan Kalimantan Timur.",
         ["Well testing", "Reservoir analysis", "Production reporting"],
         ["Petroleum Engineering", "PROSPER", "PETREL", "Drilling"],
         ["MATLAB", "Python"],
@@ -386,7 +389,7 @@ JOB_POSTINGS = [
         28_000_000,
     ),
     (
-        "bibit",
+        "tumbuh_invest",
         "Product Designer",
         "2166",
         "Desain pengalaman investasi reksadana untuk pengguna ritel pemula.",
@@ -401,10 +404,10 @@ JOB_POSTINGS = [
         22_000_000,
     ),
     (
-        "ruangguru",
+        "belajar_pintar",
         "Content Writer (Bahasa Indonesia)",
         "2641",
-        "Tulis artikel SEO & soal latihan kurikulum SMA untuk platform Ruangguru.",
+        "Tulis artikel SEO & soal latihan kurikulum SMA untuk platform Belajar Pintar.",
         ["Riset topik", "Tulisan 800-1500 kata SEO", "Editorial review"],
         ["Bahasa Indonesia", "SEO", "Content Writing", "Riset"],
         ["WordPress", "Photoshop"],
@@ -416,10 +419,10 @@ JOB_POSTINGS = [
         10_000_000,
     ),
     (
-        "halodoc",
+        "sehat_digital",
         "Backend Engineer (Python)",
         "2511",
-        "Bangun layanan API untuk Halodoc Apotek (Apotek Antar) — order, inventory, fulfillment.",
+        "Bangun layanan API untuk apotek antar — order, inventory, fulfillment.",
         ["Develop microservice FastAPI", "DB schema PostgreSQL", "Unit + integration test"],
         ["Python", "FastAPI", "PostgreSQL", "Docker"],
         ["AWS", "Redis", "Celery"],
@@ -431,7 +434,7 @@ JOB_POSTINGS = [
         28_000_000,
     ),
     (
-        "bca",
+        "bpr_mitra",
         "Risk Management Analyst",
         "2412",
         "Pemodelan credit risk untuk produk kartu kredit dan KPR.",
@@ -446,7 +449,7 @@ JOB_POSTINGS = [
         18_000_000,
     ),
     (
-        "indofood",
+        "pangan_jaya",
         "Supply Chain Manager (FMCG)",
         "1324",
         "Pimpin S&OP planning untuk lini produk mi instan di pabrik Surabaya.",
@@ -461,10 +464,10 @@ JOB_POSTINGS = [
         30_000_000,
     ),
     (
-        "garuda",
+        "angkasa_charter",
         "Cabin Crew (Fresh Recruit)",
         "5111",
-        "Layanan penumpang pesawat rute domestik & internasional Garuda Indonesia.",
+        "Layanan penumpang pesawat carter rute domestik.",
         ["Safety briefing", "In-flight service", "Penanganan penumpang khusus"],
         ["Bahasa Inggris", "Komunikasi", "Service Mindset", "Penampilan"],
         ["Bahasa Mandarin"],
@@ -476,7 +479,7 @@ JOB_POSTINGS = [
         12_000_000,
     ),
     (
-        "traveloka",
+        "jelajah_travel",
         "Data Scientist (Pricing)",
         "2511",
         "Bangun model pricing & ranking dinamis untuk pencarian tiket pesawat.",
@@ -491,10 +494,10 @@ JOB_POSTINGS = [
         38_000_000,
     ),
     (
-        "sayurbox",
+        "kebun_segar",
         "Operations Lead (Warehouse)",
         "3331",
-        "Pimpin tim operasional fulfillment dark store Sayurbox area JABODETABEK.",
+        "Pimpin tim operasional fulfillment dark store Kebun Segar area JABODETABEK.",
         ["Schedule shift", "KPI on-time delivery", "Continuous improvement"],
         ["Operasional", "Leadership", "Excel", "Problem Solving"],
         ["Lean / Six Sigma"],
@@ -506,10 +509,10 @@ JOB_POSTINGS = [
         20_000_000,
     ),
     (
-        "astra",
+        "karya_otomotif",
         "Mechanical Engineer (Automotive)",
         "2144",
-        "Engineer lini produksi mobil Toyota di pabrik Karawang (Astra Daihatsu Motor).",
+        "Engineer lini produksi komponen otomotif di pabrik Karawang.",
         ["Process improvement", "Quality control", "Drawing review (CAD)"],
         ["AutoCAD", "Mechanical", "TPM", "Bahasa Inggris"],
         ["SolidWorks", "MES"],
@@ -521,10 +524,10 @@ JOB_POSTINGS = [
         18_000_000,
     ),
     (
-        "kalbe",
+        "farma_husada",
         "Quality Assurance Pharmacist",
         "2262",
-        "QA produksi sediaan farmasi di pabrik Kalbe Bekasi.",
+        "QA produksi sediaan farmasi di pabrik Bekasi.",
         ["Validasi proses", "Audit CPOB", "Investigasi deviasi"],
         ["Farmasi", "CPOB", "Quality Assurance", "GMP"],
         ["LIMS", "Six Sigma"],
@@ -536,12 +539,12 @@ JOB_POSTINGS = [
         15_000_000,
     ),
     (
-        "pegadaian",
+        "gadai_amanah",
         "Customer Service Representative",
         "4222",
-        "Layanan nasabah cabang Pegadaian Yogyakarta — gadai emas, KCA, tabungan emas.",
+        "Layanan nasabah cabang Yogyakarta — gadai emas, KCA, tabungan emas.",
         ["Layanan tatap muka nasabah", "Input transaksi", "Cross-sell produk"],
-        ["Komunikasi", "Customer Service", "Penampilan", "Bahasa Indonesia"],
+        ["Komunikasi", "Customer Service", "Administrasi", "Bahasa Indonesia"],
         ["Excel"],
         "D3",
         0,
@@ -551,10 +554,10 @@ JOB_POSTINGS = [
         8_000_000,
     ),
     (
-        "unilever",
+        "rumah_bersih",
         "Marketing Specialist (FMCG)",
         "2431",
-        "Eksekusi campaign brand personal-care (Sunsilk/Pepsodent) di kanal modern trade.",
+        "Eksekusi campaign brand perawatan diri di kanal modern trade.",
         ["Trade marketing plan", "Activation BTL", "Analisis sales data"],
         ["Marketing", "Trade Marketing", "Excel", "Bahasa Inggris"],
         ["Power BI", "Nielsen"],
@@ -566,10 +569,10 @@ JOB_POSTINGS = [
         20_000_000,
     ),
     (
-        "reddoorz",
+        "inap_nyaman",
         "Sales Executive (Hotel Partner)",
         "3322",
-        "Akuisisi hotel & guest house budget di area Bali untuk listing RedDoorz.",
+        "Akuisisi hotel & guest house budget di area Bali untuk jaringan InapNyaman.",
         ["Door-to-door sales", "Negotiation kontrak", "Onboarding mitra"],
         ["Sales", "Negotiation", "Bahasa Indonesia", "Komunikasi"],
         ["Bahasa Inggris"],
@@ -581,10 +584,10 @@ JOB_POSTINGS = [
         13_000_000,
     ),
     (
-        "shopee",
+        "pasar_digital",
         "UI/UX Designer",
         "2166",
-        "Desain alur checkout & promosi di aplikasi Shopee.",
+        "Desain alur checkout & promosi di aplikasi Pasar Digital.",
         ["Wireframe", "User testing", "Hand-off ke engineer"],
         ["Figma", "UI/UX", "Design System", "Prototyping"],
         ["After Effects", "User Research"],
@@ -596,10 +599,10 @@ JOB_POSTINGS = [
         25_000_000,
     ),
     (
-        "tanihub",
+        "tani_makmur",
         "Agriculture Field Officer",
         "6111",
-        "Bina petani mitra di area Malang Raya untuk supply sayur & buah TaniHub.",
+        "Bina petani mitra di area Malang Raya untuk supply sayur & buah Tani Makmur Agro.",
         ["Field visit petani", "Edukasi GAP", "Quality control panen"],
         ["Pertanian", "Bahasa Indonesia", "Excel", "Komunikasi"],
         ["Excel", "Logistik"],
@@ -611,10 +614,10 @@ JOB_POSTINGS = [
         10_000_000,
     ),
     (
-        "kalbio",
+        "bionusa",
         "Biotechnology Research Associate",
         "2131",
-        "Riset & development produk vaksin/biologic di lab Kalbio.",
+        "Riset & development produk vaksin/biologic di lab BioNusa.",
         ["Eksperimen sel mamalia", "Validasi assay", "Reporting ke principal scientist"],
         ["Bioteknologi", "Cell Culture", "ELISA", "Lab Safety"],
         ["Flow Cytometry", "qPCR"],
@@ -1714,6 +1717,12 @@ COURSES = [
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# Entry-level digital jobs at the UMKM + the booth-story seekers (see seed_digital.py).
+JOB_POSTINGS += DIGITAL_JOBS
+SEEKERS += DIGITAL_SEEKERS
+COURSES += DIGITAL_COURSES
+
+
 async def seed(clear: bool, reset_passwords: bool = False) -> None:
     await init_db()
 
@@ -1725,12 +1734,17 @@ async def seed(clear: bool, reset_passwords: bool = False) -> None:
     repos = get_repositories()
     matcher = SemanticMatcher()
 
+    # Rows from earlier seeds (real brands, underscore logins) — see seed_legacy.py.
+    await retire_legacy_employers(repos)
+
     # ── Employers ──────────────────────────────────────────────────────────
     existing_employers = {emp.user_id: emp for emp in await repos.employers.list()}
     emp_by_key: dict[str, Employer] = {}
     for key, name, ind, size, region, desc in EMPLOYERS:
         u = await _seed_auth_user(
-            email=f"hr@{key}.id",
+            # Underscores are invalid in an email domain (hr@warung_bahari.id failed
+            # EmailStr validation), so the login domain drops them.
+            email=f"hr@{key.replace('_', '')}.id",
             name=name,
             role=UserRole.EMPLOYER.value,
             reset_password=reset_passwords,
@@ -1912,9 +1926,10 @@ async def seed(clear: bool, reset_passwords: bool = False) -> None:
             if s_idx < len(all_seekers) and j_idx < len(all_jobs):
                 s_obj = all_seekers[s_idx]
                 j_obj = all_jobs[j_idx]
-                existing_application = existing_applications.get((j_obj.id, s_obj.id))
+                if (j_obj.id, s_obj.id) in existing_applications:
+                    continue  # never rewind a status HR has changed since
                 app_obj = Application(
-                    id=existing_application.id if existing_application else str(uuid.uuid4()),
+                    id=str(uuid.uuid4()),
                     job_id=j_obj.id,
                     seeker_id=s_obj.id,
                     status=status_val,
@@ -1927,14 +1942,20 @@ async def seed(clear: bool, reset_passwords: bool = False) -> None:
                 app_count += 1
     print(f"[applications] {app_count} created")
 
+    # Outcomes for the target -> learn -> apply -> feedback loop (see seed_outcomes.py).
+    await seed_outcomes(repos, emp_by_key)
+
     print("\n[OK] Seed selesai.")
     print(f"  Employers : {len(emp_by_key)}")
     print(f"  Jobs      : {job_count}")
     print(f"  Seekers   : {seeker_count}")
     print(f"  Courses   : {len(COURSES)}")
     print("\nLogin demo (UI menerima password apa saja):")
-    print("  hr@goto.id               -> employer dashboard (GoTo)")
-    print("  hr@bibit.id              -> employer dashboard (Bibit)")
+    print("  hr@kelontongmakmur.id    -> employer dashboard (Toko Kelontong Makmur Jaya)")
+    print("  hr@kliniksehat.id        -> employer dashboard (Klinik Sehat Keluarga)")
+    print("  salsa.anindya@example.com -> seeker: target desain grafis + ditolak dengan alasan (digital)")
+    print("  hr@konveksimakmur.id     -> employer: lowongan desain grafis & 3D dengan pelamar")
+    print("  maya.sari@example.com    -> seeker: ditolak dengan alasan -> rencana belajar")
     print("  andi.pratama@example.com -> seeker dashboard (fresh-grad data)")
     print("  reza.pahlawan@example.com -> seeker dashboard (senior backend)")
     print("  iwan.setyo@example.com   -> seeker dashboard (SMA + 8 thn sales)")
