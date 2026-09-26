@@ -50,6 +50,7 @@ from backend.app.services.billing.plans import (
     TALENT_SEARCHES_LIGHTHOUSE,
     active_job_limit,
     entitlements_for,
+    plan_limits_active,
     talent_search_limit,
 )
 from backend.app.services.hiring.links import new_public_code, public_path
@@ -104,13 +105,13 @@ async def _enforce_active_limit(
 ) -> None:
     """Spark: 1 active job, Lighthouse: 5; a Beacon order covers its own job.
 
-    A second AutoMod strike also limits the employer to one active job for 30 days.
+    A second AutoMod strike limits the employer to one active job for 30 days.
+    That is a moderation penalty, not a plan limit, so it applies whether or
+    not plans are sold.
     """
-    if not settings.plan_limits_enforced or settings.demo_unlimited:
-        return
     strike_limited = policy.strike_state(employer)["limited"]
-    if not settings.employer_plans_enabled:
-        # No paid plans: active jobs are uncapped; only the strike penalty limits them.
+    if not plan_limits_active():
+        # No plan limits: active jobs are uncapped; only the strike penalty limits them.
         if not strike_limited:
             return
         if any(j.is_active and j.id != job_id for j in jobs):
@@ -464,7 +465,7 @@ async def _check_talent_search_quota(user_id: str, job_id: str) -> None:
     30-search allowance. Lighthouse is account-wide by design, so it meters per
     account.
     """
-    if not settings.plan_limits_enforced or settings.demo_unlimited:
+    if not plan_limits_active() or settings.demo_unlimited:
         await add_event(user_id, "talent_search")
         return
 
@@ -670,7 +671,7 @@ async def list_employer_applications(
     enriched.sort(key=lambda x: (x["locked"], -(x["match_score"] or 0.0)))
     return {
         "total": len(enriched),
-        "ranked_limit": cap if (settings.plan_limits_enforced and cap > 0) else None,
+        "ranked_limit": cap if (plan_limits_active() and cap > 0) else None,
         "items": enriched,
     }
 

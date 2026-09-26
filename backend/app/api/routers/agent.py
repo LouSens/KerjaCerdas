@@ -209,9 +209,11 @@ async def _check_advisor_quota(user_id: str) -> None:
         ADVISOR_FREE_PER_DAY,
         ADVISOR_PRISM_PER_DAY,
         entitlements_for,
+        plan_limits_active,
     )
 
-    if settings.plan_limits_enforced and not settings.demo_unlimited:
+    # The daily quota only exists to separate Free from Prism; no paid plans, no quota.
+    if plan_limits_active() and not settings.demo_unlimited:
         now = datetime.now(UTC)
         ent = await entitlements_for(user_id)
         # Same window for both tiers, so the paid one cannot come out smaller.

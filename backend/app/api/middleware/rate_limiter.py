@@ -96,6 +96,14 @@ _ROUTE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/v1/employer/jobs": (30, 60),
 }
 
+# Brute-force / abuse guards. DEMO_MODE lifts usage limits only — never these.
+SECURITY_BUCKETS = frozenset({
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
+    "/api/v1/verify/email/send",
+    "/api/v1/verify/email/verify",
+})
+
 # Bucket name for every route without a specific rule.  All such routes share
 # one counter per IP, so this is a true per-client ceiling on general browsing
 # rather than a per-URL allowance.  Sized for a SPA that fans out several calls
@@ -251,11 +259,13 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
                 self._drop(k)
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        if settings.demo_unlimited:  # booth demo: no limits (see settings.demo_unlimited)
-            return await call_next(request)
-        ip = _get_client_ip(request)
         path = request.url.path
         bucket, max_req, window = _get_bucket(path)
+        # DEMO_MODE lifts usage limits (a booth shares one IP) but never the
+        # login / register / OTP brute-force guards.
+        if settings.demo_unlimited and bucket not in SECURITY_BUCKETS:
+            return await call_next(request)
+        ip = _get_client_ip(request)
         key = (ip, bucket)
 
         key_lock = await self._get_or_create_key(key)

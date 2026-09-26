@@ -108,20 +108,43 @@ EMPLOYER_FREE_FEATURES = [
 ]
 
 
+def plan_limits_active() -> bool:
+    """Per-plan limits apply only when plans are sold AND limits are enforced."""
+    return settings.paid_plans_enabled and settings.plan_limits_enforced
+
+
 def employer_plans() -> tuple[str, ...]:
     """Employer plans that can be ordered right now (none while plans are off)."""
-    return EMPLOYER_PLANS if settings.employer_plans_enabled else ()
+    return EMPLOYER_PLANS if settings.paid_plans_enabled else ()
+
+
+def seeker_plans() -> tuple[str, ...]:
+    """Seeker plans that can be ordered right now (none while plans are off)."""
+    return SEEKER_PLANS if settings.paid_plans_enabled else ()
 
 
 def catalogue() -> dict:
-    if not settings.employer_plans_enabled:
+    if not settings.paid_plans_enabled:
         employer = [{"plan": "spark", "price_idr": 0, "period": "gratis",
                      "features": EMPLOYER_FREE_FEATURES}]
     else:
         employer = _paid_employer_catalogue()
+    seeker = _seeker_catalogue()
+    if not settings.paid_plans_enabled:
+        seeker = [{**seeker[0], "features": seeker[0]["features"][:-1] + ["Advisor tanpa batas harian"]}]
     return {
         "employer": employer,
-        "seeker": [
+        "seeker": seeker,
+        "note": ("Membayar tidak pernah mengubah skor kecocokan maupun peringkat, "
+             "dan tidak pernah membuka informasi tentang peringkatmu yang tidak "
+             "didapat pengguna gratis. Skor, peringkat, dan urutan pelamar "
+             "sama untuk semua paket."),
+        "payment_instructions": settings.payment_instructions,
+    }
+
+
+def _seeker_catalogue() -> list[dict]:
+    return [
             {"plan": "free", "price_idr": 0, "period": "gratis",
              "features": ["Skor kecocokan + skill gap per lowongan target",
                           "Rencana belajar dan rekomendasi kursus",
@@ -135,13 +158,7 @@ def catalogue() -> dict:
              "note": ("Prism membeli LATIHAN, bukan peringkat. Semua yang "
                       "memengaruhi peringkatmu — dan semua yang bisa kamu "
                       "ketahui tentang peringkatmu — gratis selamanya.")},
-        ],
-        "note": ("Membayar tidak pernah mengubah skor kecocokan maupun peringkat, "
-             "dan tidak pernah membuka informasi tentang peringkatmu yang tidak "
-             "didapat pengguna gratis. Skor, peringkat, dan urutan pelamar "
-             "sama untuk semua paket."),
-        "payment_instructions": settings.payment_instructions,
-    }
+    ]
 
 
 def _paid_employer_catalogue() -> list[dict]:
@@ -189,7 +206,7 @@ class Entitlements:
         return "beacon" if job_id in self.beacon_jobs else "spark"
 
     def premium_for_job(self, job_id: str) -> bool:
-        if not settings.plan_limits_enforced or not settings.employer_plans_enabled:
+        if not plan_limits_active():
             return True
         return self.job_tier(job_id) != "spark"
 
@@ -224,10 +241,6 @@ def talent_search_limit(ent: Entitlements, job_id: str) -> int:
     per account. Lighthouse is genuinely account-wide, so it alone ignores which
     job is being searched.
     """
-    if not settings.employer_plans_enabled:
-        # No paid plans: sourcing is free, with the per-job fair-use allowance
-        # the paid tier used to buy (each search costs an embedding lookup).
-        return TALENT_SEARCHES_BEACON
     tier = ent.job_tier(job_id)
     if tier == "lighthouse":
         return TALENT_SEARCHES_LIGHTHOUSE

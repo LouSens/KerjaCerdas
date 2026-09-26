@@ -68,6 +68,9 @@ externalPort = 80
 
 [userenv.production]
 APP_ENV = "production"
+# DIGDAYA booth: usage quotas off + one-click demo logins. Login/OTP throttles
+# stay on. Set to "false" (or delete) after the event.
+DEMO_MODE = "true"
 CORS_ALLOW_ORIGINS = "[\"https://kerjacerdas.tech\"]"
 
 [userenv.development]

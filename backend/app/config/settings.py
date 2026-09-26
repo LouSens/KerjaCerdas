@@ -67,22 +67,23 @@ class Settings(BaseSettings):
     # candidates from the employer who asked for them. The paywall moved to
     # reverse matching (plans.talent_search_limit), which is sourcing.
     spark_ranked_applicant_limit: int = 0
-    # Enforce plan limits (Spark: 1 active job, 20 ranked applicants; premium
-    # features need Beacon/Lighthouse). Switchable for live demos / tests.
-    plan_limits_enforced: bool = True
-    # Employer paid plans (Beacon / Lighthouse). Off: every employer feature is
-    # free and uncapped — all applicants ranked, interview kit, CSV, any number
-    # of active jobs (the AutoMod strike limit still applies) — and the plans
-    # are not sold. The seeker plan (Prism) and advisor metering are unaffected.
-    # The gating code stays so a deployment can bring the plans back.
-    employer_plans_enabled: bool = False
-    # DEMO: every quota and rate limit off — advisor messages, plan limits,
-    # candidate-search allowance and the per-IP rate limiter (a booth puts
-    # every visitor's phone behind ONE venue IP). ON by default for the
-    # DIGDAYA demo. Set DEMO_UNLIMITED=false for any public deployment:
-    # unmetered advisor chat is unmetered Gemini spend, and the rate limiter
-    # is also the login brute-force guard.
-    demo_unlimited: bool = True
+    # Paid plans (Beacon / Lighthouse for employers, Prism for seekers). OFF:
+    # nothing is sold, and every limit that only existed to separate the plans
+    # is gone — advisor daily quota, candidate-search allowance, active-job cap,
+    # interview-kit / CSV gates. NOT affected: AutoMod strikes (moderation) and
+    # the login / register / OTP throttles (security). The gating code stays,
+    # tested, so a deployment can bring the plans back.
+    paid_plans_enabled: bool = False
+    # Enforce the per-plan limits above. Only meaningful with paid plans on.
+    plan_limits_enforced: bool = False
+    # DEMO_MODE (the env var docker-compose and CI already set): usage quotas
+    # off — advisor messages, candidate-search allowance and the per-IP usage
+    # rate limits (a booth puts every visitor's phone behind ONE venue IP).
+    # Security limits are NEVER lifted: login, register and email-OTP throttles
+    # stay on (rate_limiter.SECURITY_BUCKETS), and so do AutoMod strikes.
+    # Unset -> follows APP_ENV like OTP_DEMO_MODE: on in development, off in
+    # production. docker-compose.prod.yml sets DEMO_MODE=false explicitly.
+    demo_mode: bool | None = None
     # Shown on the payment screen until a payment gateway is live.
     payment_instructions: str = (
         "Bayar via QRIS / transfer bank ke rekening KerjaCerdas, lalu kirim bukti "
@@ -186,6 +187,13 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def demo_unlimited(self) -> bool:
+        """Whether usage quotas are lifted (see `demo_mode`)."""
+        if self.demo_mode is not None:
+            return self.demo_mode
+        return not self.is_production
 
     @property
     def otp_demo_enabled(self) -> bool:
