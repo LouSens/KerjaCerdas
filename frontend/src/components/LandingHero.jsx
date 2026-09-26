@@ -1024,7 +1024,7 @@ export default function LandingHero() {
     const FAQS = [
         {
             q: 'Apakah platform ini sepenuhnya gratis untuk pencari kerja?',
-            a: 'Ya. Pencocokan AI, rencana belajar per lowongan target, rekomendasi kursus, melamar, peringkat persis tiap lamaranmu (mis. #14 dari 62), dan alasan dari HR jika tidak lolos — semuanya gratis. Kamu tidak membayar untuk peringkat, dan tidak membayar untuk tahu peringkatmu. Paket Premium (Rp15.000 / 30 hari) hanya menambah kuota advisor — latihan, bukan peringkat.',
+            a: 'Ya. Pencocokan AI, rencana belajar per lowongan target, rekomendasi kursus, melamar, peringkat persis tiap lamaranmu (mis. #14 dari 62), dan alasan dari HR jika tidak lolos — semuanya gratis. Tidak ada paket berbayar untuk pencari kerja — termasuk advisor karier AI.',
         },
         {
             q: 'Data apa yang dikumpulkan? Apakah perlu KTP?',
@@ -1088,7 +1088,7 @@ export default function LandingHero() {
                             }}>
                                 sebelum melamar.
                             </span><br />
-                            Belajar, lamar, dapat alasan.
+                            Belajar yang tepat, lalu lamar.
                         </h1>
 
                         {/* Subtitle */}
@@ -1096,7 +1096,7 @@ export default function LandingHero() {
                             fontSize: 16, lineHeight: 1.6, color: KC.mute, maxWidth: 520,
                             margin: '0 0 26px 0',
                         }}>
-                            Pilih lowongan incaran, lihat skill wajib yang belum kamu punya, pelajari lewat kursus yang tepat, lalu lamar. Jika tidak lolos, HR memberi alasannya — jadi kamu tahu apa yang harus dipelajari berikutnya.
+                            Pilih lowongan incaran, lihat skill wajib yang belum kamu punya, dan pelajari lewat kursus untuk skill itu — lalu lamar dengan profil yang lebih siap.
                         </p>
 
                         {/* Dual Action CTAs */}
@@ -1129,10 +1129,10 @@ export default function LandingHero() {
                             </div>
                             <div>
                                 <div style={{ fontSize: 24, fontWeight: 900, color: KC.ink, letterSpacing: -0.8, fontFamily: MONO }}>
-                                    8 alasan
+                                    1 target
                                 </div>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: KC.mute, marginTop: 2 }}>
-                                    Penolakan terstruktur dari HR
+                                    Skill kurang + kursus, per lowongan
                                 </div>
                             </div>
                         </div>
@@ -1195,7 +1195,7 @@ export default function LandingHero() {
                             Satu Lingkaran: Target, Belajar, Lamar
                         </h2>
                         <p style={{ fontSize: 15, color: KC.mute, maxWidth: 500, margin: 0 }}>
-                            Setiap lamaran memberi pelajaran untuk lamaran berikutnya — bagi pencari kerja maupun HR.
+                            Dari lowongan incaran ke skill yang perlu dipelajari — lalu melamar dengan lebih siap.
                         </p>
                     </div>
 
@@ -1411,7 +1411,7 @@ export default function LandingHero() {
                                 'Rekomendasi kursus untuk skill yang kurang',
                                 'Peringkat persis di tiap lamaran',
                                 'Alasan dari HR jika tidak lolos',
-                                'Premium opsional Rp15rb / 30 hari (kuota advisor)',
+                                'Advisor karier AI tanpa batas harian',
                             ],
                             action: onDaftar,
                         },

@@ -1,6 +1,6 @@
 """Framing A: employer side free and uncapped, feedback flows back to the seeker.
 
-The shipped default is `employer_plans_enabled = False`; conftest turns it on
+The shipped default is `paid_plans_enabled = False`; conftest turns it on
 for the dormant paid-plan suites, so every test here switches it off itself.
 """
 
@@ -18,7 +18,7 @@ JOB = {"title": "Kasir Kafe", "description": "Melayani transaksi pelanggan.",
 
 @pytest.fixture
 def plans_off(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "employer_plans_enabled", False)
+    monkeypatch.setattr(settings, "paid_plans_enabled", False)
     monkeypatch.setattr(settings, "plan_limits_enforced", True)
 
 
@@ -40,13 +40,19 @@ class TestEmployerPlansOff:
         body = client.get("/api/v1/billing/plans").json()
         assert [p["plan"] for p in body["employer"]] == ["spark"]
         assert body["employer"][0]["price_idr"] == 0
-        assert {p["plan"] for p in body["seeker"]} == {"free", "prism"}
+        # Prism only existed to lift the advisor quota; with no quota it is not sold.
+        assert [p["plan"] for p in body["seeker"]] == ["free"]
+        assert "Advisor tanpa batas harian" in body["seeker"][0]["features"]
 
     def test_employer_plan_orders_are_refused(self, client, employer_account, plans_off) -> None:
         for plan in ("beacon", "lighthouse"):
             resp = client.post("/api/v1/billing/orders", headers=employer_account["headers"],
                                json={"plan": plan})
             assert resp.status_code == 400, plan
+
+    def test_seeker_plan_orders_are_refused(self, client, seeker_account, plans_off) -> None:
+        resp = client.post("/api/v1/billing/orders", headers=seeker_account["headers"], json={"plan": "prism"})
+        assert resp.status_code == 400
 
     def test_active_jobs_are_uncapped(self, client, employer_account, stub_embedder, plans_off) -> None:
         h = employer_account["headers"]
@@ -106,6 +112,13 @@ class TestCoursesPointAtTheSkill:
 
         assert [c.category for c in _catalog_courses(["Excel", "Kasir"])] == ["Excel", "Kasir"]
 
+    async def test_every_missing_skill_gets_a_next_step(self, client) -> None:
+        from backend.app.agents.graph.nodes import recommend_courses_offline
+
+        missing = [f"Skill {i}" for i in range(10)] + ["Excel", "SQL"]
+        courses = await recommend_courses_offline(missing)
+        assert {c.category for c in courses} >= set(missing)
+
     def test_uncatalogued_skill_gets_a_search_not_an_invented_course(self) -> None:
         from backend.app.agents.graph.nodes import _catalog_courses
 
@@ -136,20 +149,46 @@ class TestMatchingIsNeverMetered:
         assert codes[-1] == 429
 
 
-class TestDemoUnlimited:
+class TestDemoMode:
     def test_demo_mode_lifts_the_advisor_quota(self, client, seeker_account, seeker_profile,
                                                seeded_job, stub_embedder, stub_llm, monkeypatch) -> None:
         monkeypatch.setattr(settings, "plan_limits_enforced", True)
-        monkeypatch.setattr(settings, "demo_unlimited", True)
+        monkeypatch.setattr(settings, "demo_mode", True)
         codes = {client.post("/api/v1/agent/invoke", headers=seeker_account["headers"],
                              json={"user_message": "bagaimana cara belajar SQL?"}).status_code
                  for _ in range(12)}
         assert codes == {200}
 
-    def test_demo_mode_is_the_shipped_default(self) -> None:
-        from backend.app.config.settings import Settings
+    @pytest.mark.parametrize(("app_env", "explicit", "expected"), [
+        ("production", None, False),   # docker-compose.prod / Replit deployment: off unless asked
+        ("development", None, True),
+        ("production", True, True),    # DEMO_MODE=true at the booth
+        ("development", False, False),
+    ])
+    def test_demo_mode_follows_app_env_unless_set(self, monkeypatch, app_env, explicit, expected) -> None:
+        monkeypatch.setattr(settings, "app_env", app_env)
+        monkeypatch.setattr(settings, "demo_mode", explicit)
+        assert settings.demo_unlimited is expected
 
-        assert Settings.model_fields["demo_unlimited"].default is True
+    def test_demo_mode_never_lifts_login_throttling(self) -> None:
+        from backend.app.api.middleware.rate_limiter import SECURITY_BUCKETS, _get_bucket
+
+        for path in ("/api/v1/auth/login", "/api/v1/auth/register",
+                     "/api/v1/verify/email/send", "/api/v1/verify/email/verify"):
+            assert _get_bucket(path)[0] in SECURITY_BUCKETS
+
+    def test_demo_mode_keeps_the_automod_strike_limit(self, client, employer_account, stub_embedder,
+                                                      monkeypatch) -> None:
+        from backend.app.services.trust import policy
+
+        monkeypatch.setattr(settings, "plan_limits_enforced", True)
+        monkeypatch.setattr(settings, "paid_plans_enabled", False)
+        monkeypatch.setattr(settings, "demo_mode", True)
+        monkeypatch.setattr(policy, "strike_state", lambda employer, now=None: {"strikes": 2, "limited": True, "suspended": False})
+        h = employer_account["headers"]
+        assert client.post("/api/v1/employer/jobs", json=JOB, headers=h).status_code == 201
+        resp = client.post("/api/v1/employer/jobs", json={**JOB, "title": "Barista"}, headers=h)
+        assert resp.status_code == 403, resp.text
 
     def test_match_button_shows_company_names_not_ids(self, client, seeker_account, seeker_profile,
                                                       seeded_job, stub_embedder, stub_llm, employer_account) -> None:
@@ -158,3 +197,34 @@ class TestDemoUnlimited:
         body = client.post("/api/v1/agent/invoke", headers=seeker_account["headers"],
                            json={"user_message": "", "explicit_intent": "match_jobs"}).json()
         assert body["matches"] and all(m["company"] == "Klinik Contoh" for m in body["matches"])
+
+
+class TestDemoLogin:
+    def _make(self, client, email, role="seeker"):
+        resp = client.post("/api/v1/auth/register", json={"name": "Demo", "email": email,
+                                                          "password": "Demo12345!x", "role": role})
+        assert resp.status_code == 201, resp.text
+
+    def test_endpoints_do_not_exist_without_demo_mode(self, client, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "demo_mode", False)
+        assert client.get("/api/v1/auth/demo-accounts").status_code == 404
+        assert client.post("/api/v1/auth/demo-login", json={"email": "maya.sari@example.com"}).status_code == 404
+
+    def test_lists_only_seeded_demo_accounts(self, client, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "demo_mode", True)
+        self._make(client, "maya.sari@example.com")
+        accounts = client.get("/api/v1/auth/demo-accounts").json()["accounts"]
+        assert [a["email"] for a in accounts] == ["maya.sari@example.com"]
+
+    def test_one_click_login_returns_a_working_session(self, client, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "demo_mode", True)
+        self._make(client, "hr@kliniksehat.id", role="employer")
+        body = client.post("/api/v1/auth/demo-login", json={"email": "hr@kliniksehat.id"}).json()
+        assert body["user"]["role"] == "employer"
+        me = client.get("/api/v1/employer/jobs", headers={"Authorization": f"Bearer {body['access_token']}"})
+        assert me.status_code == 200
+
+    def test_refuses_any_account_not_on_the_list(self, client, seeker_account, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "demo_mode", True)
+        resp = client.post("/api/v1/auth/demo-login", json={"email": seeker_account["email"]})
+        assert resp.status_code == 403

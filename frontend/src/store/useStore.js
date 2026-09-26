@@ -22,6 +22,7 @@ import {
     addBookmark,
     removeBookmark,
     loginUser,
+    demoLoginUser,
     registerUser,
     setAuthToken,
     setUnauthorizedHandler,
@@ -102,8 +103,12 @@ const useStore = create(
             closeAuthModal: () => set({ showAuthModal: false, preferredAuthRole: null, authReturnPath: null }),
             setAuthTab: (tab) => set({ authTab: tab }),
 
-            login: async (email, password) => {
-                const res = await loginUser({ email, password })
+            login: async (email, password) => get()._startSession(await loginUser({ email, password })),
+            // One-click login into a seeded demo account (DEMO_MODE only).
+            demoLogin: async (email) => get()._startSession(await demoLoginUser(email)),
+
+            // Shared by login() and demoLogin(): same session reset and warm-up.
+            _startSession: (res) => {
                 const { access_token, user } = res
                 setAuthToken(access_token)
                 const resolvedRole = user.role
@@ -130,6 +135,10 @@ const useStore = create(
                     applications: [],
                     focusJobId: null,
                     openJobOnArrival: null,
+                    // The previous account's learning plan must not carry over.
+                    skillGapResult: null,
+                    missingSkills: [],
+                    recommendedCourses: [],
                     profile: DEFAULT_PROFILE,
                 })
                 const displayName = (user.name || '').trim() || (resolvedRole === 'employer' ? 'Tim HR' : 'Pencari Kerja')
@@ -176,6 +185,10 @@ const useStore = create(
                     applications: [],
                     focusJobId: null,
                     openJobOnArrival: null,
+                    // The previous account's learning plan must not carry over.
+                    skillGapResult: null,
+                    missingSkills: [],
+                    recommendedCourses: [],
                     profile: DEFAULT_PROFILE,
                 })
                 const displayName = (user.name || '').trim() || (user.role === 'employer' ? 'Tim HR' : 'Pencari Kerja')
@@ -220,6 +233,10 @@ const useStore = create(
                     applications: [],
                     focusJobId: null,
                     openJobOnArrival: null,
+                    // The previous account's learning plan must not carry over.
+                    skillGapResult: null,
+                    missingSkills: [],
+                    recommendedCourses: [],
                     employerProfile: null,
                     employerJobs: [],
                     employerApplications: [],
@@ -373,9 +390,12 @@ const useStore = create(
 
             setTargetJob: async (jobId) => {
                 if (!jobId) return
-                set({ focusJobId: jobId })
+                // Drop the previous job's plan first: if this analysis fails, the
+                // page must not keep showing (and linking back to) the old target.
+                set({ focusJobId: jobId, skillGapResult: null, missingSkills: [], recommendedCourses: [] })
                 get().navigate('seeker-skill-gap')
-                await get().runSkillGap(jobId)
+                const res = await get().runSkillGap(jobId)
+                if (!res) toast.error('Gagal menganalisis lowongan ini. Coba lagi.', { id: 'skill-gap' })
             },
             openTargetJob: (jobId) => {
                 set({ openJobOnArrival: jobId || get().focusJobId })
@@ -384,18 +404,24 @@ const useStore = create(
 
             // ─── Skill gap ───────────────────────────────────────────────
             skillGapResult: null,
+            skillGapLoading: false,
 
+            // Resolves to the result, or null on failure (never throws).
             runSkillGap: async (targetJobId = null) => {
+                set({ skillGapLoading: true })
                 try {
                     const res = await triggerSkillGap(targetJobId)
                     set({
                         skillGapResult: res,
                         missingSkills: res.missing_skills || [],
                         recommendedCourses: res.recommended_courses || [],
+                        skillGapLoading: false,
                     })
                     return res
                 } catch (e) {
                     console.warn('Skill gap analysis notification:', e?.message || e)
+                    set({ skillGapLoading: false })
+                    return null
                 }
             },
 
@@ -449,8 +475,11 @@ const useStore = create(
                     set({
                         agentLoading: false,
                         matches: res.matches || [],
-                        missingSkills: res.missing_skills || [],
-                        recommendedCourses: res.recommended_courses || [],
+                        // A plain match call carries no plan; only a gap answer may
+                        // replace the learning-plan counters (they read 0 otherwise).
+                        ...((res.missing_skills?.length || res.recommended_courses?.length)
+                            ? { missingSkills: res.missing_skills || [], recommendedCourses: res.recommended_courses || [] }
+                            : {}),
                         ...(res.seeker_id ? { seekerId: res.seeker_id } : {}),
                     })
                     if (res.final_response && message) {

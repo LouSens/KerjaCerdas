@@ -42,7 +42,7 @@ function CourseLink({ c }) {
 export default function SkillGapPanel() {
     const {
         matches, profile, skillGapResult, runSkillGap, loadSkillGap, loadSeekerProfile,
-        focusJobId, openTargetJob, navigate, runAgent, isJobApplied,
+        focusJobId, openTargetJob, navigate, runAgent, isJobApplied, setTargetJob, skillGapLoading,
     } = useStore()
     const [picked, setPicked] = useState('')
     const [busySkill, setBusySkill] = useState(null)
@@ -68,11 +68,16 @@ export default function SkillGapPanel() {
 
     const unmatchedCourses = courses.filter((c) => !missing.some((m) => coursesFor(m, [c]).length))
 
-    const analyse = () => {
+    // Same path as "Jadikan target": clears the old plan first and reports a
+    // failure, instead of a "diperbarui" toast over the previous job's plan.
+    const analyse = async () => {
         const id = picked || targetId
-        toast.promise(runSkillGap(id || undefined), {
-            loading: 'Menganalisis skill yang kurang…', success: 'Rencana belajar diperbarui', error: 'Gagal menganalisis',
-        })
+        if (!id) {
+            toast.error('Pilih lowongan target dulu')
+            return
+        }
+        setPicked('')
+        await setTargetJob(id)
     }
 
     // Learning a skill makes it a CLAIM on the profile — it counts, but only an
@@ -85,8 +90,9 @@ export default function SkillGapPanel() {
             await loadSeekerProfile?.()
             // Refresh both views of the same job: this plan and the match list
             // the seeker returns to ("Kembali ke lowongan & lamar").
-            await Promise.all([runSkillGap(targetId), runAgent({ explicitIntent: 'match_jobs' })])
-            toast.success(`${skill} ditambahkan ke profil`)
+            const [plan] = await Promise.all([runSkillGap(targetId), runAgent({ explicitIntent: 'match_jobs' })])
+            if (plan) toast.success(`${skill} ditambahkan ke profil`)
+            else toast.error(`${skill} tersimpan, tapi rencana belajar gagal diperbarui. Tekan Analisis.`)
         } catch (e) {
             toast.error(e.message || 'Gagal menyimpan')
         } finally {
@@ -121,7 +127,9 @@ export default function SkillGapPanel() {
 
             <LoopSteps active={skillGapResult ? 1 : 0} />
 
-            {!skillGapResult ? (
+            {!skillGapResult && skillGapLoading ? (
+                <BrutalCard><div style={{ fontWeight: 800 }}>Menganalisis skill yang dibutuhkan lowongan ini…</div></BrutalCard>
+            ) : !skillGapResult ? (
                 <BrutalCard color={KC.orangeSoft}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontWeight: 900 }}><Target size={18} /> Belum ada lowongan target</div>
                     <p style={{ margin: '8px 0 12px', fontSize: 14 }}>

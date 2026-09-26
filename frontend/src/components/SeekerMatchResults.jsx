@@ -4,6 +4,7 @@ import useStore, { hasMeaningfulProfile } from '../store/useStore'
 import { KC, ScoreDonut, topBtn, DesignStyles, useIsMobile } from './_design'
 import JobDetailModal from './JobDetailModal'
 import TargetSuggestion from './TargetSuggestion'
+import { fetchJob } from '../services/api'
 
 // The API sends scores as 0-1 fractions; older payloads used 0-100.
 const toPct = (v) => Math.round(v > 1 ? v : v * 100)
@@ -23,12 +24,25 @@ export default function SeekerMatchResults() {
         openJobOnArrival, setTargetJob } = useStore()
     const hasProfile = hasMeaningfulProfile(profile)
     // "Kembali ke lowongan" from the learning plan arrives with a job to reopen.
+    // Captured once at mount: the store copy is cleared right away.
+    const [arrivalId] = useState(openJobOnArrival)
     const [selectedJob, setSelectedJob] = useState(
-        () => (openJobOnArrival && (matches || []).find(m => (m.id || m.job_id) === openJobOnArrival)) || null
+        () => (arrivalId && (matches || []).find(m => (m.id || m.job_id) === arrivalId)) || null
     )
     useEffect(() => {
-        if (openJobOnArrival) useStore.setState({ openJobOnArrival: null })
-    }, [openJobOnArrival])
+        if (arrivalId) useStore.setState({ openJobOnArrival: null })
+        let alive = true
+        // Not in the loaded list (fresh session, or not a top match): fetch that job
+        // so the seeker still lands on it, ready to apply.
+        if (arrivalId && !selectedJob) {
+            fetchJob(arrivalId)
+                .then((job) => alive && job && setSelectedJob({ ...job, job_id: job.id || arrivalId }))
+                .catch(() => {})
+        }
+        // Matching is free (no advisor quota), so an empty list loads itself.
+        if (hasProfile && !(matches || []).length && !agentLoading) runAgent({ explicitIntent: 'match_jobs' })
+        return () => { alive = false }
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
     const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'strong' | 'possible' | 'stretch'
     const [refreshing, setRefreshing] = useState(false)
     const [lastUpdatedText, setLastUpdatedText] = useState('Diperbarui secara real-time')

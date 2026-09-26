@@ -81,6 +81,25 @@ Untuk mencoba panel admin, tambahkan email akun mana pun ke `ADMIN_EMAILS` dan s
 
 All 30 employers are **fictional** small and medium businesses (the first 20 are mid-size, the last 10 are UMKM with 1-50 staff). No seeded company or job posting is a real organisation's — real brand names were removed so the demo never implies a partnership that does not exist. Login domains drop underscores (`hr@kliniksehat.id`), because an underscore is not valid in an email domain.
 
+## One-click demo login (DEMO_MODE)
+
+With `DEMO_MODE=true` (or unset in development), the login / register modal shows
+**"Coba akun demo — tanpa kata sandi"** buttons for the accounts below — no password
+is typed or sent to the browser. The list is fixed in
+`backend/app/services/demo_accounts.py`; admins are never included, and the endpoints
+(`GET /auth/demo-accounts`, `POST /auth/demo-login`) return 404 when demo mode is off.
+Only accounts that exist are shown, so run `python -m scripts.seed_all` first.
+
+| Button | Shows |
+|---|---|
+| Maya Sari (seeker) | Rejected with HR's reason → learning plan for that job |
+| Rudi Hartono (seeker) | In interview · skills confirmed by HR |
+| Bambang Suryanto (seeker) | Hired · confirmed skills follow him to other applications |
+| Andi Pratama (seeker) | Fresh S1 graduate with many matches to pick a target from |
+| Klinik Sehat Keluarga (HR) | Ranked applicants · skill map · reject with reason · Asisten HR |
+| Toko Kelontong Makmur Jaya (HR) | A hired candidate · skill confirmation |
+| Warung Makan Bahari Nusantara (HR) | Small business with two open jobs |
+
 ## Demo story (seeded outcomes, `scripts/seed_outcomes.py`)
 
 | Account | What it shows |

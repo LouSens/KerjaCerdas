@@ -5,7 +5,7 @@ import { updateSeekerProfile, fetchQuizSkills } from '../services/api'
 import toast from 'react-hot-toast'
 import {
     UploadCloud, FileText, CheckCircle2, ShieldCheck, ArrowRight,
-    Plus, Edit3, Loader2, Zap, User, Link2, ChevronDown, ChevronUp, Crown,
+    Plus, Edit3, Loader2, Zap, User, Link2, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import OfflineParseConfirmModal from './OfflineParseConfirmModal'
 import { ProofChip } from './ProofUI'
@@ -36,7 +36,7 @@ function ProfileAvatar({ name, size = 72 }) {
 export default function CVUploader() {
     const {
         uploadResume, cvUploading, seekerId, profile,
-        navigate, loadSeekerProfile, computeProfileCompleteness, openUpgradeModal,
+        navigate, loadSeekerProfile, computeProfileCompleteness,
     } = useStore()
 
     const inputRef = useRef(null)
@@ -238,9 +238,6 @@ export default function CVUploader() {
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexDirection: 'column' }}>
-                        <button className="kc-btn" onClick={() => openUpgradeModal({ plan: 'prism' })} style={{ ...topBtn('#F59E0B', KC.ink), background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'center' }}>
-                            <Crown size={15} /> Upgrade Premium
-                        </button>
                         <button className="kc-btn" onClick={() => setEditOpen(v => !v)} style={{ ...topBtn('#fff', KC.ink), padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'center' }}>
                             <Edit3 size={14} />
                             {editOpen ? 'Tutup Editor' : 'Edit Profil'}

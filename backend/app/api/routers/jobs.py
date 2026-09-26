@@ -189,6 +189,7 @@ async def get_job(job_id: str):
     item.pop("embedding", None)
     item.pop("embedding_model", None)
     return item | {
+        "company_name": employer.company_name if employer else "",
         "verified": _is_employer_verified(employer),
         "location": location_str,
         "industry": _industry_label(employer),

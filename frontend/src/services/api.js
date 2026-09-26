@@ -103,6 +103,11 @@ export const loginUser = ({ email, password }) =>
         body: JSON.stringify({ email, password }),
     })
 
+// DEMO_MODE only (404 otherwise): the seeded accounts offered as one-click logins.
+export const fetchDemoAccounts = () => request(`${API_BASE}/auth/demo-accounts`)
+export const demoLoginUser = (email) =>
+    request(`${API_BASE}/auth/demo-login`, { method: 'POST', body: JSON.stringify({ email }) })
+
 export const registerUser = ({ name, email, password, role }) =>
     request(`${API_BASE}/auth/register`, {
         method: 'POST',

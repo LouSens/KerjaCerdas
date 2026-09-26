@@ -61,8 +61,8 @@ export default function ApplicationFeedback({ app }) {
                 )}
                 {rank && !rank.error && (
                     <span style={{ fontSize: 12.5 }}>
-                        Peringkat <b>#{rank.rank}</b> dari {rank.total_applicants} pelamar
-                        <span style={{ color: KC.mute }}> · dihitung saat kamu melamar</span>
+                        Posisi saat ini: <b>#{rank.rank}</b> dari {rank.total_applicants} pelamar
+                        <span style={{ color: KC.mute }}> · dari skor saat masing-masing melamar; bisa berubah saat ada pelamar baru</span>
                     </span>
                 )}
                 {rank?.error && <span style={{ fontSize: 12, color: KC.mute }}>Peringkat belum tersedia.</span>}
