@@ -9,6 +9,7 @@ Orders       GET  /admin/orders?status=pending
              POST /admin/orders/{id}/activate | /cancel
 Question bank GET /admin/questions ; POST /admin/questions/{id} {reviewed, active}
 Metrics      GET  /admin/metrics
+Storage      GET  /admin/storage/health            S3/R2 configured + reachable
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from backend.app.db.postgres_store import (
 )
 from backend.app.db.schemas import VerificationStatus
 from backend.app.services.billing.plans import activate
+from backend.app.services.storage import storage_health
 from backend.app.services.trust import policy
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -216,3 +218,8 @@ async def update_question(question_id: str, req: QuestionUpdate):
 @router.get("/metrics")
 async def metrics():
     return await collect_metrics()
+
+
+@router.get("/storage/health")
+async def storage_status():
+    return await storage_health()
