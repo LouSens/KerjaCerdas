@@ -803,6 +803,19 @@ async def set_user_email_verified(user_id: str) -> None:
         await session.commit()
 
 
+async def find_user_id_by_email(email: str) -> str | None:
+    """User id for an email, WITHOUT validating the row. Old seeds stored logins
+    like hr@warung_bahari.id that fail EmailStr, so a validated read would raise."""
+    async with async_session() as session:
+        return (await session.execute(select(User.id).where(User.email == email))).scalar_one_or_none()
+
+
+async def set_user_email(user_id: str, email: str) -> None:
+    async with async_session() as session:
+        await session.execute(update(User).where(User.id == user_id).values(email=email))
+        await session.commit()
+
+
 class Repositories:
     """Convenience bundle, injected via FastAPI dependency."""
 

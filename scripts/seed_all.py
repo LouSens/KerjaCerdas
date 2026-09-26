@@ -41,6 +41,7 @@ from backend.app.db.session import async_session as async_session_factory
 from backend.app.services.hiring.links import new_public_code
 from backend.app.services.matching.matcher import SemanticMatcher, score_pair
 from scripts.auth_utils import seed_auth_user as _seed_auth_user
+from scripts.seed_legacy import retire_legacy_employers
 from scripts.seed_outcomes import seed_outcomes
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1726,6 +1727,9 @@ async def seed(clear: bool, reset_passwords: bool = False) -> None:
     repos = get_repositories()
     matcher = SemanticMatcher()
 
+    # Rows from earlier seeds (real brands, underscore logins) — see seed_legacy.py.
+    await retire_legacy_employers(repos)
+
     # ── Employers ──────────────────────────────────────────────────────────
     existing_employers = {emp.user_id: emp for emp in await repos.employers.list()}
     emp_by_key: dict[str, Employer] = {}
@@ -1915,9 +1919,10 @@ async def seed(clear: bool, reset_passwords: bool = False) -> None:
             if s_idx < len(all_seekers) and j_idx < len(all_jobs):
                 s_obj = all_seekers[s_idx]
                 j_obj = all_jobs[j_idx]
-                existing_application = existing_applications.get((j_obj.id, s_obj.id))
+                if (j_obj.id, s_obj.id) in existing_applications:
+                    continue  # never rewind a status HR has changed since
                 app_obj = Application(
-                    id=existing_application.id if existing_application else str(uuid.uuid4()),
+                    id=str(uuid.uuid4()),
                     job_id=j_obj.id,
                     seeker_id=s_obj.id,
                     status=status_val,

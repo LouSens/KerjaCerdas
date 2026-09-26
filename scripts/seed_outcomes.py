@@ -2,8 +2,10 @@
 real data behind it: HR rejections with a reason code, interviews with
 HR-confirmed skills, and a hire. Called at the end of scripts.seed_all.
 
-Idempotent: applications are keyed on (job, seeker) and a status event is only
-written when that exact transition is not already recorded.
+Create-only: an outcome is written only when that (job, seeker) application
+does not exist yet. Reseeding never rewinds a decision HR made since — a hire,
+a rejection or a skill confirmation stays as HR left it. Same for the seeded
+learning plan: created once, never overwritten.
 
 Demo reading of the result:
   maya.sari@example.com       rejected at "Admin & Kasir Klinik" (skill_kurang) —
@@ -14,6 +16,7 @@ Demo reading of the result:
 
 from __future__ import annotations
 
+from backend.app.agents.graph.nodes import recommend_courses_offline
 from backend.app.db.schemas import Application, ApplicationStatus, SkillGapResult
 from backend.app.db.schemas_proof import ApplicationStatusEvent, SkillEvidence
 from backend.app.services.matching.evidence import skill_key, skill_snapshot
@@ -65,6 +68,8 @@ async def seed_outcomes(repos, emp_by_key: dict) -> int:
         if not seeker or not job:
             print(f"[outcomes] skip {email} -> {title}: not seeded")
             continue
+        if (job.id, seeker.id) in apps:
+            continue  # already exists: HR may have acted on it since — leave it alone
 
         for name in confirmed:  # HR confirmation after the interview = strongest proof
             key = skill_key(name)
@@ -75,9 +80,7 @@ async def seed_outcomes(repos, emp_by_key: dict) -> int:
             await repos.seekers.upsert(seeker)
 
         live = score_pair(seeker, job)
-        existing = apps.get((job.id, seeker.id))
         app = Application(
-            **({"id": existing.id} if existing else {}),
             job_id=job.id, seeker_id=seeker.id, status=ApplicationStatus(end), note=note,
             cover_letter="Saya tertarik dengan posisi ini.", match_score=live["score"],
             skill_snapshot=skill_snapshot(seeker.skills),
@@ -109,13 +112,13 @@ async def seed_outcomes(repos, emp_by_key: dict) -> int:
         have = {skill_key(s.name) for s in seeker.skills}
         missing = [r for r in job.required_skills if skill_key(r) not in have]
         matching = [r for r in job.required_skills if skill_key(r) in have]
-        old = [g for g in await repos.skill_gaps.list() if g.seeker_id == seeker.id and g.target_job_id == job.id]
+        if any(g.seeker_id == seeker.id for g in await repos.skill_gaps.list()):
+            continue  # the seeker already has a plan — never overwrite it
         await repos.skill_gaps.upsert(SkillGapResult(
-            **({"id": old[0].id} if old else {}),
             seeker_id=seeker.id, target_job_id=job.id, missing_skills=missing, matching_skills=matching,
             gap_severity="high" if len(missing) * 2 >= len(job.required_skills) else "medium",
             match_percentage=round(100 * len(matching) / max(1, len(job.required_skills)), 1),
-            recommended_courses=[], estimated_readiness_months=1,
+            recommended_courses=await recommend_courses_offline(missing), estimated_readiness_months=1,
             summary=f"Gap {len(missing)} skill untuk posisi {job.title}.",
         ))
 

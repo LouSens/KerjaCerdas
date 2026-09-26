@@ -81,15 +81,29 @@ async def _recommend_courses(missing: list[str], job) -> list[CourseRecommendati
         except Exception as exc:
             logger.warning("Gemini skill-gap failed (%s) — checking course store", exc)
 
-    # Seeded courses first; every skill they do not cover still gets a catalog
-    # entry, so no missing skill is left without a next step.
-    store_courses = await _store_courses(missing)
-    covered = {c.category for c in store_courses}
-    uncovered = [s for s in missing if s not in covered]
-    return (store_courses + (_catalog_courses(uncovered) if uncovered else []))[:8]
+    return await recommend_courses_offline(missing)
 
 
-async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
+EXTRA_COURSES = 3  # extra store courses beyond the one-per-skill guarantee
+
+
+async def recommend_courses_offline(missing: list[str]) -> list[CourseRecommendation]:
+    """One next step for EVERY missing skill, then a few extra seeded courses.
+
+    Each skill gets its best seeded course, or a catalog entry / honest search
+    link when none exists. Caps apply only to the extras — capping the whole
+    list used to leave the 6th+ missing skill with nothing to do. No AI call.
+    """
+    store_courses = await _store_courses(missing, limit=None)
+    first_for_skill: dict[str, CourseRecommendation] = {}
+    for c in store_courses:
+        first_for_skill.setdefault(c.category, c)
+    per_skill = [first_for_skill.get(s) or _catalog_courses([s])[0] for s in missing]
+    extras = [c for c in store_courses if c not in per_skill][:EXTRA_COURSES]
+    return per_skill + extras
+
+
+async def _store_courses(missing: list[str], limit: int | None = 5) -> list[CourseRecommendation]:
     """Match missing skills against the courses seeded into data/courses/*.json.
 
     Matching goes through `_normalize_skill` so alias spellings ("Node.js" on
@@ -128,7 +142,7 @@ async def _store_courses(missing: list[str]) -> list[CourseRecommendation]:
                         category=hits[0],
                     )
                 )
-        return results[:5]  # cap at 5 recommendations
+        return results if limit is None else results[:limit]
     except Exception as exc:
         logger.debug("Course store lookup failed: %s", exc)
         return []
