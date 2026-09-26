@@ -26,6 +26,7 @@ from backend.app.db.schemas import (
 from backend.app.services.matching.evidence import carry_proof
 from backend.app.services.matching.matcher import SemanticMatcher
 from backend.app.services.pdf_parser import ScannedPdfError, parse_cv, parse_job_pack
+from backend.app.services.storage import put_object, storage_configured
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
@@ -160,8 +161,13 @@ async def upload_cv(
     }
 
 
+def job_pack_object_key(employer_id: str, file_hash: str) -> str:
+    return f"job-packs/{employer_id}/{file_hash}.pdf"
+
+
 @router.post("/job-pack")
 async def upload_job_pack(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: User = Depends(require_employer),
 ) -> dict:
@@ -263,6 +269,15 @@ async def upload_job_pack(
         })
 
     await save_job_pack_parse(cache_key, employer.id, normalized_jobs)
+
+    # Archive the source PDF (content-addressed, so a re-upload overwrites the
+    # same object). Only job packs: they are the employer's own text. CVs are
+    # NOT archived — the raw PDF would keep the NIK/phone/email that
+    # services/privacy/redact.py strips before anything else is stored.
+    if storage_configured():
+        background_tasks.add_task(
+            put_object, job_pack_object_key(employer.id, file_hash), blob, "application/pdf"
+        )
 
     return {
         "employer_id": employer.id,

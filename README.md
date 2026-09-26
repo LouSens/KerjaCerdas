@@ -187,6 +187,7 @@ flowchart TD
 - **Docker Desktop** terinstal dan berjalan pada sistem Anda.
 - **Git** untuk mengklon repositori.
 - **Kunci API Gemini (`GEMINI_API_KEY`)** dari Google AI Studio. Diperlukan untuk fitur AI (parsing CV, rekomendasi kursus, chat advisor); tanpa kunci, parsing CV memakai heuristik teks dan chat advisor tidak aktif.
+- **Opsional — object storage S3/Cloudflare R2 (`S3_*`)**. Mengarsipkan PDF job-pack yang diunggah perusahaan; CV tidak pernah diarsipkan. Tanpa konfigurasi, unggahan tetap berjalan. Cek status via `GET /api/v1/admin/storage/health`.
 
 ### Langkah 1 — Kloning & Konfigurasi
 ```powershell

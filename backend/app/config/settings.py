@@ -113,6 +113,21 @@ class Settings(BaseSettings):
     # ── JSON store root ──────────────────────────────────────────────────
     kerja_data_root: str = "data"
 
+    # ── Object storage (S3-compatible — Cloudflare R2) ───────────────────
+    # All four of endpoint, bucket and the key pair must be set, otherwise
+    # services/storage reports "not configured" and callers degrade (uploads
+    # still parse; the original file just isn't archived). R2 ignores the
+    # region but boto3 requires one — "auto" is what Cloudflare documents.
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_region: str = "auto"
+    # Prepended to every object key, e.g. "staging/" to share one bucket.
+    s3_key_prefix: str = ""
+    # Lifetime of presigned download URLs.
+    s3_presign_expire_seconds: int = 900
+
     # ── Reverse proxy trust ──────────────────────────────────────────────
     # X-Real-IP is only trusted as the client's address when the request also
     # carries this exact shared secret in X-Internal-Proxy-Secret (set by our
