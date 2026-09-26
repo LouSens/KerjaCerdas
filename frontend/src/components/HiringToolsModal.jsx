@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { X } from 'lucide-react'
 import useStore from '../store/useStore'
+import { PAID_PLANS_ENABLED } from '../config/features'
 import { KC, topBtn } from './_design'
 import { ProofChip } from './ProofUI'
 import { confirmSkills, fetchInterviewKit } from '../services/api'
@@ -47,13 +48,13 @@ export default function HiringToolsModal({ app, onClose }) {
 
                 <div style={{ fontWeight: 800, marginTop: 14 }}>Pertanyaan wawancara</div>
                 <p style={{ fontSize: 12, color: KC.mute, margin: '2px 0 8px' }}>Fokus pada skill yang baru diklaim. Profil menyaring, wawancara memastikan — konfirmasi skill di bawah setelah wawancara.</p>
-                {kitError?.status === 402 && (
+                {PAID_PLANS_ENABLED && kitError?.status === 402 && (
                     <div style={{ background: KC.yellowSoft, border: `1px solid ${KC.yellow}`, borderRadius: 9, padding: 12, fontSize: 13 }}>
                         Pertanyaan wawancara AI tersedia di paket Pro atau Max.
                         <button style={{ ...topBtn(KC.orange, '#fff'), marginLeft: 8 }} onClick={() => { onClose(); openUpgradeModal({ plan: 'beacon', jobId: app.job_id }) }}>Beli Pro</button>
                     </div>
                 )}
-                {kitError && kitError.status !== 402 && <p style={{ color: KC.rose }}>{kitError.message}</p>}
+                {kitError && (!PAID_PLANS_ENABLED || kitError.status !== 402) && <p style={{ color: KC.rose }}>{kitError.message}</p>}
                 {!kit && !kitError && <p>Menyiapkan pertanyaan…</p>}
                 {kit && (
                     <ol style={{ paddingLeft: 20, display: 'grid', gap: 6, fontSize: 14 }}>

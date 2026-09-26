@@ -7,6 +7,7 @@ import Sidebar, { MobileBottomNav, MobileTopBar } from './components/Sidebar'
 import FloatingAdvisor from './components/FloatingAdvisor'
 import EmployerHelpPanel from './components/EmployerHelpPanel'
 import UpgradeModal from './components/UpgradeModal'
+import { PAID_PLANS_ENABLED } from './config/features'
 import AuthModal from './components/AuthModal'
 import OnboardingWizard from './components/OnboardingWizard'
 
@@ -95,7 +96,7 @@ function AppShell({ children }) {
             <MobileBottomNav />
             <FloatingAdvisor />
             <EmployerHelpPanel />
-            <UpgradeModal />
+            {PAID_PLANS_ENABLED && <UpgradeModal />}
         </div>
     )
 }

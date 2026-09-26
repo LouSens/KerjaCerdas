@@ -621,8 +621,11 @@ async def list_employer_applications(
         job = job_map.get(app.job_id)
         seeker = seeker_by_id.get(app.seeker_id)
         user_record = user_by_id.get(seeker.user_id if seeker else app.seeker_id)
+        # Locking is a paid-plan feature: with plans off every applicant is shown,
+        # whatever SPARK_RANKED_APPLICANT_LIMIT an older deployment still sets.
         locked = (
-            cap > 0
+            plan_limits_active()
+            and cap > 0
             and job is not None
             and not ent.premium_for_job(job.id)
             and score_rank.get(app.id, 0) >= cap

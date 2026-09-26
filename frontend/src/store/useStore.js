@@ -37,6 +37,7 @@ import {
     fetchLatestSkillGap,
 } from '../services/api'
 import { VIEW_TO_PATH, PUBLIC_VIEWS, ALLOWED_VIEWS } from '../routes'
+import { PAID_PLANS_ENABLED } from '../config/features'
 
 // ── React Router bridge ──────────────────────────────────────────────────────
 // Allows Zustand navigate() to push to browser URL without React hooks.
@@ -103,6 +104,12 @@ const useStore = create(
             closeAuthModal: () => set({ showAuthModal: false, preferredAuthRole: null, authReturnPath: null }),
             setAuthTab: (tab) => set({ authTab: tab }),
 
+            // Session counter. Every login / register / logout bumps it; account-scoped
+            // loaders capture it before their request and drop the response if it
+            // changed — otherwise a request still in flight for the previous account
+            // (e.g. switching demo accounts quickly) writes its data into the new one.
+            _epoch: 0,
+
             login: async (email, password) => get()._startSession(await loginUser({ email, password })),
             // One-click login into a seeded demo account (DEMO_MODE only).
             demoLogin: async (email) => get()._startSession(await demoLoginUser(email)),
@@ -110,6 +117,12 @@ const useStore = create(
             // Shared by login() and demoLogin(): same session reset and warm-up.
             _startSession: (res) => {
                 const { access_token, user } = res
+                // New session: bump the counter and clear loading flags, since a stale
+                // request from the previous account returns early and never clears them.
+                set((st) => ({
+                    _epoch: st._epoch + 1, agentLoading: false, applicationsLoading: false,
+                    skillGapLoading: false, employerJobsLoading: false, employerApplicationsLoading: false,
+                }))
                 setAuthToken(access_token)
                 const resolvedRole = user.role
                 const homeView = resolvedRole === 'employer'
@@ -166,6 +179,12 @@ const useStore = create(
 
             register: async (name, email, password, role) => {
                 const res = await registerUser({ name, email, password, role })
+                // New session: bump the counter and clear loading flags, since a stale
+                // request from the previous account returns early and never clears them.
+                set((st) => ({
+                    _epoch: st._epoch + 1, agentLoading: false, applicationsLoading: false,
+                    skillGapLoading: false, employerJobsLoading: false, employerApplicationsLoading: false,
+                }))
                 const { access_token, user } = res
                 setAuthToken(access_token)
                 const homeView = user.role === 'employer' ? 'employer-dashboard' : 'seeker-dashboard'
@@ -211,6 +230,12 @@ const useStore = create(
 
             logout: () => {
                 setAuthToken(null)
+                // New session: bump the counter and clear loading flags, since a stale
+                // request from the previous account returns early and never clears them.
+                set((st) => ({
+                    _epoch: st._epoch + 1, agentLoading: false, applicationsLoading: false,
+                    skillGapLoading: false, employerJobsLoading: false, employerApplicationsLoading: false,
+                }))
                 set({
                     isAuthenticated: false,
                     userRole: null,
@@ -269,7 +294,9 @@ const useStore = create(
                     // Unauthenticated visitors get the original landing-page anchor-scroll.
                     const { isAuthenticated: authed } = get()
                     if (authed) {
-                        set({ upgradeModalOpen: true })
+                        // Signed-in users stay where they are: with no paid plans there is
+                        // nothing to show, and leaving the app for the landing page is jarring.
+                        if (PAID_PLANS_ENABLED) set({ upgradeModalOpen: true })
                         return
                     }
                     set({ activeView: 'home' })
@@ -317,8 +344,11 @@ const useStore = create(
             // lowongan ini" from the applicant list).
             upgradeModalOpen: false,
             upgradeContext: null,
-            openUpgradeModal: (context = null) =>
-                set({ upgradeModalOpen: true, upgradeContext: context && context.nativeEvent ? null : context }),
+            // No payment wall while paid plans are off (config/features.js).
+            openUpgradeModal: (context = null) => {
+                if (!PAID_PLANS_ENABLED) return
+                set({ upgradeModalOpen: true, upgradeContext: context && context.nativeEvent ? null : context })
+            },
             closeUpgradeModal: () => set({ upgradeModalOpen: false, upgradeContext: null }),
 
             // ─── Seeker profile + matching ───────────────────────────────
@@ -326,8 +356,10 @@ const useStore = create(
             updateProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
 
             loadSeekerProfile: async () => {
+                const epoch = get()._epoch  // see _epoch
                 try {
                     const data = await fetchSeekerProfile()
+                    if (get()._epoch !== epoch) return null  // account changed meanwhile
                     // Skills carry their proof level (claimed / quiz / hr_confirmed)
                     // straight from the backend — the UI never sets proof itself.
                     set((s) => ({
@@ -408,9 +440,11 @@ const useStore = create(
 
             // Resolves to the result, or null on failure (never throws).
             runSkillGap: async (targetJobId = null) => {
+                const epoch = get()._epoch  // see _epoch
                 set({ skillGapLoading: true })
                 try {
                     const res = await triggerSkillGap(targetJobId)
+                    if (get()._epoch !== epoch) return null  // account changed meanwhile
                     set({
                         skillGapResult: res,
                         missingSkills: res.missing_skills || [],
@@ -426,8 +460,10 @@ const useStore = create(
             },
 
             loadSkillGap: async () => {
+                const epoch = get()._epoch  // see _epoch
                 try {
                     const res = await fetchLatestSkillGap()
+                    if (get()._epoch !== epoch) return null  // account changed meanwhile
                     set({
                         skillGapResult: res || null,
                         missingSkills: res?.missing_skills || [],
@@ -442,6 +478,7 @@ const useStore = create(
             },
 
             runAgent: async ({ message, targetJobId, explicitIntent, filters } = {}) => {
+                const epoch = get()._epoch  // see _epoch
                 const { seekerId, profile, advisorLog, advisorSessionId } = get()
 
                 // Job matching specifically needs a real profile. Checking
@@ -472,6 +509,7 @@ const useStore = create(
                         ? { seekerId, message, targetJobId, explicitIntent, sessionId: activeSessionId, filters }
                         : { seeker: { ...profile, user_id: 'demo' }, message, targetJobId, explicitIntent, sessionId: 'demo', filters }
                     const res = await invokeAgent(payload)
+                    if (get()._epoch !== epoch) return null  // account changed meanwhile
                     set({
                         agentLoading: false,
                         matches: res.matches || [],
@@ -509,9 +547,11 @@ const useStore = create(
             applicationsLoading: false,
 
             loadApplications: async () => {
+                const epoch = get()._epoch  // see _epoch
                 set({ applicationsLoading: true })
                 try {
                     const data = await fetchApplications()
+                    if (get()._epoch !== epoch) return null  // account changed meanwhile
                     set({ applications: Array.isArray(data) ? data : [], applicationsLoading: false })
                 } catch (err) {
                     console.error('Failed to load applications:', err)
@@ -608,8 +648,10 @@ const useStore = create(
             savedJobs: [],
 
             syncSavedJobs: async () => {
+                const epoch = get()._epoch  // see _epoch
                 try {
                     const data = await fetchBookmarks()
+                    if (get()._epoch !== epoch) return null  // account changed meanwhile
                     const items = Array.isArray(data) ? data : (data.items || [])
                     set({
                         savedJobs: items.map(b => ({
@@ -667,9 +709,11 @@ const useStore = create(
             employerJobsLoading: false,
             employerProfile: null,
             refreshEmployerJobs: async () => {
+                const epoch = get()._epoch  // see _epoch
                 set({ employerJobsLoading: true })
                 try {
                     const data = await fetchEmployerJobs()
+                    if (get()._epoch !== epoch) return null  // account changed meanwhile
                     set({ employerJobs: data.items || [], employerJobsLoading: false })
                 } catch (err) {
                     console.error('Failed to fetch employer jobs:', err)
@@ -678,8 +722,10 @@ const useStore = create(
             },
 
             loadEmployerProfile: async () => {
+                const epoch = get()._epoch  // see _epoch
                 try {
                     const data = await fetchEmployerProfile()
+                    if (get()._epoch !== epoch) return null  // account changed meanwhile
                     set({ employerProfile: data })
                 } catch (err) {
                     // Profile might not exist yet (404)
@@ -694,9 +740,11 @@ const useStore = create(
             employerApplicationsLoading: false,
 
             loadEmployerApplications: async (jobId = null) => {
+                const epoch = get()._epoch  // see _epoch
                 set({ employerApplicationsLoading: true })
                 try {
                     const data = await fetchEmployerApplications(jobId)
+                    if (get()._epoch !== epoch) return null  // account changed meanwhile
                     set({ employerApplications: data?.items || [], employerApplicationsLoading: false })
                 } catch (err) {
                     console.error('Failed to load employer applications:', err)

@@ -94,17 +94,30 @@ async def recommend_courses_offline(missing: list[str]) -> list[CourseRecommenda
     link when none exists. Caps apply only to the extras — capping the whole
     list used to leave the 6th+ missing skill with nothing to do. No AI call.
     """
-    store_courses = await _store_courses(missing, limit=None)
-    first_for_skill: dict[str, CourseRecommendation] = {}
-    for c in store_courses:
-        first_for_skill.setdefault(c.category, c)
-    per_skill = [first_for_skill.get(s) or _catalog_courses([s])[0] for s in missing]
-    extras = [c for c in store_courses if c not in per_skill][:EXTRA_COURSES]
+    matched = await _store_course_hits(missing)
+    per_skill: list[CourseRecommendation] = []
+    used: set[str] = set()
+    for skill in missing:
+        # A course teaching several missing skills counts for EACH of them —
+        # crediting only its first hit sent later skills to a generic search.
+        course = next((c for c, hits in matched if skill in hits), None)
+        if course:
+            used.add(course.name)
+            per_skill.append(course.model_copy(update={"category": skill}))
+        else:
+            per_skill.append(_catalog_courses([skill])[0])
+    extras = [c for c, _ in matched if c.name not in used][:EXTRA_COURSES]
     return per_skill + extras
 
 
 async def _store_courses(missing: list[str], limit: int | None = 5) -> list[CourseRecommendation]:
-    """Match missing skills against the courses seeded into data/courses/*.json.
+    """Seeded courses teaching any missing skill (category = first skill it closes)."""
+    courses = [c for c, _ in await _store_course_hits(missing)]
+    return courses if limit is None else courses[:limit]
+
+
+async def _store_course_hits(missing: list[str]) -> list[tuple[CourseRecommendation, list[str]]]:
+    """Seeded courses that teach a missing skill, each with EVERY missing skill it covers.
 
     Matching goes through `_normalize_skill` so alias spellings ("Node.js" on
     a job posting vs "Node" in a course's `skills_taught`) still hit — a raw
@@ -119,7 +132,7 @@ async def _store_courses(missing: list[str], limit: int | None = 5) -> list[Cour
         # canonical -> the spelling the job used, so `category` names the skill
         # this course closes (the learning plan groups courses by it).
         missing_canonical = {_normalize_skill(s): s for s in missing}
-        results: list[CourseRecommendation] = []
+        results: list[tuple[CourseRecommendation, list[str]]] = []
         seen: set[str] = set()
         for course in all_courses:
             taught = {
@@ -130,7 +143,7 @@ async def _store_courses(missing: list[str], limit: int | None = 5) -> list[Cour
                 seen.add(course.name)
                 raw_price = getattr(course, "price", 0)
                 price_str = "Gratis" if not raw_price else f"Rp {raw_price:,}"
-                results.append(
+                results.append((
                     CourseRecommendation(
                         name=course.name,
                         provider=getattr(course, "provider", ""),
@@ -140,9 +153,10 @@ async def _store_courses(missing: list[str], limit: int | None = 5) -> list[Cour
                         rating=getattr(course, "rating", 4.5),
                         description=getattr(course, "description", ""),
                         category=hits[0],
-                    )
-                )
-        return results if limit is None else results[:limit]
+                    ),
+                    hits,
+                ))
+        return results
     except Exception as exc:
         logger.debug("Course store lookup failed: %s", exc)
         return []

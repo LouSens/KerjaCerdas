@@ -66,6 +66,22 @@ class TestEmployerPlansOff:
         assert resp.status_code == 200, resp.text
 
 
+class TestNoApplicantCapWithoutPlans:
+    def test_legacy_applicant_cap_never_locks_anyone(self, client, employer_account, seeded_job, register,
+                                                     stub_embedder, plans_off, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "spark_ranked_applicant_limit", 1)  # old deployments set 20
+        for name in ("A", "B", "C"):
+            s = register(client, "seeker")
+            client.post("/api/v1/seeker/profile", headers=s["headers"],
+                        json={"full_name": name, "region_code": "3171", "skills": ["Python"]})
+            client.post("/api/v1/seeker/apply", headers=s["headers"], json={"job_id": seeded_job["job_id"]})
+        body = client.get(f"/api/v1/employer/applications?job_id={seeded_job['job_id']}",
+                          headers=employer_account["headers"]).json()
+        assert len(body["items"]) == 3
+        assert not any(a["locked"] for a in body["items"])
+        assert body["ranked_limit"] is None
+
+
 class TestFeedbackReachesTheSeeker:
     def test_applications_carry_per_skill_proof(self, client, seeker_account, seeded_job, application) -> None:
         app = _my_app(client, seeker_account, seeded_job["job_id"])
@@ -118,6 +134,18 @@ class TestCoursesPointAtTheSkill:
         missing = [f"Skill {i}" for i in range(10)] + ["Excel", "SQL"]
         courses = await recommend_courses_offline(missing)
         assert {c.category for c in courses} >= set(missing)
+
+    async def test_a_course_teaching_two_missing_skills_covers_both(self, client) -> None:
+        from backend.app.agents.graph.nodes import recommend_courses_offline
+        from backend.app.db.postgres_store import get_repositories
+        from backend.app.db.schemas import Course
+
+        await get_repositories().courses.upsert(Course(
+            name="Kursus Admin & Kasir", provider="Mitra", category="admin", duration="2 minggu",
+            skills_taught=["Administrasi", "Kasir"]))
+        courses = await recommend_courses_offline(["Administrasi", "Kasir"])
+        by_skill = {c.category: c.name for c in courses}
+        assert by_skill == {"Administrasi": "Kursus Admin & Kasir", "Kasir": "Kursus Admin & Kasir"}
 
     def test_uncatalogued_skill_gets_a_search_not_an_invented_course(self) -> None:
         from backend.app.agents.graph.nodes import _catalog_courses
@@ -228,3 +256,31 @@ class TestDemoLogin:
         monkeypatch.setattr(settings, "demo_mode", True)
         resp = client.post("/api/v1/auth/demo-login", json={"email": seeker_account["email"]})
         assert resp.status_code == 403
+
+
+class TestEveryFeatureIsFreeToTry:
+    """With paid plans off, no formerly paid feature may answer 402 — even when an
+    old deployment still has PLAN_LIMITS_ENFORCED=true (the plans_off fixture)."""
+
+    def test_no_employer_feature_is_behind_a_payment_wall(self, client, employer_account, seeker_account,
+                                                         seeker_profile, seeded_job, stub_embedder,
+                                                         stub_llm, plans_off) -> None:
+        h, job_id = employer_account["headers"], seeded_job["job_id"]
+        app = client.post("/api/v1/seeker/apply", headers=seeker_account["headers"], json={"job_id": job_id}).json()
+        calls = {
+            "second active job": client.post("/api/v1/employer/jobs", json={**JOB, "title": "Barista"}, headers=h),
+            "third active job": client.post("/api/v1/employer/jobs", json={**JOB, "title": "Gudang"}, headers=h),
+            "interview kit": client.get(f"/api/v1/employer/applications/{app['application_id']}/interview-kit", headers=h),
+            "CSV export": client.get(f"/api/v1/employer/jobs/{job_id}/applicants.csv", headers=h),
+            "candidate search": client.post(f"/api/v1/employer/jobs/{job_id}/candidates", json={}, headers=h),
+            "ranked applicants": client.get(f"/api/v1/employer/applications?job_id={job_id}", headers=h),
+        }
+        assert {k: r.status_code for k, r in calls.items() if r.status_code >= 400} == {}
+
+    def test_no_seeker_feature_is_behind_a_payment_wall(self, client, seeker_account, seeker_profile,
+                                                       seeded_job, stub_embedder, stub_llm, plans_off) -> None:
+        h = seeker_account["headers"]
+        codes = [client.post("/api/v1/agent/invoke", headers=h, json={"user_message": "tips wawancara?"}).status_code
+                 for _ in range(15)]  # the old free quota was 10/day
+        codes.append(client.post("/api/v1/seeker/skill-gap", headers=h, json={"target_job_id": seeded_job["job_id"]}).status_code)
+        assert set(codes) == {200}
