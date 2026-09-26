@@ -36,8 +36,10 @@ All accounts use the password set in `SEED_DEFAULT_PASSWORD` at seed time, so th
 | `dedi.kurniawan@example.com` | Dedi Kurniawan | Tukang bangunan 5 tahun (Balikpapan) |
 | `fitriani@example.com` | Fitriani | Tutor bimbel matematika 2 tahun (Jakarta) |
 | `bambang.suryanto@example.com` | Bambang Suryanto | Admin & kasir toko kelontong 1 tahun (Semarang) |
+| `salsa.anindya@example.com` | Salsa Anindya | Lulusan DKV 2025 — desain grafis & konten media sosial (Surakarta) |
+| `dimas.saputra@example.com` | Dimas Saputra | Lulusan SMK Multimedia — desain, editing video & 3D (Surakarta) |
 
-The last 8 rows above are UMKM/informal-sector seekers, seeded to match the UMKM job postings below so the reverse-matching demo isn't limited to white-collar/IT profiles.
+The last 2 rows are the digital-skills booth story (`scripts/seed_digital.py`). The 8 rows before them are UMKM/informal-sector seekers, seeded to match the UMKM job postings below so the reverse-matching demo isn't limited to white-collar/IT profiles.
 
 ## Employer Accounts
 
@@ -92,10 +94,12 @@ Only accounts that exist are shown, so run `python -m scripts.seed_all` first.
 
 | Button | Shows |
 |---|---|
+| Salsa Anindya (seeker) | Digital story from the booth video: target *Desainer Grafis Junior* (missing Editing Video → course) · rejected at *Junior Web Developer* with a reason |
 | Maya Sari (seeker) | Rejected with HR's reason → learning plan for that job |
 | Rudi Hartono (seeker) | In interview · skills confirmed by HR |
 | Bambang Suryanto (seeker) | Hired · confirmed skills follow him to other applications |
 | Andi Pratama (seeker) | Fresh S1 graduate with many matches to pick a target from |
+| Konveksi Makmur Jaya (HR) | Digital jobs (graphic design, 3D) with ranked applicants · one HR-confirmed skill |
 | Klinik Sehat Keluarga (HR) | Ranked applicants · skill map · reject with reason · Asisten HR |
 | Toko Kelontong Makmur Jaya (HR) | A hired candidate · skill confirmation |
 | Warung Makan Bahari Nusantara (HR) | Small business with two open jobs |
@@ -104,6 +108,8 @@ Only accounts that exist are shown, so run `python -m scripts.seed_all` first.
 
 | Account | What it shows |
 |---|---|
+| `salsa.anindya@example.com` | Learning plan already targets *Desainer Grafis Junior* (Konveksi Makmur Jaya): 2/3 required skills, missing **Editing Video** → "Dasar Editing Video untuk Konten". Rejected at *Junior Web Developer* (Pasar Digital Nusantara) with "Skill inti belum memadai" → missing JavaScript |
+| `hr@konveksimakmur.id` | *Desainer Grafis Junior* and *3D Artist Junior* with an applicant each; Dimas's Adobe Illustrator is HR-confirmed after the interview |
 | `maya.sari@example.com` | Rejected at *Admin & Kasir Klinik* with reason "Skill inti belum memadai" → Lamaran Saya shows the reason + missing skills (Administrasi, Kasir) → Rencana Belajar |
 | `hr@kliniksehat.id` | 3 ranked applicants on *Admin & Kasir Klinik*, the skill map ("100% belum punya Administrasi"), one interviewed candidate with HR-confirmed skills |
 | `bambang.suryanto@example.com` | Hired at *Kasir & Staff Gudang Toko*; his HR-confirmed Kasir/Stok Barang follow him to other applications |

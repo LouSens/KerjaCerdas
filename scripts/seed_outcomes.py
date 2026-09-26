@@ -7,7 +7,7 @@ does not exist yet. Reseeding never rewinds a decision HR made since — a hire,
 a rejection or a skill confirmation stays as HR left it. Same for the seeded
 learning plan: created once, never overwritten.
 
-Demo reading of the result:
+Demo reading of the result (digital-job stories: see seed_digital.py):
   maya.sari@example.com       rejected at "Admin & Kasir Klinik" (skill_kurang) —
                               sees the reason + missing skills -> learning plan
   hr@kliniksehat.id           3 applicants on "Admin & Kasir Klinik": ranked list,
@@ -21,6 +21,7 @@ from backend.app.db.schemas import Application, ApplicationStatus, SkillGapResul
 from backend.app.db.schemas_proof import ApplicationStatusEvent, SkillEvidence
 from backend.app.services.matching.evidence import skill_key, skill_snapshot
 from backend.app.services.matching.matcher import score_pair
+from scripts.seed_digital import DIGITAL_OUTCOMES, DIGITAL_TARGETS
 
 PATH = {  # legal pipeline walk to each end state
     "applied": [],
@@ -41,10 +42,11 @@ OUTCOMES = [
      ["Kasir", "Stok Barang"], "Selamat bergabung — mulai Senin pukul 08.00."),
     ("yeni.marlina@example.com", "warung_bahari", "Kasir & Pelayan Warung Makan", "rejected", "skill_kurang", [], ""),
     ("andi.pratama@example.com", "bpr_sentosa", "Junior Data Analyst (Banking)", "rejected", "posisi_terisi", [], ""),
+    *DIGITAL_OUTCOMES,
 ]
 
 # Seekers whose learning plan should already point at a target job on first login.
-TARGETS = [("maya.sari@example.com", "klinik_sehat", "Admin & Kasir Klinik")]
+TARGETS = [("maya.sari@example.com", "klinik_sehat", "Admin & Kasir Klinik"), *DIGITAL_TARGETS]
 
 
 async def seed_outcomes(repos, emp_by_key: dict) -> int:

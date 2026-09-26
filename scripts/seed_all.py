@@ -42,6 +42,7 @@ from backend.app.services.hiring.links import new_public_code
 from backend.app.services.matching.matcher import SemanticMatcher, score_pair
 from scripts.auth_utils import seed_auth_user as _seed_auth_user
 from scripts.seed_legacy import retire_legacy_employers
+from scripts.seed_digital import DIGITAL_COURSES, DIGITAL_JOBS, DIGITAL_SEEKERS
 from scripts.seed_outcomes import seed_outcomes
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1716,6 +1717,12 @@ COURSES = [
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# Entry-level digital jobs at the UMKM + the booth-story seekers (see seed_digital.py).
+JOB_POSTINGS += DIGITAL_JOBS
+SEEKERS += DIGITAL_SEEKERS
+COURSES += DIGITAL_COURSES
+
+
 async def seed(clear: bool, reset_passwords: bool = False) -> None:
     await init_db()
 
@@ -1946,6 +1953,8 @@ async def seed(clear: bool, reset_passwords: bool = False) -> None:
     print("\nLogin demo (UI menerima password apa saja):")
     print("  hr@kelontongmakmur.id    -> employer dashboard (Toko Kelontong Makmur Jaya)")
     print("  hr@kliniksehat.id        -> employer dashboard (Klinik Sehat Keluarga)")
+    print("  salsa.anindya@example.com -> seeker: target desain grafis + ditolak dengan alasan (digital)")
+    print("  hr@konveksimakmur.id     -> employer: lowongan desain grafis & 3D dengan pelamar")
     print("  maya.sari@example.com    -> seeker: ditolak dengan alasan -> rencana belajar")
     print("  andi.pratama@example.com -> seeker dashboard (fresh-grad data)")
     print("  reza.pahlawan@example.com -> seeker dashboard (senior backend)")

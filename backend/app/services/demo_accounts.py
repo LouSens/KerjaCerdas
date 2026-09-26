@@ -10,6 +10,8 @@ from __future__ import annotations
 
 # (email, role, name shown on the button, what this account demonstrates)
 DEMO_ACCOUNTS: list[tuple[str, str, str, str]] = [
+    ("salsa.anindya@example.com", "seeker", "Salsa Anindya",
+     "Lulusan DKV · target Desainer Grafis · ditolak dengan alasan → rencana belajar"),
     ("maya.sari@example.com", "seeker", "Maya Sari",
      "Ditolak dengan alasan dari HR → rencana belajar untuk lowongan itu"),
     ("rudi.hartono@example.com", "seeker", "Rudi Hartono",
@@ -18,6 +20,8 @@ DEMO_ACCOUNTS: list[tuple[str, str, str, str]] = [
      "Sudah diterima kerja · skill terbukti ikut ke lamaran berikutnya"),
     ("andi.pratama@example.com", "seeker", "Andi Pratama",
      "Lulusan baru S1 · banyak lowongan cocok untuk dijadikan target"),
+    ("hr@konveksimakmur.id", "employer", "Konveksi Makmur Jaya",
+     "Lowongan desain grafis & 3D · pelamar terperingkat · peta skill"),
     ("hr@kliniksehat.id", "employer", "Klinik Sehat Keluarga",
      "Pelamar terperingkat · peta skill · tolak dengan alasan · Asisten HR"),
     ("hr@kelontongmakmur.id", "employer", "Toko Kelontong Makmur Jaya",
